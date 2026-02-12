@@ -1,0 +1,70 @@
+edition = "2024";
+
+package legion.messages;
+
+
+message NvidiaNvml
+{
+    message HardwareMonitor {
+
+        message MinMaxValue {
+            uint32 value       = 1;
+            uint32 min_value   = 2;
+            uint32 max_value   = 3;
+        }
+
+        message Temperature {
+            uint32  value           = 1;
+            uint32  slowdown        = 3;
+            uint32  shutdown        = 4;
+        }
+
+        message MemoryUse {
+            uint64  used        = 1;
+            uint64  total       = 2;
+            uint64  free        = 3;
+        }
+
+        message Power {
+            uint32  value           = 1;
+            uint32  min_value       = 2;
+            uint32  max_value       = 3;
+            uint32  default_value   = 4;
+            uint32  enforced_value  = 5;
+            uint64  total           = 6;
+        }
+
+        message PCIe {
+            uint32  generation      = 1;
+            uint32  generation_max  = 2;
+            uint32  width           = 3;
+            uint32  width_max       = 4;
+            uint64  rx_bytes        = 5;
+            uint64  tx_bytes        = 6;
+        }
+
+
+        MinMaxValue  gpu_utilization     =1;
+        MinMaxValue  memory_utilization  =2;
+        Temperature  temperature         =3;
+        MemoryUse    memory_use          =4;
+        MinMaxValue  gpu_clock           =5;
+        MinMaxValue  memory_clock        =6;
+        MinMaxValue  sm_clock            =7;
+        Power  power                     =8;
+        PCIe   pcie                      =9;
+    }
+
+    message OffsetSettings {
+        uint32  max                  = 1;
+        uint32  min                  = 2;
+        int32   value                = 3;
+    }
+
+    HardwareMonitor   hardware_monitor   = 1;
+    OffsetSettings    gpu_offset         = 2;
+    OffsetSettings    memory_offset      = 3;
+
+
+    string name                          = 4;
+}

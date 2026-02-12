@@ -1,0 +1,23 @@
+<RCC>
+    <qresource prefix="/images/icons">
+        <file>LenovoLegionIco.png</file>
+        <file>Icons-dropdown-arrow-16.png</file>
+        <file>Icons-dropup-arrow-16.png</file>
+        <file>toolbar-home.png</file>
+        <file>toolbar-settings.png</file>
+        <file>toolbar-door.png</file>
+        <file>toolbar-user.png</file>
+        <file>toolbar-question.png</file>
+        <file>toolbar-information.png</file>
+        <file>dialog.png</file>
+        <file>info.png</file>
+        <file>warning.png</file>
+        <file>cross.png</file>
+        <file>keyboard.png</file>
+    </qresource>
+    <qresource prefix="/images">
+        <file>keyboard-background.png</file>
+        <file>keyboard-background-048d-c9xx.png</file>
+        <file>keyboard-background-048d-c197.png</file>
+    </qresource>
+</RCC>

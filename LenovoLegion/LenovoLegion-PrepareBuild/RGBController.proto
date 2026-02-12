@@ -1,0 +1,165 @@
+edition = "2024";
+
+package legion.messages;
+
+
+message RGBController
+{
+    enum ModeDirection {
+        MODE_DIRECTION_LEFT         = 0;
+        MODE_DIRECTION_RIGHT        = 1;
+        MODE_DIRECTION_UP           = 2;
+        MODE_DIRECTION_DOWN         = 3;
+        MODE_DIRECTION_SPINLEFT     = 4;
+        MODE_DIRECTION_SPINRIGHT    = 5;
+        MODE_DIRECTION_NA           = 6;
+    }
+
+    enum ModeColorType {
+        MODE_COLORS_NONE            = 0;
+        MODE_COLORS_PER_LED         = 1;
+        MODE_COLORS_MODE_SPECIFIC   = 2;
+        MODE_COLORS_RANDOM          = 3;
+    }
+
+    enum ZoneType {
+        ZONE_TYPE_SINGLE = 0;
+        ZONE_TYPE_LINEAR = 1;
+        ZONE_TYPE_MATRIX = 2;
+    }
+
+    enum DeviceType {
+        DEVICE_TYPE_KEYBOARD        = 0;
+    }
+
+    message Mode {
+        string   name           = 1;
+        int32    value          = 2;
+        uint32   flags          = 3;
+        uint32   speed_min      = 4;
+        uint32   speed_max      = 5;
+        uint32   colors_min     = 6;
+        uint32   colors_max     = 7;
+        uint32   speed          = 8;
+        uint32   direction      = 9;
+        uint32   color_mode     = 10;
+        repeated uint32 colors  = 11;
+    }
+
+    message LED {
+        string  name  = 1;
+        uint32  value = 2;
+    }
+
+    message MatrixMap {
+        uint32          height = 1;
+        uint32          width  = 2;
+        repeated uint32 map    = 3;
+    }
+
+    message Zone {
+        string            name       = 1;
+        ZoneType          type       = 2;
+        uint32            leds_count = 4;
+        uint32            leds_min   = 5;
+        uint32            leds_max   = 6;
+        MatrixMap         matrix_map = 7;
+        uint32            flags      = 9;
+        uint32            start_idx  = 10;
+    }
+
+    message Britness {
+        uint32 min      = 1;
+        uint32 max      = 2;
+        uint32 current  = 3;
+    }
+
+    message Profile {
+        uint32 min      = 1;
+        uint32 max      = 2;
+        uint32 current  = 3;
+    }
+
+    message LogoStatus {
+        bool    has_logo   = 1;
+        bool    logo_on    = 2;
+     }
+
+    message LedGroupEffect
+    {
+        int32                 mode          = 1;
+
+        uint32                speed         = 2;
+        uint32                direction     = 3;
+        uint32                color_mode    = 4;
+
+        repeated uint32       colors        = 5;
+        repeated LED          leds          = 6;
+    };
+
+    message DeviceTypeInfo
+    {
+        string  name            = 1;
+        string  vendor          = 2;
+        string  location        = 3;
+        string  serial          = 4;
+        string  description     = 5;
+        uint32  vendor_id       = 6;
+        uint32  product_id      = 7;
+    };
+}
+
+message RGBControllerRequest
+{
+    enum RequestFlags {
+        REQUEST_NONE                = 0x000;
+        REQUEST_DEVICE_TYPE         = 0x001;
+        REQUEST_LEDS                = 0x002;
+        REQUEST_ZONES               = 0x004;
+        REQUEST_MODES               = 0x008;
+        REQUEST_PROFILE             = 0x010;
+        REQUEST_BRITNESS            = 0x020;
+        REQUEST_LED_GROUP_EFFECTS   = 0x040;
+        REQUEST_STATE_FOR_ALL_LEDS  = 0x080;
+        REQUEST_MAX_EFFECTS         = 0x100;
+        REQUEST_DEVICE_INFO         = 0x200;
+        REQUEST_LOGO_STATUS         = 0x400;
+        REQUEST_ALL                 = 0xFFF;
+    }
+
+    uint32 request_flags = 1;
+}
+
+message RGBControllerResponse
+{
+             RGBController.DeviceType         device_type           = 1;
+    repeated RGBController.LED                leds                  = 2;
+    repeated RGBController.Zone               zones                 = 3;
+    repeated RGBController.Mode               modes                 = 4;
+             RGBController.Profile            profile               = 5;
+             RGBController.Britness           britness              = 6;
+    repeated RGBController.LedGroupEffect     led_group_effects     = 7;
+    repeated uint32                           colors                = 8;
+             uint32                           max_effects           = 9;
+             RGBController.DeviceTypeInfo     device_info           = 10;
+             RGBController.LogoStatus         logo_status           = 11;
+}
+
+message RGBControllerSetRequest
+{
+             enum SetRequestFlags {
+                SET_REQUEST_NONE                 = 0x000;
+                SET_REQUEST_PROFILE              = 0x001;
+                SET_REQUEST_BRITNESS             = 0x002;
+                SET_REQUEST_LED_GROUP_EFFECTS    = 0x004;
+                SET_REQUEST_RESET_EFECTS_TTO_DEF = 0x010;
+                SET_REQUEST_LOGO_STATUS          = 0x020;
+                REQUEST_ALL                      = 0xFFF;
+             }
+
+             RGBController.Profile            profile               = 1;
+             RGBController.Britness           britness              = 2;
+    repeated RGBController.LedGroupEffect     led_group_effects     = 3;
+             uint32                           set_request_flags     = 4;
+             RGBController.LogoStatus         logo_status           = 5;
+}

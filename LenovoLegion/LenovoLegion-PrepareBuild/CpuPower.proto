@@ -1,0 +1,36 @@
+edition = "2024";
+
+package legion.messages;
+
+
+message CPUPower
+{
+    message Limit
+    {
+        uint32 current_value        = 1;
+
+        message Descriptor {
+
+            uint32 default_value                = 1;
+            uint32 display_name                 = 2;
+            uint32 min_value                    = 3;
+            uint32 max_value                    = 4;
+            uint32 scalar_increment             = 5;
+            repeated uint32 steps               = 6;
+            uint32 type                         = 7;
+            uint32 supported                    = 8;
+        }
+
+        map<int32, Descriptor> mode_descriptor_map = 2;
+    }
+
+    Limit apus_pptp_limit           = 1;
+    Limit cpu_clp_limit             = 2;
+    Limit cpu_ltp_limit             = 3;
+    Limit cpu_pl1_tau               = 4;
+    Limit cpu_pp_limit              = 5;
+    Limit cpu_stp_limit             = 6;
+    Limit cpu_tmp_limit             = 7;
+    Limit gpu_to_cpu_dynamic_boost  = 8;
+    Limit gpu_total_onac            = 9;
+}

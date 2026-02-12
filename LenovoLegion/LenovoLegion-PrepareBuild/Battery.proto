@@ -1,0 +1,17 @@
+edition = "2024";
+
+package legion.messages;
+
+
+message Battery
+{
+    enum PowerChargeMode {
+        POWER_CHARGE_MODE_UNKNOWN    = 0;
+        POWER_CHARGE_MODE_AC         = 1;
+        POWER_CHARGE_MODE_BATTERY    = 2;
+    }
+
+    PowerChargeMode current_charge_mode_value = 1;
+    string          baterry_status            = 2;
+    bool            supported                 = 3;
+}

@@ -1,0 +1,23 @@
+edition = "2024";
+
+package legion.messages;
+
+
+message CPUFrequency
+{
+    message CPUX {
+        uint32                 base_freq            =1;
+        uint32                 min_freq             =2;
+        uint32                 max_freq             =3;
+        uint32                 scaling_cur_freq     =4;
+        uint32                 scaling_min_freq     =5;
+        uint32                 scaling_max_freq     =6;
+        bool                   online               =7;
+        uint32                 core_id              =8;
+        uint32                 die_id               =9;
+        uint32                 physical_package_id  =10;
+        uint32                 cluster_id           =11;
+    }
+
+    repeated CPUX cpus = 1;
+}

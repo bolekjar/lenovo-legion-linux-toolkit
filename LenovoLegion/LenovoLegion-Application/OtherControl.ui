@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>OtherControl</class>
+ <widget class="QWidget" name="OtherControl">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>600</width>
+    <height>400</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Other Settings</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <widget class="QGroupBox" name="groupBox_OtherSettings">
+     <property name="title">
+      <string>Hardware Control</string>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout_2">
+      <property name="topMargin">
+       <number>30</number>
+      </property>
+      <item>
+       <widget class="QCheckBox" name="checkBox_DisableTouchpad">
+        <property name="toolTip">
+         <string>When enabled, the touchpad will be disabled</string>
+        </property>
+        <property name="text">
+         <string>Disable Touchpad</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="checkBox_DisableWinKey">
+        <property name="toolTip">
+         <string>When enabled, the Windows key will be disabled</string>
+        </property>
+        <property name="text">
+         <string>Disable Windows Key</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="groupBox_GPUControl">
+     <property name="title">
+      <string>GPU Control</string>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout_3">
+      <property name="topMargin">
+       <number>30</number>
+      </property>
+      <item>
+       <widget class="QRadioButton" name="radioButton_HybridOn">
+        <property name="text">
+         <string>Hybrid Mode (Default)</string>
+        </property>
+        <property name="toolTip">
+         <string>Both iGPU and dGPU are available, automatic switching</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QRadioButton" name="radioButton_HybridAuto">
+        <property name="text">
+         <string>Hybrid Mode (Auto)</string>
+        </property>
+        <property name="toolTip">
+         <string>Automatic GPU switching with power optimization</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QRadioButton" name="radioButton_HybridIGPUOnly">
+        <property name="text">
+         <string>iGPU Only</string>
+        </property>
+        <property name="toolTip">
+         <string>Only integrated GPU is active, discrete GPU is disabled</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QRadioButton" name="radioButton_HybridOff">
+        <property name="text">
+         <string>dGPU Only (G-Sync)</string>
+        </property>
+        <property name="toolTip">
+         <string>Only discrete GPU is active, G-Sync enabled</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <spacer name="verticalSpacer_2">
+     <property name="orientation">
+      <enum>Qt::Orientation::Vertical</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>20</width>
+       <height>40</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

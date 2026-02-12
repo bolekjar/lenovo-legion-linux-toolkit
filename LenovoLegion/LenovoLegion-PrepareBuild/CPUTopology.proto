@@ -1,0 +1,18 @@
+edition = "2024";
+
+package legion.messages;
+
+
+message CPUTopology
+{
+    message ActiveCPUsRange {
+        uint32 cpu_min = 1;
+        uint32 cpu_max = 2;
+    };
+
+
+    repeated ActiveCPUsRange   active_cpus_core   = 1; //active perf cores
+    repeated ActiveCPUsRange   active_cpus_atom   = 2; //active atom cores
+    repeated ActiveCPUsRange   active_cpus        = 3; //active all cores
+    ActiveCPUsRange            possible_cpus      = 4; //all cores
+}

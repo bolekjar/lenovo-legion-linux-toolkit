@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>GPUDetails</class>
+ <widget class="QWidget" name="GPUDetails">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1200</width>
+    <height>768</height>
+   </rect>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>1200</width>
+    <height>768</height>
+   </size>
+  </property>
+  <property name="maximumSize">
+   <size>
+    <width>16777215</width>
+    <height>16777215</height>
+   </size>
+  </property>
+  <property name="windowTitle">
+   <string>GPU Details</string>
+  </property>
+  <property name="windowIcon">
+   <iconset resource="Resources.qrc">
+    <normaloff>:/images/icons/LenovoLegionIco.png</normaloff>:/images/icons/LenovoLegionIco.png</iconset>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout_2" stretch="95">
+   <item>
+    <widget class="QGroupBox" name="groupBox_GPUDetails">
+     <property name="title">
+      <string/>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout" stretch="30,30,40">
+      <property name="topMargin">
+       <number>30</number>
+      </property>
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_GPUDetailsUtClock">
+        <item>
+         <widget class="QGroupBox" name="groupBox_GPUDetailsClock">
+          <property name="title">
+           <string>Clock</string>
+          </property>
+          <layout class="QHBoxLayout" name="horizontalLayout_3">
+           <property name="topMargin">
+            <number>30</number>
+           </property>
+           <item>
+            <widget class="LenovoLegionGui::HWMonitor" name="widget_GPUDetailsGraphicsClock" native="true"/>
+           </item>
+           <item>
+            <widget class="LenovoLegionGui::HWMonitor" name="widget_GPUDetailsMemoryClock" native="true"/>
+           </item>
+           <item>
+            <widget class="LenovoLegionGui::HWMonitor" name="widget_GPUDetailsSMClock" native="true"/>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item>
+         <widget class="QGroupBox" name="groupBox_GPUDetailsUtilization">
+          <property name="title">
+           <string>Utilization</string>
+          </property>
+          <layout class="QHBoxLayout" name="horizontalLayout_2">
+           <property name="topMargin">
+            <number>30</number>
+           </property>
+           <item>
+            <widget class="LenovoLegionGui::HWMonitor" name="widget_GPUDetailsGPUUtilization" native="true"/>
+           </item>
+           <item>
+            <widget class="LenovoLegionGui::HWMonitor" name="widget_GPUDetailsMemoryUtilization" native="true"/>
+           </item>
+           <item>
+            <widget class="LenovoLegionGui::HWMonitor" name="widget_GPUDetailsMemoryUsed" native="true"/>
+           </item>
+          </layout>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <widget class="QGroupBox" name="groupBox_GPUDetailsOther">
+        <property name="title">
+         <string>Other</string>
+        </property>
+        <layout class="QHBoxLayout" name="horizontalLayout">
+         <property name="topMargin">
+          <number>30</number>
+         </property>
+         <item>
+          <widget class="LenovoLegionGui::HWMonitor" name="widget_GPUDetailsTemperature" native="true"/>
+         </item>
+         <item>
+          <widget class="LenovoLegionGui::HWMonitor" name="widget_GPUDetailsPower" native="true"/>
+         </item>
+         <item>
+          <widget class="LenovoLegionGui::HWMonitor" name="widget_GPUDetailsPCIERX" native="true"/>
+         </item>
+         <item>
+          <widget class="LenovoLegionGui::HWMonitor" name="widget_GPUDetailsPCIETX" native="true"/>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="label_GPUDetailsSummarBody">
+        <property name="text">
+         <string/>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignTop</set>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>LenovoLegionGui::HWMonitor</class>
+   <extends>QWidget</extends>
+   <header location="global">HWMonitor.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
+ <resources>
+  <include location="Resources.qrc"/>
+ </resources>
+ <connections/>
+</ui>

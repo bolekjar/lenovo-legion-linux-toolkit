@@ -1,0 +1,49 @@
+edition = "2024";
+
+package legion.messages;
+
+message CPUInfo {
+
+    message CacheInfo {
+        int32 level = 1;
+        string type = 2;
+        string size = 3;
+    }
+
+    // Raw modalias data
+    string raw_modalias = 1;
+
+    // Parsed modalias fields
+    string vendor_code = 2;
+    int32 family = 3;
+    int32 model = 4;
+
+    // CPU identification
+    string cpu_model = 5;           // From CPUID brand string (e.g., "Intel(R) Core(TM) i9-14900HX")
+    string cpu_generation = 6;      // From lookup table (e.g., "Intel Core 13th/14th Gen")
+    string architecture = 7;        // e.g., "x86_64"
+
+    // Cache hierarchy
+    repeated CacheInfo caches = 12;
+
+    // Package info
+    int32 physical_package_id = 14;
+}
+
+message MachineInformation {
+    string bios_date = 1;
+    string bios_release = 2;
+    string bios_vendor = 3;
+    string bios_version = 4;
+    string board_name = 5;
+    string board_vendor = 6;
+    string board_version = 7;
+    string chassis_type = 8;
+    string chassis_vendor = 9;
+    string chassis_version = 10;
+    string product_family = 11;
+    string product_name = 12;
+    string product_sku = 13;
+    string product_version = 14;
+    string sys_vendor = 15;
+}

@@ -1,0 +1,9 @@
+# Make Intel RAPL power limit files read-only
+SUBSYSTEM=="powercap", KERNEL=="intel-rapl*", RUN+="/opt/LenovoLegion/rapl-readonly.sh $sys$devpath/constraint_0_power_limit_uw"
+SUBSYSTEM=="powercap", KERNEL=="intel-rapl*", RUN+="/opt/LenovoLegion/rapl-readonly.sh $sys$devpath/constraint_0_time_window_us"
+SUBSYSTEM=="powercap", KERNEL=="intel-rapl*", RUN+="/opt/LenovoLegion/rapl-readonly.sh $sys$devpath/constraint_1_power_limit_uw"
+SUBSYSTEM=="powercap", KERNEL=="intel-rapl*", RUN+="/opt/LenovoLegion/rapl-readonly.sh $sys$devpath/constraint_1_time_window_us"
+SUBSYSTEM=="powercap", KERNEL=="intel-rapl*", RUN+="/opt/LenovoLegion/rapl-readonly.sh $sys$devpath/constraint_2_power_limit_uw"
+SUBSYSTEM=="powercap", KERNEL=="intel-rapl*", RUN+="/opt/LenovoLegion/rapl-readonly.sh $sys$devpath/energy_uj"
+SUBSYSTEM=="powercap", KERNEL=="intel-rapl*", RUN+="/opt/LenovoLegion/rapl-readonly.sh $sys$devpath/max_energy_range_uj"
+SUBSYSTEM=="powercap", KERNEL=="intel-rapl*", RUN+="/opt/LenovoLegion/rapl-readonly.sh $sys$devpath/name"

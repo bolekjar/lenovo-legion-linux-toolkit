@@ -1,0 +1,15 @@
+[Desktop Entry]
+Comment=Lenovo Legion laptop control application
+Exec=/opt/LenovoLegion/LenovoLegion
+GenericName=Lenovo Legion control
+Icon=/opt/LenovoLegion/LenovoLegionIco.png
+Name=LenovoLegion
+NoDisplay=false
+Path=
+StartupNotify=false
+Terminal=false
+TerminalOptions=
+Type=Application
+X-KDE-SubstituteUID=false
+X-KDE-Username=
+Categories=Utility;System;

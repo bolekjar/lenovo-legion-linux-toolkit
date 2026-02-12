@@ -1,0 +1,4 @@
+LenovoLegion.pro.user
+build/
+LenovoLegion-PrepareBuild/*.pb.cc
+LenovoLegion-PrepareBuild/*.pb.h

@@ -1,0 +1,59 @@
+edition = "2024";
+
+package legion.messages;
+
+
+message Notification
+{
+    enum SpecialKey
+    {
+        UKNOWN                  = 0;
+        FNF9                    = 1;
+        FNLOCKON                = 2;
+        FNLOCKOFF               = 3;
+        FNPRTSC                 = 4;
+        FNPRTSC2                = 45;
+        CAMERAON                = 12;
+        CAMERAOFF               = 13;
+        FNR                     = 16;
+        FNR2                    = 0x0041002A;
+        SPECTRUMBACKLIGHTOFF    = 24;
+        SPECTRUMBACKLIGHT1      = 25;
+        SPECTRUMBACKLIGHT2      = 26;
+        SPECTRUMBACKLIGHT3      = 38;
+        SPECTRUMPRESET1         = 32;
+        SPECTRUMPRESET2         = 33;
+        SPECTRUMPRESET3         = 34;
+        SPECTRUMPRESET4         = 35;
+        SPECTRUMPRESET5         = 36;
+        SPECTRUMPRESET6         = 37;
+        FNN                     = 42;
+        LOGOBACKLIGHTON         = 43;
+        LOGOBACKLIGHTOFF        = 44;
+        FNF4                    = 62;
+        FNF8                    = 63;
+        WHITEBACKLIGHTOFF       = 64;
+        WHITEBACKLIGHT1         = 65;
+        WHITEBACKLIGHT2         = 66;
+    }
+
+    enum Action {
+        LENOVO_DRIVER_ADDED                     = 0;
+        LENOVO_DRIVER_REMOVED                   = 1;
+        THERMAL_MODE_CHANGE                     = 2;
+        POWER_SUPPLY_BATTERY0_CHANGE            = 3;
+        CPU_X_LIST_RELOADED                     = 4;
+        KEYLOCK_STATUS_CHANGE                   = 5;
+        SPECIAL_KEY_PRESSED                     = 6;
+    }
+
+
+    message RGBControlerScreenShotDataParams
+    {
+        uint32          width       = 1;
+        uint32          height      = 2;
+    }
+
+    Action                               action                                  = 1;
+    SpecialKey                           special_key                             = 2;
+}

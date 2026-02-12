@@ -1,0 +1,55 @@
+edition = "2024";
+
+package legion.messages;
+
+
+
+message FanOption
+{
+    message Option {
+        bool       current_value  = 1;
+        bool       default_value  = 2;
+        bool       supported      = 3;
+    }
+
+    Option full_speed = 1;
+}
+
+
+message FanCurve
+{
+    message Points
+    {
+        uint32 point1   =  1;
+        uint32 point2   =  2;
+        uint32 point3   =  3;
+        uint32 point4   =  4;
+        uint32 point5   =  5;
+        uint32 point6   =  6;
+        uint32 point7   =  7;
+        uint32 point8   =  8;
+        uint32 point9   =  9;
+        uint32 point10  =  10;
+    }
+
+    message Default
+    {
+        repeated uint32 fan     = 1;
+        repeated uint32 sensors = 2;
+    }
+
+    Points current_value                 = 1;
+
+    /*
+     * Default Fan Curves for different modes - Legion 5/7 2021+
+     */
+    map<uint32, Default>  cpu_default    = 2;
+    map<uint32, Default>  gpu_default    = 3;
+
+    /*
+     * Fan Optionals
+     */
+    map<uint32, Default>  cpusen_default = 4;
+    map<uint32, Default>  sys_default    = 5;
+
+}

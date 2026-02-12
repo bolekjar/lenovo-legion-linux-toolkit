@@ -1,0 +1,30 @@
+edition = "2024";
+
+package legion.messages;
+
+
+message OtherSettings
+{
+    message EnableDisableValue
+    {
+        bool   current     = 1;
+        bool   supported   = 2;
+    }
+
+    EnableDisableValue touch_pad  = 1;
+    EnableDisableValue win_key    = 2;
+}
+
+
+message GpuSwitchValue
+{
+    enum HybridModeState {
+        HYBRID_MODE_ON            = 0;
+        HYBRID_MODE_ONIGPUONLY    = 1;
+        HYBRID_MODE_ONAUTO        = 2;
+        HYBRID_MODE_OFF           = 3;
+    }
+
+    HybridModeState   current     = 1;
+    bool              supported   = 2;
+}

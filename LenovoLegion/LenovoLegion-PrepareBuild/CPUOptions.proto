@@ -1,0 +1,26 @@
+edition = "2024";
+
+package legion.messages;
+
+
+message CPUOptions
+{
+    message CPUX
+    {
+        string   governor             =1;
+        string   available_governors  =2;
+        bool     cpu_online           =3;
+        uint32   cpu_core_id          =4;
+        uint32   die_id               =5;
+        uint32   physical_package_id  =6;
+        uint32   cluster_id           =7;
+    }
+
+    repeated CPUX cpus = 1;
+}
+
+message CPUSMT
+{
+    bool   active  = 1;
+    string control = 2;
+}

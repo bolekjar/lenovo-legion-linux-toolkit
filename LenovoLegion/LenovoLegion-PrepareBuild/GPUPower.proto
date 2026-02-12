@@ -1,0 +1,29 @@
+edition = "2024";
+
+package legion.messages;
+
+message GPUPower
+{
+    message Limit
+    {
+        uint32 current_value        = 1;
+
+        message Descriptor {
+
+            uint32 default_value    = 1;
+            uint32 display_name     = 2;
+            uint32 min_value        = 3;
+            uint32 max_value        = 4;
+            uint32 scalar_increment = 5;
+            repeated uint32 steps   = 6;
+            uint32 type             = 7;
+            uint32 supported        = 8;
+        }
+
+        map<int32, Descriptor> mode_descriptor_map = 2;
+    }
+
+    Limit gpu_configurable_tgp                = 1;
+    Limit gpu_power_boost                     = 2;
+    Limit gpu_temperature_limit               = 3;
+}

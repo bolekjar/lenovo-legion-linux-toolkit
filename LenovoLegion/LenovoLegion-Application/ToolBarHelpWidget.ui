@@ -1,0 +1,260 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>ToolBarHelpWidget</class>
+ <widget class="QWidget" name="ToolBarHelpWidget">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1986</width>
+    <height>1594</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Help</string>
+  </property>
+  <property name="styleSheet">
+   <string notr="true"/>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout_Main">
+   <item>
+    <widget class="QScrollArea" name="scrollArea">
+     <property name="widgetResizable">
+      <bool>true</bool>
+     </property>
+     <widget class="QWidget" name="scrollAreaWidgetContents">
+      <property name="geometry">
+       <rect>
+        <x>0</x>
+        <y>0</y>
+        <width>1962</width>
+        <height>1570</height>
+       </rect>
+      </property>
+      <layout class="QVBoxLayout" name="verticalLayout">
+       <item>
+        <layout class="QVBoxLayout" name="verticalLayout_Content">
+         <item>
+          <widget class="QGroupBox" name="groupBox_Overview">
+           <property name="title">
+            <string>Overview</string>
+           </property>
+           <layout class="QVBoxLayout" name="verticalLayout_Overview">
+            <property name="topMargin">
+             <number>20</number>
+            </property>
+            <item>
+             <widget class="QLabel" name="label_Overview">
+              <property name="text">
+               <string>Lenovo Legion Control is a comprehensive system management tool for Lenovo Legion laptops running Linux. It provides detailed hardware monitoring and control over CPU, GPU, cooling, and power management features.</string>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+         <item>
+          <widget class="QGroupBox" name="groupBox_Home">
+           <property name="title">
+            <string>Home Tab</string>
+           </property>
+           <layout class="QVBoxLayout" name="verticalLayout_Home">
+            <property name="topMargin">
+             <number>20</number>
+            </property>
+            <item>
+             <widget class="QLabel" name="label_Home">
+              <property name="text">
+               <string>&lt;b&gt;Power Profile Control:&lt;/b&gt; Select from Quiet, Balanced, Performance, Custom, or Extreme modes. Affects CPU behavior, fan speeds, and power consumption. ACPI platform profile integration.
+&lt;br&gt;&lt;b&gt;Hardware Monitoring:&lt;/b&gt; Real-time display of CPU/GPU temperatures, frequencies, power draw, utilization, and all system sensors. Expandable CPU and GPU details windows.
+&lt;br&gt;&lt;b&gt;CPU Control:&lt;/b&gt; Individual control per core/thread. Set governor (performance, powersave, ondemand), enable/disable cores, manage SMT (Hyper-Threading). Separate P-core and E-core management on hybrid CPUs.
+&lt;br&gt;&lt;b&gt;CPU Frequency Control:&lt;/b&gt; Set minimum and maximum frequency limits per thread. Apply to all cores or individually. Real-time frequency monitoring.
+&lt;br&gt;&lt;b&gt;Power Control:&lt;/b&gt; CPU: Configure PL1/PL2 (TDP limits), PL1 Tau (turbo duration), boost control, cross-load limits, CPU temperature limit. GPU: Set TGP (Total Graphics Power), boost clock, GPU temperature limit. Preset configurations available.
+&lt;br&gt;&lt;b&gt;Fan Control:&lt;/b&gt; Create custom 10-point fan curves. Max fan speed override. Lock fan controller. Real-time temperature monitoring. Auto-normalization of curve points.
+&lt;br&gt;&lt;b&gt;Voltage Offsets Control:&lt;/b&gt; Intel MSR-based undervolting: Core, Uncore, Cache, iGPU, and Analog I/O voltage offsets. NVIDIA GPU: Core and memory clock offsets. Safety presets included.</string>
+              </property>
+              <property name="textFormat">
+               <enum>Qt::TextFormat::RichText</enum>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+         <item>
+          <widget class="QGroupBox" name="groupBox_Information">
+           <property name="title">
+            <string>Information Tab</string>
+           </property>
+           <layout class="QVBoxLayout" name="verticalLayout_Information">
+            <property name="topMargin">
+             <number>20</number>
+            </property>
+            <item>
+             <widget class="QLabel" name="label_Information">
+              <property name="text">
+               <string>&lt;b&gt;System:&lt;/b&gt; System vendor/manufacturer.
+&lt;br&gt;&lt;b&gt;Product:&lt;/b&gt; Name, family, SKU, version (e.g., Legion 5 Pro, 82WM).
+&lt;br&gt;&lt;b&gt;BIOS:&lt;/b&gt; Vendor, version, release number, date.
+&lt;br&gt;&lt;b&gt;Board:&lt;/b&gt; Motherboard name, vendor, version.
+&lt;br&gt;&lt;b&gt;Chassis:&lt;/b&gt; Type (laptop/notebook), vendor, version.
+&lt;br&gt;&lt;b&gt;CPU:&lt;/b&gt; Model (e.g., Intel Core i9-14900HX), generation, architecture (x86_64), cache hierarchy (L1/L2/L3).
+&lt;br&gt;&lt;b&gt;GPU:&lt;/b&gt; Name (e.g., NVIDIA RTX 4070), power limits (min/max/default).</string>
+              </property>
+              <property name="textFormat">
+               <enum>Qt::TextFormat::RichText</enum>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+         <item>
+          <widget class="QGroupBox" name="groupBox_Features">
+           <property name="title">
+            <string>Key Features</string>
+           </property>
+           <layout class="QVBoxLayout" name="verticalLayout_Features">
+            <property name="topMargin">
+             <number>20</number>
+            </property>
+            <item>
+             <widget class="QLabel" name="label_Features">
+              <property name="text">
+               <string>&lt;b&gt;Real-time Monitoring:&lt;/b&gt; 500ms refresh rate. All hwmon sensors, Intel RAPL power monitoring, NVIDIA NVML GPU metrics, per-core frequencies.
+&lt;br&gt;&lt;b&gt;Hybrid CPU Support:&lt;/b&gt; Automatic detection of P-cores (Performance) and E-cores (Efficiency) on Intel 12th gen+. Visual distinction and individual control.
+&lt;br&gt;&lt;b&gt;Lenovo Driver Integration:&lt;/b&gt; Native support for Lenovo Legion WMI interface (fan control, power profiles, rapid charge). Falls back to ACPI when unavailable.
+&lt;br&gt;&lt;b&gt;Battery Management:&lt;/b&gt; Charge level, health, cycle count, voltage, current, power draw, charge/discharge rate, estimated runtime.
+&lt;br&gt;&lt;b&gt;Safety Features:&lt;/b&gt; Change detection and confirmation, automatic validation, preset configurations, real-time warnings.</string>
+              </property>
+              <property name="textFormat">
+               <enum>Qt::TextFormat::RichText</enum>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+         <item>
+          <widget class="QGroupBox" name="groupBox_Settings">
+           <property name="title">
+            <string>Settings Tab</string>
+           </property>
+           <layout class="QVBoxLayout" name="verticalLayout_Settings">
+            <property name="topMargin">
+             <number>20</number>
+            </property>
+            <item>
+             <widget class="QLabel" name="label_Settings">
+              <property name="text">
+               <string>&lt;b&gt;Application Settings:&lt;/b&gt; Start on boot, start minimized to tray, minimize to tray on close, notification preferences, UI theme.
+&lt;br&gt;&lt;b&gt;Profile Management:&lt;/b&gt; Save current configuration as named profile. Import/export profiles as JSON files. Quick switching between saved configurations. Profile includes: power profile, CPU settings, fan curves, voltage offsets.
+&lt;br&gt;&lt;b&gt;Daemon Configuration:&lt;/b&gt; Connection timeout, retry interval, auto-reconnect. View daemon status and logs.
+&lt;br&gt;&lt;b&gt;Advanced Options:&lt;/b&gt; Enable debug logging, experimental features, force unsafe operations (requires confirmation). Reset to defaults.</string>
+              </property>
+              <property name="textFormat">
+               <enum>Qt::TextFormat::RichText</enum>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+         <item>
+          <widget class="QGroupBox" name="groupBox_Requirements">
+           <property name="title">
+            <string>System Requirements</string>
+           </property>
+           <layout class="QVBoxLayout" name="verticalLayout_Requirements">
+            <property name="topMargin">
+             <number>20</number>
+            </property>
+            <item>
+             <widget class="QLabel" name="label_Requirements">
+              <property name="text">
+               <string>&lt;b&gt;OS:&lt;/b&gt; Linux kernel 5.0+ (5.17+ recommended for full ACPI platform profile support)
+&lt;br&gt;&lt;b&gt;Hardware:&lt;/b&gt; Lenovo Legion laptop (tested on 5/7 Pro series)
+&lt;br&gt;&lt;b&gt;Daemon:&lt;/b&gt; LenovoLegion-Daemon systemd service running with root privileges
+&lt;br&gt;&lt;b&gt;Kernel Modules:&lt;/b&gt; cpufreq, msr, hwmon, ideapad_laptop or legion_laptop
+&lt;br&gt;&lt;b&gt;Optional:&lt;/b&gt; NVIDIA proprietary drivers (535+) and libnvidia-ml for GPU features
+&lt;br&gt;&lt;b&gt;Build:&lt;/b&gt; Qt 5.15+, protobuf 3.0+, cmake 3.16+</string>
+              </property>
+              <property name="textFormat">
+               <enum>Qt::TextFormat::RichText</enum>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+         <item>
+          <widget class="QGroupBox" name="groupBox_Tips">
+           <property name="title">
+            <string>Tips &amp; Best Practices</string>
+           </property>
+           <layout class="QVBoxLayout" name="verticalLayout_Tips">
+            <property name="topMargin">
+             <number>20</number>
+            </property>
+            <item>
+             <widget class="QLabel" name="label_Tips">
+              <property name="text">
+               <string>&lt;b&gt;Undervolting:&lt;/b&gt; Start with -50mV on core/cache, test stability with stress tests (prime95, stress-ng). Decrease by -10mV increments if unstable. Can reduce temps by 10-15°C.
+&lt;br&gt;&lt;b&gt;Fan Curves:&lt;/b&gt; Balance noise vs cooling. Typical points: 30°C→30%, 50°C→40%, 70°C→60%, 85°C→80%, 95°C→100%. Ensure monotonic increase (later points ≥ earlier).
+&lt;br&gt;&lt;b&gt;Power Limits:&lt;/b&gt; Lowering PL1/PL2 reduces heat and noise with minimal performance loss. For gaming: PL1=45W, PL2=65W is good balance. For productivity: PL1=35W, PL2=55W extends battery.
+&lt;br&gt;&lt;b&gt;Battery Life:&lt;/b&gt; Quiet mode + disable E-cores on Intel 12th+ + 1.5-2.0 GHz max freq + lower screen brightness = 2-3x runtime.
+&lt;br&gt;&lt;b&gt;Thermal Throttling:&lt;/b&gt; If temps hit 100°C, lower PL2, improve cooling (laptop stand, clean fans), or reduce max frequency to 4.0-4.5 GHz.</string>
+              </property>
+              <property name="textFormat">
+               <enum>Qt::TextFormat::RichText</enum>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+         <item>
+          <spacer name="verticalSpacer">
+           <property name="orientation">
+            <enum>Qt::Orientation::Vertical</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>20</width>
+             <height>40</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+        </layout>
+       </item>
+      </layout>
+     </widget>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

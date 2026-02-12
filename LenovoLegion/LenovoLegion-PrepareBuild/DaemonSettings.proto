@@ -1,0 +1,23 @@
+edition = "2024";
+
+package legion.messages;
+
+
+message DaemonSettings
+{
+    // Apply saved settings when daemon starts
+    bool apply_settings_on_start = 1;
+    
+    // Save all settings when daemon exits
+    bool save_settings_on_exit = 2;
+    
+    // Enable debug logging in daemon
+    bool debug_logging = 3;
+    
+    // Enable trace logging in daemon
+    bool trace_logging = 4;
+    
+    // Command: trigger immediate save of current configuration
+    // Set to true to trigger save, daemon will reset it after saving
+    bool save_now = 5;
+}

@@ -1,0 +1,21 @@
+edition = "2024";
+
+package legion.messages;
+
+
+message CpuIntelMSR
+{
+    message VoltageSettings
+    {
+        uint32  max_overvolt    = 1;
+        uint32  max_undervolt   = 2;
+        int32   offset          = 3;
+        bool    supported       = 4;
+    }
+
+    VoltageSettings   analogio                       = 1;
+    VoltageSettings   cache                          = 2;
+    VoltageSettings   cpu                            = 3;
+    VoltageSettings   gpu                            = 4;
+    VoltageSettings   uncore                         = 5;
+}

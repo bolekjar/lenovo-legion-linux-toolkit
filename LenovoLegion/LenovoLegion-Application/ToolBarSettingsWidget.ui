@@ -1,0 +1,242 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>ToolBarSettingsWidget</class>
+ <widget class="QWidget" name="ToolBarSettingsWidget">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1190</width>
+    <height>701</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Settings</string>
+  </property>
+  <property name="styleSheet">
+   <string notr="true"/>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout_Main">
+   <item>
+    <layout class="QVBoxLayout" name="verticalLayout_Content">
+     <item>
+      <widget class="QGroupBox" name="groupBox_Application">
+       <property name="title">
+        <string>Application Settings</string>
+       </property>
+       <layout class="QVBoxLayout" name="verticalLayout_Application">
+        <property name="topMargin">
+         <number>30</number>
+        </property>
+        <item>
+         <widget class="QCheckBox" name="checkBox_StartMinimized">
+          <property name="text">
+           <string>Start minimized to system tray</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="checkBox_MinimizeToTray">
+          <property name="text">
+           <string>Minimize to tray on close</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="checkBox_AppDebugLogging">
+          <property name="text">
+           <string>Enable debug logging</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="checkBox_AppTraceLogging">
+          <property name="text">
+           <string>Enable trace logging</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_Theme">
+          <item>
+           <widget class="QLabel" name="label_Theme">
+            <property name="text">
+             <string>Theme:</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QComboBox" name="comboBox_StylesheetTheme">
+            <item>
+             <property name="text">
+              <string>No Theme</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>White Theme</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>Gray Theme</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>Dark Theme</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+          <item>
+           <spacer name="horizontalSpacer_Theme">
+            <property name="orientation">
+             <enum>Qt::Orientation::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QGroupBox" name="groupBox_Daemon">
+       <property name="title">
+        <string>Daemon Configuration</string>
+       </property>
+       <layout class="QVBoxLayout" name="verticalLayout_Daemon">
+        <property name="topMargin">
+         <number>30</number>
+        </property>
+        <item>
+         <widget class="QCheckBox" name="checkBox_ApplySavedSettingsOnStart">
+          <property name="text">
+           <string>Apply saved settings when daemon starts</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="checkBox_SaveSettingsOnDaemonExit">
+          <property name="text">
+           <string>Save all settings when daemon exits</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="checkBox_DebugLogging">
+          <property name="text">
+           <string>Enable debug logging</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="checkBox_TraceLogging">
+          <property name="text">
+           <string>Enable trace logging</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_Daemon">
+          <item>
+           <widget class="QPushButton" name="pushButton_SaveCurrentConfiguration">
+            <property name="text">
+             <string>Save Current Configuration</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="pushButton_ReconnectDaemon">
+            <property name="text">
+             <string>Reconnect to Daemon</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="horizontalSpacer_Daemon">
+            <property name="orientation">
+             <enum>Qt::Orientation::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QGroupBox" name="groupBox_Advanced">
+       <property name="title">
+        <string>Advanced Options</string>
+       </property>
+       <layout class="QVBoxLayout" name="verticalLayout_Advanced">
+        <property name="topMargin">
+         <number>30</number>
+        </property>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_Advanced">
+          <item>
+           <widget class="QPushButton" name="pushButton_ResetDefaults">
+            <property name="text">
+             <string>Reset to Defaults</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="horizontalSpacer">
+            <property name="orientation">
+             <enum>Qt::Orientation::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <spacer name="verticalSpacer">
+       <property name="orientation">
+        <enum>Qt::Orientation::Vertical</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>20</width>
+         <height>40</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
