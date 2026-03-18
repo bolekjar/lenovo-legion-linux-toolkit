@@ -1,12 +1,13 @@
 # Maintainer: Jaroslav Bolek <jarris@post.cz>
 pkgname=lenovo-legion-linux-toolkit
-pkgver=1.0.0
+srcname=LenovoLegion
+pkgver=1.1.0
 pkgrel=1
-pkgdesc="Lenovo Legion Linux Toolkit - for lenovo legion laptops"
+pkgdesc="Lenovo Legion Linux Toolkit - for Lenovo Legion laptops"
 arch=("x86_64")
-url="git+https://github.com/bolekjar/LenovoLegion.git"
+url="git+https://github.com/bolekjar/lenovo-legion-linux-toolkit.git"
 license=('GPL3')
-depends=("qt6-base" "qt6-5compat" "dkms" "make" "gcc" "qt6-charts" "protobuf" "cuda" "pkgconf")
+depends=("qt6-base" "qt6-5compat" "dkms" "make" "gcc" "qt6-charts" "protobuf" "cuda" "pkgconf" "rust")
 source=("$pkgname-$pkgver::$url")
 sha256sums=('SKIP')
 install=default.install
@@ -24,30 +25,34 @@ package() {
   mkdir -p $pkgdir/etc/udev/rules.d/
 
 
-  ln -s $pkgname-$pkgver $pkgdir/opt/$pkgname
+  ln -s $pkgname-$pkgver $pkgdir/opt/$srcname
 
   #dms driver
-  cp $srcdir/$pkgname-$pkgver/$pkgname-dkms/* $pkgdir/usr/src/$pkgname-$pkgver
+  cp $srcdir/$pkgname-$pkgver/$srcname-dkms/* $pkgdir/usr/src/$pkgname-$pkgver
 
   #settings
-  cp $srcdir/$pkgname-$pkgver/$pkgname-dkms/blacklist-lenovo-legion.conf $pkgdir/etc/modprobe.d/
-  cp $srcdir/$pkgname-$pkgver/$pkgname-dkms/lenovo-legion.conf $pkgdir/etc/modules-load.d/
-  cp $srcdir/$pkgname-$pkgver/$pkgname-dkms/99-rapl-readonly.rules $pkgdir/etc/udev/rules.d
-  cp $srcdir/$pkgname-$pkgver/$pkgname-dkms/rapl-readonly.sh $pkgdir/opt/$pkgname-$pkgver/
+  cp $srcdir/$pkgname-$pkgver/$srcname-dkms/blacklist-lenovo-legion.conf $pkgdir/etc/modprobe.d/
+  cp $srcdir/$pkgname-$pkgver/$srcname-dkms/lenovo-legion.conf $pkgdir/etc/modules-load.d/
+  cp $srcdir/$pkgname-$pkgver/$srcname-dkms/99-rapl-readonly.rules $pkgdir/etc/udev/rules.d
+  cp $srcdir/$pkgname-$pkgver/$srcname-dkms/rapl-readonly.sh $pkgdir/opt/$pkgname-$pkgver/
   chmod 755 $pkgdir/opt/$pkgname-$pkgver/rapl-readonly.sh
 
   #daemon, gui
-  $qmake $srcdir/$pkgname-$pkgver/$pkgname/ -o $srcdir/$pkgname-$pkgver/$pkgname/Makefile
-  make -C $srcdir/$pkgname-$pkgver/$pkgname/
+  $qmake $srcdir/$pkgname-$pkgver/$srcname/ -o $srcdir/$pkgname-$pkgver/$srcname/Makefile
+  make -C $srcdir/$pkgname-$pkgver/$srcname/
 
   #daemon, gui, dkms
-  cp -r $srcdir/$pkgname-$pkgver/$pkgname/Installation/* $pkgdir/opt/$pkgname-$pkgver
+  cp -r $srcdir/$pkgname-$pkgver/$srcname/Installation/* $pkgdir/opt/$pkgname-$pkgver
   chmod 777 $pkgdir/opt/$pkgname-$pkgver/log
   chmod 777 $pkgdir/opt/$pkgname-$pkgver/data
 
   #daemon setings
-  cp $srcdir/$pkgname-$pkgver/$pkgname/$pkgname-Daemon/lenovo-legion-daemon.service $pkgdir/usr/lib/systemd/system/
+  cp $srcdir/$pkgname-$pkgver/$srcname/$srcname-Daemon/lenovo-legion-daemon.service $pkgdir/usr/lib/systemd/system/
 
   #kde menu entry
-  cp $srcdir/$pkgname-$pkgver/$pkgname/$pkgname-Application/LenovoLegion.desktop $pkgdir/usr/share/applications/
+  cp $srcdir/$pkgname-$pkgver/$srcname/$srcname-Application/LenovoLegion.desktop $pkgdir/usr/share/applications/
+
+  #command line interface
+  cargo build --manifest-path $srcdir/$pkgname-$pkgver/lenovo-legion-cli/Cargo.toml -r
+  cp $srcdir/$pkgname-$pkgver/lenovo-legion-cli/target/release/lenovo-legion-cli $pkgdir/opt/$pkgname-$pkgver
 }
