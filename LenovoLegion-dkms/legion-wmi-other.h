@@ -5,8 +5,8 @@
  * Author(s):
  *   Jaroslav Bolek <jaroslav.bolek@gmail.com>
  */
-#ifndef _LEGION_WMI_H
-#define _LEGION_WMI_H
+#ifndef LEGION_WMI_H
+#define LEGION_WMI_H
 
 #include "legion-wmi-gamezone.h"
 

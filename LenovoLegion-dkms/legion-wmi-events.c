@@ -97,9 +97,7 @@ static void devm_legion_wmi_events_unregister_notifier(void *data)
 int devm_legion_wmi_events_register_notifier(struct device *dev,
 				       struct notifier_block *nb)
 {
-	int ret;
-
-	ret = legion_wmi_events_register_notifier(nb);
+	const int ret = legion_wmi_events_register_notifier(nb);
 	if (ret < 0)
 		return ret;
 
@@ -118,9 +116,7 @@ int devm_legion_wmi_events_register_notifier(struct device *dev,
  */
 static void legion_wmi_events_notify(struct wmi_device *wdev, union acpi_object *obj)
 {
-	struct legion_wmi_events_priv *priv = dev_get_drvdata(&wdev->dev);
-	int sel_prof;
-	int ret;
+	const struct legion_wmi_events_priv *priv = dev_get_drvdata(&wdev->dev);
 	char event_type[64]  = {0};
 	char event_value[64] = {0};
 	char *envp[] = { event_type,event_value ,NULL };
@@ -146,66 +142,63 @@ static void legion_wmi_events_notify(struct wmi_device *wdev, union acpi_object 
 		if (obj->type != ACPI_TYPE_INTEGER)
 			return;
 
-		sel_prof = obj->integer.value;
+		u64 sel_prof = obj->integer.value;
 
 		switch (sel_prof) {
 		case LEGION_WMI_GZ_THERMAL_MODE_QUIET:
 		case LEGION_WMI_GZ_THERMAL_MODE_BALANCED:
 		case LEGION_WMI_GZ_THERMAL_MODE_PERFORMANCE:
 		case LEGION_WMI_GZ_THERMAL_MODE_EXTREME:
-		case LEGION_WMI_GZ_THERMAL_MODE_CUSTOM:
-			ret = blocking_notifier_call_chain(&events_chain_head,
+		case LEGION_WMI_GZ_THERMAL_MODE_CUSTOM: {
+			const int ret = blocking_notifier_call_chain(&events_chain_head,
 					LEGION_WMI_EVENT_THERMAL_MODE,
 							   &sel_prof);
 			if (ret == NOTIFY_BAD)
 				dev_err(&wdev->dev,
 					"Failed to send notification to call chain for WMI Events\n");
 			return;
+		}
 		default:
-			dev_err(&wdev->dev, "Got invalid thermal mode: %x",
+			dev_err(&wdev->dev, "Got invalid thermal mode: %llx",
 				sel_prof);
 			return;
 		}
 	}
-		break;
 	case LEGION_WMI_EVENT_POWER_CHARGE_MODE:
 	{
 		if (obj->type != ACPI_TYPE_INTEGER)
 			return;
 
-		sel_prof = obj->integer.value;
+		u64 sel_prof = obj->integer.value;
 
 		switch (sel_prof) {
 		case LEGION_WMI_GZ_AC_CONNECTED:
 		case LEGION_WMI_GZ_AC_CONNECTED_LOW_WATTAGE:
-		case LEGION_WMI_GZ_AC_DISCONNECTED:
-			ret = blocking_notifier_call_chain(&events_chain_head,
+		case LEGION_WMI_GZ_AC_DISCONNECTED: {
+			const int ret = blocking_notifier_call_chain(&events_chain_head,
 					LEGION_WMI_EVENT_POWER_CHARGE_MODE,
 							   &sel_prof);
 			if (ret == NOTIFY_BAD)
 				dev_err(&wdev->dev,
 					"Failed to send notification to call chain for WMI Events\n");
 			return;
+		}
 		default:
-			dev_err(&wdev->dev, "Got invalid power charge mode: %x",
+			dev_err(&wdev->dev, "Got invalid power charge mode: %llx",
 				sel_prof);
-			return;
 		};
 	}
 		break;
-	default:
-		return;
+	default:;
 	}
 }
 
 static int legion_wmi_events_probe(struct wmi_device *wdev, const void *context)
 {
-	struct legion_wmi_events_priv *priv;
-
 	if (!context)
 		return -EINVAL;
 
-	priv = devm_kzalloc(&wdev->dev, sizeof(*priv), GFP_KERNEL);
+	struct legion_wmi_events_priv* priv = devm_kzalloc(&wdev->dev, sizeof(*priv), GFP_KERNEL);
 	if (!priv)
 		return -ENOMEM;
 

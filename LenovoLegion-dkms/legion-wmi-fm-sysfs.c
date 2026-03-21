@@ -18,7 +18,6 @@
 #include <linux/component.h>
 #include <linux/container_of.h>
 #include <linux/device.h>
-#include <linux/export.h>
 #include <linux/gfp_types.h>
 #include <linux/idr.h>
 #include <linux/wmi.h>
@@ -108,16 +107,14 @@ static ssize_t func_fan_curve_current_value_get(struct kobject *kobj,struct kobj
 {
 	struct legion_wmi_fm_priv *priv = dev_get_drvdata(kobj_to_dev(kobj->parent));
     u8 buffer[88 * 2] = { 0 };
-    struct WMIFanTableRead * fantable =(struct WMIFanTableRead *)buffer;
-
-    int ret = 0;
+    const struct WMIFanTableRead * fantable =(struct WMIFanTableRead *)buffer;
 
 	/* Critical: Prevent NULL pointer dereference and system freeze */
 	if (!priv) {
 		return -ENODEV;
 	}
 
-	ret = legion_wmi_dev_evaluate_buffer(priv->wdev,0,WMI_METHOD_ID_FAN_GET_TABLE,NULL,0,buffer,sizeof(buffer));
+	const int ret = legion_wmi_dev_evaluate_buffer(priv->wdev,0,WMI_METHOD_ID_FAN_GET_TABLE,NULL,0,buffer,sizeof(buffer));
 	if(ret)
 		return ret;
 
@@ -135,15 +132,14 @@ static ssize_t func_fan_curve_current_value_get(struct kobject *kobj,struct kobj
 }
 
 static ssize_t func_fan_curve_current_value_set(struct kobject *kobj, struct kobj_attribute *kattr,
-		const char *buf, size_t count)
+		const char *buf, const size_t count)
 {
-	struct legion_wmi_fm_priv *priv = dev_get_drvdata(kobj_to_dev(kobj->parent));
+	const struct legion_wmi_fm_priv *priv = dev_get_drvdata(kobj_to_dev(kobj->parent));
 	u8 points[20]  		= {0};
 	u8 buffer[0x20] 	= {0};
-	int ret  			= 0;
-	enum thermal_mode 	mode;
 
-	ret = legion_wmi_fm_notifier_call(&mode,LEGION_WMI_GZ_GET_THERMAL_MODE);
+	enum thermal_mode 	mode;
+	ssize_t ret = legion_wmi_fm_notifier_call(&mode,LEGION_WMI_GZ_GET_THERMAL_MODE);
 	if (ret) {
 		return ret;
 	}
@@ -188,11 +184,11 @@ static ssize_t func_fan_curve_current_value_set(struct kobject *kobj, struct kob
 	if(ret)
 		return ret;
 
-	return count;
+	return (ssize_t)count;
 }
 
 
-#define __LEGION_WMI_DEFAULT_TABLES(_attribute,_func,_fan_id,_sensor_id,_table)\
+#define LEGION_WMI_DEFAULT_TABLES(_attribute,_func,_fan_id,_sensor_id,_table)\
 static ssize_t func_##_func##_show(struct kobject *kobj,struct kobj_attribute *kattr, char *buf) {\
 \
 	struct legion_wmi_fm_priv *priv = dev_get_drvdata(kobj_to_dev(kobj->parent));\
@@ -248,36 +244,36 @@ static ssize_t func_##_func##_show(struct kobject *kobj,struct kobj_attribute *k
 	len += sysfs_emit_at(buf,len,"\n");\
 	return len;\
 }\
-static struct kobj_attribute kobj_attr_##_func##_value  	= __LEGION_WMI_ATTR_RO(_attribute,_func);
+static struct kobj_attribute kobj_attr_##_func##_value  	= LEGION_WMI_ATTR_RO(_attribute,_func);
 
 
-static struct kobj_attribute kobj_attr_fan_curve_current_value  		= __LEGION_WMI_ATTR_RW(current_value,fan_curve_current_value);
+static struct kobj_attribute kobj_attr_fan_curve_current_value  		= LEGION_WMI_ATTR_RW(current_value,fan_curve_current_value);
 
 
 /*
  * Default Table values
  */
 
-__LEGION_WMI_DEFAULT_TABLES(cpu_fan_default,cpu_fan_default_v1,fan_table_id_v1[CPU],fan_sensor_id_v1[CPU],FAN);
-__LEGION_WMI_DEFAULT_TABLES(cpu_sensor_default,cpu_sensor_default_v1,fan_table_id_v1[CPU],fan_sensor_id_v1[CPU],SENSOR);
-__LEGION_WMI_DEFAULT_TABLES(cpusen_fan_default,cpusen_fan_default_v1,fan_table_id_v1[CPUSensor],fan_sensor_id_v1[CPUSensor],FAN);
-__LEGION_WMI_DEFAULT_TABLES(cpusen_sensor_default,cpusen_sensor_default_v1,fan_table_id_v1[CPUSensor],fan_sensor_id_v1[CPUSensor],SENSOR);
-__LEGION_WMI_DEFAULT_TABLES(gpu_fan_default,gpu_fan_default_v1,fan_table_id_v1[GPU],fan_sensor_id_v1[GPU],FAN);
-__LEGION_WMI_DEFAULT_TABLES(gpu_sensor_default,gpu_sensor_default_v1,fan_table_id_v1[GPU],fan_sensor_id_v1[GPU],SENSOR);
+LEGION_WMI_DEFAULT_TABLES(cpu_fan_default,cpu_fan_default_v1,fan_table_id_v1[CPU],fan_sensor_id_v1[CPU],FAN);
+LEGION_WMI_DEFAULT_TABLES(cpu_sensor_default,cpu_sensor_default_v1,fan_table_id_v1[CPU],fan_sensor_id_v1[CPU],SENSOR);
+LEGION_WMI_DEFAULT_TABLES(cpusen_fan_default,cpusen_fan_default_v1,fan_table_id_v1[CPUSensor],fan_sensor_id_v1[CPUSensor],FAN);
+LEGION_WMI_DEFAULT_TABLES(cpusen_sensor_default,cpusen_sensor_default_v1,fan_table_id_v1[CPUSensor],fan_sensor_id_v1[CPUSensor],SENSOR);
+LEGION_WMI_DEFAULT_TABLES(gpu_fan_default,gpu_fan_default_v1,fan_table_id_v1[GPU],fan_sensor_id_v1[GPU],FAN);
+LEGION_WMI_DEFAULT_TABLES(gpu_sensor_default,gpu_sensor_default_v1,fan_table_id_v1[GPU],fan_sensor_id_v1[GPU],SENSOR);
 
 
 
-__LEGION_WMI_DEFAULT_TABLES(cpu_fan_default,cpu_fan_default_v2,fan_table_id_v2[CPU],fan_sensor_id_v2[CPU],FAN);
-__LEGION_WMI_DEFAULT_TABLES(cpu_sensor_default,cpu_sensor_default_v2,fan_table_id_v2[SYS],fan_sensor_id_v2[SYS],SENSOR);
-__LEGION_WMI_DEFAULT_TABLES(gpu_fan_default,gpu_fan_default_v2,fan_table_id_v2[GPU],fan_sensor_id_v2[GPU],FAN);
-__LEGION_WMI_DEFAULT_TABLES(gpu_sensor_default,gpu_sensor_default_v2,fan_table_id_v2[GPU],fan_sensor_id_v2[GPU],SENSOR);
-__LEGION_WMI_DEFAULT_TABLES(sys_fan_default,sys_fan_default_v2,fan_table_id_v2[SYS],fan_sensor_id_v2[SYS],FAN);
-__LEGION_WMI_DEFAULT_TABLES(sys_sensor_default,sys_sensor_default_v2,fan_table_id_v2[CPU],fan_sensor_id_v2[CPU],SENSOR);
+LEGION_WMI_DEFAULT_TABLES(cpu_fan_default,cpu_fan_default_v2,fan_table_id_v2[CPU],fan_sensor_id_v2[CPU],FAN);
+LEGION_WMI_DEFAULT_TABLES(cpu_sensor_default,cpu_sensor_default_v2,fan_table_id_v2[SYS],fan_sensor_id_v2[SYS],SENSOR);
+LEGION_WMI_DEFAULT_TABLES(gpu_fan_default,gpu_fan_default_v2,fan_table_id_v2[GPU],fan_sensor_id_v2[GPU],FAN);
+LEGION_WMI_DEFAULT_TABLES(gpu_sensor_default,gpu_sensor_default_v2,fan_table_id_v2[GPU],fan_sensor_id_v2[GPU],SENSOR);
+LEGION_WMI_DEFAULT_TABLES(sys_fan_default,sys_fan_default_v2,fan_table_id_v2[SYS],fan_sensor_id_v2[SYS],FAN);
+LEGION_WMI_DEFAULT_TABLES(sys_sensor_default,sys_sensor_default_v2,fan_table_id_v2[CPU],fan_sensor_id_v2[CPU],SENSOR);
 
 
 
 
-__LEGION_WMI_KOBJ_ATTR_RO_STATIC_STRING(display_name,"FAN curve related settings",fan_curve_display_name)
+LEGION_WMI_KOBJ_ATTR_RO_STATIC_STRING(display_name,"FAN curve related settings",fan_curve_display_name)
 
 
 static struct attribute *legion_sysfs_fm_fan_curve_attributes_v1[] = {
@@ -323,13 +319,11 @@ static const struct attribute_group legion_sysfs_fm_group_v2[] = {
 
 static int legion_wmi_fm_fw_attr_add(struct legion_wmi_fm_priv *priv)
 {
-	int err 			= 0;
-	unsigned int i   	= 0;
-
+	int i = 0;
 	/*
 	 * Read SmartFan version
 	 */
-	err = legion_wmi_fm_notifier_call(&priv->smart_fan_version,LEGION_WMI_GZ_GET_SMARTFAN_VERSION);
+	int err = legion_wmi_fm_notifier_call(&priv->smart_fan_version,LEGION_WMI_GZ_GET_SMARTFAN_VERSION);
 	if (err) {
 		return err;
 	}
@@ -344,7 +338,7 @@ static int legion_wmi_fm_fw_attr_add(struct legion_wmi_fm_priv *priv)
 					  LEGION_WMI_FM_FW_ATTR_BASE_PATH,
 					  priv->ida_id);
 	if (IS_ERR(priv->fw_attr_dev)) {
-		err = PTR_ERR(priv->fw_attr_dev);
+		err = (int)PTR_ERR(priv->fw_attr_dev);
 		goto err_free_ida;
 	}
 

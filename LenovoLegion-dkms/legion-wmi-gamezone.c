@@ -89,12 +89,12 @@ static void legion_modify_current_mode(struct lenovo_wmi_gz_priv *priv,const enu
 	priv->current_mode_on_battery = mode;
 }
 
-int legion_wmi_gz_get(struct wmi_device *wdev,enum LEGION_GAMEZONE_METHOD_ID method_id,u32 *value) {
+int legion_wmi_gz_get(struct wmi_device *wdev,const enum LEGION_GAMEZONE_METHOD_ID method_id,u32 *value) {
 	return legion_wmi_dev_evaluate_int(wdev, 0x0, method_id,
 				     NULL, 0, value);
 }
 
-int legion_wmi_gz_set(struct wmi_device *wdev,enum LEGION_GAMEZONE_METHOD_ID method_id,u32 value) {
+int legion_wmi_gz_set(struct wmi_device *wdev,const enum LEGION_GAMEZONE_METHOD_ID method_id,const u32 value) {
 	struct wmi_method_args_32 args = {
 			value,
 			0
@@ -102,7 +102,7 @@ int legion_wmi_gz_set(struct wmi_device *wdev,enum LEGION_GAMEZONE_METHOD_ID met
 	return legion_wmi_dev_evaluate_int(wdev, 0x0,method_id,(u8 *)&args, sizeof(args), NULL);
 }
 
-int legion_wmi_gz_get_string(struct wmi_device *wdev,enum LEGION_GAMEZONE_METHOD_ID method_id,char *retval,size_t retval_size){
+int legion_wmi_gz_get_string(struct wmi_device *wdev,const enum LEGION_GAMEZONE_METHOD_ID method_id,char *retval,const size_t retval_size){
 	return legion_wmi_dev_evaluate_string(wdev, 0x0, method_id,NULL, 0, retval,retval_size);
 }
 
@@ -115,7 +115,7 @@ int legion_wmi_gz_get_string(struct wmi_device *wdev,enum LEGION_GAMEZONE_METHOD
  *
  * Return: Notifier_block status.
  */
-static int legion_wmi_gz_call(struct lenovo_wmi_gz_priv *priv, unsigned long cmd,void *data)
+static int legion_wmi_gz_call(struct lenovo_wmi_gz_priv *priv,const unsigned long cmd,void *data)
 {
 	switch (cmd) {
 	case LEGION_WMI_GZ_GET_THERMAL_MODE: {
@@ -145,7 +145,7 @@ static int legion_wmi_gz_call(struct lenovo_wmi_gz_priv *priv, unsigned long cmd
 	}
 		return NOTIFY_OK;
 	case LEGION_WMI_GZ_GET_SMARTFAN_VERSION: {
-		int **version = data ;
+		unsigned int **version = data ;
 		scoped_guard(spinlock, &priv->gz_mode_lock) {
 			**version = priv->preloaded_values.IsSupportSmartFan;
 		}
@@ -158,11 +158,11 @@ static int legion_wmi_gz_call(struct lenovo_wmi_gz_priv *priv, unsigned long cmd
 }
 
 
-static int legion_wmi_other_gz_call(struct notifier_block *nb, unsigned long cmd,void *data){
+static int legion_wmi_other_gz_call(struct notifier_block *nb,const unsigned long cmd,void *data){
 	return legion_wmi_gz_call(container_of(nb, struct lenovo_wmi_gz_priv, other_nb),cmd,data);
 }
 
-static int legion_wmi_fm_gz_call(struct notifier_block *nb, unsigned long cmd,void *data){
+static int legion_wmi_fm_gz_call(struct notifier_block *nb,const  unsigned long cmd,void *data){
 	return legion_wmi_gz_call(container_of(nb, struct lenovo_wmi_gz_priv, fm_nb),cmd,data);
 }
 
@@ -178,19 +178,16 @@ static int legion_wmi_fm_gz_call(struct notifier_block *nb, unsigned long cmd,vo
  *
  * Return: bool.
  */
-static bool legion_wmi_gz_extreme_supported(int profile_support_ver)
+static bool legion_wmi_gz_extreme_supported(const unsigned int profile_support_ver)
 {
-	const struct dmi_system_id *dmi_id;
-	struct quirk_entry *quirks;
-
 	if (profile_support_ver < 6)
 		return false;
 
-	dmi_id = dmi_first_match(fwbug_list);
+	const struct dmi_system_id * dmi_id = dmi_first_match(fwbug_list);
 	if (!dmi_id)
 		return true;
 
-	quirks = dmi_id->driver_data;
+	const struct quirk_entry *quirks = dmi_id->driver_data;
 
 	return quirks->extreme_supported;
 }
@@ -221,7 +218,7 @@ static bool legion_wmi_gz_extreme_supported(int profile_support_ver)
 static int legion_wmi_gz_charging_mode_get(struct wmi_device *wdev,
 					  enum power_adapter_status *mode)
 {
-	return legion_wmi_gz_get(wdev,GetPowerChargeMode,mode);
+	return legion_wmi_gz_get(wdev,GetPowerChargeMode,(u32 *)mode);
 }
 
 /**
@@ -232,7 +229,7 @@ static int legion_wmi_gz_charging_mode_get(struct wmi_device *wdev,
  *
  * Return: 0 on success, or an error code.
  */
-static int legion_wmi_gz_thermal_mode_set(struct wmi_device *wdev,enum thermal_mode mode)
+static int legion_wmi_gz_thermal_mode_set(struct wmi_device *wdev,const enum thermal_mode mode)
 {
 	return legion_wmi_gz_set(wdev, SetSmartFanMode,mode);
 }
@@ -250,7 +247,7 @@ static int legion_wmi_gz_thermal_mode_set(struct wmi_device *wdev,enum thermal_m
  *
  * Return: notifier_block status.
  */
-static int legion_wmi_gz_event_call(struct notifier_block *nb, unsigned long cmd,
+static int legion_wmi_gz_event_call(struct notifier_block *nb,const unsigned long cmd,
 			      void *data)
 {
 	struct lenovo_wmi_gz_priv *priv = container_of(nb, struct lenovo_wmi_gz_priv, event_nb);
@@ -339,8 +336,7 @@ static int legion_wmi_gz_profile_get(struct device *dev,enum platform_profile_op
 static int legion_wmi_gz_profile_set(struct device *dev,enum platform_profile_option profile)
 {
 	struct lenovo_wmi_gz_priv *priv = dev_get_drvdata(dev);
-	enum thermal_mode mode;
-	int ret;
+	enum thermal_mode mode = LEGION_WMI_GZ_THERMAL_MODE_BALANCED;
 
 	switch (profile) {
 	case PLATFORM_PROFILE_QUIET:
@@ -363,7 +359,7 @@ static int legion_wmi_gz_profile_set(struct device *dev,enum platform_profile_op
 		return -EOPNOTSUPP;
 	}
 
-	ret = legion_wmi_gz_thermal_mode_set(priv->wdev,mode);
+	const int ret = legion_wmi_gz_thermal_mode_set(priv->wdev,mode);
 	if (ret)
 		return ret;
 
@@ -407,7 +403,7 @@ static int legion_wmi_gz_platform_profile_probe(void *drvdata, unsigned long *ch
  */
 static int legion_wmi_gz_platform_profile_hidden_choices(void *drvdata, unsigned long *choices)
 {
-	struct lenovo_wmi_gz_priv *priv = drvdata;
+	const struct lenovo_wmi_gz_priv *priv = drvdata;
 
 	set_bit(PLATFORM_PROFILE_CUSTOM, choices);
 	if (priv->extreme_supported)
@@ -516,10 +512,7 @@ static int legion_wmi_read_static_values(struct wmi_device *wdev,struct game_zon
 
 static int legion_wmi_gz_probe(struct wmi_device *wdev, const void *context)
 {
-	struct lenovo_wmi_gz_priv *priv;
-	int ret;
-
-	priv = devm_kzalloc(&wdev->dev, sizeof(*priv), GFP_KERNEL);
+	struct lenovo_wmi_gz_priv *	priv = devm_kzalloc(&wdev->dev, sizeof(*priv), GFP_KERNEL);
 	if (!priv)
 		return -ENOMEM;
 
@@ -543,7 +536,7 @@ static int legion_wmi_gz_probe(struct wmi_device *wdev, const void *context)
 
 	dev_set_drvdata(&wdev->dev, priv);
 
-	ret = legion_wmi_read_static_values(wdev,&priv->preloaded_values);
+	int ret = legion_wmi_read_static_values(wdev,&priv->preloaded_values);
 	if (ret)
 		return ret;
 
@@ -568,7 +561,7 @@ static int legion_wmi_gz_probe(struct wmi_device *wdev, const void *context)
 						     priv, &legion_wmi_gz_platform_profile_ops);
 	if (IS_ERR(priv->ppdev)) {
 		dev_err(&wdev->dev, "Failed to register platform profile\n");
-		return PTR_ERR(priv->ppdev);
+		return (int)PTR_ERR(priv->ppdev);
 	}
 #else
 	priv->platform_profile_handler.profile_get = legion_wmi_gz_profile_get;
@@ -644,11 +637,7 @@ static struct wmi_driver lenovo_wmi_gz_driver = {
 };
 
 int  legion_wmi_gamezone_driver_init(struct device *parent){
-	int ret;
-
-    ret = wmi_driver_register(&lenovo_wmi_gz_driver);
-
-	return ret;
+	return wmi_driver_register(&lenovo_wmi_gz_driver);
 }
 
 void legion_wmi_gamezone_driver_exit(void) {

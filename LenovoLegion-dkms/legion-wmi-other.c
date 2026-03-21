@@ -21,8 +21,8 @@
 #include <linux/device.h>
 #include <linux/wmi.h>
 #include <linux/component.h>
-#include <linux/platform_device.h>
 #include <linux/completion.h>
+#include <linux/bitfield.h>
 
 #define LEGION_WMI_LENOVO_OTHER_METHOD_GUID "DC2A8805-3A8C-41BA-A6F7-092E0089CD3B"
 
@@ -96,9 +96,7 @@ static void devm_lenovo_wmi_other_unregister_notifier(void *data)
 int devm_lenovo_wmi_other_register_notifier(struct device *dev,
 				   struct notifier_block *nb)
 {
-	int ret;
-
-	ret = lenovo_wmi_other_register_notifier(nb);
+	const int ret = lenovo_wmi_other_register_notifier(nb);
 	if (ret < 0)
 		return ret;
 
@@ -107,11 +105,9 @@ int devm_lenovo_wmi_other_register_notifier(struct device *dev,
 }
 
 
-int legion_wmi_other_notifier_call(void *data,enum gamezone_events_type gamezone_events_type)
+int legion_wmi_other_notifier_call(void *data,const enum gamezone_events_type gamezone_events_type)
 {
-	int ret;
-
-	ret = blocking_notifier_call_chain(&legion_other_chain_head,gamezone_events_type, &data);
+	const int ret = blocking_notifier_call_chain(&legion_other_chain_head,gamezone_events_type, &data);
 	if ((ret & ~NOTIFY_STOP_MASK) != NOTIFY_OK)
 		return -EINVAL;
 
@@ -119,10 +115,10 @@ int legion_wmi_other_notifier_call(void *data,enum gamezone_events_type gamezone
 }
 
 
-static int legion_wmi_other_call(struct notifier_block *nb,unsigned long action, void *data)
+static int legion_wmi_other_call(struct notifier_block *nb,const unsigned long action,void *data)
 {
-	struct legion_wmi_other_priv *priv = container_of(nb, struct legion_wmi_other_priv, hwmon_nb);
-	struct hwmon_capability*     value = data;
+	const struct legion_wmi_other_priv *priv = container_of(nb, struct legion_wmi_other_priv, hwmon_nb);
+	const struct hwmon_capability*     value = data;
 
 
 	switch(action)
@@ -146,7 +142,7 @@ static int legion_wmi_other_call(struct notifier_block *nb,unsigned long action,
 	break;
 	case LEGION_WMI_FM_GET_CAPABILITY_DATA:
 	{
-		int ret = legion_wmi_cd00_get_data(priv->cd00_list,value->capability_id & (~LEGION_WMI_MODE_ID_MASK), value->data);
+		const int ret = legion_wmi_cd00_get_data(priv->cd00_list,value->capability_id & (~LEGION_WMI_MODE_ID_MASK), value->data);
 		if (ret && ret != -EINVAL) {
 			return NOTIFY_BAD;
 		}
@@ -162,9 +158,9 @@ static int legion_wmi_other_call(struct notifier_block *nb,unsigned long action,
 }
 
 
-static int legion_wmi_other_dkms_call(struct notifier_block *nb,unsigned long action, void *data)
+static int legion_wmi_other_dkms_call(struct notifier_block *nb,const unsigned long action, void *data)
 {
-	struct legion_wmi_other_priv *priv 	  = container_of(nb, struct legion_wmi_other_priv, dkms_nb);
+	const struct legion_wmi_other_priv *priv 	  = container_of(nb, struct legion_wmi_other_priv, dkms_nb);
 	struct other_events_data * event_data = data;
 
 	unsigned int pl1_w 	 = 0,
@@ -284,9 +280,7 @@ static int legion_wmi_other_dkms_call(struct notifier_block *nb,unsigned long ac
 static int legion_wmi_om_master_bind(struct device *dev)
 {
 	struct legion_wmi_other_priv *priv = dev_get_drvdata(dev);
-	int ret;
-
-	ret = component_bind_all(dev, &priv);
+	int ret = component_bind_all(dev, &priv);
 	if (ret)
 		return ret;
 
@@ -361,18 +355,18 @@ static int legion_wmi_other_probe(struct wmi_device *wdev, const void *context)
 
 	component_match_add(&wdev->dev, &master_match, legion_wmi_cd00_match, NULL);
 	if (IS_ERR(master_match))
-		return PTR_ERR(master_match);
+		return (int)PTR_ERR(master_match);
 
 	component_match_add(&wdev->dev, &master_match, legion_wmi_cd01_match, NULL);
 	if (IS_ERR(master_match))
-		return PTR_ERR(master_match);
+		return (int)PTR_ERR(master_match);
 
 	component_match_add(&wdev->dev, &master_match, legion_wmi_dd_match, NULL);
 	if (IS_ERR(master_match))
-		return PTR_ERR(master_match);
+		return (int)PTR_ERR(master_match);
 
 	/* Register as a component master (for cd01/dd components) */
-	int ret = component_master_add_with_match(&wdev->dev, &legion_wmi_om_master_ops,
+	const int ret = component_master_add_with_match(&wdev->dev, &legion_wmi_om_master_ops,
 					       master_match);
 	if (ret)
 		return ret;

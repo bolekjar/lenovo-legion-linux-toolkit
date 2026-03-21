@@ -492,8 +492,7 @@ static struct platform_driver legion_driver = {
 
 static int __init legion_init(void)
 {
-    int err;
-    err = platform_driver_register(&legion_driver);
+    const int err = platform_driver_register(&legion_driver);
     if (err) {
         return err;
     }

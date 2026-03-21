@@ -2,3 +2,5 @@
 /.clang-format
 /.cproject
 /.settings/*
+/.idea
+/.clang-tidy

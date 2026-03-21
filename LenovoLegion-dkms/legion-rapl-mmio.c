@@ -66,7 +66,7 @@ static const u16 supported_thermal_devices[] = {
 
 
 /* Check if device ID is in whitelist */
-static bool is_device_supported(u16 device_id) {
+static bool is_device_supported(const u16 device_id) {
 
 	for (int i = 0; supported_thermal_devices[i] != 0x0000; i++) {
         if (supported_thermal_devices[i] == device_id)
@@ -107,12 +107,12 @@ static struct pci_dev *find_thermal_device_by_id(void) {
 
 
 /* Helper: Convert power units to Watts */
-static unsigned int units_to_watts(unsigned int units) {
+static unsigned int units_to_watts(const unsigned int units) {
     return (units * 1000) / POWER_UNIT_DIVISOR;  /* Returns milliwatts */
 }
 
 /* Helper: Convert Watts to power units */
-static unsigned int watts_to_units(unsigned int milliwatts) {
+static unsigned int watts_to_units(const unsigned int milliwatts) {
     return (milliwatts * POWER_UNIT_DIVISOR) / 1000;
 }
 
@@ -123,16 +123,13 @@ static unsigned int watts_to_units(unsigned int milliwatts) {
  * Returns: time in microseconds
  * Based on Linux kernel intel_rapl_common.c:rapl_compute_time_window_core()
  */
-static unsigned int decode_time_window(unsigned int encoded) {
-    unsigned int f, y;
-    unsigned long long time_us;
-    
-    f = (encoded & 0x60) >> 5;  /* Bits 5-6: fraction */
-    y = encoded & 0x1F;          /* Bits 0-4: exponent */
+static unsigned int decode_time_window(const unsigned int encoded) {
+    const unsigned int f = (encoded & 0x60) >> 5;  /* Bits 5-6: fraction */
+    const unsigned int y = encoded & 0x1F;          /* Bits 0-4: exponent */
     
     /* time = 2^Y * (1 + F/4) * (1/1024) seconds */
     /* time_us = 2^Y * (4 + F) / 4 * 1000000 / 1024 */
-    time_us = (1ULL << y) * (4 + f) * 1000000ULL / 4;
+    unsigned long long time_us = (1ULL << y) * (4 + f) * 1000000ULL / 4;
     time_us = time_us >> 10;  /* Divide by 1024 */
     
     return (unsigned int)time_us;
@@ -145,18 +142,16 @@ static unsigned int decode_time_window(unsigned int encoded) {
  * Based on Linux kernel intel_rapl_common.c:rapl_compute_time_window_core()
  */
 static unsigned int encode_time_window(unsigned int time_us) {
-    unsigned long long time_units;
-    unsigned int y, f;
-    unsigned long long y_val;
-    
+    unsigned f = 0;
+
     /* Convert to units of 1/1024 seconds */
-    time_units = ((unsigned long long)time_us << 10) / 1000000ULL;
+    const unsigned long long time_units = ((unsigned long long)time_us << 10) / 1000000ULL;
     
     if (time_units == 0)
         return 0;
     
     /* Find Y such that 2^Y <= time_units */
-    y = 0;
+    unsigned int y = 0;
     if (time_units > 1) {
         for (y = 0; y < 31; y++) {
             if ((1ULL << (y + 1)) > time_units)
@@ -168,7 +163,7 @@ static unsigned int encode_time_window(unsigned int time_us) {
     if (y > 31)
         return 0x7F;
     
-    y_val = 1ULL << y;
+    unsigned long long y_val = 1ULL << y;
     
     /* Calculate F: time_units = 2^Y * (1 + F/4) */
     /* F = 4 * (time_units / 2^Y - 1) = 4 * (time_units - 2^Y) / 2^Y */
@@ -185,11 +180,10 @@ static unsigned int encode_time_window(unsigned int time_us) {
 }
 
 /* Find and map the processor thermal device WITHOUT claiming exclusive access */
-int legion_rapl_mmio_init(struct device *parent) {
+int legion_rapl_mmio_init(const struct device *parent) {
 	 struct legion_data* data 							= dev_get_drvdata(parent);
 	 struct legion_rapl_mmio_private* rapl_mmio_private = &data->rapl_mmio_private;;
-
-	 int bar = 0;
+	 const int bar = 0;
 
      mutex_init(&rapl_mmio_private->lock);
 
@@ -234,7 +228,7 @@ int legion_rapl_mmio_init(struct device *parent) {
      return 0;
 }
 
-void legion_rapl_mmio_exit(struct device *parent) {
+void legion_rapl_mmio_exit(const struct device *parent) {
 	struct legion_data* data 							= dev_get_drvdata(parent);
 	struct legion_rapl_mmio_private* rapl_mmio_private = &data->rapl_mmio_private;;
 
@@ -249,17 +243,15 @@ void legion_rapl_mmio_exit(struct device *parent) {
 
 /* Read PL1 (LTP - Long Term Power) in milliwatts */
 int legion_pl1_power_read(struct legion_rapl_mmio_private* rapl_mmio_private,unsigned int* pl1) {
-    uint64_t rapl_limit;
-    unsigned int pl1_units, pl1_mw;
 
     if (!rapl_mmio_private->rapl_mmio_base)
     	return -ENODEV;
 
     guard(mutex)(&rapl_mmio_private->lock);
 
-    rapl_limit = readq(rapl_mmio_private->rapl_mmio_base + RAPL_LIMIT_OFFSET);
-    pl1_units = rapl_limit & RAPL_PL1_MASK;
-    pl1_mw = units_to_watts(pl1_units);
+    const uint64_t rapl_limit = readq(rapl_mmio_private->rapl_mmio_base + RAPL_LIMIT_OFFSET);
+    const unsigned int pl1_units = rapl_limit & RAPL_PL1_MASK;
+    const unsigned int pl1_mw = units_to_watts(pl1_units);
 
     *pl1 = pl1_mw;
 
@@ -268,8 +260,6 @@ int legion_pl1_power_read(struct legion_rapl_mmio_private* rapl_mmio_private,uns
 
 /* Read PL2 (STP - Short Term Power) in milliwatts */
 int legion_pl2_power_read(struct legion_rapl_mmio_private* rapl_mmio_private,unsigned int* pl2) {
-    uint64_t rapl_limit;
-    unsigned int pl2_units, pl2_mw;
 
     if (!rapl_mmio_private->rapl_mmio_base)
         return -ENODEV;
@@ -277,9 +267,9 @@ int legion_pl2_power_read(struct legion_rapl_mmio_private* rapl_mmio_private,uns
 
     guard(mutex)(&rapl_mmio_private->lock);
 
-    rapl_limit = readq(rapl_mmio_private->rapl_mmio_base + RAPL_LIMIT_OFFSET);
-    pl2_units = (rapl_limit & RAPL_PL2_MASK) >> RAPL_PL2_SHIFT;
-    pl2_mw = units_to_watts(pl2_units);
+    const uint64_t rapl_limit = readq(rapl_mmio_private->rapl_mmio_base + RAPL_LIMIT_OFFSET);
+    const unsigned int pl2_units = (rapl_limit & RAPL_PL2_MASK) >> RAPL_PL2_SHIFT;
+    const unsigned int pl2_mw = units_to_watts(pl2_units);
 
     *pl2 = pl2_mw;
 
@@ -288,16 +278,14 @@ int legion_pl2_power_read(struct legion_rapl_mmio_private* rapl_mmio_private,uns
 
 /* Read PL1 time window in microseconds */
 int legion_pl1_time_read(struct legion_rapl_mmio_private* rapl_mmio_private, unsigned int* time_us) {
-    uint64_t rapl_limit;
-    unsigned int time_encoded;
 
     if (!rapl_mmio_private->rapl_mmio_base)
         return -ENODEV;
 
     guard(mutex)(&rapl_mmio_private->lock);
 
-    rapl_limit = readq(rapl_mmio_private->rapl_mmio_base + RAPL_LIMIT_OFFSET);
-    time_encoded = (rapl_limit & RAPL_PL1_TIME_MASK) >> RAPL_PL1_TIME_SHIFT;
+    const uint64_t rapl_limit = readq(rapl_mmio_private->rapl_mmio_base + RAPL_LIMIT_OFFSET);
+    const unsigned int time_encoded = (rapl_limit & RAPL_PL1_TIME_MASK) >> RAPL_PL1_TIME_SHIFT;
     *time_us = decode_time_window(time_encoded);
     
     pr_info("legion_pl1_time_read: register=0x%llx, encoded=0x%x, decoded=%u us\n",
@@ -308,16 +296,14 @@ int legion_pl1_time_read(struct legion_rapl_mmio_private* rapl_mmio_private, uns
 
 /* Read PL2 time window in microseconds */
 int legion_pl2_time_read(struct legion_rapl_mmio_private* rapl_mmio_private, unsigned int* time_us) {
-    uint64_t rapl_limit;
-    unsigned int time_encoded;
 
     if (!rapl_mmio_private->rapl_mmio_base)
         return -ENODEV;
 
     guard(mutex)(&rapl_mmio_private->lock);
 
-    rapl_limit = readq(rapl_mmio_private->rapl_mmio_base + RAPL_LIMIT_OFFSET);
-    time_encoded = (rapl_limit & RAPL_PL2_TIME_MASK) >> RAPL_PL2_TIME_SHIFT;
+    const uint64_t rapl_limit = readq(rapl_mmio_private->rapl_mmio_base + RAPL_LIMIT_OFFSET);
+    const unsigned int  time_encoded = (rapl_limit & RAPL_PL2_TIME_MASK) >> RAPL_PL2_TIME_SHIFT;
     *time_us = decode_time_window(time_encoded);
 
     return 0;
@@ -325,14 +311,13 @@ int legion_pl2_time_read(struct legion_rapl_mmio_private* rapl_mmio_private, uns
 
 /* Show PL4 lock status */
 int legion_pl4_lock_read(struct legion_rapl_mmio_private* rapl_mmio_private,bool* isLocked) {
-	uint64_t rapl_pl4;
 
     if (!rapl_mmio_private->rapl_mmio_base)
     	return -ENODEV;
 
     guard(mutex)(&rapl_mmio_private->lock);
 
-    rapl_pl4 = readq(rapl_mmio_private->rapl_mmio_base + RAPL_PL4_OFFSET);
+    const uint64_t rapl_pl4 = readq(rapl_mmio_private->rapl_mmio_base + RAPL_PL4_OFFSET);
 
     *isLocked = (rapl_pl4 & RAPL_PL4_LOCK) ? 1 : 0;
 
@@ -341,17 +326,15 @@ int legion_pl4_lock_read(struct legion_rapl_mmio_private* rapl_mmio_private,bool
 
 /* Show PL4 (PPL - Peak Power Limit) in milliwatts */
 int legion_pl4_power_read(struct legion_rapl_mmio_private* rapl_mmio_private,unsigned int* pl4) {
-    uint64_t rapl_pl4;
-    unsigned int pl4_units, pl4_mw;
 
     if (!rapl_mmio_private->rapl_mmio_base)
         return -ENODEV;
 
     guard(mutex)(&rapl_mmio_private->lock);
 
-    rapl_pl4 = readq(rapl_mmio_private->rapl_mmio_base + RAPL_PL4_OFFSET);
-    pl4_units = rapl_pl4 & RAPL_PL4_MASK;
-    pl4_mw = units_to_watts(pl4_units);
+    const uint64_t rapl_pl4 = readq(rapl_mmio_private->rapl_mmio_base + RAPL_PL4_OFFSET);
+    const unsigned int pl4_units = rapl_pl4 & RAPL_PL4_MASK;
+    const unsigned int pl4_mw = units_to_watts(pl4_units);
 
     *pl4 = pl4_mw;
 
@@ -361,14 +344,12 @@ int legion_pl4_power_read(struct legion_rapl_mmio_private* rapl_mmio_private,uns
 
 /* Read locked value */
 int legion_is_locked_power_read(struct legion_rapl_mmio_private* rapl_mmio_private,bool* isLocked) {
-    uint64_t rapl_limit;
-
     if (!rapl_mmio_private->rapl_mmio_base)
     	return -ENODEV;
 
     guard(mutex)(&rapl_mmio_private->lock);
 
-    rapl_limit = readq(rapl_mmio_private->rapl_mmio_base + RAPL_LIMIT_OFFSET);
+    const uint64_t rapl_limit = readq(rapl_mmio_private->rapl_mmio_base + RAPL_LIMIT_OFFSET);
 
     *isLocked = (rapl_limit & RAPL_LOCK_BIT) ? 1 : 0;
 
@@ -376,9 +357,7 @@ int legion_is_locked_power_read(struct legion_rapl_mmio_private* rapl_mmio_priva
 }
 
 
-int legion_pl4_set_and_lock(struct legion_rapl_mmio_private* rapl_mmio_private,unsigned int pl4_mw) {
-    unsigned int units;
-    uint64_t rapl_pl4;
+int legion_pl4_set_and_lock(struct legion_rapl_mmio_private* rapl_mmio_private,const unsigned int pl4_mw) {
 
     if (!rapl_mmio_private->rapl_mmio_base)
         return -ENODEV;
@@ -390,10 +369,10 @@ int legion_pl4_set_and_lock(struct legion_rapl_mmio_private* rapl_mmio_private,u
 
     guard(mutex)(&rapl_mmio_private->lock);
 
-    units = watts_to_units(pl4_mw);
+    const unsigned int  units = watts_to_units(pl4_mw);
 
     /* Atomic read-modify-write with enable and lock */
-    rapl_pl4 = readq(rapl_mmio_private->rapl_mmio_base + RAPL_PL4_OFFSET);
+    uint64_t rapl_pl4 = readq(rapl_mmio_private->rapl_mmio_base + RAPL_PL4_OFFSET);
 
     /* Clear power field */
     rapl_pl4 &= ~RAPL_PL4_MASK;
@@ -414,9 +393,7 @@ int legion_pl4_set_and_lock(struct legion_rapl_mmio_private* rapl_mmio_private,u
 }
 
 
-int legion_set_and_lock(struct legion_rapl_mmio_private* rapl_mmio_private,unsigned int pl1_mw,unsigned int pl2_mw) {
-    unsigned int pl1_units, pl2_units;
-    uint64_t rapl_limit;
+int legion_set_and_lock(struct legion_rapl_mmio_private* rapl_mmio_private,const unsigned int pl1_mw,const unsigned int pl2_mw) {
 
     if (!rapl_mmio_private->rapl_mmio_base)
         return -EINVAL;
@@ -431,11 +408,11 @@ int legion_set_and_lock(struct legion_rapl_mmio_private* rapl_mmio_private,unsig
 
     guard(mutex)(&rapl_mmio_private->lock);
 
-    pl1_units = watts_to_units(pl1_mw);
-    pl2_units = watts_to_units(pl2_mw);
+    const unsigned int pl1_units = watts_to_units(pl1_mw);
+    const unsigned int pl2_units = watts_to_units(pl2_mw);
 
     /* Atomic read-modify-write with lock */
-    rapl_limit = readq(rapl_mmio_private->rapl_mmio_base + RAPL_LIMIT_OFFSET);
+    uint64_t rapl_limit = readq(rapl_mmio_private->rapl_mmio_base + RAPL_LIMIT_OFFSET);
 
     /* Clear both PL1 and PL2 fields */
     rapl_limit &= ~(RAPL_PL1_MASK | RAPL_PL2_MASK);
@@ -458,12 +435,8 @@ int legion_set_and_lock(struct legion_rapl_mmio_private* rapl_mmio_private,unsig
 
 /* Set PL1/PL2 power and time windows, then lock */
 int legion_set_power_and_time_lock(struct legion_rapl_mmio_private* rapl_mmio_private,
-                                    unsigned int pl1_mw, unsigned int pl1_time_us,
-                                    unsigned int pl2_mw, unsigned int pl2_time_us) {
-    unsigned int pl1_units, pl2_units;
-    unsigned int pl1_time_enc, pl2_time_enc;
-    uint64_t rapl_limit;
-
+                                    const unsigned int pl1_mw, const unsigned int pl1_time_us,
+                                    const unsigned int pl2_mw, const unsigned int pl2_time_us) {
     if (!rapl_mmio_private->rapl_mmio_base)
         return -EINVAL;
 
@@ -473,13 +446,13 @@ int legion_set_power_and_time_lock(struct legion_rapl_mmio_private* rapl_mmio_pr
 
     guard(mutex)(&rapl_mmio_private->lock);
 
-    pl1_units = watts_to_units(pl1_mw);
-    pl2_units = watts_to_units(pl2_mw);
-    pl1_time_enc = encode_time_window(pl1_time_us);
-    pl2_time_enc = encode_time_window(pl2_time_us);
+    const unsigned int pl1_units = watts_to_units(pl1_mw);
+    const unsigned int pl2_units = watts_to_units(pl2_mw);
+    const unsigned int pl1_time_enc = encode_time_window(pl1_time_us);
+    const unsigned int pl2_time_enc = encode_time_window(pl2_time_us);
 
     /* Atomic read-modify-write with lock */
-    rapl_limit = readq(rapl_mmio_private->rapl_mmio_base + RAPL_LIMIT_OFFSET);
+    uint64_t rapl_limit = readq(rapl_mmio_private->rapl_mmio_base + RAPL_LIMIT_OFFSET);
 
     /* Clear PL1, PL2, and time window fields */
     rapl_limit &= ~(RAPL_PL1_MASK | RAPL_PL2_MASK | RAPL_PL1_TIME_MASK | RAPL_PL2_TIME_MASK);
@@ -506,9 +479,7 @@ int legion_set_power_and_time_lock(struct legion_rapl_mmio_private* rapl_mmio_pr
 
 /* Set PL1/PL2 power limits WITHOUT locking */
 int legion_set_power(struct legion_rapl_mmio_private* rapl_mmio_private,
-                     unsigned int pl1_mw, unsigned int pl2_mw) {
-    unsigned int pl1_units, pl2_units;
-    uint64_t rapl_limit;
+                     const unsigned int pl1_mw, const unsigned int pl2_mw) {
 
     if (!rapl_mmio_private->rapl_mmio_base)
         return -EINVAL;
@@ -519,11 +490,11 @@ int legion_set_power(struct legion_rapl_mmio_private* rapl_mmio_private,
 
     guard(mutex)(&rapl_mmio_private->lock);
 
-    pl1_units = watts_to_units(pl1_mw);
-    pl2_units = watts_to_units(pl2_mw);
+    const unsigned int pl1_units = watts_to_units(pl1_mw);
+    const unsigned int pl2_units = watts_to_units(pl2_mw);
 
     /* Atomic read-modify-write */
-    rapl_limit = readq(rapl_mmio_private->rapl_mmio_base + RAPL_LIMIT_OFFSET);
+    uint64_t rapl_limit = readq(rapl_mmio_private->rapl_mmio_base + RAPL_LIMIT_OFFSET);
 
     /* Clear both PL1 and PL2 power fields */
     rapl_limit &= ~(RAPL_PL1_MASK | RAPL_PL2_MASK);
@@ -543,12 +514,8 @@ int legion_set_power(struct legion_rapl_mmio_private* rapl_mmio_private,
 
 /* Set PL1/PL2 power and PL1 time window WITHOUT locking */
 int legion_set_power_and_time(struct legion_rapl_mmio_private* rapl_mmio_private,
-                               unsigned int pl1_mw, unsigned int pl1_time_us,
-                               unsigned int pl2_mw) {
-    unsigned int pl1_units, pl2_units;
-    unsigned int pl1_time_enc;
-    uint64_t rapl_limit;
-
+                               const unsigned int pl1_mw, const unsigned int pl1_time_us,
+                               const unsigned int pl2_mw) {
     if (!rapl_mmio_private->rapl_mmio_base)
         return -EINVAL;
 
@@ -558,12 +525,12 @@ int legion_set_power_and_time(struct legion_rapl_mmio_private* rapl_mmio_private
 
     guard(mutex)(&rapl_mmio_private->lock);
 
-    pl1_units = watts_to_units(pl1_mw);
-    pl2_units = watts_to_units(pl2_mw);
-    pl1_time_enc = encode_time_window(pl1_time_us);
+    const unsigned int pl1_units = watts_to_units(pl1_mw);
+    const unsigned int pl2_units = watts_to_units(pl2_mw);
+    const unsigned int pl1_time_enc = encode_time_window(pl1_time_us);
 
     /* Atomic read-modify-write */
-    rapl_limit = readq(rapl_mmio_private->rapl_mmio_base + RAPL_LIMIT_OFFSET);
+    uint64_t rapl_limit = readq(rapl_mmio_private->rapl_mmio_base + RAPL_LIMIT_OFFSET);
 
     /* Clear PL1, PL2, and time window fields */
     rapl_limit &= ~(RAPL_PL1_MASK | RAPL_PL2_MASK | RAPL_PL1_TIME_MASK);
@@ -585,9 +552,7 @@ int legion_set_power_and_time(struct legion_rapl_mmio_private* rapl_mmio_private
 }
 
 /* Set PL4 WITHOUT locking */
-int legion_pl4_set(struct legion_rapl_mmio_private* rapl_mmio_private, unsigned int pl4_mw) {
-    unsigned int units;
-    uint64_t rapl_pl4;
+int legion_pl4_set(struct legion_rapl_mmio_private* rapl_mmio_private, const unsigned int pl4_mw) {
 
     if (!rapl_mmio_private->rapl_mmio_base)
         return -ENODEV;
@@ -598,10 +563,10 @@ int legion_pl4_set(struct legion_rapl_mmio_private* rapl_mmio_private, unsigned 
 
     guard(mutex)(&rapl_mmio_private->lock);
 
-    units = watts_to_units(pl4_mw);
+    const unsigned int units = watts_to_units(pl4_mw);
 
     /* Atomic read-modify-write */
-    rapl_pl4 = readq(rapl_mmio_private->rapl_mmio_base + RAPL_PL4_OFFSET);
+    uint64_t rapl_pl4 = readq(rapl_mmio_private->rapl_mmio_base + RAPL_PL4_OFFSET);
 
     /* Clear power field */
     rapl_pl4 &= ~RAPL_PL4_MASK;
@@ -619,9 +584,7 @@ int legion_pl4_set(struct legion_rapl_mmio_private* rapl_mmio_private, unsigned 
 }
 
 /* Set PL1 power only WITHOUT locking */
-int legion_pl1_power_set(struct legion_rapl_mmio_private* rapl_mmio_private, unsigned int pl1_mw) {
-    unsigned int pl1_units;
-    uint64_t rapl_limit;
+int legion_pl1_power_set(struct legion_rapl_mmio_private* rapl_mmio_private, const unsigned int pl1_mw) {
 
     if (!rapl_mmio_private->rapl_mmio_base)
         return -EINVAL;
@@ -632,10 +595,10 @@ int legion_pl1_power_set(struct legion_rapl_mmio_private* rapl_mmio_private, uns
 
     guard(mutex)(&rapl_mmio_private->lock);
 
-    pl1_units = watts_to_units(pl1_mw);
+    const unsigned int pl1_units = watts_to_units(pl1_mw);
 
     /* Atomic read-modify-write */
-    rapl_limit = readq(rapl_mmio_private->rapl_mmio_base + RAPL_LIMIT_OFFSET);
+    uint64_t rapl_limit = readq(rapl_mmio_private->rapl_mmio_base + RAPL_LIMIT_OFFSET);
 
     /* Clear PL1 power field */
     rapl_limit &= ~RAPL_PL1_MASK;
@@ -653,9 +616,7 @@ int legion_pl1_power_set(struct legion_rapl_mmio_private* rapl_mmio_private, uns
 }
 
 /* Set PL2 power only WITHOUT locking */
-int legion_pl2_power_set(struct legion_rapl_mmio_private* rapl_mmio_private, unsigned int pl2_mw) {
-    unsigned int pl2_units;
-    uint64_t rapl_limit;
+int legion_pl2_power_set(struct legion_rapl_mmio_private* rapl_mmio_private, const unsigned int pl2_mw) {
 
     if (!rapl_mmio_private->rapl_mmio_base)
         return -EINVAL;
@@ -666,10 +627,10 @@ int legion_pl2_power_set(struct legion_rapl_mmio_private* rapl_mmio_private, uns
 
     guard(mutex)(&rapl_mmio_private->lock);
 
-    pl2_units = watts_to_units(pl2_mw);
+    unsigned int pl2_units = watts_to_units(pl2_mw);
 
     /* Atomic read-modify-write */
-    rapl_limit = readq(rapl_mmio_private->rapl_mmio_base + RAPL_LIMIT_OFFSET);
+    uint64_t rapl_limit = readq(rapl_mmio_private->rapl_mmio_base + RAPL_LIMIT_OFFSET);
 
     /* Clear PL2 power field */
     rapl_limit &= ~RAPL_PL2_MASK;
@@ -687,19 +648,17 @@ int legion_pl2_power_set(struct legion_rapl_mmio_private* rapl_mmio_private, uns
 }
 
 /* Set PL1 time window only WITHOUT locking */
-int legion_pl1_time_set(struct legion_rapl_mmio_private* rapl_mmio_private, unsigned int time_us) {
-    unsigned int time_enc;
-    uint64_t rapl_limit;
+int legion_pl1_time_set(struct legion_rapl_mmio_private* rapl_mmio_private, const unsigned int time_us) {
 
     if (!rapl_mmio_private->rapl_mmio_base)
         return -EINVAL;
 
     guard(mutex)(&rapl_mmio_private->lock);
 
-    time_enc = encode_time_window(time_us);
+    const unsigned int time_enc = encode_time_window(time_us);
 
     /* Atomic read-modify-write */
-    rapl_limit = readq(rapl_mmio_private->rapl_mmio_base + RAPL_LIMIT_OFFSET);
+    uint64_t rapl_limit = readq(rapl_mmio_private->rapl_mmio_base + RAPL_LIMIT_OFFSET);
 
     /* Clear PL1 time window field */
     rapl_limit &= ~RAPL_PL1_TIME_MASK;
@@ -714,19 +673,17 @@ int legion_pl1_time_set(struct legion_rapl_mmio_private* rapl_mmio_private, unsi
 }
 
 /* Set PL2 time window only WITHOUT locking */
-int legion_pl2_time_set(struct legion_rapl_mmio_private* rapl_mmio_private, unsigned int time_us) {
-    unsigned int time_enc;
-    uint64_t rapl_limit;
+int legion_pl2_time_set(struct legion_rapl_mmio_private* rapl_mmio_private, const unsigned int time_us) {
 
     if (!rapl_mmio_private->rapl_mmio_base)
         return -EINVAL;
 
     guard(mutex)(&rapl_mmio_private->lock);
 
-    time_enc = encode_time_window(time_us);
+    const unsigned int time_enc = encode_time_window(time_us);
 
     /* Atomic read-modify-write */
-    rapl_limit = readq(rapl_mmio_private->rapl_mmio_base + RAPL_LIMIT_OFFSET);
+    uint64_t rapl_limit = readq(rapl_mmio_private->rapl_mmio_base + RAPL_LIMIT_OFFSET);
 
     /* Clear PL2 time window field */
     rapl_limit &= ~RAPL_PL2_TIME_MASK;

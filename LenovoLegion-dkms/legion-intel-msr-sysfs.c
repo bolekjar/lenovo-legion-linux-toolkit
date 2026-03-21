@@ -10,7 +10,6 @@
 #include "legion-intel-msr.h"
 
 #include <linux/device.h>
-#include <linux/export.h>
 #include <linux/gfp_types.h>
 #include <linux/idr.h>
 
@@ -27,7 +26,7 @@ const struct class legion_intel_msr_class = {
  */
 static ssize_t cpu_offset_show(struct device *dev,struct device_attribute *attr, char *buf)
 {
-    int mv_offset,ret;
+    int mv_offset = 0;
 	struct legion_data *priv = dev_get_drvdata(dev);
 
 	/* Critical: Prevent NULL pointer dereference and system freeze */
@@ -35,16 +34,16 @@ static ssize_t cpu_offset_show(struct device *dev,struct device_attribute *attr,
 		return -ENODEV;
 	}
 
-    ret = legion_intel_msr_offset_read_show(&priv->intel_msr_private,PLANE_CPU,&mv_offset);
+    const ssize_t ret = legion_intel_msr_offset_read_show(&priv->intel_msr_private,PLANE_CPU,&mv_offset);
     if(ret)
     	return ret;
 
     return sprintf(buf, "%d\n", mv_offset);
 }
 
-static ssize_t cpu_offset_store(struct device *dev,struct device_attribute *attr,const char *buf,size_t count)
+static ssize_t cpu_offset_store(struct device *dev,struct device_attribute *attr,const char *buf,const size_t count)
 {
-    int ret,cpu_offset;
+    int cpu_offset = 0;
 	struct legion_data *priv = dev_get_drvdata(dev);
 
 	/* Critical: Prevent NULL pointer dereference and system freeze */
@@ -52,18 +51,18 @@ static ssize_t cpu_offset_store(struct device *dev,struct device_attribute *attr
 		return -ENODEV;
 	}
 
-    ret = kstrtoint(buf, 10, &cpu_offset);
-    if (ret < 0)
-        return ret;
+    if (kstrtoint(buf, 10, &cpu_offset)) {
+    	return -EINVAL;
+    }
 
     legion_intel_msr_apply_voltage_offset(&priv->intel_msr_private,PLANE_CPU, cpu_offset);
 
-    return count;
+    return (ssize_t)count;
 }
 
 static ssize_t cache_offset_show(struct device *dev,struct device_attribute *attr, char *buf)
 {
-    int mv_offset,ret;
+    int mv_offset = 0;
 	struct legion_data *priv = dev_get_drvdata(dev);
 
 	/* Critical: Prevent NULL pointer dereference and system freeze */
@@ -71,7 +70,7 @@ static ssize_t cache_offset_show(struct device *dev,struct device_attribute *att
 		return -ENODEV;
 	}
 
-    ret = legion_intel_msr_offset_read_show(&priv->intel_msr_private,PLANE_CACHE,&mv_offset);
+    const ssize_t ret = legion_intel_msr_offset_read_show(&priv->intel_msr_private,PLANE_CACHE,&mv_offset);
     if(ret)
     	return ret;
 
@@ -80,27 +79,25 @@ static ssize_t cache_offset_show(struct device *dev,struct device_attribute *att
 
 static ssize_t cache_offset_store(struct device *dev,struct device_attribute *attr,const char *buf,size_t count)
 {
-    int ret,cache_offset;
+    int cache_offset = 0;
 	struct legion_data *priv = dev_get_drvdata(dev);
-
 
 	/* Critical: Prevent NULL pointer dereference and system freeze */
 	if (!priv) {
 		return -ENODEV;
 	}
 
-
-    ret = kstrtoint(buf, 10, &cache_offset);
+	const ssize_t ret = kstrtoint(buf, 10, &cache_offset);
     if (ret < 0)
         return ret;
 
     legion_intel_msr_apply_voltage_offset(&priv->intel_msr_private,PLANE_CACHE, cache_offset);
-    return count;
+    return (ssize_t)count;
 }
 
 static ssize_t gpu_offset_show(struct device *dev,struct device_attribute *attr, char *buf)
 {
-    int mv_offset,ret;
+    int mv_offset = 0;
 	struct legion_data *priv = dev_get_drvdata(dev);
 
 	/* Critical: Prevent NULL pointer dereference and system freeze */
@@ -108,7 +105,7 @@ static ssize_t gpu_offset_show(struct device *dev,struct device_attribute *attr,
 		return -ENODEV;
 	}
 
-    ret = legion_intel_msr_offset_read_show(&priv->intel_msr_private,PLANE_GPU,&mv_offset);
+    const ssize_t ret = legion_intel_msr_offset_read_show(&priv->intel_msr_private,PLANE_GPU,&mv_offset);
     if(ret)
     	return ret;
 
@@ -117,7 +114,7 @@ static ssize_t gpu_offset_show(struct device *dev,struct device_attribute *attr,
 
 static ssize_t gpu_offset_store(struct device *dev,struct device_attribute *attr,const char *buf,size_t count)
 {
-    int ret,gpu_offset;
+    int gpu_offset = 0;
 	struct legion_data *priv = dev_get_drvdata(dev);
 
 	/* Critical: Prevent NULL pointer dereference and system freeze */
@@ -126,17 +123,17 @@ static ssize_t gpu_offset_store(struct device *dev,struct device_attribute *attr
 	}
 
 
-	ret = kstrtoint(buf, 10, &gpu_offset);
+	const ssize_t ret = kstrtoint(buf, 10, &gpu_offset);
     if (ret < 0)
         return ret;
 
     legion_intel_msr_apply_voltage_offset(&priv->intel_msr_private,PLANE_GPU, gpu_offset);
-    return count;
+    return (ssize_t)count;
 }
 
 static ssize_t uncore_offset_show(struct device *dev,struct device_attribute *attr, char *buf)
 {
-    int mv_offset,ret;
+    int mv_offset = 0;
 	struct legion_data *priv = dev_get_drvdata(dev);
 
 	/* Critical: Prevent NULL pointer dereference and system freeze */
@@ -144,7 +141,7 @@ static ssize_t uncore_offset_show(struct device *dev,struct device_attribute *at
 		return -ENODEV;
 	}
 
-    ret = legion_intel_msr_offset_read_show(&priv->intel_msr_private,PLANE_UNCORE,&mv_offset);
+    const ssize_t ret = legion_intel_msr_offset_read_show(&priv->intel_msr_private,PLANE_UNCORE,&mv_offset);
     if(ret)
     	return ret;
 
@@ -153,7 +150,7 @@ static ssize_t uncore_offset_show(struct device *dev,struct device_attribute *at
 
 static ssize_t uncore_offset_store(struct device *dev,struct device_attribute *attr,const char *buf,size_t count)
 {
-    int ret,uncore_offset;
+    int uncore_offset = 0;
 	struct legion_data *priv = dev_get_drvdata(dev);
 
 	/* Critical: Prevent NULL pointer dereference and system freeze */
@@ -161,17 +158,17 @@ static ssize_t uncore_offset_store(struct device *dev,struct device_attribute *a
 		return -ENODEV;
 	}
 
-    ret = kstrtoint(buf, 10, &uncore_offset);
+    const ssize_t ret = kstrtoint(buf, 10, &uncore_offset);
     if (ret < 0)
         return ret;
 
     legion_intel_msr_apply_voltage_offset(&priv->intel_msr_private,PLANE_UNCORE, uncore_offset);
-    return count;
+    return (ssize_t)count;
 }
 
 static ssize_t analogio_offset_show(struct device *dev,struct device_attribute *attr, char *buf)
 {
-    int mv_offset,ret;
+    int mv_offset = 0;
 	struct legion_data *priv = dev_get_drvdata(dev);
 
 	/* Critical: Prevent NULL pointer dereference and system freeze */
@@ -179,7 +176,7 @@ static ssize_t analogio_offset_show(struct device *dev,struct device_attribute *
 		return -ENODEV;
 	}
 
-    ret = legion_intel_msr_offset_read_show(&priv->intel_msr_private,PLANE_ANALOGIO,&mv_offset);
+    const ssize_t ret = legion_intel_msr_offset_read_show(&priv->intel_msr_private,PLANE_ANALOGIO,&mv_offset);
     if(ret)
     	return ret;
 
@@ -189,7 +186,7 @@ static ssize_t analogio_offset_show(struct device *dev,struct device_attribute *
 static ssize_t analogio_offset_store(struct device *dev,struct device_attribute *attr,const char *buf,size_t count)
 {
 	struct legion_data *priv = dev_get_drvdata(dev);
-    int ret,analogio_offset;
+    int analogio_offset = 0;
 
 
 	/* Critical: Prevent NULL pointer dereference and system freeze */
@@ -197,12 +194,12 @@ static ssize_t analogio_offset_store(struct device *dev,struct device_attribute 
 		return -ENODEV;
 	}
 
-    ret = kstrtoint(buf, 10, &analogio_offset);
+    const ssize_t ret = kstrtoint(buf, 10, &analogio_offset);
     if (ret < 0)
         return ret;
 
     legion_intel_msr_apply_voltage_offset(&priv->intel_msr_private,PLANE_ANALOGIO, analogio_offset);
-    return count;
+    return (ssize_t)count;
 }
 
 
@@ -472,7 +469,7 @@ static const struct attribute_group legion_intel_msr_attributes_group = {
 
 
 
-int  legion_intel_msr_sysfs_init(struct device *parent) {
+int  legion_intel_msr_sysfs_init(const struct device *parent) {
 
 	int ret = 0;
 	struct legion_data* data = dev_get_drvdata(parent);
@@ -498,7 +495,7 @@ int  legion_intel_msr_sysfs_init(struct device *parent) {
 					  LEGION_INTEL_MSR_BASE_PATH,
 					  data->intel_msr_sysfs_private.ida_id);
 	if (IS_ERR(data->intel_msr_sysfs_private.dev)) {
-		ret = PTR_ERR(data->intel_msr_sysfs_private.dev);
+		ret = (int)PTR_ERR(data->intel_msr_sysfs_private.dev);
 		goto err_free_ida;
 	}
 
@@ -520,7 +517,7 @@ err_unregister_class:
 }
 
 
-void legion_intel_msr_sysfs_exit(struct device *parent) {
+void legion_intel_msr_sysfs_exit(const struct device *parent) {
 
 	struct legion_data* data = dev_get_drvdata(parent);
 

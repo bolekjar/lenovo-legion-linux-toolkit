@@ -108,9 +108,7 @@ static int legion_wmi_fm_call(struct notifier_block *nb, unsigned long cmd,void 
 int devm_lenovo_wmi_fm_register_notifier(struct device *dev,
 				   struct notifier_block *nb)
 {
-	int ret;
-
-	ret = lenovo_wmi_fm_register_notifier(nb);
+	const int ret = lenovo_wmi_fm_register_notifier(nb);
 	if (ret < 0)
 		return ret;
 
@@ -120,9 +118,8 @@ int devm_lenovo_wmi_fm_register_notifier(struct device *dev,
 
 int legion_wmi_fm_notifier_call(void *data,enum gamezone_events_type gamezone_events_type)
 {
-	int ret;
+	const int ret = blocking_notifier_call_chain(&legion_fm_chain_head,gamezone_events_type, &data);
 
-	ret = blocking_notifier_call_chain(&legion_fm_chain_head,gamezone_events_type, &data);
 	if ((ret & ~NOTIFY_STOP_MASK) != NOTIFY_OK)
 		return -EINVAL;
 
@@ -132,9 +129,7 @@ int legion_wmi_fm_notifier_call(void *data,enum gamezone_events_type gamezone_ev
 static int legion_wmi_fm_master_bind(struct device *dev)
 {
 	struct legion_wmi_fm_priv *priv = dev_get_drvdata(dev);
-	int ret;
-
-	ret = component_bind_all(dev, &priv);
+	int ret = component_bind_all(dev, &priv);
 	if (ret)
 		return ret;
 
@@ -184,9 +179,7 @@ static const struct wmi_device_id legion_fm_other_id_table[] = {
 static int legion_fm_other_probe(struct wmi_device *wdev, const void *context)
 {
 	struct component_match 		 *master_match 	= NULL;
-	struct legion_wmi_fm_priv 	 *priv 			= NULL;
-
-	priv = devm_kzalloc(&wdev->dev, sizeof(*priv), GFP_KERNEL);
+	struct legion_wmi_fm_priv 	 *priv = devm_kzalloc(&wdev->dev, sizeof(*priv), GFP_KERNEL);
 	if (!priv)
 		return -ENOMEM;
 
@@ -199,11 +192,11 @@ static int legion_fm_other_probe(struct wmi_device *wdev, const void *context)
 
 	component_match_add(&wdev->dev, &master_match, legion_wmi_ftable_match, NULL);
 	if (IS_ERR(master_match))
-		return PTR_ERR(master_match);
+		return (int)PTR_ERR(master_match);
 
 
 	/* Register as a component master (for cd01/dd components) */
-	int ret = component_master_add_with_match(&wdev->dev, &legion_wmi_fm_master_ops,
+	const int ret = component_master_add_with_match(&wdev->dev, &legion_wmi_fm_master_ops,
 		       master_match);
 	if (ret)
 		return ret;
@@ -217,7 +210,7 @@ static int legion_fm_other_probe(struct wmi_device *wdev, const void *context)
 	return 0;
 }
 
-static void legio_fm_other_remove(struct wmi_device *wdev)
+static void legion_fm_other_remove(struct wmi_device *wdev)
 {
 	component_master_del(&wdev->dev, &legion_wmi_fm_master_ops);
 }
@@ -230,7 +223,7 @@ static struct wmi_driver legion_fm_other_driver = {
 	},
 	.id_table = legion_fm_other_id_table,
 	.probe = legion_fm_other_probe,
-	.remove = legio_fm_other_remove,
+	.remove = legion_fm_other_remove,
 	.no_singleton = true,
 };
 

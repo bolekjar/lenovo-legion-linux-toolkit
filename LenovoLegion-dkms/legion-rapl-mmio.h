@@ -5,12 +5,11 @@
  * Author(s):
  *   Jaroslav Bolek <jaroslav.bolek@gmail.com>
  */
+#ifndef LEGION_RAPL_MMIO_H_
+#define LEGION_RAPL_MMIO_H_
 
 #include <linux/io.h>
 #include <linux/pci.h>
-
-#ifndef LEGION_RAPL_MMIO_H_
-#define LEGION_RAPL_MMIO_H_
 
 #define POWER_LIMIT_MAX_VALUE_IN_MW 999000
 
@@ -22,8 +21,8 @@ struct legion_rapl_mmio_private {
 	struct mutex lock;
 };
 
-int  legion_rapl_mmio_init(struct device *parent);
-void legion_rapl_mmio_exit(struct device *parent);
+int  legion_rapl_mmio_init(const struct device *parent);
+void legion_rapl_mmio_exit(const struct device *parent);
 
 /* Power limit read/write functions */
 int  legion_pl1_power_read(struct legion_rapl_mmio_private* rapl_mmio_private, unsigned int* pl1);

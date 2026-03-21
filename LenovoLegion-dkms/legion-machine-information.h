@@ -63,11 +63,11 @@ struct machine_information
 
 void init_dmi_machine_information(struct dmi_machine_information* machine_info);
 void read_dmi_machine_information(struct dmi_machine_information* machine_info);
-void print_dmi_machine_information(struct device* dev, const struct dmi_machine_information* machine_info);
+void print_dmi_machine_information(const struct device* dev, const struct dmi_machine_information* machine_info);
 
 void init_machine_information(struct machine_information* machine_info);
 void read_machine_information(struct machine_information* machine_info);
-void print_machine_information(struct device* dev, const struct machine_information* machine_info);
+void print_machine_information(const struct device* dev, const struct machine_information* machine_info);
 
 
 #endif /* LEGION_MACHINE_INFORMATION_H_ */

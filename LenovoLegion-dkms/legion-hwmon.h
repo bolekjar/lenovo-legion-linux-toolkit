@@ -28,6 +28,6 @@ int  legion_hwmon_other_register_notifier(struct device *dev,struct notifier_blo
 int  legion_hwmon_fm_register_notifier(struct device *dev,struct notifier_block *nb);
 
 int  legion_hwmon_init(struct device *parent);
-void legion_hwmon_exit(struct device *parent);
+void legion_hwmon_exit(const struct device *parent);
 
 #endif // LEGION_HWMON_H

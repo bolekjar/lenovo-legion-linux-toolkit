@@ -18,7 +18,7 @@ const struct class legion_dmi_class = {
 	.name = "legion-dmi",
 };
 
-#define __LEGION_MACHINE_INF_SYSFS_DEV_ATTR_RO_CACHED(_name) 												 \
+#define LEGION_MACHINE_INF_SYSFS_DEV_ATTR_RO_CACHED(_name) 												 \
 static ssize_t _name##_show(struct device *dev,struct device_attribute *attr, char *buf) 				 \
 {																												 \
 	struct legion_data *priv = dev_get_drvdata(dev);															 \
@@ -34,34 +34,34 @@ static ssize_t _name##_show(struct device *dev,struct device_attribute *attr, ch
 static DEVICE_ATTR_RO(_name);
 
 
-__LEGION_MACHINE_INF_SYSFS_DEV_ATTR_RO_CACHED(bios_vendor);
-__LEGION_MACHINE_INF_SYSFS_DEV_ATTR_RO_CACHED(bios_version);
-__LEGION_MACHINE_INF_SYSFS_DEV_ATTR_RO_CACHED(bios_date);
-__LEGION_MACHINE_INF_SYSFS_DEV_ATTR_RO_CACHED(bios_release);
+LEGION_MACHINE_INF_SYSFS_DEV_ATTR_RO_CACHED(bios_vendor);
+LEGION_MACHINE_INF_SYSFS_DEV_ATTR_RO_CACHED(bios_version);
+LEGION_MACHINE_INF_SYSFS_DEV_ATTR_RO_CACHED(bios_date);
+LEGION_MACHINE_INF_SYSFS_DEV_ATTR_RO_CACHED(bios_release);
 
-__LEGION_MACHINE_INF_SYSFS_DEV_ATTR_RO_CACHED(product_name);
-__LEGION_MACHINE_INF_SYSFS_DEV_ATTR_RO_CACHED(product_version);
-__LEGION_MACHINE_INF_SYSFS_DEV_ATTR_RO_CACHED(product_serial);
-__LEGION_MACHINE_INF_SYSFS_DEV_ATTR_RO_CACHED(product_uuid);
-__LEGION_MACHINE_INF_SYSFS_DEV_ATTR_RO_CACHED(product_sku);
-__LEGION_MACHINE_INF_SYSFS_DEV_ATTR_RO_CACHED(product_family);
+LEGION_MACHINE_INF_SYSFS_DEV_ATTR_RO_CACHED(product_name);
+LEGION_MACHINE_INF_SYSFS_DEV_ATTR_RO_CACHED(product_version);
+LEGION_MACHINE_INF_SYSFS_DEV_ATTR_RO_CACHED(product_serial);
+LEGION_MACHINE_INF_SYSFS_DEV_ATTR_RO_CACHED(product_uuid);
+LEGION_MACHINE_INF_SYSFS_DEV_ATTR_RO_CACHED(product_sku);
+LEGION_MACHINE_INF_SYSFS_DEV_ATTR_RO_CACHED(product_family);
 
-__LEGION_MACHINE_INF_SYSFS_DEV_ATTR_RO_CACHED(board_vendor);
-__LEGION_MACHINE_INF_SYSFS_DEV_ATTR_RO_CACHED(board_name);
-__LEGION_MACHINE_INF_SYSFS_DEV_ATTR_RO_CACHED(board_version);
-__LEGION_MACHINE_INF_SYSFS_DEV_ATTR_RO_CACHED(board_serial);
-__LEGION_MACHINE_INF_SYSFS_DEV_ATTR_RO_CACHED(board_asset_tag);
+LEGION_MACHINE_INF_SYSFS_DEV_ATTR_RO_CACHED(board_vendor);
+LEGION_MACHINE_INF_SYSFS_DEV_ATTR_RO_CACHED(board_name);
+LEGION_MACHINE_INF_SYSFS_DEV_ATTR_RO_CACHED(board_version);
+LEGION_MACHINE_INF_SYSFS_DEV_ATTR_RO_CACHED(board_serial);
+LEGION_MACHINE_INF_SYSFS_DEV_ATTR_RO_CACHED(board_asset_tag);
 
 
 
-__LEGION_MACHINE_INF_SYSFS_DEV_ATTR_RO_CACHED(chassis_vendor);
-__LEGION_MACHINE_INF_SYSFS_DEV_ATTR_RO_CACHED(chassis_type);
-__LEGION_MACHINE_INF_SYSFS_DEV_ATTR_RO_CACHED(chassis_version);
-__LEGION_MACHINE_INF_SYSFS_DEV_ATTR_RO_CACHED(chassis_serial);
-__LEGION_MACHINE_INF_SYSFS_DEV_ATTR_RO_CACHED(chassis_asset_tag);
+LEGION_MACHINE_INF_SYSFS_DEV_ATTR_RO_CACHED(chassis_vendor);
+LEGION_MACHINE_INF_SYSFS_DEV_ATTR_RO_CACHED(chassis_type);
+LEGION_MACHINE_INF_SYSFS_DEV_ATTR_RO_CACHED(chassis_version);
+LEGION_MACHINE_INF_SYSFS_DEV_ATTR_RO_CACHED(chassis_serial);
+LEGION_MACHINE_INF_SYSFS_DEV_ATTR_RO_CACHED(chassis_asset_tag);
 
-__LEGION_MACHINE_INF_SYSFS_DEV_ATTR_RO_CACHED(sys_vendor);
-__LEGION_MACHINE_INF_SYSFS_DEV_ATTR_RO_CACHED(ec_firmware_release);
+LEGION_MACHINE_INF_SYSFS_DEV_ATTR_RO_CACHED(sys_vendor);
+LEGION_MACHINE_INF_SYSFS_DEV_ATTR_RO_CACHED(ec_firmware_release);
 
 
 static struct attribute *legion_machine_inf_sysfs_attributes[]  = {
@@ -116,7 +116,7 @@ int  machine_information_sysfs_init(struct legion_data* data)
 					  LEGION_MACHINE_INF_BASE_PATH,
 					  data->machine_info_sysfs_private.ida_id);
 	if (IS_ERR(data->machine_info_sysfs_private.dev)) {
-		ret = PTR_ERR(data->machine_info_sysfs_private.dev);
+		ret = (int)PTR_ERR(data->machine_info_sysfs_private.dev);
 		goto err_free_ida;
 	}
 

@@ -38,8 +38,8 @@ struct legion_intel_msr_private {
 };
 
 
-int  legion_intel_msr_apply_voltage_offset(struct legion_intel_msr_private *intel_msr_private,int  plane, int offset_mv);
-int  legion_intel_msr_offset_read_show(struct legion_intel_msr_private *intel_msr_private,int plane, int* offset_mv);
+ssize_t  legion_intel_msr_apply_voltage_offset(struct legion_intel_msr_private *intel_msr_private,int  plane, int offset_uv);
+ssize_t  legion_intel_msr_offset_read_show(struct legion_intel_msr_private *intel_msr_private,int plane,int* offset_uv);
 
 int  legion_intel_msr_init(struct legion_intel_msr_private *intel_msr_private);
 void legion_intel_msr_exit(struct legion_intel_msr_private *intel_msr_private);

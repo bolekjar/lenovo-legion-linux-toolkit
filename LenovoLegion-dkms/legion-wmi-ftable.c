@@ -107,15 +107,13 @@ static const struct component_ops legion_wmi_ftable_component_ops = {
  *
  * Return: 0 on success, or -EINVAL.
  */
-int legion_wmi_ftable_get_data(struct legion_wmi_ftable_list *list,u16 mode, u16 fanId, u16 sensorId, struct legion_wmi_ftable *output)
+int legion_wmi_ftable_get_data(struct legion_wmi_ftable_list *list,const u16 mode, const u16 fanId,const u16 sensorId, struct legion_wmi_ftable *output)
 {
-	u8 idx;
-
 	if (!list)
 	    return -ENODEV;
 
 	guard(mutex)(&list->list_mutex);
-	for (idx = 0; idx < list->count; idx++) {
+	for (u8 idx = 0; idx < list->count; idx++) {
 		if(list->data[idx].mode 	== mode 	&&
 		   list->data[idx].fanId 	== fanId	&&
 		   list->data[idx].sensorId == sensorId)
@@ -136,12 +134,10 @@ int legion_wmi_ftable_get_data(struct legion_wmi_ftable_list *list,u16 mode, u16
  *
  * Return: 0 on success, or an error.
  */
-static int legion_wmi_ftable_cache(struct legion_wmi_ftable_priv *priv)
+static int legion_wmi_ftable_cache(const struct legion_wmi_ftable_priv *priv)
 {
-	int idx;
-
 	guard(mutex)(&priv->list->list_mutex);
-	for (idx = 0; idx < priv->list->count; idx++) {
+	for (int idx = 0; idx < priv->list->count; idx++) {
 		union acpi_object *ret_obj __free(kfree) = NULL;
 
 		ret_obj = wmidev_block_query(priv->wdev, idx);
@@ -170,18 +166,16 @@ static int legion_wmi_ftable_cache(struct legion_wmi_ftable_priv *priv)
  */
 static int legion_wmi_ftable_alloc(struct legion_wmi_ftable_priv *priv)
 {
-	struct legion_wmi_ftable_list *list;
-	size_t list_size;
-	int count, ret;
+	struct legion_wmi_ftable_list *list = NULL;
 
-	count = wmidev_instance_count(priv->wdev);
-	list_size = struct_size(list, data, count);
+	const int count = wmidev_instance_count(priv->wdev);
+	const size_t list_size = struct_size(list, data, count);
 
 	list = devm_kzalloc(&priv->wdev->dev, list_size, GFP_KERNEL);
 	if (!list)
 		return -ENOMEM;
 
-	ret = devm_mutex_init(&priv->wdev->dev, &list->list_mutex);
+	const int ret = devm_mutex_init(&priv->wdev->dev, &list->list_mutex);
 	if (ret)
 		return ret;
 
@@ -203,9 +197,7 @@ static int legion_wmi_ftable_alloc(struct legion_wmi_ftable_priv *priv)
  */
 static int legion_wmi_ftable_setup(struct legion_wmi_ftable_priv *priv)
 {
-	int ret;
-
-	ret = legion_wmi_ftable_alloc(priv);
+	const int ret = legion_wmi_ftable_alloc(priv);
 	if (ret)
 		return ret;
 
@@ -216,17 +208,14 @@ static int legion_wmi_ftable_setup(struct legion_wmi_ftable_priv *priv)
 static int legion_wmi_ftable_probe(struct wmi_device *wdev, const void *context)
 
 {
-	struct legion_wmi_ftable_priv *priv;
-	int ret;
-
-	priv = devm_kzalloc(&wdev->dev, sizeof(*priv), GFP_KERNEL);
+	struct legion_wmi_ftable_priv *priv = devm_kzalloc(&wdev->dev, sizeof(*priv), GFP_KERNEL);
 	if (!priv)
 		return -ENOMEM;
 
 	priv->wdev = wdev;
 	dev_set_drvdata(&wdev->dev, priv);
 
-	ret = legion_wmi_ftable_setup(priv);
+	const int ret = legion_wmi_ftable_setup(priv);
 	if (ret)
 		return ret;
 

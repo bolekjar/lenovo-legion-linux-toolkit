@@ -31,15 +31,13 @@
  *
  * Return: 0 on success, or an error code.
  */
-int legion_wmi_dev_evaluate_int(struct wmi_device *wdev, u8 instance, u32 method_id,
-			  unsigned char *buf, size_t size, u32 *retval)
+int legion_wmi_dev_evaluate_int(struct wmi_device *wdev,const u8 instance,const u32 method_id,
+			  unsigned char *buf,const size_t size, u32 *retval)
 {
 	struct acpi_buffer output = { ACPI_ALLOCATE_BUFFER, NULL };
 	union acpi_object *ret_obj __free(kfree) = NULL;
-	struct acpi_buffer input = { size, buf };
-	acpi_status status;
-
-	status = wmidev_evaluate_method(wdev, instance, method_id, &input,
+	const struct acpi_buffer input = { size, buf };
+	const acpi_status status = wmidev_evaluate_method(wdev, instance, method_id, &input,
 					&output);
 	if (ACPI_FAILURE(status)) {
 		return -EIO;
@@ -78,15 +76,13 @@ int legion_wmi_dev_evaluate_int(struct wmi_device *wdev, u8 instance, u32 method
  *
  * Return: 0 on success, or an error code.
  */
-int legion_wmi_dev_evaluate_string(struct wmi_device *wdev, u8 instance, u32 method_id,
-			  unsigned char *buf, size_t size, char *retval,size_t retval_size)
+int legion_wmi_dev_evaluate_string(struct wmi_device *wdev, const u8 instance,const u32 method_id,
+			  unsigned char *buf,const size_t size, char *retval,const size_t retval_size)
 {
 	struct acpi_buffer output = { ACPI_ALLOCATE_BUFFER, NULL };
 	union acpi_object *ret_obj __free(kfree) = NULL;
-	struct acpi_buffer input = { size, buf };
-	acpi_status status;
-
-	status = wmidev_evaluate_method(wdev, instance, method_id, &input,
+	const struct acpi_buffer input = { size, buf };
+	const acpi_status status = wmidev_evaluate_method(wdev, instance, method_id, &input,
 					&output);
 	if (ACPI_FAILURE(status))
 		return -EIO;
@@ -129,13 +125,11 @@ int legion_wmi_dev_evaluate_string(struct wmi_device *wdev, u8 instance, u32 met
  *
  * Return: 0 on success, or an error code.
  */
-int legion_wmi_dev_evaluate_buffer(struct wmi_device *wdev, u8 instance, u32 method_id,unsigned char *buf, size_t size, u8 *retval,size_t max_retval_size){
+int legion_wmi_dev_evaluate_buffer(struct wmi_device *wdev,const u8 instance,const u32 method_id,unsigned char *buf,const size_t size, u8 *retval,const size_t max_retval_size){
 	struct acpi_buffer output = { ACPI_ALLOCATE_BUFFER, NULL };
 	union acpi_object *ret_obj __free(kfree) = NULL;
-	struct acpi_buffer input = { size, buf };
-	acpi_status status;
-
-	status = wmidev_evaluate_method(wdev, instance, method_id, &input,
+	const struct acpi_buffer input = { size, buf };
+	const acpi_status status = wmidev_evaluate_method(wdev, instance, method_id, &input,
 					&output);
 	if (ACPI_FAILURE(status))
 		return -EIO;

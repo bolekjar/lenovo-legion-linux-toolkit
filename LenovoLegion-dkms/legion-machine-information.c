@@ -69,7 +69,7 @@ void init_dmi_machine_information(struct dmi_machine_information* machine_info){
 	machine_info->ec_firmware_release = "";
 }
 
-void print_dmi_machine_information(struct device* dev, const struct dmi_machine_information* machine_info) {
+void print_dmi_machine_information(const struct device* dev, const struct dmi_machine_information* machine_info) {
 	dev_info(dev, "\tDMI Machine Information start\n");
 	dev_info(dev, "\t\t bios_vendor:%s\n",machine_info->bios_vendor);
 	dev_info(dev, "\t\t bios_version:%s\n",machine_info->bios_version);
@@ -108,7 +108,7 @@ void init_machine_information(struct machine_information* machine_info){
 	init_dmi_machine_information(&machine_info->dmi_info);
 }
 
-void print_machine_information(struct device* dev, const struct machine_information* machine_info){
+void print_machine_information(const struct device* dev, const struct machine_information* machine_info){
 	print_dmi_machine_information(dev,&machine_info->dmi_info);
 }
 

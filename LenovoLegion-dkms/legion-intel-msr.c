@@ -38,23 +38,13 @@ struct read_msr_data {
  */
 static u32 uv_to_msr(int uv)
 {
-    s32 offset_units;
-    u32 result;
-
     // Convert mV to 1/1024V units
     // 1mV = 1.024 units of 1/1024V
-    offset_units = (uv * 1024) / 1000000;
+    const s32 offset_units = (uv * 1024) / 1000000;
 
     // Handle two's complement for negative values
     // Mask to 21 bits
-    if (offset_units < 0) {
-        // Two's complement: invert and add 1, then mask to 21 bits
-        result = (u32)offset_units & 0x1FFFFF;
-    } else {
-        result = (u32)offset_units & 0x1FFFFF;
-    }
-
-    return result;
+    return (u32)offset_units & 0x1FFFFF;
 }
 
 
@@ -62,12 +52,12 @@ static u32 uv_to_msr(int uv)
  * Convert MSR format back to microvolts
  * MSR format: 11-bit signed integer in 1/1024 V units
  */
-static int msr_to_uv(u32 msr_value)
+static int msr_to_uv(const u32 msr_value)
 {
-    s32 offset_units;
+    s32 offset_units = 0;
 
     // Extract 11-bit value from bits [31:21]
-    u32 raw_value = (msr_value >> 21) & 0x7FF;
+    const u32 raw_value = (msr_value >> 21) & 0x7FF;
 
     // Sign extend from 11 bits to 32 bits
     if (raw_value & 0x400) {  // Check bit 10 (sign bit)
@@ -86,7 +76,7 @@ static int msr_to_uv(u32 msr_value)
 /*
  * Validate voltage offset against per-plane limits
  */
-static int validate_offset(const struct legion_intel_msr_private *intel_msr_private,int plane, int offset_mv)
+static ssize_t validate_offset(const struct legion_intel_msr_private *intel_msr_private,const int plane,const  int offset_mv)
 {
     if (plane < 0 || plane >= NUM_VOLTAGE_PLANES) {
         return -EINVAL;
@@ -109,16 +99,12 @@ static int validate_offset(const struct legion_intel_msr_private *intel_msr_priv
  */
 static void write_voltage_offset_on_cpu(void *info)
 {
-    struct {
+    const struct {
         int plane;
         int offset_uv;
     } *data = info;
 
-    u64 msr_val;
-    u32 offset_encoded;
-    int err;
-
-    offset_encoded = uv_to_msr(data->offset_uv);
+    const u32 offset_encoded = uv_to_msr(data->offset_uv);
 
     // MSR 0x150 format for voltage offset (OC Mailbox):
     // Based on VoltageShift and intel-undervolt implementations:
@@ -127,30 +113,27 @@ static void write_voltage_offset_on_cpu(void *info)
     // [39:32] = Command (0x11 = write voltage offset)
     // [31:21] = Voltage offset (11-bit signed, two's complement, in 1/1024V units)
     // [20:0]  = Other fields (ratio, etc - set to 0 for voltage offset)
-
-    msr_val = ((u64)1 << 63) |                           // Busy bit
+    const u64 msr_val = ((u64)1 << 63) |                // Busy bit
               ((u64)(data->plane & 0xFF) << 40) |        // Domain at bits [47:40]
               ((u64)0x11 << 32) |                        // Command at bits [39:32]
               ((u64)(offset_encoded & 0x7FF) << 21);     // Voltage offset at bits [31:21]
 
-    err = wrmsr_safe(MSR_VOLTAGE_OFFSET, (u32)msr_val, (u32)(msr_val >> 32));
+    wrmsr_safe(MSR_VOLTAGE_OFFSET, (const u32)msr_val, (const u32)(msr_val >> 32));
 }
 
 static void read_voltage_offset_on_cpu(void *info)
 {
     struct read_msr_data *data = info;
-    u64 msr_val;
-    u32 low, high;
-    int err;
+    u32 low = 0, high = 0;
 
     // Construct read command for MSR 0x150
     // Command 0x10 = read voltage offset
-    msr_val = ((u64)1 << 63) |                      // Busy bit
-              ((u64)(data->plane & 0xFF) << 40) |   // Domain
-              ((u64)0x10 << 32);                    // Read command
+    const u64 msr_val = ((u64)1 << 63) |                      // Busy bit
+                        ((u64)(data->plane & 0xFF) << 40) |   // Domain
+                        ((u64)0x10 << 32);                    // Read command
 
     // Write read command
-    err = wrmsr_safe(MSR_OC_MAILBOX, (u32)msr_val, (u32)(msr_val >> 32));
+    int err = wrmsr_safe(MSR_OC_MAILBOX, (u32)msr_val, (u32)(msr_val >> 32));
     if (err) {
         data->error = err;
         return;
@@ -171,36 +154,15 @@ static void read_voltage_offset_on_cpu(void *info)
 }
 
 /*
- * Read voltage offset limits from OC mailbox for a specific plane
- * Returns 0 on success, negative error code on failure
- */
-static int read_voltage_limits_for_plane(struct legion_intel_msr_private *intel_msr_private, int plane)
-{
-    // On both old and new CPUs, the 0x1A command either doesn't work or returns 0
-    // Using documented safe defaults is more reliable than trying to read limits
-    // The defaults are conservative values that work across all Intel generations
-    // Return success - limits are set by caller using DEFAULT values
-    return 0;
-}
-
-/*
 * Read voltage limits for all planes
 * Must be called with intel_msr_private->lock held or during initialization
 */
 static void read_voltage_limits(struct legion_intel_msr_private *intel_msr_private)
 {
-    int i;
-
-    for (i = 0; i < NUM_VOLTAGE_PLANES; i++)
+    for (int i = 0; i < NUM_VOLTAGE_PLANES; i++)
     {
         // Mark all planes as write-supported by default
         intel_msr_private->plane_limits[i].write_supported = 1;
-        
-        if (read_voltage_limits_for_plane(intel_msr_private, i)) {
-        	// Fall back to defaults if reading limits fails
-        	intel_msr_private->plane_limits[i].max_undervolt_uv = DEFAULT_MAX_UNDERVOLT_UV;
-        	intel_msr_private->plane_limits[i].max_overvolt_uv  = DEFAULT_MAX_OVERVOLT_UV;
-        }
     }
     
     // Core Ultra CPUs (Arrow Lake: 0xC5, 0xC6, 0xB5 and Meteor Lake: 0xAA, 0xAC) don't support 
@@ -220,8 +182,8 @@ static void read_voltage_limits(struct legion_intel_msr_private *intel_msr_priva
  */
 static int legion_intel_msr_check_msr_availability(struct legion_intel_msr_private *intel_msr_private)
 {
-    u32 low, high;
-    int err;
+    u32 low     = 0,
+        high    = 0;
 
     // Check if we're on an Intel CPU
     if (boot_cpu_data.x86_vendor != X86_VENDOR_INTEL) {
@@ -234,7 +196,7 @@ static int legion_intel_msr_check_msr_availability(struct legion_intel_msr_priva
     }
 
     // Try to read MSR 0x150 to verify it exists
-    err = rdmsr_safe_on_cpu(0, MSR_OC_MAILBOX, &low, &high);
+    const int err = rdmsr_safe_on_cpu(0, MSR_OC_MAILBOX, &low, &high);
     if (err) {
         return -ENODEV;
     }
@@ -246,7 +208,7 @@ static int legion_intel_msr_check_msr_availability(struct legion_intel_msr_priva
 }
 
 
-int legion_intel_msr_offset_read_show(struct legion_intel_msr_private *intel_msr_private,int plane, int* offset_uv)
+ssize_t legion_intel_msr_offset_read_show(struct legion_intel_msr_private *intel_msr_private,const int plane,int* offset_uv)
 {
     struct read_msr_data data;
 
@@ -271,13 +233,12 @@ int legion_intel_msr_offset_read_show(struct legion_intel_msr_private *intel_msr
 /*
  * Apply voltage offset to all CPUs for a given plane
  */
-int legion_intel_msr_apply_voltage_offset(struct legion_intel_msr_private *intel_msr_private, int plane, int offset_uv)
+ssize_t legion_intel_msr_apply_voltage_offset(struct legion_intel_msr_private *intel_msr_private,const int plane,const int offset_uv)
 {
     struct {
         int plane;
         int offset_uv;
     } data;
-    int ret;
 
     data.plane = plane;
     data.offset_uv = offset_uv;
@@ -289,7 +250,7 @@ int legion_intel_msr_apply_voltage_offset(struct legion_intel_msr_private *intel
         return -EOPNOTSUPP;  // Operation not supported
     }
 
-    ret = validate_offset(intel_msr_private, data.plane, data.offset_uv);
+    const ssize_t ret = validate_offset(intel_msr_private, data.plane, data.offset_uv);
     if (ret < 0)
         return ret;
 

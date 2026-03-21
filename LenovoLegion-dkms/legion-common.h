@@ -18,8 +18,6 @@
 #include "legion-rapl.h"
 
 #include <linux/device.h>
-#include <linux/mutex.h>
-#include <linux/platform_profile.h>
 #include <linux/version.h>
 
 #include "legion-rapl-mmio.h"

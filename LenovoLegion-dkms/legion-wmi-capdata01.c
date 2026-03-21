@@ -82,14 +82,12 @@ static const struct component_ops legion_wmi_cd01_component_ops = {
  */
 int legion_wmi_cd01_get_data(struct legion_wmi_cd01_list *list, u32 attribute_id, struct legion_wmi_capdata01 *output)
 {
-	u8 idx = 0;
-
     if (!list)
         return -ENODEV;
 
     guard(mutex)(&list->list_mutex);
 
-	for (idx = 0; idx < list->count; idx++) {
+	for (u8 idx = 0; idx < list->count; idx++) {
 		if (list->data[idx].id != attribute_id)
 			continue;
 		memcpy(output, &list->data[idx], sizeof(list->data[idx]));
@@ -109,10 +107,8 @@ int legion_wmi_cd01_get_data(struct legion_wmi_cd01_list *list, u32 attribute_id
  */
 static int legion_wmi_cd01_cache(struct legion_wmi_cd01_priv *priv)
 {
-	int idx;
-
 	guard(mutex)(&priv->list->list_mutex);
-	for (idx = 0; idx < priv->list->count; idx++) {
+	for (u8 idx = 0; idx < priv->list->count; idx++) {
 		union acpi_object *ret_obj __free(kfree) = NULL;
 
 		ret_obj = wmidev_block_query(priv->wdev, idx);
@@ -142,17 +138,14 @@ static int legion_wmi_cd01_cache(struct legion_wmi_cd01_priv *priv)
 static int legion_wmi_cd01_alloc(struct legion_wmi_cd01_priv *priv)
 {
 	struct legion_wmi_cd01_list *list = NULL;
-	size_t list_size = 0;
-	int count = 0, ret = 0;
-
-	count = wmidev_instance_count(priv->wdev);
-	list_size = struct_size(list, data, count);
+	const int count = wmidev_instance_count(priv->wdev);
+	const size_t list_size = struct_size(list, data, count);
 
 	list = devm_kzalloc(&priv->wdev->dev, list_size, GFP_KERNEL);
 	if (!list)
 		return -ENOMEM;
 
-	ret = devm_mutex_init(&priv->wdev->dev, &list->list_mutex);
+	const int ret = devm_mutex_init(&priv->wdev->dev, &list->list_mutex);
 	if (ret)
 		return ret;
 
@@ -174,9 +167,7 @@ static int legion_wmi_cd01_alloc(struct legion_wmi_cd01_priv *priv)
  */
 static int legion_wmi_cd01_setup(struct legion_wmi_cd01_priv *priv)
 {
-	int ret;
-
-	ret = legion_wmi_cd01_alloc(priv);
+	const int ret = legion_wmi_cd01_alloc(priv);
 	if (ret)
 		return ret;
 
@@ -188,7 +179,6 @@ static int legion_wmi_cd01_probe(struct wmi_device *wdev, const void *context)
 
 {
 	struct legion_wmi_cd01_priv *priv = NULL;
-	int ret = 0;
 
 	priv = devm_kzalloc(&wdev->dev, sizeof(*priv), GFP_KERNEL);
 	if (!priv)
@@ -200,7 +190,7 @@ static int legion_wmi_cd01_probe(struct wmi_device *wdev, const void *context)
 
 	dev_set_drvdata(&wdev->dev, priv);
 
-	ret = legion_wmi_cd01_setup(priv);
+	const int ret = legion_wmi_cd01_setup(priv);
 	if (ret)
 		return ret;
 
