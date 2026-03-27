@@ -15,6 +15,9 @@
 #include "SysFsDriverCPUXList.h"
 #include "SysFsDriverLegion.h"
 #include "SysFsDriverLegionEvents.h"
+#include "SysFsDriverLegionOther.h"
+#include "SysFSDriverLegionIntelMSR.h"
+#include "SysFSDriverLegionFanMode.h"
 
 #include "../LenovoLegion-PrepareBuild/Notification.pb.h"
 
@@ -100,6 +103,7 @@ void ProtocolProcessorNotifier::kernelEventHandler(const LenovoLegionDaemon::Sys
             if(static_cast<SysFsDriverLegionEvents::LegionVmiEventType>(QString(event.m_DriverSpecificEventType.data()).toInt()) == SysFsDriverLegionEvents::LegionVmiEventType::LEGION_WMI_EVENT_KEYLOCK_STATUS)
             {
                 msg.set_action(legion::messages::Notification::KEYLOCK_STATUS_CHANGE);
+                msg.set_key_lock_key(static_cast<legion::messages::Notification_KeylockDisabledBit>(QString(event.m_DriverSpecificEventValue.data()).toUInt()));
             }
 
             if(static_cast<SysFsDriverLegionEvents::LegionVmiEventType>(QString(event.m_DriverSpecificEventType.data()).toInt()) == SysFsDriverLegionEvents::LegionVmiEventType::LENOVO_WMI_EVENT_UTILITY)
@@ -115,6 +119,48 @@ void ProtocolProcessorNotifier::kernelEventHandler(const LenovoLegionDaemon::Sys
         }
     }
 
+    if(event.m_driverName == SysFsDriverLegionOther::DRIVER_NAME)
+    {
+        if(event.m_action == SysFsDriver::SubsystemEvent::Action::CHANGED)
+        {
+            if(static_cast<SysFsDriverLegionOther::LegionVmiOtherEventType>(QString(event.m_DriverSpecificEventType.data()).toInt()) == SysFsDriverLegionOther::LegionVmiOtherEventType::LENOVO_WMI_OTHER_CPU_STP    ||
+               static_cast<SysFsDriverLegionOther::LegionVmiOtherEventType>(QString(event.m_DriverSpecificEventType.data()).toInt()) == SysFsDriverLegionOther::LegionVmiOtherEventType::LENOVO_WMI_OTHER_CPU_LTP    ||
+               static_cast<SysFsDriverLegionOther::LegionVmiOtherEventType>(QString(event.m_DriverSpecificEventType.data()).toInt()) == SysFsDriverLegionOther::LegionVmiOtherEventType::LENOVO_WMI_OTHER_CPU_PP     ||
+               static_cast<SysFsDriverLegionOther::LegionVmiOtherEventType>(QString(event.m_DriverSpecificEventType.data()).toInt()) == SysFsDriverLegionOther::LegionVmiOtherEventType::LENOVO_WMI_OTHER_CPU_TMP    ||
+               static_cast<SysFsDriverLegionOther::LegionVmiOtherEventType>(QString(event.m_DriverSpecificEventType.data()).toInt()) == SysFsDriverLegionOther::LegionVmiOtherEventType::LENOVO_WMI_OTHER_CPU_CLP    ||
+               static_cast<SysFsDriverLegionOther::LegionVmiOtherEventType>(QString(event.m_DriverSpecificEventType.data()).toInt()) == SysFsDriverLegionOther::LegionVmiOtherEventType::LENOVO_WMI_OTHER_CPU_PL1_TAU||
+               static_cast<SysFsDriverLegionOther::LegionVmiOtherEventType>(QString(event.m_DriverSpecificEventType.data()).toInt()) == SysFsDriverLegionOther::LegionVmiOtherEventType::LENOVO_WMI_OTHER_APU_PPT    ||
+               static_cast<SysFsDriverLegionOther::LegionVmiOtherEventType>(QString(event.m_DriverSpecificEventType.data()).toInt()) == SysFsDriverLegionOther::LegionVmiOtherEventType::LENOVO_WMI_OTHER_GPU_PB     ||
+               static_cast<SysFsDriverLegionOther::LegionVmiOtherEventType>(QString(event.m_DriverSpecificEventType.data()).toInt()) == SysFsDriverLegionOther::LegionVmiOtherEventType::LENOVO_WMI_OTHER_GPU_TAC    ||
+               static_cast<SysFsDriverLegionOther::LegionVmiOtherEventType>(QString(event.m_DriverSpecificEventType.data()).toInt()) == SysFsDriverLegionOther::LegionVmiOtherEventType::LENOVO_WMI_OTHER_GPU_TGP    ||
+               static_cast<SysFsDriverLegionOther::LegionVmiOtherEventType>(QString(event.m_DriverSpecificEventType.data()).toInt()) == SysFsDriverLegionOther::LegionVmiOtherEventType::LENOVO_WMI_OTHER_GPU_TMP)
+            {
+
+                msg.set_action(legion::messages::Notification::POWER_CONTROL_CHANGED);
+            }
+
+            if(static_cast<SysFsDriverLegionOther::LegionVmiOtherEventType>(QString(event.m_DriverSpecificEventType.data()).toInt()) == SysFsDriverLegionOther::LegionVmiOtherEventType::LENOVO_WMI_OTHER_FF_S)
+            {
+                msg.set_action(legion::messages::Notification::FAN_CURVE_CHANGED);
+            }
+        }
+    }
+
+    if(event.m_driverName == SysFSDriverLegionIntelMSR::DRIVER_NAME)
+    {
+        if(event.m_action == SysFsDriver::SubsystemEvent::Action::CHANGED)
+        {
+            msg.set_action(legion::messages::Notification::CPU_OFFSET_CHANGED);
+        }
+    }
+
+    if(event.m_driverName == SysFSDriverLegionFanMode::DRIVER_NAME)
+    {
+        if(event.m_action == SysFsDriver::SubsystemEvent::Action::CHANGED)
+        {
+            msg.set_action(legion::messages::Notification::FAN_CURVE_CHANGED);
+        }
+    }
 
     if(msg.has_action())
     {
@@ -134,7 +180,7 @@ void ProtocolProcessorNotifier::kernelEventHandler(const LenovoLegionDaemon::Sys
             .m_dataLength   = data.length()
         },data));
 
-        LOG_T("ProtocolProcessorNotifier: Notification sent !");
+        LOG_D("ProtocolProcessorNotifier: Notification sent !");
     }
 }
 

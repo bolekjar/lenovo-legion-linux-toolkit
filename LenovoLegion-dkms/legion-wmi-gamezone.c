@@ -5,18 +5,16 @@
  * Author(s):
  *   Jaroslav Bolek <jaroslav.bolek@gmail.com>
  */
+#include "legion-common.h"
 #include "legion-wmi-gamezone.h"
 #include "legion-wmi-events.h"
 #include "legion-wmi-helpers.h"
 #include "legion-wmi-gamezone-sysfs.h"
 #include "legion-wmi-other.h"
 #include "legion-wmi-fm.h"
-#include "legion-hwmon.h"
 
 #include <linux/acpi.h>
 #include <linux/dmi.h>
-#include <linux/export.h>
-#include <linux/list.h>
 #include <linux/module.h>
 #include <linux/types.h>
 #include <linux/wmi.h>

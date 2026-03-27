@@ -70,6 +70,9 @@ QByteArray SysFsDataProviderFanOption::deserializeAndSetData(const QByteArray &d
         THROW_EXCEPTION(exception_T,DataProvider::ERROR_CODES::INVALID_DATA,"Parse of data message error !");
     }
 
+    m_sysFsDriverManager->blockKernelEvent(SysFsDriverLegionOther::DRIVER_NAME,true);
+    auto cleanup =  qScopeGuard([this] { m_sysFsDriverManager->blockKernelEvent(SysFsDriverLegionOther::DRIVER_NAME,false); });
+    \
     if(fanOptionMsg.has_full_speed()) {
 
         if(getData(other.m_fan_full_speed.m_supported).toUShort() > 0)
@@ -77,6 +80,8 @@ QByteArray SysFsDataProviderFanOption::deserializeAndSetData(const QByteArray &d
             setData(other.m_fan_full_speed.m_current_value,fanOptionMsg.full_speed().current_value());
         }
     }
+
+    m_sysFsDriverManager->processAllUdevEvents(100);
 
     return {};
 }

@@ -30,25 +30,7 @@ OtherControl::OtherControl(DataProvider *dataProvider, QWidget *parent)
     ui->setupUi(this);
 
     /*
-     * Read data
-     */
-    m_otherSettingsData = m_dataProvider->getDataMessage<legion::messages::OtherSettings>(
-        LenovoLegionDaemon::SysFsDataProviderOther::dataType);
-    m_gpuSwitchData = m_dataProvider->getDataMessage<legion::messages::GpuSwitchValue>(
-        LenovoLegionDaemon::SysFsDataProviderOtherGpuSwitch::dataType);
-
-    /*
-     * Check data availability
-     */
-    if(!m_otherSettingsData.has_touch_pad() ||
-       !m_otherSettingsData.has_win_key()
-        )
-    {
-        THROW_EXCEPTION(exception_T, ERROR_CODES::DATA_NOT_READY, "Other Settings data not available");
-    }
-
-    /*
-     * Render data
+     * Refresh data
      */
     refresh();
 }
@@ -60,6 +42,24 @@ OtherControl::~OtherControl()
 
 void OtherControl::refresh()
 {
+    /*
+     * Read data
+     */
+    m_otherSettingsData = m_dataProvider->getDataMessage<legion::messages::OtherSettings>(
+        LenovoLegionDaemon::SysFsDataProviderOther::dataType);
+    m_gpuSwitchData = m_dataProvider->getDataMessage<legion::messages::GpuSwitchValue>(
+        LenovoLegionDaemon::SysFsDataProviderOtherGpuSwitch::dataType);
+
+    /*
+     * Check data availability
+     */
+    if(!m_otherSettingsData.has_touch_pad() ||
+        !m_otherSettingsData.has_win_key()
+        )
+    {
+        THROW_EXCEPTION(exception_T, ERROR_CODES::DATA_NOT_READY, "Other Settings data not available");
+    }
+
     renderData();
     renderGpuSwitchData();
 }

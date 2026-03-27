@@ -5,11 +5,11 @@
  * Author(s):
  *   Jaroslav Bolek <jaroslav.bolek@gmail.com>
  */
+#include "legion-common.h"
 #include "legion-wmi-events.h"
 #include "legion-wmi-gamezone.h"
 
 #include <linux/acpi.h>
-#include <linux/export.h>
 #include <linux/module.h>
 #include <linux/notifier.h>
 #include <linux/types.h>
@@ -24,7 +24,7 @@
 #define UTILITY_GUID    		"8fc0de0c-b4e4-43fd-b0f3-8871711c1294"
 
 #define LEGION_WMI_EVENT_DEVICE(guid, type)                        \
-	.guid_string = (guid), .context = &(enum legion_wmi_events_type) \
+	.guid_string = (guid), .context = &(enum legion_events_type) \
 	{                                                          \
 		type                                               \
 	}
@@ -33,7 +33,7 @@ static BLOCKING_NOTIFIER_HEAD(events_chain_head);
 
 struct legion_wmi_events_priv {
 	struct wmi_device *wdev;
-	enum legion_wmi_events_type type;
+	enum legion_events_type type;
 };
 
 /**
@@ -203,7 +203,7 @@ static int legion_wmi_events_probe(struct wmi_device *wdev, const void *context)
 		return -ENOMEM;
 
 	priv->wdev = wdev;
-	priv->type = *(enum legion_wmi_events_type *)context;
+	priv->type = *(enum legion_events_type *)context;
 	dev_set_drvdata(&wdev->dev, priv);
 
 	return 0;

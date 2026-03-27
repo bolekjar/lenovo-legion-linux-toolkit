@@ -246,17 +246,19 @@ static ssize_t legion_wmi_other_cap00_attr_show(struct kobject *kobj,struct kobj
  */
 static ssize_t legion_wmi_attr_current_value_store(struct kobject *kobj,
 					struct kobj_attribute *kattr,
-					const char *buf,const  size_t count,const u32 attribute_id)
+					const char *buf,const  size_t count,const u32 attribute_id,const enum legion_events_type event_type_name)
 {
 	const struct legion_wmi_other_priv *priv = dev_get_drvdata(kobj_to_dev(kobj->parent));
-	u32 attribute_id_raw = attribute_id  & (~LEGION_WMI_MODE_ID_MASK);
+	const u32 attribute_id_raw = attribute_id  & (~LEGION_WMI_MODE_ID_MASK);
 
 	struct wmi_method_args_32 args;
 	struct legion_wmi_capdata01 capdata;
 	enum thermal_mode mode;
+	char event_type[64] = {0};
+	char event_value[64] = {0};
+	char *envp[] = { event_type, event_value ,NULL };
 
-	u32 value;
-
+	u32 value = 0;
 
 	int ret = legion_wmi_other_notifier_call(&mode,LEGION_WMI_GZ_GET_THERMAL_MODE);
 	if (ret)
@@ -310,16 +312,27 @@ static ssize_t legion_wmi_attr_current_value_store(struct kobject *kobj,
 	if (ret)
 		return ret;
 
+	sprintf(event_type,"EVENT_TYPE=%u",(unsigned int)event_type_name);
+	sprintf(event_value,"EVENT_VALUE=%u",value);
+
+	if (kobject_uevent_env(&priv->wdev->dev.kobj, KOBJ_CHANGE,envp))
+	{
+		dev_err(&priv->wdev->dev, "Failed to send uevent for attribute change\n");
+	}
+
 	return (ssize_t)count;
 };
 
 
 static ssize_t legion_wmi_attr_current_value_store_min_max(struct kobject *kobj,
 					struct kobj_attribute *kattr,
-					const char *buf,const size_t count,const u32 attribute_id,const int min,const int max)
+					const char *buf,const size_t count,const u32 attribute_id,const int min,const int max,const enum legion_events_type event_type_name)
 {
 	const struct legion_wmi_other_priv *priv = dev_get_drvdata(kobj_to_dev(kobj->parent));
 	const u32 attribute_id_raw = attribute_id  & (~LEGION_WMI_MODE_ID_MASK);
+	char event_type[64] = {0};
+	char event_value[64] = {0};
+	char *envp[] = { event_type, event_value ,NULL };
 
 	struct wmi_method_args_32 args;
 	struct legion_wmi_capdata00 capdata = {0,0,0};
@@ -349,6 +362,14 @@ static ssize_t legion_wmi_attr_current_value_store_min_max(struct kobject *kobj,
 				    (unsigned char *)&args, sizeof(args), NULL);
 	if (ret)
 		return ret;
+
+	sprintf(event_type,"EVENT_TYPE=%u",(unsigned int)event_type_name);
+	sprintf(event_value,"EVENT_VALUE=%u",value);
+
+	if (kobject_uevent_env(&priv->wdev->dev.kobj, KOBJ_CHANGE,envp))
+	{
+		dev_err(&priv->wdev->dev, "Failed to send uevent for attribute change\n");
+	}
 
 	return (ssize_t)count;
 };
@@ -411,13 +432,13 @@ static ssize_t legion_wmi_attr_current_value_show(struct kobject *kobj,
 	LEGION_WMI_ATTR_RO(_attrname, _func)
 
 /* Attribute current value read/write */
-#define LEGION_WMI_CURRENT_VALUE(_attrname,_func,_attr_id)                         	\
+#define LEGION_WMI_CURRENT_VALUE(_attrname,_func,_attr_id,_name_notify)                         	\
 	static ssize_t func_##_func##_set(                        							\
 		struct kobject *kobj, struct kobj_attribute *kattr,            					\
 		const char *buf, size_t count)                                 					\
 	{                                                                      				\
 		return legion_wmi_attr_current_value_store(kobj, kattr, buf, count,      		\
-				_attr_id);                   											\
+				_attr_id,_name_notify);                   											\
 	}                                                                      				\
 	static ssize_t func_##_func##_get(                         						    \
 		struct kobject *kobj, struct kobj_attribute *kattr, char *buf) 					\
@@ -428,13 +449,13 @@ static ssize_t legion_wmi_attr_current_value_show(struct kobject *kobj,
 	LEGION_WMI_ATTR_RW(_attrname, _func)
 
 /* Attribute current value read/write */
-#define LEGION_WMI_CURRENT_MIN_MAX(_attrname,_func,_attr_id,_min,_max)   				\
+#define LEGION_WMI_CURRENT_MIN_MAX(_attrname,_func,_attr_id,_min,_max,_name_notify)   				\
 	static ssize_t func_##_func##_set(                        							\
 		struct kobject *kobj, struct kobj_attribute *kattr,            					\
 		const char *buf, size_t count)                                 					\
 	{                                                                      				\
 		return legion_wmi_attr_current_value_store_min_max(kobj, kattr, buf, count,		\
-				_attr_id,_min,_max);                   									\
+				_attr_id,_min,_max,_name_notify);                   									\
 	}                                                                      				\
 	static ssize_t func_##_func##_get(                         						    \
 		struct kobject *kobj, struct kobj_attribute *kattr, char *buf) 					\
@@ -445,14 +466,14 @@ static ssize_t legion_wmi_attr_current_value_show(struct kobject *kobj,
 	LEGION_WMI_ATTR_RW(_attrname, _func)
 
 
-#define LEGION_WMI_OTHER_CAP01(_attrname,_attr_id,_name) \
+#define LEGION_WMI_OTHER_CAP01(_attrname,_attr_id,_name,_name_notify) \
 LEGION_WMI_RO_CAP01(default_value,_attrname##_default_value,DEFAULT_VAL,_attr_id);\
 LEGION_WMI_RO_CAP01(max_value,_attrname##_max_value,MAX_VAL,_attr_id);\
 LEGION_WMI_RO_CAP01(min_value,_attrname##_min_value,MIN_VAL,_attr_id);\
 LEGION_WMI_RO_CAP01(scalar_increment,_attrname##_scalar_increment,STEP_VAL,_attr_id);\
 LEGION_WMI_RO_CAP01(steps,_attrname##_steps,STEPS_VAL,_attr_id);\
 LEGION_WMI_RO_CAP01(supported,_attrname##_supported,SUPPORTED,_attr_id);\
-LEGION_WMI_CURRENT_VALUE(current_value,_attrname##_current_value,_attr_id);\
+LEGION_WMI_CURRENT_VALUE(current_value,_attrname##_current_value,_attr_id,_name_notify);\
 LEGION_WMI_KOBJ_ATTR_RO_STATIC_STRING(type,"integer",_attrname##_type);\
 LEGION_WMI_KOBJ_ATTR_RO_STATIC_STRING(display_name,_name,_attrname##_display_name);\
 \
@@ -469,10 +490,10 @@ static struct attribute *legion_sysfs_##_attrname##_attributes[] = {\
 	NULL\
 };
 
-#define LEGION_WMI_OTHER_CAP0(_attrname,_attr_id,_name,_value_type,_min,_max) \
+#define LEGION_WMI_OTHER_CAP0(_attrname,_attr_id,_name,_value_type,_min,_max,_name_notify) \
 LEGION_WMI_RO_CAP00(default_value,_attrname##_default_value,DEFAULT_VAL,_attr_id);\
 LEGION_WMI_RO_CAP00(supported,_attrname##_supported,SUPPORTED,_attr_id);\
-LEGION_WMI_CURRENT_MIN_MAX(current_value,_attrname##_current_value,_attr_id,_min,_max);\
+LEGION_WMI_CURRENT_MIN_MAX(current_value,_attrname##_current_value,_attr_id,_min,_max,_name_notify);\
 LEGION_WMI_KOBJ_ATTR_RO_STATIC_STRING(type,_value_type,_attrname##_type);\
 LEGION_WMI_KOBJ_ATTR_RO_STATIC_STRING(display_name,_name,_attrname##_display_name);\
 \
@@ -484,64 +505,6 @@ static struct attribute *legion_sysfs_##_attrname##_attributes[] = {\
 	&kobj_attr_##_attrname##_display_name.attr,\
 	NULL\
 };
-
-
-
-
-#define LEGION_WMI_OTHER_RW_VALUE(_attrname,_func,_attr_id,_possible_states)\
-static ssize_t func_##_func##_set(\
-	struct kobject *kobj, struct kobj_attribute *kattr,\
-	const char *buf, size_t count)\
-{\
-	int ret,value;\
-\
-	ret = kstrtouint(buf, 10, &value);\
-	if (ret)\
-		return ret;\
-\
-	for (size_t i = 0; i < sizeof(_possible_states)/sizeof(_possible_states[0]);++i)\
-	{\
-		if(value == _possible_states[i])\
-		{\
-			struct legion_wmi_other_priv *priv = dev_get_drvdata(kobj_to_dev(kobj->parent));\
-			struct wmi_method_args_32 args;\
-\
-			args.arg0 = _attr_id;\
-			args.arg1 = value;\
-\
-			ret = legion_wmi_dev_evaluate_int(priv->wdev, 0x0, LEGION_WMI_OTHER_FEATURE_VALUE_SET,\
-						    (unsigned char *)&args, sizeof(args), NULL);\
-			if (ret)\
-				return ret;\
-\
-			return count;\
-		}\
-\
-	}\
-	return -EINVAL;\
-}\
-static ssize_t func_##_func##_get(struct kobject *kobj, struct kobj_attribute *kattr, char *buf)\
-{\
-	struct legion_wmi_other_priv *priv = dev_get_drvdata(kobj_to_dev(kobj->parent));\
-\
-	struct wmi_method_args_32 args;\
-	int ret;\
-	int retval;\
-\
-	args.arg0 = _attr_id;\
-\
-	ret = legion_wmi_dev_evaluate_int(priv->wdev, 0x0, LEGION_WMI_OTHER_FEATURE_VALUE_GET,\
-				    (unsigned char *)&args, sizeof(args),\
-				    &retval);\
-	if (ret) {\
-		return ret;\
-	}\
-\
-	return sysfs_emit(buf, "%d\n", retval);\
-}\
-static struct kobj_attribute kobj_attr_##_func##_prop =        					    \
-LEGION_WMI_ATTR_RW(_attrname, _func)
-
 
 #define LEGION_WMI_OTHER_RO_VALUE(_attrname,_func,_attr_id)\
 static ssize_t func_##_func##_show(struct kobject *kobj, struct kobj_attribute *kattr, char *buf)\
@@ -570,37 +533,37 @@ LEGION_WMI_ATTR_RO(_attrname, _func)
 /*
  * CPU CAP01
  */
-LEGION_WMI_OTHER_CAP01(cpu_stp_limit,CPUShortTermPowerLimit,"Set the CPU short term power limit");
-LEGION_WMI_OTHER_CAP01(cpu_ltp_limit,CPULongTermPowerLimit,"Set the CPU long term power limit");
-LEGION_WMI_OTHER_CAP01(cpu_pp_limit,CPUPeakPowerLimit,"Set the CPU peak power limit");
-LEGION_WMI_OTHER_CAP01(cpu_tmp_limit,CPUTemperatureLimit ,"Set the CPU temperature limit");
-LEGION_WMI_OTHER_CAP01(apus_pptp_limit,APUsPPTPowerLimit ,"Set the APUs ppt power limit");
-LEGION_WMI_OTHER_CAP01(cpu_clp_limit,CPUCrossLoadingPowerLimit ,"Set the CPU cross loading power limit");
-LEGION_WMI_OTHER_CAP01(cpu_pl1_tau,CPUPL1Tau,"Set the CPU PL1 Tau limit");
+LEGION_WMI_OTHER_CAP01(cpu_stp_limit,CPUShortTermPowerLimit,"Set the CPU short term power limit",LENOVO_WMI_OTHER_CPU_STP);
+LEGION_WMI_OTHER_CAP01(cpu_ltp_limit,CPULongTermPowerLimit,"Set the CPU long term power limit",LENOVO_WMI_OTHER_CPU_LTP);
+LEGION_WMI_OTHER_CAP01(cpu_pp_limit,CPUPeakPowerLimit,"Set the CPU peak power limit",LENOVO_WMI_OTHER_CPU_PP);
+LEGION_WMI_OTHER_CAP01(cpu_tmp_limit,CPUTemperatureLimit ,"Set the CPU temperature limit",LENOVO_WMI_OTHER_CPU_TMP);
+LEGION_WMI_OTHER_CAP01(apus_pptp_limit,APUsPPTPowerLimit ,"Set the APUs ppt power limit",LENOVO_WMI_OTHER_APU_PPT);
+LEGION_WMI_OTHER_CAP01(cpu_clp_limit,CPUCrossLoadingPowerLimit ,"Set the CPU cross loading power limit",LENOVO_WMI_OTHER_CPU_CLP);
+LEGION_WMI_OTHER_CAP01(cpu_pl1_tau,CPUPL1Tau,"Set the CPU PL1 Tau limit",LENOVO_WMI_OTHER_CPU_PL1_TAU);
 
 
 /*
  * GPU CAP01
  */
-LEGION_WMI_OTHER_CAP01(gpu_power_boost,GPUPowerBoost,"Set the GPU power boost");
-LEGION_WMI_OTHER_CAP01(gpu_configurable_tgp,GPUConfigurableTGP,"Set the GPU configurable TGP");
-LEGION_WMI_OTHER_CAP01(gpu_temperature_limit,GPUTemperatureLimit,"Set the GPU temperature limit");
-LEGION_WMI_OTHER_CAP01(gpu_total_onac,GPUTotalProcessingPowerTargetOnAcOffsetFromBaseline ,"Set the GPU total processing power target on AC offset from base line limit");
-LEGION_WMI_OTHER_CAP01(gpu_to_cpu_dynamic_boost,GPUToCPUDynamicBoost ,"Set the GPU To CPU dynamic boost");
+LEGION_WMI_OTHER_CAP01(gpu_power_boost,GPUPowerBoost,"Set the GPU power boost",LENOVO_WMI_OTHER_GPU_PB);
+LEGION_WMI_OTHER_CAP01(gpu_configurable_tgp,GPUConfigurableTGP,"Set the GPU configurable TGP",LENOVO_WMI_OTHER_GPU_TGP);
+LEGION_WMI_OTHER_CAP01(gpu_temperature_limit,GPUTemperatureLimit,"Set the GPU temperature limit",LENOVO_WMI_OTHER_GPU_TMP);
+LEGION_WMI_OTHER_CAP01(gpu_total_onac,GPUTotalProcessingPowerTargetOnAcOffsetFromBaseline ,"Set the GPU total processing power target on AC offset from base line limit",LENOVO_WMI_OTHER_GPU_TAC);
+LEGION_WMI_OTHER_CAP01(gpu_to_cpu_dynamic_boost,GPUToCPUDynamicBoost ,"Set the GPU To CPU dynamic boost",LENOVO_WMI_OTHER_GC_DB);
 
 /*
  * CAP00
  */
-LEGION_WMI_OTHER_CAP0(igpu_mode,IGPUMode,"IGPU mode","integer",0,2)
-LEGION_WMI_OTHER_CAP0(instant_boot_ac,InstantBootAc,"Instant Boot","boolean",0,1)
-LEGION_WMI_OTHER_CAP0(instant_boot_usb_power_delivery,InstantBootUsbPowerDelivery,"Instant boot USB power delivery","boolean",0,1)
-LEGION_WMI_OTHER_CAP0(fan_full_speed,FanFullSpeed,"Fan Full Speed","boolean",0,1)
-LEGION_WMI_OTHER_CAP0(over_drive,OverDrive,"Over Drive","boolean",0,1)
-LEGION_WMI_OTHER_CAP0(god_mode_fnq_switchable,GodModeFnQSwitchable,"God mode FN+Q switchable","boolean",0,1)
-LEGION_WMI_OTHER_CAP0(nvidia_gpu_dd_switching,NvidiaGPUDynamicDisplaySwitching,"NVIDIDA GPU dynamic switching","boolean",0,1)
-LEGION_WMI_OTHER_CAP0(flip_to_start,FlipToStart,"Flip to start","boolean",0,1)
-LEGION_WMI_OTHER_CAP0(skin_temperature_tracking,AMDSkinTemperatureTracking,"AMD Skin temperature tracking","boolean",0,1)
-LEGION_WMI_OTHER_CAP0(smart_shiftmode,AMDSmartShiftMode,"AMD Smart shift mode","boolean",0,1)
+LEGION_WMI_OTHER_CAP0(igpu_mode,IGPUMode,"IGPU mode","integer",0,2,LENOVO_WMI_OTHER_IGPU_M)
+LEGION_WMI_OTHER_CAP0(instant_boot_ac,InstantBootAc,"Instant Boot","boolean",0,1,LENOVO_WMI_OTHER_IB_AC)
+LEGION_WMI_OTHER_CAP0(instant_boot_usb_power_delivery,InstantBootUsbPowerDelivery,"Instant boot USB power delivery","boolean",0,1,LENOVO_WMI_OTHER_IB_UPD)
+LEGION_WMI_OTHER_CAP0(fan_full_speed,FanFullSpeed,"Fan Full Speed","boolean",0,1,LENOVO_WMI_OTHER_FF_S)
+LEGION_WMI_OTHER_CAP0(over_drive,OverDrive,"Over Drive","boolean",0,1,LENOVO_WMI_OTHER_OD)
+LEGION_WMI_OTHER_CAP0(god_mode_fnq_switchable,GodModeFnQSwitchable,"God mode FN+Q switchable","boolean",0,1,LENOVO_WMI_OTHER_GM_FNQ)
+LEGION_WMI_OTHER_CAP0(nvidia_gpu_dd_switching,NvidiaGPUDynamicDisplaySwitching,"NVIDIDA GPU dynamic switching","boolean",0,1,LENOVO_WMI_OTHER_NG_DDS)
+LEGION_WMI_OTHER_CAP0(flip_to_start,FlipToStart,"Flip to start","boolean",0,1,LENOVO_WMI_OTHER_FL_ST)
+LEGION_WMI_OTHER_CAP0(skin_temperature_tracking,AMDSkinTemperatureTracking,"AMD Skin temperature tracking","boolean",0,1,LENOVO_WMI_OTHER_AMD_STT)
+LEGION_WMI_OTHER_CAP0(smart_shiftmode,AMDSmartShiftMode,"AMD Smart shift mode","boolean",0,1,LENOVO_WMI_OTHER_SS_M)
 
 /*
  * Other Other Get

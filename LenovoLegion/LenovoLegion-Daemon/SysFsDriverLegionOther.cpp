@@ -84,7 +84,7 @@ void SysFsDriverLegionOther::handleKernelEvent(const KernelEvent::Event &event)
 
     if(m_blockKernelEvent)
     {
-        LOG_T(QString("Kernel event blocked for driver: ") + m_name);
+        LOG_D(QString("Kernel event blocked for driver: ") + m_name);
         return;
     }
 
@@ -101,6 +101,16 @@ void SysFsDriverLegionOther::handleKernelEvent(const KernelEvent::Event &event)
         if(event.m_action == "unbind")
         {
             clean();
+        }
+
+        if(event.m_action == "change")
+        {
+            emit kernelEvent({
+                .m_driverName = DRIVER_NAME,
+                .m_action = SubsystemEvent::Action::CHANGED,
+                .m_DriverSpecificEventType = event.m_properties.value("EVENT_TYPE", ""),
+                .m_DriverSpecificEventValue = event.m_properties.value("EVENT_VALUE", "")
+            });
         }
     }
 

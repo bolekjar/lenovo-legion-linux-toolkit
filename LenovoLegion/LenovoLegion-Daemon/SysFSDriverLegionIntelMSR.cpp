@@ -4,7 +4,7 @@
 
 namespace LenovoLegionDaemon {
 
-SysFSDriverLegionIntelMSR::SysFSDriverLegionIntelMSR(QObject *parrent) : SysFsDriver(DRIVER_NAME,"/sys/class/legion-intel-msr/intel-msr-0/",{},parrent,MODULE_NAME) {}
+SysFSDriverLegionIntelMSR::SysFSDriverLegionIntelMSR(QObject *parrent) : SysFsDriver(DRIVER_NAME,"/sys/class/legion-intel-msr/intel-msr-0/",{"legion-intel-msr",{}},parrent,MODULE_NAME) {}
 
 void SysFSDriverLegionIntelMSR::init()
 {
@@ -40,6 +40,26 @@ void SysFSDriverLegionIntelMSR::init()
         m_descriptor["uncore_max_undervolt"] = std::filesystem::path(m_path).append("uncore_max_undervolt");
         m_descriptor["uncore_offset"] = std::filesystem::path(m_path).append("uncore_offset");
         m_descriptor["uncore_offset_ctrl_supported"] = std::filesystem::path(m_path).append("uncore_offset_ctrl_supported");
+    }
+}
+
+void SysFSDriverLegionIntelMSR::handleKernelEvent(const KernelEvent::Event &event)
+{
+    LOG_D(__PRETTY_FUNCTION__ + QString(": Kernel event received ACTION=") + event.m_action + ", DRIVER=" + event.m_driver + ", SYSNAME=" + event.m_sysName + ", SUBSYSTEM=" + event.m_subSystem + ", DEVPATH=" + event.m_devPath);
+
+    if(event.m_driver == DRIVER_NAME)
+    {
+         LOG_D(QString("Legion Intel MSR driver received kernel event: ") + event.m_action + ", " + event.m_sysName);
+
+        if(event.m_action == "change")
+        {
+            emit kernelEvent({
+                .m_driverName = DRIVER_NAME,
+                .m_action = SubsystemEvent::Action::CHANGED,
+                .m_DriverSpecificEventType = event.m_properties.value("EVENT_TYPE", ""),
+                .m_DriverSpecificEventValue = event.m_properties.value("EVENT_VALUE", "")
+            });
+        }
     }
 }
 

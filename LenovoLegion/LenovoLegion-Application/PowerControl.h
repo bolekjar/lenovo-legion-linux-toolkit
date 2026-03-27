@@ -85,6 +85,7 @@ private slots:
 
 private:
 
+    void readData();
     void renderData();
 
     void renderCpuControlData();

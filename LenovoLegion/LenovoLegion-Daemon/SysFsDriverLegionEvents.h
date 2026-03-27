@@ -18,6 +18,7 @@ namespace LenovoLegionDaemon {
 class SysFsDriverLegionEvents : public SysFsDriver
 {
 public:
+
     enum LegionVmiEventType  : int
     {
         LENOVO_WMI_EVENT_UTILITY            = 0,

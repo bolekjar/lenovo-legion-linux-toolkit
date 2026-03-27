@@ -30,7 +30,6 @@ FanControl::FanControl(DataProvider *dataProvider, QWidget *parent)
 {
     ui->setupUi(this);
 
-    refreshData();
     refresh();
 }
 
@@ -41,6 +40,7 @@ FanControl::~FanControl()
 
 void FanControl::refresh()
 {
+    refreshData();
     renderData();
 }
 
@@ -449,7 +449,6 @@ void FanControl::on_pushButton_MaxSpeed_clicked()
     data.mutable_full_speed()->set_current_value(true);
 
     m_dataProvider->setDataMessage(LenovoLegionDaemon::SysFsDataProviderFanOption::dataType,data);
-    refreshData();
     refresh();
 }
 
@@ -460,7 +459,6 @@ void FanControl::on_pushButton_Custom_clicked()
     data.mutable_full_speed()->set_current_value(false);
 
     m_dataProvider->setDataMessage(LenovoLegionDaemon::SysFsDataProviderFanOption::dataType,data);
-    refreshData();
     refresh();
 }
 

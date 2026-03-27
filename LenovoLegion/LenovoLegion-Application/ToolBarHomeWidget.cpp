@@ -228,6 +228,20 @@ void ToolBarHomeWidget::dataProviderEvent(const legion::messages::Notification &
             refreshControlTabByName<OtherControl>(OtherControl::NAME,*ui->tabWidget_Controls);
         }
         break;
+        case legion::messages::Notification::POWER_CONTROL_CHANGED:
+        {
+            refreshControlTabByName<PowerControl>(PowerControl::NAME,*ui->tabWidget_Controls);
+        }
+        break;
+        case legion::messages::Notification::FAN_CURVE_CHANGED:
+        {
+            refreshControlTabByName<FanControl>(FanControl::NAME,*ui->tabWidget_Controls);
+        }
+        break;
+        case legion::messages::Notification::CPU_OFFSET_CHANGED:
+        {
+            refreshControlTabByName<OffsetsControl>(OffsetsControl::NAME,*ui->tabWidget_Controls);
+        }
         default:
         break;
     }

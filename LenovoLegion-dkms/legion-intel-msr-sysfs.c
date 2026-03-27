@@ -17,9 +17,38 @@
 
 static DEFINE_IDA(legion_intel_msr_sysfs_ida);
 
+static int legion_intel_msr_dev_uevent(const struct device *dev, struct kobj_uevent_env *env)
+{
+	return add_uevent_var(env, "DRIVER=legion-intel-msr");
+}
+
 const struct class legion_intel_msr_class = {
-	.name = "legion-intel-msr"
+	.name = "legion-intel-msr",
+	.dev_uevent = legion_intel_msr_dev_uevent,
 };
+
+
+
+static ssize_t send_event(struct device *dev,const enum legion_events_type type,const int value)
+{
+	char event_type[64]  = {0};
+	char event_value[64]  = {0};
+
+	sprintf(event_type,"EVENT_TYPE=%u",(unsigned int)type);
+	sprintf(event_value,"EVENT_VALUE=%d",value);
+
+	char * envp[] = {
+		event_type,
+		event_value,
+		NULL
+	};
+
+	if (kobject_uevent_env(&dev->kobj, KOBJ_CHANGE, envp)) {
+		dev_err(dev, "Failed to send uevent for attribute change\n");
+	}
+
+	return 0;
+}
 
 /*
  * Sysfs attribute show/store functions
@@ -57,6 +86,8 @@ static ssize_t cpu_offset_store(struct device *dev,struct device_attribute *attr
 
     legion_intel_msr_apply_voltage_offset(&priv->intel_msr_private,PLANE_CPU, cpu_offset);
 
+	send_event(dev,LENOVO_INTEL_MSR_PLANE_CPU,cpu_offset);
+
     return (ssize_t)count;
 }
 
@@ -92,7 +123,10 @@ static ssize_t cache_offset_store(struct device *dev,struct device_attribute *at
         return ret;
 
     legion_intel_msr_apply_voltage_offset(&priv->intel_msr_private,PLANE_CACHE, cache_offset);
-    return (ssize_t)count;
+
+	send_event(dev,LENOVO_INTEL_MSR_PLANE_CACHE,cache_offset);
+
+	return (ssize_t)count;
 }
 
 static ssize_t gpu_offset_show(struct device *dev,struct device_attribute *attr, char *buf)
@@ -128,7 +162,10 @@ static ssize_t gpu_offset_store(struct device *dev,struct device_attribute *attr
         return ret;
 
     legion_intel_msr_apply_voltage_offset(&priv->intel_msr_private,PLANE_GPU, gpu_offset);
-    return (ssize_t)count;
+
+	send_event(dev,LENOVO_INTEL_MSR_PLANE_GPU,gpu_offset);
+
+	return (ssize_t)count;
 }
 
 static ssize_t uncore_offset_show(struct device *dev,struct device_attribute *attr, char *buf)
@@ -163,6 +200,9 @@ static ssize_t uncore_offset_store(struct device *dev,struct device_attribute *a
         return ret;
 
     legion_intel_msr_apply_voltage_offset(&priv->intel_msr_private,PLANE_UNCORE, uncore_offset);
+
+	send_event(dev,LENOVO_INTEL_MSR_PLANE_UNCORE,uncore_offset);
+
     return (ssize_t)count;
 }
 
@@ -188,7 +228,6 @@ static ssize_t analogio_offset_store(struct device *dev,struct device_attribute 
 	struct legion_data *priv = dev_get_drvdata(dev);
     int analogio_offset = 0;
 
-
 	/* Critical: Prevent NULL pointer dereference and system freeze */
 	if (!priv) {
 		return -ENODEV;
@@ -199,6 +238,9 @@ static ssize_t analogio_offset_store(struct device *dev,struct device_attribute 
         return ret;
 
     legion_intel_msr_apply_voltage_offset(&priv->intel_msr_private,PLANE_ANALOGIO, analogio_offset);
+
+	send_event(dev,LENOVO_INTEL_MSR_PLANE_ANALOGIO,analogio_offset);
+
     return (ssize_t)count;
 }
 
@@ -469,7 +511,7 @@ static const struct attribute_group legion_intel_msr_attributes_group = {
 
 
 
-int  legion_intel_msr_sysfs_init(const struct device *parent) {
+int  legion_intel_msr_sysfs_init(struct device *parent) {
 
 	int ret = 0;
 	struct legion_data* data = dev_get_drvdata(parent);
@@ -490,7 +532,7 @@ int  legion_intel_msr_sysfs_init(const struct device *parent) {
 	if (data->intel_msr_sysfs_private.ida_id < 0)
 		goto err_unregister_class;
 
-	data->intel_msr_sysfs_private.dev = device_create(&legion_intel_msr_class, NULL,
+	data->intel_msr_sysfs_private.dev = device_create(&legion_intel_msr_class, parent,
 					  MKDEV(0, 0), data, "%s-%u",
 					  LEGION_INTEL_MSR_BASE_PATH,
 					  data->intel_msr_sysfs_private.ida_id);

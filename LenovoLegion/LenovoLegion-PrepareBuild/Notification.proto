@@ -37,6 +37,13 @@ message Notification
         WHITEBACKLIGHT2         = 66;
     }
 
+    enum KeylockDisabledBit
+    {
+        ALL_ENABLED     = 0x00000000;
+        WINDOWS_KEY     = 0x00000001;
+        TOUCHPAD_KEY    = 0x00000002;
+    };
+
     enum Action {
         LENOVO_DRIVER_ADDED                     = 0;
         LENOVO_DRIVER_REMOVED                   = 1;
@@ -45,6 +52,9 @@ message Notification
         CPU_X_LIST_RELOADED                     = 4;
         KEYLOCK_STATUS_CHANGE                   = 5;
         SPECIAL_KEY_PRESSED                     = 6;
+        POWER_CONTROL_CHANGED                   = 7;
+        CPU_OFFSET_CHANGED                      = 8;
+        FAN_CURVE_CHANGED                       = 9;
     }
 
 
@@ -56,4 +66,5 @@ message Notification
 
     Action                               action                                  = 1;
     SpecialKey                           special_key                             = 2;
+    KeylockDisabledBit                   key_lock_key                            = 3;
 }

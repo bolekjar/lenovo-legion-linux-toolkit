@@ -17,7 +17,7 @@ struct legion_intel_msr_sysfs_private {
 
 struct legion_data;
 
-int  legion_intel_msr_sysfs_init(const struct device *parent);
+int  legion_intel_msr_sysfs_init(struct device *parent);
 void legion_intel_msr_sysfs_exit(const struct device *parent);
 
 #endif /* LEGION_INTEL_MSR_SYSFS_H_ */

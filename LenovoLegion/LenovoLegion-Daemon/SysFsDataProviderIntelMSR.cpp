@@ -98,6 +98,9 @@ QByteArray SysFsDataProviderIntelMSR::deserializeAndSetData(const QByteArray &da
         THROW_EXCEPTION(exception_T,DataProvider::ERROR_CODES::INVALID_DATA,"Parse of data message error !");
     }
 
+    m_sysFsDriverManager->blockKernelEvent(SysFSDriverLegionIntelMSR::DRIVER_NAME,true);
+    auto cleanup =  qScopeGuard([this] { m_sysFsDriverManager->blockKernelEvent(SysFSDriverLegionIntelMSR::DRIVER_NAME,false); });
+
     // Apply only fields that are present
     if(cpuIntelMSRMessage.has_analogio() && cpuIntelMSRMessage.analogio().has_offset()) {
         setData(intelMSR.m_analogio_offset, cpuIntelMSRMessage.analogio().offset());
@@ -114,6 +117,8 @@ QByteArray SysFsDataProviderIntelMSR::deserializeAndSetData(const QByteArray &da
     if(cpuIntelMSRMessage.has_uncore() && cpuIntelMSRMessage.uncore().has_offset()) {
         setData(intelMSR.m_uncore_offset, cpuIntelMSRMessage.uncore().offset());
     }
+
+    m_sysFsDriverManager->processAllUdevEvents(100);
 
     return {};
 }

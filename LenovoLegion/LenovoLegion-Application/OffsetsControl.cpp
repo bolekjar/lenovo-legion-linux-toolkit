@@ -111,9 +111,18 @@ OffsetsControl::OffsetsControl(DataProvider *dataProvider,QWidget *parent)
     ui->comboBox_cpuVoltagePreset->view()->window()->setWindowFlags( Qt::Popup | Qt::FramelessWindowHint | Qt::NoDropShadowWindowHint | Qt::NoDropShadowWindowHint);
     ui->comboBox_cpuVoltagePreset->view()->window()->setAttribute(Qt::WA_TranslucentBackground);
 
+    refresh();
+}
 
+OffsetsControl::~OffsetsControl()
+{
+    delete ui;
+}
+
+void OffsetsControl::refresh()
+{
     /*
-     * Redad Data
+     * Read Data
      */
     readCpuIntelMsrData();
     readGpuNvmlData();
@@ -122,11 +131,11 @@ OffsetsControl::OffsetsControl(DataProvider *dataProvider,QWidget *parent)
      * Validate Data
      */
     if(!m_cpuIntelMSRData.has_analogio() ||
-       !m_cpuIntelMSRData.has_cache()    ||
-       !m_cpuIntelMSRData.has_cpu()      ||
-       !m_cpuIntelMSRData.has_gpu()      ||
-       !m_cpuIntelMSRData.has_uncore()
-       )
+        !m_cpuIntelMSRData.has_cache()    ||
+        !m_cpuIntelMSRData.has_cpu()      ||
+        !m_cpuIntelMSRData.has_gpu()      ||
+        !m_cpuIntelMSRData.has_uncore()
+        )
     {
         THROW_EXCEPTION(exception_T, ERROR_CODES::DATA_NOT_READY, "Voltage Control data not available");
     }
@@ -333,16 +342,6 @@ OffsetsControl::OffsetsControl(DataProvider *dataProvider,QWidget *parent)
         ui->comboBox_GPUPreset->blockSignals(false);
     }
 
-    refresh();
-}
-
-OffsetsControl::~OffsetsControl()
-{
-    delete ui;
-}
-
-void OffsetsControl::refresh()
-{
     refreshCpuVoltageOffsetData();
     refreshGpuOffsetData();
 

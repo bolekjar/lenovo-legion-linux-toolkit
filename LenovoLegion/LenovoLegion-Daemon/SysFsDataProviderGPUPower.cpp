@@ -175,6 +175,9 @@ QByteArray SysFsDataProviderGPUPower::deserializeAndSetData(const QByteArray &da
         THROW_EXCEPTION(exception_T,DataProvider::DataProvider::ERROR_CODES::INVALID_DATA,"Parse of data message error !");
     }
 
+    m_sysFsDriverManager->blockKernelEvent(SysFsDriverLegionOther::DRIVER_NAME,true);
+    auto cleanup =  qScopeGuard([this] { m_sysFsDriverManager->blockKernelEvent(SysFsDriverLegionOther::DRIVER_NAME,false); });
+
     if(power.has_gpu_power_boost()) {
         setData(gpuControl.m_gpu_power_boost.m_current_value,power.gpu_power_boost().current_value());
     }
@@ -184,6 +187,8 @@ QByteArray SysFsDataProviderGPUPower::deserializeAndSetData(const QByteArray &da
     if(power.has_gpu_temperature_limit()) {
         setData(gpuControl.m_gpu_temperature_limit.m_current_value,power.gpu_temperature_limit().current_value());
     }
+
+    m_sysFsDriverManager->processAllUdevEvents(100);
 
     return {};
 }

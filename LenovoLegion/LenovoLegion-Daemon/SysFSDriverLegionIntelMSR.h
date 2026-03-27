@@ -19,6 +19,16 @@ class SysFSDriverLegionIntelMSR : public SysFsDriver
 {
 public:
 
+    enum LegionIntelMsrEventType : int {
+        LENOVO_INTEL_MSR_PLANE_CPU			= 2001,
+        LENOVO_INTEL_MSR_PLANE_CACHE		= 2002,
+        LENOVO_INTEL_MSR_PLANE_GPU			= 2003,
+        LENOVO_INTEL_MSR_PLANE_UNCORE		= 2004,
+        LENOVO_INTEL_MSR_PLANE_ANALOGIO		= 2005
+    };
+
+public:
+
     struct IntelMSR {
 
         IntelMSR(const SysFsDriver::DescriptorType& descriptor) :
@@ -86,12 +96,17 @@ public:
      */
     virtual void init() override;
 
+    /*
+     * Handle kernel event
+     */
+    virtual void handleKernelEvent(const KernelEvent::Event &event) override;
+
 public:
 
     /*
      * Driver name, system driver __ prefix is used to mark  system driver no modprobe loadable
      */
-    static constexpr const char* DRIVER_NAME =  "legion_intel_msr";
+    static constexpr const char* DRIVER_NAME =  "legion-intel-msr";
     static constexpr const char* MODULE_NAME =  LEGION_MODULE_NAME;
 };
 

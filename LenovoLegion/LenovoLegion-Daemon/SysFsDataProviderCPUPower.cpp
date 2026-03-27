@@ -212,6 +212,9 @@ QByteArray SysFsDataProviderCPUPower::deserializeAndSetData(const QByteArray &da
         THROW_EXCEPTION(exception_T,DataProvider::DataProvider::ERROR_CODES::INVALID_DATA,"Parse of data message error !");
     }
 
+    m_sysFsDriverManager->blockKernelEvent(SysFsDriverLegionOther::DRIVER_NAME,true);
+    auto cleanup =  qScopeGuard([this] { m_sysFsDriverManager->blockKernelEvent(SysFsDriverLegionOther::DRIVER_NAME,false); });
+
     if(cpuPower.has_cpu_tmp_limit()) {
         setData(cpuControl.m_cpu_tmp_limit.m_current_value,cpuPower.cpu_tmp_limit().current_value());
     }
@@ -234,6 +237,7 @@ QByteArray SysFsDataProviderCPUPower::deserializeAndSetData(const QByteArray &da
         setData(gpuControl.m_gpu_to_cpu_dynamic_boost.m_current_value,cpuPower.gpu_to_cpu_dynamic_boost().current_value());
     }
 
+    m_sysFsDriverManager->processAllUdevEvents(100);
     return {};
 }
 

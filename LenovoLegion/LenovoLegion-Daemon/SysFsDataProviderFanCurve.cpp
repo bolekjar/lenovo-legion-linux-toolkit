@@ -169,6 +169,9 @@ QByteArray SysFsDataProviderFanCurve::deserializeAndSetData(const QByteArray &da
         THROW_EXCEPTION(exception_T,DataProvider::ERROR_CODES::INVALID_DATA,"Parse of data message error !");
     }
 
+    m_sysFsDriverManager->blockKernelEvent(SysFSDriverLegionFanMode::DRIVER_NAME,true);
+    auto cleanup =  qScopeGuard([this] { m_sysFsDriverManager->blockKernelEvent(SysFSDriverLegionFanMode::DRIVER_NAME,false); });
+
     if(fanCurveMsg.has_current_value()) {
         setData(fanCurve.m_current_value,std::vector<quint8>{
                 static_cast<quint8>(fanCurveMsg.current_value().point1()),
@@ -183,6 +186,8 @@ QByteArray SysFsDataProviderFanCurve::deserializeAndSetData(const QByteArray &da
                 static_cast<quint8>(fanCurveMsg.current_value().point10())
                 });
     }
+
+    m_sysFsDriverManager->processAllUdevEvents(100);
 
     return {};
 }

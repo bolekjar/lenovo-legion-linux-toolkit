@@ -6,7 +6,7 @@
  *   Jaroslav Bolek <jaroslav.bolek@gmail.com>
  */
 
-
+#include "legion-common.h"
 #include "legion-wmi-fm-sysfs.h"
 #include "legion-wmi-fm.h"
 #include "legion-wmi-ftable.h"
@@ -135,8 +135,17 @@ static ssize_t func_fan_curve_current_value_set(struct kobject *kobj, struct kob
 		const char *buf, const size_t count)
 {
 	const struct legion_wmi_fm_priv *priv = dev_get_drvdata(kobj_to_dev(kobj->parent));
-	u8 points[20]  		= {0};
-	u8 buffer[0x20] 	= {0};
+	u8 points[20]  		 = {0};
+	u8 buffer[0x20] 	 = {0};
+	char event_value[64] = {0};
+	char event_type[64]  = {0};
+
+	char * envp[] = {
+		event_type,
+		event_value,
+		NULL
+	};
+
 
 	enum thermal_mode 	mode;
 	ssize_t ret = legion_wmi_fm_notifier_call(&mode,LEGION_WMI_GZ_GET_THERMAL_MODE);
@@ -183,6 +192,14 @@ static ssize_t func_fan_curve_current_value_set(struct kobject *kobj, struct kob
 	ret = legion_wmi_dev_evaluate_buffer(priv->wdev,0,WMI_METHOD_ID_FAN_SET_TABLE,buffer,sizeof(buffer),NULL,0);
 	if(ret)
 		return ret;
+
+	sprintf(event_type,"EVENT_TYPE=%u",(unsigned int)LENOVO_WMI_FAN_CURVE);
+	sprintf(event_value,"EVENT_VALUE=%hhu,%hhu,%hhu,%hhu,%hhu,%hhu,%hhu,%hhu,%hhu,%hhu",points[0],points[1],points[2],points[3],points[4],points[5],points[6],points[7],points[8],points[9]);
+
+	if (kobject_uevent_env(&priv->wdev->dev.kobj, KOBJ_CHANGE,envp))
+	{
+		dev_err(&priv->wdev->dev, "Failed to send uevent for attribute change\n");
+	}
 
 	return (ssize_t)count;
 }

@@ -89,6 +89,16 @@ void SysFSDriverLegionFanMode::handleKernelEvent(const KernelEvent::Event &event
         {
             clean();
         }
+
+        if(event.m_action == "change")
+        {
+            emit kernelEvent({
+                .m_driverName = DRIVER_NAME,
+                .m_action = SubsystemEvent::Action::CHANGED,
+                .m_DriverSpecificEventType = event.m_properties.value("EVENT_TYPE", ""),
+                .m_DriverSpecificEventValue = event.m_properties.value("EVENT_VALUE", "")
+            });
+        }
     }
 
     for(const auto& d : DEPENDENCY)

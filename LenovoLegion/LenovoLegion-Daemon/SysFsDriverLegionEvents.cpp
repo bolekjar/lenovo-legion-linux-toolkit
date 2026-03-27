@@ -28,14 +28,19 @@ void SysFsDriverLegionEvents::handleKernelEvent(const SysFsDriver::KernelEvent::
          return;
      }
 
-     if(event.m_action == "change")
+
+
+     if(event.m_driver == DRIVER_NAME)
      {
-         emit kernelEvent({
-             .m_driverName = DRIVER_NAME,
-             .m_action = SubsystemEvent::Action::CHANGED,
-             .m_DriverSpecificEventType = event.m_properties[EVENT_TYPE.data()],
-             .m_DriverSpecificEventValue  = event.m_properties[EVENT_VALUE.data()]
-         });
+         if(event.m_action == "change")
+         {
+             emit kernelEvent({
+                 .m_driverName = DRIVER_NAME,
+                 .m_action = SubsystemEvent::Action::CHANGED,
+                 .m_DriverSpecificEventType = event.m_properties[EVENT_TYPE.data()],
+                 .m_DriverSpecificEventValue  = event.m_properties[EVENT_VALUE.data()]
+             });
+         }
      }
 }
 

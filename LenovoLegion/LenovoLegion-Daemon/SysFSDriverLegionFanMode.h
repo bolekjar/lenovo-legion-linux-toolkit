@@ -16,6 +16,11 @@ namespace LenovoLegionDaemon {
 
 class SysFSDriverLegionFanMode : public SysFsDriver
 {
+
+    enum LegionVmiFanModeEventType : int {
+        LENOVO_WMI_FAN_CURVE				= 2000
+    };
+
 public:
     struct FanMode {
 
