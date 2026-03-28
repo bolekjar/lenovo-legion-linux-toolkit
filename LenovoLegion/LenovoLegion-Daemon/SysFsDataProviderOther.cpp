@@ -8,6 +8,7 @@
 
 #include "SysFsDataProviderOther.h"
 #include "SysFSDriverLegionGameZone.h"
+#include "SysFsDriverLegionEvents.h"
 
 
 #include "../LenovoLegion-PrepareBuild/Other.pb.h"
@@ -76,6 +77,9 @@ QByteArray SysFsDataProviderOther::deserializeAndSetData(const QByteArray &data)
         THROW_EXCEPTION(exception_T,DataProvider::ERROR_CODES::INVALID_DATA,"Parse of data message error !");
     }
 
+    m_sysFsDriverManager->blockKernelEvent(SysFsDriverLegionEvents::DRIVER_NAME,true);
+    auto cleanup =  qScopeGuard([this] { m_sysFsDriverManager->blockKernelEvent(SysFsDriverLegionEvents::DRIVER_NAME,false); });
+
     // Set DisableTouchPad if provided
     if(otherSettingsMsg.has_touch_pad() && otherSettingsMsg.touch_pad().has_current()) {
         setData(gameZone.m_disableTP.m_current_value, otherSettingsMsg.touch_pad().current());
@@ -87,6 +91,8 @@ QByteArray SysFsDataProviderOther::deserializeAndSetData(const QByteArray &data)
         setData(gameZone.m_disableWinKey.m_current_value, otherSettingsMsg.win_key().current());
         LOG_D(QString("Setting disable win key to: ").append(QString::number(otherSettingsMsg.win_key().current())));
     }
+
+    m_sysFsDriverManager->processAllUdevEvents(100);
 
     return {};
 }
