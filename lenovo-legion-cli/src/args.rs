@@ -24,6 +24,10 @@ pub struct Cli {
     #[arg(short, long)]
     win_key: bool,
 
+    /// Display Fan full speed
+    #[arg(short, long)]
+    fan_full_speed: bool,
+
     /// Display Thermal Mode [ Quiet, Balance, Power, Extreme, Custom ]
     #[arg(short, long)]
     mode: bool,
@@ -47,6 +51,14 @@ pub struct Cli {
     #[arg(long)]
     /// Enable Win Key
     wke: bool,
+
+    #[arg(long)]
+    /// Fan full speed enable
+    ffe: bool,
+
+    /// Fan full speed disable
+    #[arg(long)]
+    ffd: bool,
 
     /// controls commands
     #[command(subcommand)]
@@ -199,7 +211,38 @@ pub enum Commands {
         /// GPU Configurable TGP [W]
         #[arg(long)]
         gpu_tgp: Option<u32>
+    },
+
+    ///get values for Offset Control
+    OffSetGet {
+        /// Display cpu package offset values [uV]
+        #[arg(short, long)]
+        cpu_package: bool,
+    },
+
+    ///set values for Offset Control
+    OffSetSet {
+        /// CPU offset [uV]
+        #[arg(long)]
+        cpu: Option<i32>,
+
+        /// GPU offset [uV]
+        #[arg(long)]
+        gpu: Option<i32>,
+
+        /// Analogio offset [uV]
+        #[arg(long)]
+        analogio: Option<i32>,
+
+        /// Cache offset [uV]
+        #[arg(long)]
+        cache: Option<i32>,
+
+        /// Uncore offset [uV]
+        #[arg(long)]
+        uncore: Option<i32>,
     }
+
 }
 
 impl Cli {
@@ -222,6 +265,7 @@ impl Cli {
     pub fn thermal_mode(&self) -> bool {
         self.mode
     }
+    pub fn fan_full_speed(&self) -> bool { self.fan_full_speed }
 
     pub fn smart_fan_set(&self) -> &Option<String> {
         &self.smart_fan_set
@@ -241,6 +285,8 @@ impl Cli {
     pub fn is_ac_fit_oc(&self) -> bool {
         self.is_ac_fit_oc
     }
+    pub fn ffe(&self) -> bool { self.ffe }
+    pub fn ffd(&self) -> bool { self.ffd }
 }
 
 impl Commands {
@@ -521,6 +567,62 @@ impl Commands {
                     None => {}
                 }
             }
+
+            Commands::OffSetGet {
+                cpu_package
+            } => {
+                let offset_control = crate::sysfs_drivers::offset_control::OffsetControl::new()?;
+
+                if *cpu_package
+                {
+                    print!("{}",offset_control);
+                }
+            }
+
+            Commands::OffSetSet {
+                cpu,
+                gpu,
+                analogio,
+                cache,
+                uncore
+             } => {
+                let offset_control = crate::sysfs_drivers::offset_control::OffsetControl::new()?;
+
+                match cpu {
+                    Some(cpu) => {
+                        offset_control.set_cpu_offset(*cpu)?;
+                    }
+                    None => {}
+                }
+
+                match gpu {
+                    Some(gpu) => {
+                        offset_control.set_gpu_offset(*gpu)?;
+                    }
+                    None => {}
+                }
+
+                match analogio {
+                    Some(analogio) => {
+                        offset_control.set_analogio_offset(*analogio)?;
+                    }
+                    None => {}
+                }
+
+                match cache {
+                    Some(cache) => {
+                        offset_control.set_cache_offset(*cache)?;
+                    }
+                    None => {}
+                }
+
+                match uncore {
+                    Some(uncore) => {
+                        offset_control.set_uncore_offset(*uncore)?;
+                    }
+                    None => {}
+                }
+             }
         }
 
         Ok(())

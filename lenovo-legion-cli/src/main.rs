@@ -4,7 +4,7 @@ pub mod utils;
 
 use args::Cli;
 use clap::Parser;
-use crate::sysfs_drivers::others_control::{Attribute, IsACFitForOc, SmartFan, ThermalMode};
+use crate::sysfs_drivers::others_control::{Attribute, FanFullSpeed, IsACFitForOc, SmartFan, ThermalMode};
 use crate::utils::string_power_modes_to_int;
 
 fn main() -> Result<(),std::io::Error> {
@@ -25,6 +25,11 @@ fn main() -> Result<(),std::io::Error> {
       println!("Touch pad:\n{}",Attribute::new("disable_tp".to_string())?);
    }
 
+   if cli.fan_full_speed()
+   {
+      println!("{}",FanFullSpeed::new()?);
+   }
+
    if cli.thermal_mode() {
       println!("{}",ThermalMode::new()?);
    }
@@ -43,6 +48,14 @@ fn main() -> Result<(),std::io::Error> {
 
    if cli.wke() {
       Attribute::new("disable_win_key".to_string())?.set_value(false)?;
+   }
+
+   if cli.ffe() {
+      FanFullSpeed::new()?.set_value(true)?;
+   }
+
+   if cli.ffd() {
+      FanFullSpeed::new()?.set_value(false)?;
    }
 
    if cli.is_ac_fit_oc() {

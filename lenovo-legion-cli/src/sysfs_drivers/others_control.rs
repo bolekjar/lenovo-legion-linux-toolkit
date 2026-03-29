@@ -4,6 +4,7 @@ use std::fmt::Display;
 use crate::utils::*;
 
 static SYSFS_GAMEZONE_CONTROLS: &str = "/sys/class/legion-firmware-attributes/legion-wmi-gamezone-0/attributes/";
+static SYSFS_OTHER_CONTROLS: &str = "/sys/class/legion-firmware-attributes/legion-wmi-other-0/attributes/";
 
 #[derive(Debug,Default,Clone)]
 pub struct Attribute {
@@ -14,6 +15,13 @@ pub struct Attribute {
     supported: bool,
 }
 
+#[derive(Debug,Default,Clone)]
+pub struct  FanFullSpeed {
+    current_value: bool,
+    default_value: bool,
+    display_name: String,
+    supported: bool,
+}
 
 #[derive(Debug,Default,Clone)]
 pub struct SmartFan {
@@ -120,6 +128,27 @@ impl IsACFitForOc {
     }
 }
 
+impl FanFullSpeed {
+    pub fn new() -> Result<FanFullSpeed,std::io::Error> {
+        let mut fan_full_speed = FanFullSpeed::default();
+
+        FanFullSpeed::refresh(&mut fan_full_speed)?;
+
+        Ok(fan_full_speed)
+    }
+
+    pub fn refresh (&mut self) -> Result<&FanFullSpeed,std::io::Error> {
+        self.current_value = read_value_as_type::<u32>(format!("{}fan_full_speed/current_value",SYSFS_OTHER_CONTROLS))? != 0;
+        self.display_name = read_value_as_type(format!("{}fan_full_speed/display_name",SYSFS_OTHER_CONTROLS))?;
+        self.supported = read_value_as_type::<u32>(format!("{}fan_full_speed/supported",SYSFS_OTHER_CONTROLS))? != 0;
+        self.default_value = read_value_as_type::<u32>(format!("{}fan_full_speed/default_value",SYSFS_OTHER_CONTROLS))? != 0;
+        Ok(self)
+    }
+
+    pub fn set_value(&self, value: bool) -> Result<(),std::io::Error> {
+        write_value_as_type(format!("{}fan_full_speed/current_value", SYSFS_OTHER_CONTROLS), value as u32)
+    }
+}
 
 impl Display for SmartFan {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -165,6 +194,22 @@ impl Display for IsACFitForOc {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         _ = write!(f,"IsACFitForOC:\nAttributes: [\n");
         _ = write!(f, "\tCurrent Value: {}",self.current_value);
+        write!(f,"\n]")
+    }
+}
+
+impl Display for FanFullSpeed {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        _ = write!(f,"Fan Full Speed:\nAttributes: [\n");
+        _ = write!(f, "\tCurrent Value: {}\n\
+                       \tDefault Value: {}\n\
+                       \tDisplay Name: {}\n\
+                       \tSupported: {}",
+                   self.current_value,
+                   self.default_value,
+                   self.display_name,
+                   self.supported
+        );
         write!(f,"\n]")
     }
 }
