@@ -837,6 +837,7 @@ void PowerControl::readData()
     }
 
 
+    ui->comboBox_PresetConfiguration->clear();
     ui->comboBox_PresetConfiguration->addItem("NONE");
     for (auto clpI = m_cpuControlData.cpu_clp_limit().mode_descriptor_map().begin(); clpI != m_cpuControlData.cpu_clp_limit().mode_descriptor_map().end(); ++clpI)
     {

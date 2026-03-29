@@ -198,13 +198,14 @@ void OffsetsControl::refresh()
 
 
 
-
+    ui->comboBox_cpuVoltagePreset->clear();
     for (auto presetNameI = CPU_VOLTAGE_PRESETS.constBegin(); presetNameI != CPU_VOLTAGE_PRESETS.constEnd(); ++presetNameI)
     {
         ui->comboBox_cpuVoltagePreset->addItem(presetNameI.key());
     };
 
 
+    ui->comboBox_GPUPreset->clear();
     for (auto presetNameI = GPU_CLOCK_PRESETS.constBegin(); presetNameI != GPU_CLOCK_PRESETS.constEnd(); ++presetNameI)
     {
         ui->comboBox_GPUPreset->addItem(presetNameI.key());
