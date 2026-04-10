@@ -41,7 +41,10 @@ void ProtocolProcessorNotifier::timerEvent(QTimerEvent *event)
             {
                 legion::messages::Notification msg;
 
-                msg.ParseFromArray(data,data.size());
+                if(!msg.ParseFromArray(data,data.size()))
+                {
+                    THROW_EXCEPTION(exception_T,ERROR_CODES::INVALID_MESSAGE,"Parse of data message error !");
+                }
 
                 emit daemonNotification(msg);
 

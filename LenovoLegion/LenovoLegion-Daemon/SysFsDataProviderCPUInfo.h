@@ -9,6 +9,7 @@
 
 #include "SysFsDataProvider.h"
 
+#include "../LenovoLegion-PrepareBuild/MessageRegistry.pb.h"
 
 namespace LenovoLegionDaemon {
 
@@ -29,7 +30,7 @@ private:
     std::string getCpuBrandString() const;
 public:
 
-    static constexpr quint8  dataType = 14;
+    static constexpr quint8  dataType = legion::messages::DataType::CPU_INFO;
 };
 
 }

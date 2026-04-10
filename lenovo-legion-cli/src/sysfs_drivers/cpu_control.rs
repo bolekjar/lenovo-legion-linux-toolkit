@@ -10,7 +10,34 @@ use crate::utils::{*};
 static SYSFS_SYSTEM_CPU: &str = "/sys/devices/system/cpu/";
 static SYSFS_CPU_ATOM: &str = "/sys/devices/cpu_atom/";
 static SYSFS_CPU_CORES: &str = "/sys/devices/cpu_core/";
+static SYSFS_CPU_INTEL_PSTATE: &str = "/sys/devices/system/cpu/intel_pstate/";
+static SYSFS_CPU_INTEL_UNCORE: &str = "/sys/devices/system/cpu/intel_uncore_frequency/";
 
+#[derive(Debug,Default,Clone)]
+pub struct IntelUnCore {
+    package: String,
+
+    current_freq_khz: u32,
+    initial_max_freq_khz: u32,
+    initial_min_freq_khz: u32,
+    max_freq_khz: u32,
+    min_freq_khz: u32,
+}
+
+#[derive(Debug,Clone)]
+pub struct IntelUnCorePackages {
+    packages:  Vec<IntelUnCore>
+}
+
+#[derive(Debug,Default,Clone)]
+pub struct IntelPState
+{
+    hwp_dynamic_boost: bool,
+    max_perf_pct: u32,
+    min_perf_pct: u32,
+    no_turbo: bool,
+    status: String
+}
 
 #[derive(Debug,Default,Clone)]
 pub struct Topology {
@@ -124,8 +151,20 @@ pub struct CPUXIter<'a> {
     values : Vec<&'a CPUX>
 }
 
+pub struct IntelUnCoreIter<'a> {
+    values : Vec<&'a IntelUnCore>
+}
+
 impl<'a> Iterator for CPUXIter<'a> {
     type Item = &'a CPUX;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.values.pop()
+    }
+}
+
+impl<'a> Iterator for IntelUnCoreIter<'a> {
+    type Item = &'a IntelUnCore;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.values.pop()
@@ -655,8 +694,189 @@ impl SMT {
 
  }
 
+impl IntelPState {
+    pub fn new() -> Result<IntelPState,std::io::Error> {
+        let mut intel_pstate = IntelPState {
+            ..Self::default()
+        };
 
- impl Display for CPUs {
+        Self::refresh(&mut intel_pstate)?;
+
+        Ok(intel_pstate)
+    }
+
+    pub fn refresh(&mut self) -> Result<&IntelPState, std::io::Error> {
+        self.hwp_dynamic_boost = read_value_as_type::<u8>(SYSFS_CPU_INTEL_PSTATE.to_string() + "hwp_dynamic_boost" )? != 0;
+        self.max_perf_pct = read_value_as_type::<u32>(SYSFS_CPU_INTEL_PSTATE.to_string() + "max_perf_pct" )?;
+        self.min_perf_pct = read_value_as_type::<u32>(SYSFS_CPU_INTEL_PSTATE.to_string() + "min_perf_pct" )?;
+        self.no_turbo = read_value_as_type::<u8>(SYSFS_CPU_INTEL_PSTATE.to_string() + "no_turbo" )? != 0;
+        self.status = read_value_as_type::<String>(SYSFS_CPU_INTEL_PSTATE.to_string() + "status" )?;
+
+        Ok(self)
+    }
+
+    pub fn hwp_dynamic_boost (&self) -> bool {
+        self.hwp_dynamic_boost
+    }
+
+    pub fn max_perf_pct (&self) -> u32 {
+        self.max_perf_pct
+    }
+
+    pub fn min_perf_pct (&self) -> u32 {
+        self.min_perf_pct
+    }
+
+    pub fn no_turbo (&self) -> bool {
+        self.no_turbo
+    }
+
+    pub fn set_no_turbo(&self, no_turbo: bool) -> Result<&IntelPState,std::io::Error> {
+        match write_value_as_type::<u8>(SYSFS_CPU_INTEL_PSTATE.to_string() + "no_turbo", if no_turbo {1} else {0})
+        {
+            Ok(_v) => Ok(self),
+            Err(e) => Err(e),
+        }
+     }
+
+    pub fn set_hwp_dynamic_boost(&self, hwp_dynamic_boost: bool) -> Result<&IntelPState,std::io::Error> {
+        match write_value_as_type::<u8>(SYSFS_CPU_INTEL_PSTATE.to_string() + "hwp_dynamic_boost", if hwp_dynamic_boost {1} else {0})
+        {
+            Ok(_v) => Ok(self),
+            Err(e) => Err(e),
+        }
+     }
+
+     pub fn set_max_perf_pct(&self, max_perf_pct: u32) -> Result<&IntelPState,std::io::Error> {
+        match write_value_as_type::<u32>(SYSFS_CPU_INTEL_PSTATE.to_string() + "max_perf_pct", max_perf_pct)
+        {
+            Ok(_v) => Ok(self),
+            Err(e) => Err(e),
+        }
+     }
+
+     pub fn set_min_perf_pct(&self, min_perf_pct: u32) -> Result<&IntelPState,std::io::Error> {
+         match write_value_as_type::<u32>(SYSFS_CPU_INTEL_PSTATE.to_string() + "min_perf_pct", min_perf_pct)
+         {
+             Ok(_v) => Ok(self),
+             Err(e) => Err(e),
+         }
+     }
+
+    pub fn set_status(&self, status: IntelPState) -> Result<&IntelPState,std::io::Error> {
+        match write_value_as_type(SYSFS_CPU_INTEL_PSTATE.to_string() + "status", status.status.clone())
+        {
+            Ok(_v) => Ok(self),
+            Err(e) => Err(e),
+        }
+    }
+}
+
+impl IntelUnCore {
+    pub fn new(package: String) -> Result<IntelUnCore,std::io::Error> {
+        let mut intel_uncore = IntelUnCore {
+            package,
+            ..Self::default()
+        };
+
+        IntelUnCore::refresh(&mut intel_uncore)?;
+
+        Ok(intel_uncore)
+    }
+
+    pub fn refresh(&mut self) -> Result<&IntelUnCore, std::io::Error> {
+
+        self.current_freq_khz = read_value_as_type::<u32>(SYSFS_CPU_INTEL_UNCORE.to_string() + self.package.as_str() + "/current_freq_khz" )?;
+        self.initial_max_freq_khz = read_value_as_type::<u32>(SYSFS_CPU_INTEL_UNCORE.to_string() + self.package.as_str() + "/initial_max_freq_khz" )?;
+        self.initial_min_freq_khz = read_value_as_type::<u32>(SYSFS_CPU_INTEL_UNCORE.to_string() + self.package.as_str() + "/initial_min_freq_khz" )?;
+        self.max_freq_khz = read_value_as_type::<u32>(SYSFS_CPU_INTEL_UNCORE.to_string() + self.package.as_str() + "/max_freq_khz" )?;
+        self.min_freq_khz = read_value_as_type::<u32>(SYSFS_CPU_INTEL_UNCORE.to_string() + self.package.as_str() + "/min_freq_khz" )?;
+
+        Ok(self)
+    }
+
+     pub fn current_freq_khz(&self) -> u32 {
+         self.current_freq_khz
+     }
+
+     pub fn initial_max_freq_khz(&self) -> u32 {
+         self.initial_max_freq_khz
+     }
+
+     pub fn initial_min_freq_khz(&self) -> u32 {
+         self.initial_min_freq_khz
+     }
+
+     pub fn max_freq_khz(&self) -> u32 {
+         self.max_freq_khz
+     }
+
+     pub fn min_freq_khz(&self) -> u32 {
+         self.min_freq_khz
+     }
+
+    pub fn set_max_freq_khz(&self, max_freq_khz: u32) -> Result<&IntelUnCore,std::io::Error> {
+        match write_value_as_type::<u32>(SYSFS_CPU_INTEL_UNCORE.to_string() + self.package.as_str() + "/max_freq_khz", max_freq_khz)
+        {
+            Ok(_v) => Ok(self),
+            Err(e) => Err(e),
+        }
+    }
+
+    pub fn set_min_freq_khz(&self, min_freq_khz: u32) -> Result<&IntelUnCore,std::io::Error> {
+        match write_value_as_type::<u32>(SYSFS_CPU_INTEL_UNCORE.to_string() + self.package.as_str() + "/min_freq_khz", min_freq_khz)
+        {
+            Ok(_v) => Ok(self),
+            Err(e) => Err(e),
+        }
+    }
+}
+
+impl IntelUnCorePackages {
+
+    pub fn new() -> Result<IntelUnCorePackages,std::io::Error> {
+        let mut packages = IntelUnCorePackages {
+            packages: Vec::new()
+        };
+
+        IntelUnCorePackages::refresh(&mut packages)?;
+
+        Ok(packages)
+    }
+
+    pub fn refresh(&mut self) -> Result<&IntelUnCorePackages, std::io::Error> {
+        self.packages.clear();
+
+        for entry in fs::read_dir(SYSFS_CPU_INTEL_UNCORE)? {
+            let entry = entry?;
+            let path = entry.path();
+            if path.is_dir() {
+                if let Some(package_name) = path.file_name().and_then(|n| n.to_str()) {
+                    if package_name.starts_with("package") {
+                        match IntelUnCore::new(package_name.to_string()) {
+                            Ok(package) => self.packages.push(package),
+                            Err(e) => return Err(e)
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(self)
+    }
+
+    pub fn iter (&self) -> IntelUnCoreIter<'_> {
+        IntelUnCoreIter {
+            values: self.packages.iter().collect(),
+        }
+    }
+
+    pub fn mut_iter (&mut self) -> impl Iterator<Item = &mut IntelUnCore> {
+        self.packages.iter_mut()
+    }
+}
+
+impl Display for CPUs {
      fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
          _ = write!(f, "cpus: [\n");
          for cpu in self.cpus.iter() {
@@ -771,5 +991,44 @@ impl Display for Topology {
         _ = write!(f, "]");
         Ok(())
     }
+}
 
+impl Display for IntelPState
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        _ = write!(f, "intel_p_state: [\n");
+        _ = write!(f, "\thwp_dynamic_boost (W): {}\n",self.hwp_dynamic_boost);
+        _ = write!(f, "\tmax_perf_pct (W): {}\n",self.max_perf_pct);
+        _ = write!(f, "\tmin_perf_pct (W): {}\n",self.min_perf_pct);
+        _ = write!(f, "\tno_turbo (W): {}\n",self.no_turbo);
+        _ = write!(f, "\tstatus: {}\n",self.status);
+        _ = write!(f, "]");
+        Ok(())
+    }
+}
+
+impl Display for IntelUnCore
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        _ = write!(f, "{}: [\n",self.package);
+        _ = write!(f, "\tcurrent_freq_khz: {} kHz\n",self.current_freq_khz);
+        _ = write!(f, "\tinitial_min_freq_khz: {} kHz\n",self.initial_min_freq_khz);
+        _ = write!(f, "\tinitial_max_freq_khz: {} kHz\n",self.initial_max_freq_khz);
+        _ = write!(f, "\tmin_freq_khz: {} kHz\n",self.min_freq_khz);
+        _ = write!(f, "\tmax_freq_khz: {} kHz\n",self.max_freq_khz);
+        _ = write!(f, "]");
+        Ok(())
+    }
+}
+
+
+impl Display for IntelUnCorePackages {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        _ = write!(f, "intel_un_core_packages: [\n");
+        for cpu in self.packages.iter() {
+            _ =  write!(f, "{}", cpu);
+        }
+        _ = write!(f, "\n]\n");
+        Ok(())
+    }
 }

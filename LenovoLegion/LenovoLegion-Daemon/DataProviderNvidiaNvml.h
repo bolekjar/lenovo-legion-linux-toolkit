@@ -10,6 +10,8 @@
 #include "DataProvider.h"
 #include <Core/ExceptionBuilder.h>
 
+#include "../LenovoLegion-PrepareBuild/MessageRegistry.pb.h"
+
 #include <nvml.h>
 namespace  LenovoLegionDaemon {
 
@@ -67,7 +69,7 @@ private:
     nvmlDevice_t m_device;  
 public:
 
-    static constexpr quint8  dataType = 13;
+    static constexpr quint8  dataType = legion::messages::DataType::NVIDIA_NWML;
 };
 
 

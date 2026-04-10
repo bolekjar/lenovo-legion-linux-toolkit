@@ -109,7 +109,8 @@ HEADERS += \
         ../LenovoLegion-PrepareBuild/ComputerInfo.pb.h \
         ../LenovoLegion-PrepareBuild/DaemonSettings.pb.h \
         ../LenovoLegion-PrepareBuild/Other.pb.h \
-        ../LenovoLegion-PrepareBuild/RGBController.pb.h
+        ../LenovoLegion-PrepareBuild/RGBController.pb.h \
+        ../LenovoLegion-PrepareBuild/MessageRegistry.pb.h
 
 SOURCES += \
         ../LenovoLegion-Daemon/ProtocolParser.cpp \
@@ -128,7 +129,8 @@ SOURCES += \
         ../LenovoLegion-PrepareBuild/ComputerInfo.pb.cc \
         ../LenovoLegion-PrepareBuild/DaemonSettings.pb.cc \
         ../LenovoLegion-PrepareBuild/Other.pb.cc \
-        ../LenovoLegion-PrepareBuild/RGBController.pb.cc
+        ../LenovoLegion-PrepareBuild/RGBController.pb.cc \
+        ../LenovoLegion-PrepareBuild/MessageRegistry.pb.cc
 
 FORMS +=           \
     AboutWindow.ui \

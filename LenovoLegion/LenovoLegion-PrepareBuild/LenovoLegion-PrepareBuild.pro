@@ -22,6 +22,7 @@ DISTFILES += \
     FanControl.proto \
     GPUPower.proto \
     HWMonitoring.proto \
+    MessageRegistry.proto \
     Notification.proto \
     NvidiaNvml.proto \
     Other.proto \

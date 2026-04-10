@@ -1,0 +1,25 @@
+edition = "2024";
+
+package legion.messages;
+
+enum DataType {
+  BATTERY             = 0;
+  CPU_INFO            = 1;
+  CPU_FREQUENCY       = 2;
+  CPU_INTEL_MSR       = 3;
+  CPU_OPTIONS         = 4;
+  CPU_POWER           = 5;
+  CPU_TOPOLOGY        = 6;
+  DAEMON_SETTINGS     = 7;
+  FAN_CURVE           = 8;
+  GPU_POWER           = 9;
+  HW_MONITORING       = 10;
+  NVIDIA_NWML         = 11;
+  OTHER               = 12;
+  POWER_PROFILE       = 13;
+  RGB_CONTROLLER      = 14;
+  MACHINE_INFORMATION = 15;
+  CPU_SMT             = 16;
+  FAN_OPTION          = 17;
+  OTHER_GPU_SWITCH    = 18;
+}

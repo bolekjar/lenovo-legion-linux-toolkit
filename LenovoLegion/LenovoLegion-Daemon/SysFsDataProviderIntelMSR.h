@@ -9,6 +9,8 @@
 
 #include <SysFsDataProvider.h>
 
+#include "../LenovoLegion-PrepareBuild/MessageRegistry.pb.h"
+
 namespace LenovoLegionDaemon {
 
 class SysFsDataProviderIntelMSR : public SysFsDataProvider
@@ -23,7 +25,7 @@ public:
 
 public:
 
-    static constexpr quint8  dataType = 12;
+    static constexpr quint8  dataType = legion::messages::DataType::CPU_INTEL_MSR;
 };
 
 }

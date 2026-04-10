@@ -8,6 +8,8 @@
 
 #include "DataProvider.h"
 
+#include "../LenovoLegion-PrepareBuild/MessageRegistry.pb.h"
+
 namespace LenovoLegionDaemon {
 
 class DataProviderManager;
@@ -27,7 +29,7 @@ public:
     void clean() override;
 
 public:
-    static constexpr quint8 dataType = 16;
+    static constexpr quint8 dataType = legion::messages::DataType::DAEMON_SETTINGS;
 
 private:
     DataProviderManager* m_dataProviderManager;

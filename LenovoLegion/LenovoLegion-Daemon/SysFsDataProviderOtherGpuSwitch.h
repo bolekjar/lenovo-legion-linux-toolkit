@@ -11,6 +11,8 @@
 
 #include "../LenovoLegion-PrepareBuild/Other.pb.h"
 
+#include "../LenovoLegion-PrepareBuild/MessageRegistry.pb.h"
+
 namespace LenovoLegionDaemon {
 
 class SysFsDataProviderOtherGpuSwitch : public SysFsDataProvider
@@ -46,7 +48,7 @@ private:
 
 public:
 
-    static constexpr quint8  dataType = 18;
+    static constexpr quint8  dataType = legion::messages::DataType::OTHER_GPU_SWITCH;
 };
 
 }

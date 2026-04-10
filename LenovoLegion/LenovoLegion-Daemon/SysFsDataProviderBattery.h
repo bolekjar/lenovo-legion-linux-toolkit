@@ -9,6 +9,8 @@
 
 #include <SysFsDataProvider.h>
 
+#include "../LenovoLegion-PrepareBuild/MessageRegistry.pb.h"
+
 namespace LenovoLegionDaemon {
 
 class SysFsDataProviderBattery : public SysFsDataProvider
@@ -23,7 +25,7 @@ public:
 
 public:
 
-    static constexpr quint8  dataType = 3;
+    static constexpr quint8  dataType = legion::messages::DataType::BATTERY;
 };
 
 }

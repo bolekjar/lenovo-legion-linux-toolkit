@@ -10,6 +10,7 @@
 #include <SysFsDataProvider.h>
 
 #include "../LenovoLegion-PrepareBuild/CpuPower.pb.h"
+#include "../LenovoLegion-PrepareBuild/MessageRegistry.pb.h"
 
 namespace LenovoLegionDaemon {
 
@@ -30,7 +31,7 @@ private:
 
 public:
 
-    static constexpr quint8  dataType = 4;
+    static constexpr quint8  dataType = legion::messages::DataType::CPU_POWER;
 };
 
 }

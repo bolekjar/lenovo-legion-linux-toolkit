@@ -9,6 +9,8 @@
 
 #include <SysFsDataProvider.h>
 
+#include "../LenovoLegion-PrepareBuild/MessageRegistry.pb.h"
+
 namespace LenovoLegionDaemon {
 
 class SysFsDataProviderFanOption : public SysFsDataProvider
@@ -23,7 +25,7 @@ public:
 
 public:
 
-    static constexpr quint8  dataType = 7;
+    static constexpr quint8  dataType = legion::messages::DataType::FAN_OPTION;
 };
 
 }

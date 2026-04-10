@@ -1,6 +1,6 @@
 use std::collections::BTreeSet;
 use clap::{Parser, Subcommand};
-use crate::sysfs_drivers::cpu_control::{CPUs, Topology, CPUX, SMT};
+use crate::sysfs_drivers::cpu_control::{CPUs, IntelPState, IntelUnCorePackages, Topology, CPUX, SMT};
 use crate::utils::{*};
 use crate::sysfs_drivers::power_control::{PowerControl};
 
@@ -85,13 +85,21 @@ pub enum Commands {
         /// display all cpu info
         #[arg(short, long)]
         all: bool,
+
+        /// display intel pstate info
+        #[arg(short, long)]
+        pstate: bool,
+
+        /// display intel incore info
+        #[arg(short, long)]
+        uncore: bool
     },
 
     /// set values for CPU control
     CpuSet {
         /// apply to cpus
         #[arg(short, long)]
-        cpus: String,
+        cpus: Option<String>,
 
         /// disable cpu
         #[arg(short, long)]
@@ -112,6 +120,38 @@ pub enum Commands {
         /// set governor
         #[arg(short, long)]
         governor: Option<String>,
+
+        /// enable pstate hwp dynamic boost
+        #[arg(long)]
+        pstate_hwpe: bool,
+
+        /// disable pstate hwp dynamic boost
+        #[arg(long)]
+        pstate_hwpd: bool,
+
+        /// set pstate max performance 0-100
+        #[arg(long)]
+        pstate_max_pct: Option<u32>,
+
+        /// set pstate min performance 0-100
+        #[arg(long)]
+        pstate_min_pct: Option<u32>,
+
+        /// enable pstate turbo
+        #[arg(long)]
+        pstate_turboe: bool,
+
+        /// disable pstate turbo
+        #[arg(long)]
+        pstate_turbod: bool,
+
+        /// set max freq khz
+        #[arg(long)]
+        uncore_max_freq: Option<u32>,
+
+        /// set min freq khz
+        #[arg(long)]
+        uncore_min_freq: Option<u32>
     },
 
     /// get values for Power Control
@@ -297,7 +337,9 @@ impl Commands {
                 cpus,
                 topology,
                 smt,
-                all
+                all,
+                pstate,
+                uncore
             } => {
                 let mut cpus_vec: BTreeSet<u32> = BTreeSet::new();
 
@@ -327,12 +369,22 @@ impl Commands {
                     print!("{}",CPUs::new()?);
                 }
 
+                if *pstate {
+                    print!("{}",IntelPState::new()?);
+                }
+
                 if !cpus_vec.is_empty()
                 {
                     for cpu in cpus_vec {
                         print!("{}",CPUX::new(cpu)?);
                     }
                 }
+
+                if *uncore
+                {
+                    print!("{}",IntelUnCorePackages::new()?);
+                }
+
             }
 
             Commands::CpuSet {
@@ -342,58 +394,160 @@ impl Commands {
                 freq_min,
                 freq_max,
                 governor,
+                pstate_hwpd ,
+                pstate_hwpe ,
+                pstate_turbod   ,
+                pstate_turboe   ,
+                pstate_max_pct  ,
+                pstate_min_pct,
+                uncore_min_freq ,
+                uncore_max_freq
             } => {
-                let cpus_vec: BTreeSet<u32> = parse_cpu_range_value(cpus.as_str())?;
-                let topology = Topology::new()?;
 
-                if !cpus_vec.is_subset(topology.possible()) {
-                    return Err(std::io::Error::new(std::io::ErrorKind::InvalidData,"Cpu range is too big !"));
-                }
-
-                if *disable && *enable
+                match  cpus
                 {
-                    return Err(std::io::Error::new(std::io::ErrorKind::InvalidData,"Cannot set cpu disable and enable in same time !"));
+                    Some(value) => {
+                        let cpus_vec: BTreeSet<u32> = parse_cpu_range_value(value.as_str())?;
+                        let topology = Topology::new()?;
+
+
+                        if !cpus_vec.is_subset(topology.possible()) {
+                            return Err(std::io::Error::new(std::io::ErrorKind::InvalidData,"Cpu range is too big !"));
+                        }
+
+                        if *disable && *enable
+                        {
+                            return Err(std::io::Error::new(std::io::ErrorKind::InvalidData,"Cannot set cpu disable and enable in same time !"));
+                        }
+
+
+                        for cpu in cpus_vec {
+                            let cpu_x = CPUX::new(cpu)?;
+
+                            match freq_min
+                            {
+                                Some(min) => {
+                                    cpu_x.freq_min(*min)?;
+                                }
+
+                                None => {}
+                            }
+
+                            match freq_max
+                            {
+                                Some(max) => {
+                                    cpu_x.freq_max(*max)?;
+                                }
+
+                                None => {}
+                            }
+
+                            match governor
+                            {
+                                Some(governor) => {
+                                    cpu_x.governor(governor)?;
+                                }
+                                None => {}
+                            }
+
+                            if *enable
+                            {
+                                cpu_x.enable()?;
+                            }
+
+                            if *disable
+                            {
+                                cpu_x.disable()?;
+                            }
+
+                        }
+                    }
+                    None => {
+                        if *disable || *enable || !freq_max.is_none() || !freq_min.is_none() || !governor.is_none() {
+                            return Err(std::io::Error::new(std::io::ErrorKind::InvalidData,"Cpu range is required when you want to set cpu freq or governor or enable/disable cpu !"));
+                        }
+                    }
                 }
 
-                for cpu in cpus_vec {
-                    let cpu_x = CPUX::new(cpu)?;
 
-                    match freq_min
-                    {
-                        Some(min) => {
-                            cpu_x.freq_min(*min)?;
+                if *pstate_hwpe && *pstate_hwpd
+                {
+                    return Err(std::io::Error::new(std::io::ErrorKind::InvalidData,"Cannot set pstate hwp dynamic boost enable and disable in same time !"));
+                }
+
+                if *pstate_turbod && *pstate_turboe
+                {
+                    return Err(std::io::Error::new(std::io::ErrorKind::InvalidData,"Cannot set pstate no turbo enable and disable in same time !"));
+                }
+
+                if *pstate_hwpe
+                {
+                    let pstate = IntelPState::new()?;
+                    pstate.set_hwp_dynamic_boost(true)?;
+                }
+
+                if *pstate_hwpd
+                {
+                    let pstate = IntelPState::new()?;
+                    pstate.set_hwp_dynamic_boost(false)?;
+                }
+
+                if *pstate_turboe
+                {
+                    let pstate = IntelPState::new()?;
+                    pstate.set_no_turbo(false)?;
+                }
+
+                if *pstate_turbod
+                {
+                    let pstate = IntelPState::new()?;
+                    pstate.set_no_turbo(true)?;
+                }
+
+
+                match pstate_min_pct
+                {
+                    Some(value) => {
+                        let pstate = IntelPState::new()?;
+                        pstate.set_min_perf_pct(*value)?;
+                    }
+                    None => {}
+                }
+
+                match pstate_max_pct
+                {
+                    Some(value) => {
+                        let pstate = IntelPState::new()?;
+                        pstate.set_max_perf_pct(*value)?;
+                    }
+                    None => {}
+                }
+
+                match uncore_min_freq
+                {
+                    Some(value) => {
+                        let uncores = IntelUnCorePackages::new()?;
+
+                        for uncore in uncores.iter()
+                        {
+                            uncore.set_min_freq_khz(*value)?;
                         }
-
-                        None => {}
                     }
 
-                    match freq_max
-                    {
-                        Some(max) => {
-                            cpu_x.freq_max(*max)?;
+                    None => {}
+                }
+
+                match uncore_max_freq
+                {
+                    Some(value) => {
+                        let uncores = IntelUnCorePackages::new()?;
+
+                        for uncore in uncores.iter()
+                        {
+                            uncore.set_max_freq_khz(*value)?;
                         }
-
-                        None => {}
                     }
-
-                    match governor
-                    {
-                        Some(governor) => {
-                            cpu_x.governor(governor)?;
-                        }
-                        None => {}
-                    }
-
-                    if *enable
-                    {
-                        cpu_x.enable()?;
-                    }
-
-                    if *disable
-                    {
-                        cpu_x.disable()?;
-                    }
-
+                    None => {}
                 }
             }
 

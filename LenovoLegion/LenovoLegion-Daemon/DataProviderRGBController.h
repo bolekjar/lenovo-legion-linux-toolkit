@@ -10,6 +10,8 @@
 
 #include "DataProvider.h"
 
+#include "../LenovoLegion-PrepareBuild/MessageRegistry.pb.h"
+
 #include <vector>
 #include <memory>
 
@@ -84,7 +86,7 @@ private:
 
 public:
 
-    static constexpr quint8  dataType = 19;
+    static constexpr quint8  dataType = legion::messages::DataType::RGB_CONTROLLER;
 };
 
 }

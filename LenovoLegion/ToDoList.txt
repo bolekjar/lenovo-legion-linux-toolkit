@@ -1,1 +1,5 @@
-﻿1) Command line control utility
+﻿
+
+
+----------------------------------------------------------------------------------------------------------------------
+1) Fix issue in brightness of keyboard - not able to simulate but sometimes shows brightness off and keyboard ligts on.
