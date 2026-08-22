@@ -101,7 +101,7 @@ int legion_wmi_dev_evaluate_string(struct wmi_device *wdev, const u8 instance,co
 			return -EMSGSIZE;
 		}
 
-		strncpy(retval,ret_obj->string.pointer,ret_obj->string.length);
+		strscpy(retval, ret_obj->string.pointer, ret_obj->string.length);
 		retval[ret_obj->string.length] = '\0';  // Explicit NULL termination
 	}
 

@@ -8,6 +8,7 @@
 
 #include "legion-intel-msr.h"
 
+#include <linux/version.h>
 #include <linux/kernel.h>
 #include <asm/msr.h>
 #include <linux/smp.h>
@@ -182,9 +183,6 @@ static void read_voltage_limits(struct legion_intel_msr_private *intel_msr_priva
  */
 static int legion_intel_msr_check_msr_availability(struct legion_intel_msr_private *intel_msr_private)
 {
-    u32 low     = 0,
-        high    = 0;
-
     // Check if we're on an Intel CPU
     if (boot_cpu_data.x86_vendor != X86_VENDOR_INTEL) {
         return -ENODEV;
@@ -196,10 +194,19 @@ static int legion_intel_msr_check_msr_availability(struct legion_intel_msr_priva
     }
 
     // Try to read MSR 0x150 to verify it exists
-    const int err = rdmsr_safe_on_cpu(0, MSR_OC_MAILBOX, &low, &high);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(7, 2, 0)
+    u64 val = 0;
+    int err = rdmsrq_safe_on_cpu(0, MSR_OC_MAILBOX, &val);
     if (err) {
         return -ENODEV;
     }
+#else
+    u32 low     = 0,high    = 0;
+    int err = rdmsr_safe_on_cpu(0, MSR_OC_MAILBOX, &low, &high);
+    if (err) {
+        return -ENODEV;
+    }
+#endif
 
     read_voltage_limits(intel_msr_private);
 

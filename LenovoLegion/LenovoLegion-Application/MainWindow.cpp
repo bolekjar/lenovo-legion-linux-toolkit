@@ -17,7 +17,6 @@
 #include "ToolBarProfilesWidget.h"
 #include "ToolBarSettingsWidget.h"
 #include "ToolBarKeyboardWidget.h"
-#include "RGBControllerInterface.h"
 
 
 #include "DataProviderManager.h"
@@ -30,8 +29,6 @@
 #include <functional>
 
 
-#include "../LenovoLegion-PrepareBuild/RGBController.pb.h"
-#include "DataProviderRGBController.h"
 
 namespace  LenovoLegionGui {
 
