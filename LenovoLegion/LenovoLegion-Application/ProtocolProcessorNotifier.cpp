@@ -18,14 +18,27 @@
 namespace LenovoLegionGui {
 
 ProtocolProcessorNotifier::ProtocolProcessorNotifier(QObject *parent)
-    : ProtocolProcessorBase(LenovoLegionDaemon::Application::SOCKET_NAME_NOTIFICATION,parent)
-{
-     m_timerId = startTimer(10);
-}
+    : ProtocolProcessorBase(LenovoLegionDaemon::Application::SOCKET_NAME_NOTIFICATION,parent),
+    m_timerId(-1)
+{}
 
 ProtocolProcessorNotifier::~ProtocolProcessorNotifier()
 {}
 
+void ProtocolProcessorNotifier::init()
+{
+    if(m_timerId == -1)
+    {
+        m_timerId = startTimer(10);
+    }
+}
+
+void ProtocolProcessorNotifier::cleanup() noexcept
+{
+    if (m_timerId != -1) {
+        killTimer(m_timerId);
+    }
+}
 
 void ProtocolProcessorNotifier::timerEvent(QTimerEvent *event)
 {

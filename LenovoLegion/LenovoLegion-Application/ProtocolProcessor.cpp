@@ -26,43 +26,62 @@ ProtocolProcessor::ProtocolProcessor(QObject *parent)
 ProtocolProcessor::~ProtocolProcessor()
 {}
 
-QByteArray ProtocolProcessor::getDataRequest(quint8 dataType, const QByteArray& data)
+std::pair<bool,QByteArray> ProtocolProcessor::getDataRequest(quint8 dataType, const QByteArray& data) noexcept
 {
-    QByteArray response;
+    try {
+        QByteArray response;
 
-    sendMessage(LenovoLegionDaemon::MessageHeader {
+        sendMessage(LenovoLegionDaemon::MessageHeader {
                     .m_type     = LenovoLegionDaemon::MessageHeader::GET_DATA_REQUEST,
                     .m_dataType = dataType,
                     .m_dataLength = data.length()
                 },data);
 
-    auto msg = receiveMessage(response);
+        auto msg = receiveMessage(response);
 
-    if(msg.m_type != LenovoLegionDaemon::MessageHeader::GET_DATA_RESPONSE)
-    {
-        THROW_EXCEPTION(exception_T,ERROR_CODES::INVALID_MESSAGE,"Invalid get data request response message");
+        if(msg.m_type != LenovoLegionDaemon::MessageHeader::GET_DATA_RESPONSE)
+        {
+            THROW_EXCEPTION(exception_T,ERROR_CODES::INVALID_MESSAGE,"Invalid get data request response message");
+        }
+
+        return std::make_pair(true,response);
+    } catch (const ProtocolProcessorBase::exception_T& e) {
+        LOG_E(QString("ProtocolProcessorBase exception: ").append(e.what()));
+    } catch (const std::exception& e) {
+        LOG_E(QString("Standard exception: ").append(e.what()));
+    } catch (...) {
+        LOG_E("Invalid get data request response message");
     }
 
-    return response;
+    return std::make_pair(false,QByteArray());
 }
 
-QByteArray ProtocolProcessor::setDataRequest(quint8 dataType, const QByteArray &data)
+std::pair<bool,QByteArray> ProtocolProcessor::setDataRequest(quint8 dataType, const QByteArray &data) noexcept
 {
-    QByteArray dataResponse;
+    try {
+        QByteArray dataResponse;
 
-    sendMessage(LenovoLegionDaemon::MessageHeader {
-                    .m_type     = LenovoLegionDaemon::MessageHeader::SET_DATA_REQUEST,
-                    .m_dataType = dataType,
-                    .m_dataLength = data.length()
-                },data);
+        sendMessage(LenovoLegionDaemon::MessageHeader {
+                        .m_type     = LenovoLegionDaemon::MessageHeader::SET_DATA_REQUEST,
+                        .m_dataType = dataType,
+                        .m_dataLength = data.length()
+                    },data);
 
+        auto msg = receiveMessage(dataResponse);
+        if(msg.m_type != LenovoLegionDaemon::MessageHeader::SET_DATA_RESPONSE)
+        {
+            THROW_EXCEPTION(exception_T,ERROR_CODES::INVALID_MESSAGE,"Invalid set data request response message");
+        }
 
-    auto msg = receiveMessage(dataResponse);
+        return std::make_pair(true,dataResponse);
 
-    if(msg.m_type != LenovoLegionDaemon::MessageHeader::SET_DATA_RESPONSE)
-    {
-        THROW_EXCEPTION(exception_T,ERROR_CODES::INVALID_MESSAGE,"Invalid set data request response message");
+    } catch (const ProtocolProcessorBase::exception_T& e) {
+        LOG_E(QString("ProtocolProcessorBase exception: ").append(e.what()));
+    } catch (const std::exception& e) {
+        LOG_E(QString("Standard exception: ").append(e.what()));
+    } catch (...) {
+        LOG_E("Invalid set data request response message");
     }
-    return dataResponse;
+    return std::make_pair(false,QByteArray());
 }
 }

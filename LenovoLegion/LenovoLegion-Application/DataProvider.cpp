@@ -10,7 +10,7 @@
 
 namespace LenovoLegionGui {
 
-DataProvider::DataProvider(ProtocolProcessor * protocolProcessor,QObject *parent) :
+DataProvider::DataProvider(ProtocolProcessor &protocolProcessor, QObject *parent) :
     QObject(parent),
     m_protocolProcessor(protocolProcessor)
 {

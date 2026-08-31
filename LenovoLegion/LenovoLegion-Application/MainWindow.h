@@ -60,7 +60,7 @@ private:
 
 public:
 
-    explicit MainWindow(QWidget *parent = nullptr);
+    explicit MainWindow(DataProviderManager& dataProviderManager,QWidget *parent = nullptr);
 
     virtual ~MainWindow();
 
@@ -93,7 +93,7 @@ private:
     /*
      * Data Provider Manager
      */
-    DataProviderManager*  m_dataProviderManager;
+    DataProviderManager&  m_dataProviderManager;
 
     /*
      * Timer ID

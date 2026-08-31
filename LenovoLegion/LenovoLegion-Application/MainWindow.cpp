@@ -32,10 +32,10 @@
 
 namespace  LenovoLegionGui {
 
-MainWindow::MainWindow(QWidget *parent) :
+MainWindow::MainWindow(DataProviderManager &dataProviderManager, QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow),
-    m_dataProviderManager(new DataProviderManager(this)),
+    m_dataProviderManager(dataProviderManager),
     m_timerId(-1)
 {
     ui->setupUi(this);
@@ -88,19 +88,19 @@ MainWindow::MainWindow(QWidget *parent) :
         if(ui->label_DaemonStatus->text() != DAEMON_CONNECTION_STATUS_CONNECTED.data())
             return;
 
-        ui->toolBar_HBoxLayout->addWidget((new ToolBarHomeWidget(m_dataProviderManager->dataProvider(),this))->initialize());
+        ui->toolBar_HBoxLayout->addWidget((new ToolBarHomeWidget(m_dataProviderManager.dataProvider(),this))->initialize());
     },true);
 
     toolbarActionInitializer(ui->toolBar->addAction("Profiles"),QIcon(":/images/icons/toolbar-user.png"),[this](){
         if(ui->label_DaemonStatus->text() != DAEMON_CONNECTION_STATUS_CONNECTED.data())
             return;
-        ui->toolBar_HBoxLayout->addWidget((new ToolBarProfilesWidget(m_dataProviderManager->dataProvider(),this))->initialize());
+        ui->toolBar_HBoxLayout->addWidget((new ToolBarProfilesWidget(m_dataProviderManager.dataProvider(),this))->initialize());
     });
 
     toolbarActionInitializer(ui->toolBar->addAction("Keyboard"),QIcon(":/images/icons/keyboard.png"),[this](){
         if(ui->label_DaemonStatus->text() != DAEMON_CONNECTION_STATUS_CONNECTED.data())
             return;
-        ui->toolBar_HBoxLayout->addWidget((new ToolBarKeyboardWidget(m_dataProviderManager->dataProvider(),this))->initialize());
+        ui->toolBar_HBoxLayout->addWidget((new ToolBarKeyboardWidget(m_dataProviderManager.dataProvider(),this))->initialize());
     });
 
 
@@ -109,19 +109,19 @@ MainWindow::MainWindow(QWidget *parent) :
     toolbarActionInitializer(ui->toolBar->addAction("Settings"),QIcon(":/images/icons/toolbar-settings.png"),[this](){
         if(ui->label_DaemonStatus->text() != DAEMON_CONNECTION_STATUS_CONNECTED.data())
             return;
-        ui->toolBar_HBoxLayout->addWidget((new ToolBarSettingsWidget(m_dataProviderManager->dataProvider(),this))->initialize());
+        ui->toolBar_HBoxLayout->addWidget((new ToolBarSettingsWidget(m_dataProviderManager.dataProvider(),this))->initialize());
     });
     toolbarActionInitializer(ui->toolBar->addAction("Information"),QIcon(":/images/icons/toolbar-information.png"),[this](){
 
         if(ui->label_DaemonStatus->text() != DAEMON_CONNECTION_STATUS_CONNECTED.data())
             return;
 
-        ui->toolBar_HBoxLayout->addWidget((new ToolBarInformationWidget(m_dataProviderManager->dataProvider(),this))->initialize());
+        ui->toolBar_HBoxLayout->addWidget((new ToolBarInformationWidget(m_dataProviderManager.dataProvider(),this))->initialize());
     });
 
     toolbarActionInitializer(ui->toolBar->addAction("Help"),QIcon(":/images/icons/toolbar-question.png"),[this](){
 
-        ui->toolBar_HBoxLayout->addWidget((new ToolBarHelpWidget(m_dataProviderManager->dataProvider(),this))->initialize());
+        ui->toolBar_HBoxLayout->addWidget((new ToolBarHelpWidget(m_dataProviderManager.dataProvider(),this))->initialize());
     });
 
     toolbarActionInitializer(ui->toolBar->addAction("Exit"),QIcon(":/images/icons/toolbar-door.png"),[](){
@@ -141,8 +141,8 @@ MainWindow::MainWindow(QWidget *parent) :
     /*
      * Connect data provider manager events
      */
-    connect(m_dataProviderManager,&DataProviderManager::daemonNotification,this,&MainWindow::daemonNotification);
-    connect(m_dataProviderManager,&DataProviderManager::dameonConnectionStatus,this,&MainWindow::dameonConnectionStatus);
+    connect(&m_dataProviderManager,&DataProviderManager::daemonNotification,this,&MainWindow::daemonNotification);
+    connect(&m_dataProviderManager,&DataProviderManager::dameonConnectionStatus,this,&MainWindow::dameonConnectionStatus);
 
     /*
      * Start timer
@@ -272,7 +272,7 @@ void MainWindow::initializeUI()
     /*
      * Add battery status widget
      */
-    ui->horizontalLayout_BateryStatus->addWidget(new BateryStatus(m_dataProviderManager->dataProvider(),this));
+    ui->horizontalLayout_BateryStatus->addWidget(new BateryStatus(m_dataProviderManager.dataProvider(),this));
 
 
     /*

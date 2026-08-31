@@ -21,13 +21,43 @@ namespace  LenovoLegionGui {
 
 
 DataProviderManager::DataProviderManager(QObject *parent) : QObject(parent),
-    m_protocolProcessor(new ProtocolProcessor(this)),
-    m_protocolProcessorNotifier(new ProtocolProcessorNotifier(this)),
-    m_dataProvider(new DataProvider(m_protocolProcessor,this))
+    m_protocolProcessor(new ProtocolProcessor()),
+    m_protocolProcessorNotifier(new ProtocolProcessorNotifier()),
+    m_dataProvider(new DataProvider(*m_protocolProcessor, this)),
+    m_commThread(new QThread(this))
 {
+    m_protocolProcessor->moveToThread(m_commThread);
+    m_protocolProcessorNotifier->moveToThread(m_commThread);
+
+    connect(m_commThread, &QThread::started, m_protocolProcessor, &ProtocolProcessor::init);
+    connect(m_commThread, &QThread::started, m_protocolProcessorNotifier, &ProtocolProcessorNotifier::init);
+
+
+    connect(m_commThread, &QThread::finished, m_protocolProcessor, &ProtocolProcessor::cleanup);
+    connect(m_commThread, &QThread::finished, m_protocolProcessorNotifier, &ProtocolProcessorNotifier::cleanup);
+    connect(m_commThread, &QThread::finished, m_protocolProcessor, &QObject::deleteLater);
+    connect(m_commThread, &QThread::finished, m_protocolProcessorNotifier, &QObject::deleteLater);
+
+
     connect(m_protocolProcessor,&ProtocolProcessor::connected,this,&DataProviderManager::protocolProcessorConnected);
     connect(m_protocolProcessor,&ProtocolProcessor::disconnected,this,&DataProviderManager::protocolProcessorDisconnectd);
     connect(m_protocolProcessorNotifier,&ProtocolProcessorNotifier::daemonNotification,this,&DataProviderManager::daemonNotificationSlot);
+}
+
+DataProviderManager::~DataProviderManager()
+{}
+
+void DataProviderManager::init()
+{
+    m_commThread->start();
+}
+
+void DataProviderManager::cleanup() noexcept
+{
+    if (m_commThread && m_commThread->isRunning()) {
+        m_commThread->quit();
+        m_commThread->wait();
+    }
 }
 
 DataProvider *DataProviderManager::dataProvider() const { return m_dataProvider; }
@@ -50,8 +80,9 @@ void DataProviderManager::daemonNotificationSlot(const legion::messages::Notific
 void DataProviderManager::reconnectToDaemon()
 {
     LOG_T("Manual reconnect to daemon requested");
-    m_protocolProcessor->reconnect();
-    m_protocolProcessorNotifier->reconnect();
+
+    QMetaObject::invokeMethod(m_protocolProcessor, &ProtocolProcessor::reconnect);
+    QMetaObject::invokeMethod(m_protocolProcessorNotifier, &ProtocolProcessorNotifier::reconnect);
 }
 
 }

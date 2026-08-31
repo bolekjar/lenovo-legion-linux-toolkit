@@ -74,44 +74,37 @@ ThreadFrequency::~ThreadFrequency()
 
 void ThreadFrequency::setScalingCurFreq(int freq)
 {
-    //ui->lcdNumber_CPUScalingCurFreq->display(freq);
     m_scalingCurFreq = freq;
     m_barSet->remove(0);
     m_barSet->append(freq);
     m_chart->setTitle(m_title + QString(" [%1 MHz]").arg(freq,4,10,QChar('0')));
 
     ui->horizontalLayout_ThreadFrequency->itemAt(0)->widget()->repaint();
-    refreshToolTip();
 }
 
 void ThreadFrequency::setScalingMinFreq(int freq)
 {
     m_scalingMinFreq = freq;
-    refreshToolTip();
 }
 
 void ThreadFrequency::setScalingMaxFreq(int freq)
 {
     m_scalingMaxFreq = freq;
-    refreshToolTip();
 }
 
 void ThreadFrequency::setBaseFreq(int freq)
 {
     m_baseFreq = freq;
-    refreshToolTip();
 }
 
 void ThreadFrequency::setMinFreq(int freq)
 {
     m_minFreq = freq;
-    refreshToolTip();
 }
 
 void ThreadFrequency::setMaxFreq(int freq)
 {
     m_maxFreq = freq;
-    refreshToolTip();
 }
 
 void ThreadFrequency::refreshToolTip()
@@ -130,6 +123,16 @@ void ThreadFrequency::refreshToolTip()
         .arg(m_minFreq)
         .arg(m_maxFreq)
     );
+}
+
+void ThreadFrequency::refresh()
+{
+    if(ui->horizontalLayout_ThreadFrequency->itemAt(0)->widget()->underMouse())
+    {
+        QToolTip::showText(QCursor::pos(), ui->horizontalLayout_ThreadFrequency->itemAt(0)->widget()->toolTip(), this);
+    }
+
+    ui->horizontalLayout_ThreadFrequency->itemAt(0)->widget()->repaint();
 }
 
 }

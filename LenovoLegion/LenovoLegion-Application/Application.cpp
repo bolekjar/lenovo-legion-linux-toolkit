@@ -6,7 +6,9 @@
  *   Jaroslav Bolek <jaroslav.bolek@gmail.com>
  */
 #include "Application.h"
+#include "AboutWindow.h"
 #include "DataProviderManager.h"
+#include "MainWindow.h"
 #include "ProtocolProcessor.h"
 #include "ProtocolProcessorNotifier.h"
 #include "ToolBarSettingsWidget.h"
@@ -25,6 +27,9 @@
 namespace LenovoLegionGui {
 
 Application::Application(int &argc, char *argv[]) : QApplication(argc,argv),
+    m_dataProviderManager(new DataProviderManager(this)),
+    m_mainWindow(nullptr),
+    m_aboutWindow(nullptr),
     m_trayIcon(new QSystemTrayIcon(this))
 {
     LoggerHolder::getInstance().init(QApplication::applicationDirPath().append(QDir::separator()).append(bj::framework::Application::log_dir).append(QDir::separator()).append(bj::framework::Application::apps_names[0]).append(".log").toStdString());
@@ -41,12 +46,18 @@ void Application::appStartImpl()
 
 void Application::appInitImpl(std::unique_ptr<ApplicationModulesHandler_T>)
 {
+
+    /*
+     * Init DataProviderManager
+     */
+    m_dataProviderManager->init();
+
+
     /*
      * Init Gui
      */
-
-    m_mainWindow  = std::make_unique<MainWindow>();
-    m_aboutWindow = std::make_unique<AboutWindow>();;
+    m_mainWindow  = std::make_unique<MainWindow>(*m_dataProviderManager);
+    m_aboutWindow = std::make_unique<AboutWindow>();
 
 
     /*
@@ -95,6 +106,8 @@ void Application::appStopImpl() noexcept
 
     m_trayIcon->setVisible(false);
     m_trayIcon->contextMenu()->clear();
+
+    m_dataProviderManager->cleanup();
 }
 
 void Application::appMainLoop()

@@ -35,9 +35,10 @@ public:
     void setMinFreq(int freq);
     void setMaxFreq(int freq);
 
-private:
-
     void refreshToolTip();
+    void refresh();
+
+private:
 
 private:
     Ui::ThreadFrequency *ui;

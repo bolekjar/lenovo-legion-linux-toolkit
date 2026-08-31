@@ -89,6 +89,11 @@ void HWMonitor::refresh(int value,int fieldWidth, int base, QChar fillChar,const
     m_barSet->append(m_value);
     m_chart->setTitle(m_title.arg(value,fieldWidth, base, fillChar));
     m_chart->setToolTip(toolTip);
+
+    if (underMouse())
+    {
+        QToolTip::showText(QCursor::pos(), toolTip, this);
+    }
 }
 
 int HWMonitor::getMinValue() const {

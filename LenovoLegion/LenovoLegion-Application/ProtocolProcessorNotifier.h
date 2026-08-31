@@ -35,6 +35,9 @@ public:
     explicit ProtocolProcessorNotifier(QObject *parent = nullptr);
     virtual ~ProtocolProcessorNotifier();
 
+    virtual void init() override;
+    virtual void cleanup() noexcept override;
+
 protected:
 
     void timerEvent(QTimerEvent *event) override;

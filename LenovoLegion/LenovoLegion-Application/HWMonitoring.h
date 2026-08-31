@@ -39,15 +39,52 @@ private:
 
     static constexpr int TIMER_EVENT_IN_MS = 500;
 
+    struct UIUpdatePackage {
+        std::vector<uint32_t>   m_tempValues;
+        std::vector<QString>    m_tempTexts;
+
+        uint64_t m_cpuPowerValue = 0;
+        QString  m_cpuPowerText;
+
+        uint64_t m_gpuPowerValue = 0;
+        QString  m_gpuPowerText;
+
+
+        std::vector<uint32_t>   m_fanSpeeds;
+        std::vector<QString>    m_fanTexts;
+
+        struct CoreFreqData {
+            int             m_index = 0;
+            bool            m_isPerformance = true;
+            uint32_t        m_base = 0;
+            uint32_t        m_min = 0;
+            uint32_t        m_max = 0;
+            uint32_t        m_scalingMin = 0;
+            uint32_t        m_scalingMax = 0;
+            uint32_t        m_scalingCur = 0;
+        };
+        std::vector<CoreFreqData> m_coresData;
+
+        uint32_t m_averageFreq = 0;
+        uint32_t m_averageFreqPcores = 0;
+        uint32_t m_averageFreqEcores = 0;
+
+        QString m_averageFreqText;
+        QString m_averageFreqPcoresText;
+        QString m_averageFreqEcoresText;
+    };
+
 public:
     explicit HWMonitoring(DataProvider *dataProvider,QWidget *parent = nullptr);
 
 
     virtual ~HWMonitoring();
 
-    virtual void timerEvent(QTimerEvent *event) override;
-
     void refresh();
+
+private:
+
+    virtual void timerEvent(QTimerEvent *event) override;
 
 private slots:
     void on_groupBox_CPU_Per_Thr_clicked(bool checked);
@@ -60,6 +97,7 @@ private:
     void forAllCpuPerformanceCores(const std::function<bool(const int index)> &func);
     void forAllCpuEfficientCores(const std::function<bool(const int index)> &func);
 
+    UIUpdatePackage prepareData();
 signals:
 
     void widgetEvent(const LenovoLegionGui::WidgetMessage& event);
@@ -67,10 +105,24 @@ private:
 
     Ui::HWMonitoring *ui;
 
+    /*
+     * Previos Data
+     */
     legion::messages::HardwareMonitor                         m_hwMonitoringData;
-    legion::messages::CPUTopology                             m_cpuTopology;
     legion::messages::NvidiaNvml                              m_nvidiaNvmlData;
+
+    /*
+     * Previous Data for CPU Topology and Info
+     */
+    legion::messages::CPUTopology                             m_cpuTopology;
     legion::messages::CPUInfo                                 m_cpuInfoData;
+
+    /*
+     * Latest data for comparison
+     */
+    legion::messages::HardwareMonitor                         m_latestHWMonitoringData;
+    legion::messages::NvidiaNvml                              m_latestNvidiaNvmlData;
+
 
     DataProvider                *m_dataProvider;
     CPUFrequency                *m_windowFreqInfoByCore;
@@ -78,7 +130,8 @@ private:
 
     std::chrono::steady_clock::time_point    m_lastRefreshTime;
 
-    int m_timerId = -1;
+    int m_timerId            = -1;
+    int m_pendingRequests    =  0;
 };
 
 }

@@ -39,9 +39,10 @@ public:
     explicit ProtocolProcessor(QObject *parent = nullptr);
     virtual ~ProtocolProcessor();
 
+public slots:
 
-    QByteArray getDataRequest(quint8 dataType, const QByteArray& data = {});
-    QByteArray setDataRequest(quint8 dataType, const QByteArray& data);
+    std::pair<bool,QByteArray> getDataRequest(quint8 dataType, const QByteArray& data = {}) noexcept;
+    std::pair<bool,QByteArray> setDataRequest(quint8 dataType, const QByteArray& data) noexcept;
 
 };
 

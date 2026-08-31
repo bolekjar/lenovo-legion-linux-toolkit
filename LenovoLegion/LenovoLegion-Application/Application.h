@@ -7,8 +7,6 @@
  */
 #pragma once
 
-#include "MainWindow.h"
-#include "AboutWindow.h"
 #include "Settings.h"
 
 #include <Core/ApplicationInterface.h>
@@ -20,6 +18,11 @@
 #include <memory>
 
 namespace LenovoLegionGui {
+
+class DataProviderManager;
+class MainWindow;
+class AboutWindow;
+
 
 class Application : public QApplication,
                     public bj::framework::ApplicationInterface
@@ -64,10 +67,12 @@ private:
     void applyLogging(bool enableDebug, bool enableTrace);
     void applyTheme(ApplicationSettings::ThemeType theme);
 
-    std::unique_ptr<MainWindow>      m_mainWindow;
-    std::unique_ptr<AboutWindow>     m_aboutWindow;
+    DataProviderManager    *m_dataProviderManager;
 
-    QSystemTrayIcon                 *m_trayIcon;
+    std::unique_ptr<MainWindow>          m_mainWindow;
+    std::unique_ptr<AboutWindow>         m_aboutWindow;
+
+    QSystemTrayIcon        *m_trayIcon;
 };
 
 

@@ -7,6 +7,7 @@
  */
 #pragma once
 
+#include <QThread>
 #include <DataProvider.h>
 
 
@@ -25,6 +26,10 @@ class DataProviderManager : public QObject
 public:
 
     DataProviderManager(QObject *parent);
+    ~DataProviderManager();
+
+    void init();
+    void cleanup() noexcept;
 
 
     DataProvider * dataProvider() const;
@@ -47,9 +52,11 @@ private slots:
 
 private:
 
-    ProtocolProcessor*          m_protocolProcessor;
-    ProtocolProcessorNotifier*  m_protocolProcessorNotifier;
-    DataProvider*               m_dataProvider;
+    ProtocolProcessor                           *m_protocolProcessor;
+    ProtocolProcessorNotifier                   *m_protocolProcessorNotifier;
+    DataProvider                                *m_dataProvider;
+
+    QThread                                     *m_commThread;
 };
 
 }

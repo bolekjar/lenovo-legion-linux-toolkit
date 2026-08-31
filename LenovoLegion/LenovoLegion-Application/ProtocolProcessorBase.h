@@ -38,6 +38,8 @@ public:
     ~ProtocolProcessorBase();
 
 
+    virtual void init()     {}
+    virtual void cleanup () noexcept {}
 
 protected:
 
