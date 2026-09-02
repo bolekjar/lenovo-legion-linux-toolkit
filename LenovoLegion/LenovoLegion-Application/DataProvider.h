@@ -74,12 +74,12 @@ public:
     }
 
     template<class Message, class Request = Message>
-    QFuture<Message> getDataMessageAsync(quint8 m_dataType, const Request& data = {}) const {
+    QFuture<Message> getDataMessageAsync(quint8 m_dataType, Request data = {}) const {
         return QtConcurrent::run(
             &DataProvider::getDataMessage<Message, Request>,
             this,
             m_dataType,
-            data
+            std::move(data)
             );
     }
 

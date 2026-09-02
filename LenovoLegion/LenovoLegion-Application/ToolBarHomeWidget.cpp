@@ -210,6 +210,7 @@ void ToolBarHomeWidget::dataProviderEvent(const legion::messages::Notification &
         break;
         case legion::messages::Notification::CPU_X_LIST_RELOADED:
         {
+            Utils::Task::executeTasks(m_defaultActionsMap["refresh_hw_monitoring"]);
             Utils::Task::executeTasks(m_defaultActionsMap["refresh_cpu_controls"]);
             Utils::Layout::forAllLayoutsDo(*ui->verticalLayout_PowerProfiles,[](QLayoutItem &item){
                 dynamic_cast<PowerProfileControl*>(item.widget())->refresh();

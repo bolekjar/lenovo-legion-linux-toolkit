@@ -16,6 +16,7 @@
 #include "../LenovoLegion-PrepareBuild/ComputerInfo.pb.h"
 
 #include <QWidget>
+#include <QFuture>
 
 #include <chrono>
 
@@ -40,6 +41,7 @@ private:
     static constexpr int TIMER_EVENT_IN_MS = 500;
 
     struct UIUpdatePackage {
+
         std::vector<uint32_t>   m_tempValues;
         std::vector<QString>    m_tempTexts;
 
@@ -74,6 +76,14 @@ private:
         QString m_averageFreqEcoresText;
     };
 
+    enum class RefreshState {
+        IDLE,
+        FETCHING_DATA,
+        PROCESSING_DATA,
+        UPDATING_UI,
+        DESTROYING
+    };
+
 public:
     explicit HWMonitoring(DataProvider *dataProvider,QWidget *parent = nullptr);
 
@@ -97,7 +107,18 @@ private:
     void forAllCpuPerformanceCores(const std::function<bool(const int index)> &func);
     void forAllCpuEfficientCores(const std::function<bool(const int index)> &func);
 
-    UIUpdatePackage prepareData();
+
+    void changeState(RefreshState newState);
+    void startDataFetch();
+
+    UIUpdatePackage prepareData(const legion::messages::HardwareMonitor latestHWMonitoringData,
+                                const legion::messages::NvidiaNvml      latestNvidiaNvmlData,
+                                const legion::messages::CPUInfo         cpuInfoData,
+                                const legion::messages::HardwareMonitor hwMonitoringData,
+                                const legion::messages::NvidiaNvml      nvidiaNvmlData,
+                                const std::chrono::steady_clock::time_point   latestRefreshTime,
+                                const bool isWindowFreqInfoByCoreVisible
+                                );
 signals:
 
     void widgetEvent(const LenovoLegionGui::WidgetMessage& event);
@@ -131,7 +152,15 @@ private:
     std::chrono::steady_clock::time_point    m_lastRefreshTime;
 
     int m_timerId            = -1;
-    int m_pendingRequests    =  0;
+
+    RefreshState m_currentState = RefreshState::IDLE;
+    int m_pendingRequests       = 0;
+
+    QFuture<legion::messages::HardwareMonitor> m_refreshFutureHWMon;
+    QFuture<legion::messages::NvidiaNvml>      m_refreshFutureNvml;
+
+    QFuture<UIUpdatePackage>                   m_refreshFutureUIUpdatePackage;
+
 };
 
 }

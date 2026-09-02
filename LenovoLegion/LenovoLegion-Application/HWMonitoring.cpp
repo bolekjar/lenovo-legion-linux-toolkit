@@ -133,10 +133,28 @@ HWMonitoring::HWMonitoring(DataProvider *dataProvider,QWidget *parent)
 
 void HWMonitoring::refresh()
 {
-    QtConcurrent::run([this](){
-        return this->prepareData();
-    }).then([this](UIUpdatePackage package){
-        QTimer::singleShot(0, this, [this, package]() {
+    if (m_currentState != RefreshState::FETCHING_DATA) return;
+
+    changeState(RefreshState::PROCESSING_DATA);
+
+    m_refreshFutureUIUpdatePackage = QtConcurrent::run([this](){
+        return this->prepareData(
+            m_latestHWMonitoringData,
+            m_latestNvidiaNvmlData,
+            m_cpuInfoData,
+            m_hwMonitoringData,
+            m_nvidiaNvmlData,
+            m_lastRefreshTime,
+            m_windowFreqInfoByCore->isVisible()
+            );
+    });
+    m_refreshFutureUIUpdatePackage.then(this,[this](UIUpdatePackage package){
+            m_lastRefreshTime = std::chrono::steady_clock::now();
+
+            if (m_currentState != RefreshState::PROCESSING_DATA) return;
+
+            changeState(RefreshState::UPDATING_UI);
+
             try {
                 for (size_t i = 0; i < package.m_tempValues.size(); ++i)
                 {
@@ -200,14 +218,25 @@ void HWMonitoring::refresh()
 
             } catch(ProtocolProcessor::exception_T &ex) {
                 LOG_W(QString("HWMonitoring refresh error: ").append(ex.what()));
-            }
-        });
+            };
+
+            changeState(RefreshState::IDLE);
     });
 }
 
 HWMonitoring::~HWMonitoring()
 {
     killTimer(m_timerId);
+
+    changeState(RefreshState::DESTROYING);
+
+    m_refreshFutureHWMon.cancel();
+    m_refreshFutureNvml.cancel();
+    m_refreshFutureUIUpdatePackage.cancel();
+
+    m_refreshFutureHWMon.waitForFinished();
+    m_refreshFutureNvml.waitForFinished();
+    m_refreshFutureUIUpdatePackage.waitForFinished();
 
     delete m_windowFreqInfoByCore;
     delete m_windowGPUDetails;
@@ -216,41 +245,14 @@ HWMonitoring::~HWMonitoring()
 
 void HWMonitoring::timerEvent(QTimerEvent *)
 {
-    if(m_pendingRequests > 0)
+    if (m_currentState != RefreshState::IDLE)
     {
-        LOG_W(QString("HWMonitoring timerEvent: pending requests > 0, skipping refresh"));
+        LOG_W(QString("HWMonitoring timerEvent: System busy in state %1, skipping.")
+                  .arg(static_cast<int>(m_currentState)));
         return;
     }
 
-    m_pendingRequests++;
-    m_dataProvider->getDataMessageAsync<legion::messages::HardwareMonitor>(LenovoLegionDaemon::SysFsDataProviderHWMon::dataType).then([this](const legion::messages::HardwareMonitor &data){
-        m_hwMonitoringData = m_latestHWMonitoringData;
-        m_latestHWMonitoringData = data;
-
-        m_pendingRequests--;
-
-        if(m_pendingRequests == 0)
-        {
-            QTimer::singleShot(0, this, [this]() {
-                this->refresh();
-            });
-        }
-    });
-
-    m_pendingRequests++;
-    m_dataProvider->getDataMessageAsync<legion::messages::NvidiaNvml>(LenovoLegionDaemon::DataProviderNvidiaNvml::dataType).then([this](const legion::messages::NvidiaNvml &data){
-        m_nvidiaNvmlData = m_latestNvidiaNvmlData;
-        m_latestNvidiaNvmlData = data;
-
-        m_pendingRequests--;
-
-        if(m_pendingRequests == 0)
-        {
-            QTimer::singleShot(0, this, [this]() {
-                this->refresh();
-            });
-        }
-    });
+    startDataFetch();
 }
 
 void HWMonitoring::forAllCpuPerformanceCores(const std::function<bool (const int)> &func)
@@ -263,42 +265,81 @@ void HWMonitoring::forAllCpuEfficientCores(const std::function<bool (const int)>
     Utils::ProtoBuf::forAllCpuTopologyRange(func,m_cpuTopology.active_cpus_atom());
 }
 
-HWMonitoring::UIUpdatePackage HWMonitoring::prepareData()
+void HWMonitoring::changeState(RefreshState newState)
+{
+    m_currentState = newState;
+}
+
+void HWMonitoring::startDataFetch()
+{
+    changeState(RefreshState::FETCHING_DATA);
+
+    m_pendingRequests = 2;
+    // --- HW Monitor ---
+    m_refreshFutureHWMon = m_dataProvider->getDataMessageAsync<legion::messages::HardwareMonitor>(LenovoLegionDaemon::SysFsDataProviderHWMon::dataType);
+    m_refreshFutureHWMon.then(this, [this](const legion::messages::HardwareMonitor &data){
+        if (m_currentState != RefreshState::FETCHING_DATA) return;
+
+        m_hwMonitoringData = m_latestHWMonitoringData;
+        m_latestHWMonitoringData = data;
+
+        m_pendingRequests--;
+        if (m_pendingRequests == 0) {
+            this->refresh();
+        }
+    });
+
+    // --- NVML (Nvidia) ---
+    m_refreshFutureNvml = m_dataProvider->getDataMessageAsync<legion::messages::NvidiaNvml>(LenovoLegionDaemon::DataProviderNvidiaNvml::dataType);
+    m_refreshFutureNvml.then(this, [this](const legion::messages::NvidiaNvml &data){
+        if (m_currentState != RefreshState::FETCHING_DATA) return;
+
+        m_nvidiaNvmlData = m_latestNvidiaNvmlData;
+        m_latestNvidiaNvmlData = data;
+
+        m_pendingRequests--;
+        if (m_pendingRequests == 0) {
+            this->refresh();
+        }
+    });
+}
+
+HWMonitoring::UIUpdatePackage HWMonitoring::prepareData(const legion::messages::HardwareMonitor latestHWMonitoringData,
+                                                        const legion::messages::NvidiaNvml      latestNvidiaNvmlData,
+                                                        const legion::messages::CPUInfo         cpuInfoData,
+                                                        const legion::messages::HardwareMonitor hwMonitoringData,
+                                                        const legion::messages::NvidiaNvml      nvidiaNvmlData,
+                                                        const std::chrono::steady_clock::time_point   latestRefreshTime,
+                                                        const bool isWindowFreqInfoByCoreVisible)
 {
     UIUpdatePackage package;
-
-    if(m_pendingRequests > 0)
-    {
-        LOG_W(QString("HWMonitoring prepareData: pending requests > 0, skipping refresh"));
-        return package;
-    }
 
     /*
      * Temps
      */
-    package.m_tempValues.reserve(m_hwMonitoringData.legion().temps_size());
-    package.m_tempTexts.reserve(m_hwMonitoringData.legion().temps_size());
-    for (int i = 0; i < m_hwMonitoringData.legion().temps_size(); ++i)
+    package.m_tempValues.reserve(hwMonitoringData.legion().temps_size());
+    package.m_tempTexts.reserve(hwMonitoringData.legion().temps_size());
+    for (int i = 0; i < hwMonitoringData.legion().temps_size(); ++i)
     {
-        package.m_tempValues.push_back(m_latestHWMonitoringData.legion().temps().at(i).temp_value() / 1000);
+        package.m_tempValues.push_back(latestHWMonitoringData.legion().temps().at(i).temp_value() / 1000);
         package.m_tempTexts.push_back(QString("%1: %2 °C\n"\
                                             "%1 min: 30 °C\n"\
-                                            "%1 max: 100 °C\n").arg(m_latestHWMonitoringData.legion().temps().at(i).temp_label().data()).arg(m_latestHWMonitoringData.legion().temps().at(i).temp_value() / 1000));
+                                            "%1 max: 100 °C\n").arg(latestHWMonitoringData.legion().temps().at(i).temp_label().data()).arg(latestHWMonitoringData.legion().temps().at(i).temp_value() / 1000));
     }
 
     /*
      * Cpu Power
      */
     {
-        quint64 diff = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - m_lastRefreshTime).count();
+        quint64 diff = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - latestRefreshTime).count();
 
         if(diff < (TIMER_EVENT_IN_MS * 1200) && diff > (TIMER_EVENT_IN_MS * 800))
         {
-            package.m_cpuPowerValue = (m_latestHWMonitoringData.intel_power().power_cap_cpu_energy() - m_hwMonitoringData.intel_power().power_cap_cpu_energy())/diff;
+            package.m_cpuPowerValue = (latestHWMonitoringData.intel_power().power_cap_cpu_energy() - hwMonitoringData.intel_power().power_cap_cpu_energy())/diff;
             package.m_cpuPowerText = QString("%1\n"
                                       "Power : %2 W\n"
                                       "Power min: 0 W\n"
-                                      "Power max: 250 W\n").arg(m_cpuInfoData.cpu_model()).arg((m_latestHWMonitoringData.intel_power().power_cap_cpu_energy() - m_hwMonitoringData.intel_power().power_cap_cpu_energy())/diff);
+                                      "Power max: 250 W\n").arg(cpuInfoData.cpu_model()).arg((latestHWMonitoringData.intel_power().power_cap_cpu_energy() - hwMonitoringData.intel_power().power_cap_cpu_energy())/diff);
         }
         else
         {
@@ -306,7 +347,7 @@ HWMonitoring::UIUpdatePackage HWMonitoring::prepareData()
             package.m_cpuPowerText = QString("%1\n"
                                       "Power : %2 W\n"
                                       "Power min: 0 W\n"
-                                      "Power max: 250 W\n").arg(m_cpuInfoData.cpu_model()).arg(ui->widget_CPUPower->getValue());
+                                      "Power max: 250 W\n").arg(cpuInfoData.cpu_model()).arg(ui->widget_CPUPower->getValue());
         }
     }
 
@@ -314,29 +355,29 @@ HWMonitoring::UIUpdatePackage HWMonitoring::prepareData()
     /*
      * GPU Power
      */
-    package.m_gpuPowerValue = m_latestNvidiaNvmlData.hardware_monitor().power().value() / 1000;
+    package.m_gpuPowerValue = latestNvidiaNvmlData.hardware_monitor().power().value() / 1000;
     package.m_gpuPowerText  =  QString("%1\n"\
                                    "Power: %2 W\n"\
                                    "Power min: %3 W\n"\
-                                   "Power max: %4 W").arg(m_latestNvidiaNvmlData.name()).arg(m_latestNvidiaNvmlData.hardware_monitor().power().value() / 1000)
-                                    .arg(m_latestNvidiaNvmlData.hardware_monitor().power().min_value() / 1000)
-                                    .arg(m_nvidiaNvmlData.hardware_monitor().power().max_value() / 1000);
+                                   "Power max: %4 W").arg(latestNvidiaNvmlData.name()).arg(latestNvidiaNvmlData.hardware_monitor().power().value() / 1000)
+                                    .arg(latestNvidiaNvmlData.hardware_monitor().power().min_value() / 1000)
+                                    .arg(nvidiaNvmlData.hardware_monitor().power().max_value() / 1000);
 
 
     /*
      * Fans
      */
-    package.m_fanSpeeds.reserve(m_hwMonitoringData.legion().fans_size());
-    package.m_fanTexts.reserve(m_hwMonitoringData.legion().fans_size());
-    for (int i = 0; i < m_hwMonitoringData.legion().fans_size() && i < ui->horizontalLayout_Fans->count(); ++i)
+    package.m_fanSpeeds.reserve(hwMonitoringData.legion().fans_size());
+    package.m_fanTexts.reserve(hwMonitoringData.legion().fans_size());
+    for (int i = 0; i < hwMonitoringData.legion().fans_size() && i < ui->horizontalLayout_Fans->count(); ++i)
     {
-        package.m_fanSpeeds.push_back(m_hwMonitoringData.legion().fans().at(i).fan_speed());
+        package.m_fanSpeeds.push_back(hwMonitoringData.legion().fans().at(i).fan_speed());
         package.m_fanTexts.push_back(QString("Fan %1 Speed: %2 RPM\n"\
                                            "Fan %1 Speed min: %3 RPM\n"\
-                                           "Fan %1 Speed max: %4 RPM\n").arg(m_hwMonitoringData.legion().fans().at(i).fan_label())
-                                                                       .arg(m_hwMonitoringData.legion().fans().at(i).fan_speed())
-                                                                       .arg(m_hwMonitoringData.legion().fans().at(i).fan_speed_min())
-                                                                       .arg(m_hwMonitoringData.legion().fans().at(i).fan_speed_max() + 100));
+                                           "Fan %1 Speed max: %4 RPM\n").arg(hwMonitoringData.legion().fans().at(i).fan_label())
+                                                                       .arg(hwMonitoringData.legion().fans().at(i).fan_speed())
+                                                                       .arg(hwMonitoringData.legion().fans().at(i).fan_speed_min())
+                                                                       .arg(hwMonitoringData.legion().fans().at(i).fan_speed_max() + 100));
     }
 
 
@@ -349,13 +390,13 @@ HWMonitoring::UIUpdatePackage HWMonitoring::prepareData()
         int avareqeACoreFreqCount   = 0;
     } l_stats;
 
-    if(m_windowFreqInfoByCore->isVisible())
+    if(isWindowFreqInfoByCoreVisible)
     {
 
-        int maxAvailableFreqs = m_hwMonitoringData.cpux_freq_size();
+        int maxAvailableFreqs = hwMonitoringData.cpux_freq_size();
         auto processCore = [&](int i, bool isParamPerformance) {
             if (i >= maxAvailableFreqs) return false;
-            const auto& freqItem = m_hwMonitoringData.cpux_freq().at(i);
+            const auto& freqItem = hwMonitoringData.cpux_freq().at(i);
 
             UIUpdatePackage::CoreFreqData cData;
             cData.m_index = i;
@@ -371,14 +412,14 @@ HWMonitoring::UIUpdatePackage HWMonitoring::prepareData()
 
             if(isParamPerformance)
             {
-                l_stats.avareqePCoreFreq += m_hwMonitoringData.cpux_freq().at(i).cpu_scaling_cur_freq();++l_stats.avareqePCoreFreqCount;
+                l_stats.avareqePCoreFreq += hwMonitoringData.cpux_freq().at(i).cpu_scaling_cur_freq();++l_stats.avareqePCoreFreqCount;
             }
             else
             {
-                l_stats.avareqeACoreFreq += m_hwMonitoringData.cpux_freq().at(i).cpu_scaling_cur_freq();++l_stats.avareqeACoreFreqCount;
+                l_stats.avareqeACoreFreq += hwMonitoringData.cpux_freq().at(i).cpu_scaling_cur_freq();++l_stats.avareqeACoreFreqCount;
             }
 
-            l_stats.averageFreq      += m_hwMonitoringData.cpux_freq().at(i).cpu_scaling_cur_freq();++l_stats.averageFreqCount;
+            l_stats.averageFreq      += hwMonitoringData.cpux_freq().at(i).cpu_scaling_cur_freq();++l_stats.averageFreqCount;
             return true;
         };
 
@@ -388,13 +429,13 @@ HWMonitoring::UIUpdatePackage HWMonitoring::prepareData()
     else
     {
         forAllCpuPerformanceCores([&](int i) {
-            l_stats.avareqePCoreFreq += m_hwMonitoringData.cpux_freq().at(i).cpu_scaling_cur_freq();++l_stats.avareqePCoreFreqCount;
-            l_stats.averageFreq      += m_hwMonitoringData.cpux_freq().at(i).cpu_scaling_cur_freq();++l_stats.averageFreqCount;
+            l_stats.avareqePCoreFreq += hwMonitoringData.cpux_freq().at(i).cpu_scaling_cur_freq();++l_stats.avareqePCoreFreqCount;
+            l_stats.averageFreq      += hwMonitoringData.cpux_freq().at(i).cpu_scaling_cur_freq();++l_stats.averageFreqCount;
             return true;
         });
         forAllCpuEfficientCores([&](int i) {
-            l_stats.avareqeACoreFreq += m_hwMonitoringData.cpux_freq().at(i).cpu_scaling_cur_freq();++l_stats.avareqeACoreFreqCount;
-            l_stats.averageFreq      += m_hwMonitoringData.cpux_freq().at(i).cpu_scaling_cur_freq();++l_stats.averageFreqCount;
+            l_stats.avareqeACoreFreq += hwMonitoringData.cpux_freq().at(i).cpu_scaling_cur_freq();++l_stats.avareqeACoreFreqCount;
+            l_stats.averageFreq      += hwMonitoringData.cpux_freq().at(i).cpu_scaling_cur_freq();++l_stats.averageFreqCount;
             return true;
         });
     }
@@ -424,9 +465,6 @@ HWMonitoring::UIUpdatePackage HWMonitoring::prepareData()
                                               "E-Core Max Frequency: %3 MHz\n"
                                               "E-Core Scale Min Frequency: %4 MHz\n"
                                               "E-Core Scale Max Frequency: %5 MHz\n").arg(package.m_averageFreqEcores).arg(ui->widget_ECoresAvgFreq->getMinValue()).arg(ui->widget_ECoresAvgFreq->getMaxValue()).arg(ui->widget_ECoresAvgFreq->getScaleMin()).arg(ui->widget_ECoresAvgFreq->getScaleMax());
-
-    m_lastRefreshTime = std::chrono::steady_clock::now();
-
 
     return package;
 }
