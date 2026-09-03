@@ -22,7 +22,7 @@ SysFsDataProviderPowerProfile::SysFsDataProviderPowerProfile(SysFsDriverManager*
 
 
 
-QByteArray SysFsDataProviderPowerProfile::serializeAndGetData() const
+QByteArray SysFsDataProviderPowerProfile::serializeAndGetData()
 {
     legion::messages::PowerProfile     powerProfile;
     QByteArray                         byteArray;

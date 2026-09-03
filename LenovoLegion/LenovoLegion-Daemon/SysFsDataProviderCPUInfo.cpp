@@ -12,7 +12,7 @@ namespace LenovoLegionDaemon {
 
 SysFsDataProviderCPUInfo::SysFsDataProviderCPUInfo(SysFsDriverManager *sysFsDriverManager, QObject *parent) : SysFsDataProvider(sysFsDriverManager,parent,dataType) {}
 
-QByteArray SysFsDataProviderCPUInfo::serializeAndGetData() const
+QByteArray SysFsDataProviderCPUInfo::serializeAndGetData()
 {
     legion::messages::CPUInfo       cpuInfoMessage;
     QByteArray                      byteArray;

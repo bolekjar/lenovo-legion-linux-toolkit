@@ -20,7 +20,7 @@ namespace LenovoLegionDaemon {
 SysFsDataProviderGPUPower::SysFsDataProviderGPUPower(SysFsDriverManager* sysFsDriverManager,QObject* parent) : SysFsDataProvider(sysFsDriverManager,parent,dataType) {}
 
 
-QByteArray SysFsDataProviderGPUPower::serializeAndGetData() const
+QByteArray SysFsDataProviderGPUPower::serializeAndGetData()
 {
     legion::messages::GPUPower         power;
     QByteArray                         byteArray;

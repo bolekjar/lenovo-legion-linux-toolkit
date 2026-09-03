@@ -10,23 +10,117 @@
 #include "SysFsDriverCPUXList.h"
 
 
-#include "../LenovoLegion-PrepareBuild/CPUFrequency.pb.h"
-
-
 #include <Core/LoggerHolder.h>
+#include <QTimerEvent>
 
+#include <google/protobuf/util/field_mask_util.h>
 
 namespace LenovoLegionDaemon {
 
 SysFsDataProviderCPUFrequency::SysFsDataProviderCPUFrequency(SysFsDriverManager* sysFsDriverManager,QObject* parent) : SysFsDataProvider(sysFsDriverManager,parent,dataType) {}
 
-
-QByteArray SysFsDataProviderCPUFrequency::serializeAndGetData() const
+void SysFsDataProviderCPUFrequency::init()
 {
-    legion::messages::CPUFrequency         cpuFrequency;
+    clean();
+
+    if(m_timerId == -1)
+    {
+        SysFsDriverCPUXList::CPUXList   cpuXlist(m_sysFsDriverManager->getDriverDescriptorsInVector(SysFsDriverCPUXList::DRIVER_NAME));
+
+        const auto* nestedDesc = legion::messages::CPUFrequency_CPUX::descriptor();
+
+        m_lastCpuFrequency = readCPPFrequency();
+
+        if (nestedDesc != nullptr) {
+            for (int i = 0; i < nestedDesc->field_count(); ++i) {
+                const auto* field = nestedDesc->field(i);
+                if (field->name() != cpuXlist.cpuList().at(i).m_freq.m_cpuScalingMinFreq.filename() && field->name() != cpuXlist.cpuList().at(i).m_freq.m_cpuScalingMaxFreq.filename()) {
+                    m_differencer.IgnoreField(field);
+                }
+                else
+                {
+                    LOG_D(QString(__PRETTY_FUNCTION__) + "- Tracking field: " + QString::fromStdString(std::string(field->name())));
+                }
+            }
+        }
+
+
+        m_timerId = startTimer(std::chrono::milliseconds(500));
+    }
+}
+
+void SysFsDataProviderCPUFrequency::clean()
+{
+    if(m_timerId != -1)
+    {
+        killTimer(m_timerId);
+        m_timerId = -1;
+    }
+}
+
+
+QByteArray SysFsDataProviderCPUFrequency::serializeAndGetData()
+{
     QByteArray                             byteArray;
 
     LOG_T(__PRETTY_FUNCTION__);
+
+    m_lastCpuFrequency = readCPPFrequency();
+
+    byteArray.resize(m_lastCpuFrequency.ByteSizeLong());
+
+    if(!m_lastCpuFrequency.SerializeToArray(byteArray.data(),byteArray.size()))
+    {
+        THROW_EXCEPTION(exception_T,DataProvider::ERROR_CODES::SERIALIZE_ERROR,"Serialize of data message error !");
+    }
+
+    return byteArray;
+}
+
+QByteArray SysFsDataProviderCPUFrequency::deserializeAndSetData(const QByteArray &data)
+{
+    SysFsDriverCPUXList::CPUXList   cpuXlist(m_sysFsDriverManager->getDriverDescriptorsInVector(SysFsDriverCPUXList::DRIVER_NAME));
+    legion::messages::CPUFrequency  cpuFrequency;
+
+    LOG_T(__PRETTY_FUNCTION__);
+
+
+    if(!cpuFrequency.ParseFromArray(data.data(),data.size()))
+    {
+        THROW_EXCEPTION(exception_T,DataProvider::ERROR_CODES::INVALID_DATA,"Parse of data message error !");
+    }
+
+    // Skip if no CPUs in message
+    if(cpuFrequency.cpus_size() == 0) {
+        LOG_D("SysFsDataProviderCPUFrequency::deserializeAndSetData - no CPUs in message, skipping");
+        return {};
+    }
+
+    for (int i = 0 ; i < cpuFrequency.cpus_size() ;++i)
+    {
+        if(i >= static_cast<int>(cpuXlist.cpuList().size()))
+        {
+            LOG_W(QString(__PRETTY_FUNCTION__) + "- core_id=" + QString::number(i) + QString( " out of range !"));
+            break;
+        }
+
+        if(cpuFrequency.cpus().at(i).has_scaling_min_freq())
+        {
+            setData(cpuXlist.cpuList().at(i).m_freq.m_cpuScalingMinFreq,cpuFrequency.cpus().at(i).scaling_min_freq());
+        }
+
+        if(cpuFrequency.cpus().at(i).has_scaling_max_freq())
+        {
+            setData(cpuXlist.cpuList().at(i).m_freq.m_cpuScalingMaxFreq,cpuFrequency.cpus().at(i).scaling_max_freq());
+        }
+    }
+
+    return {};
+}
+
+legion::messages::CPUFrequency SysFsDataProviderCPUFrequency::readCPPFrequency() const
+{
+    legion::messages::CPUFrequency         cpuFrequency;
 
     try {
         SysFsDriverCPUXList::CPUXList cpuXlist(m_sysFsDriverManager->getDriverDescriptorsInVector(SysFsDriverCPUXList::DRIVER_NAME));
@@ -76,55 +170,31 @@ QByteArray SysFsDataProviderCPUFrequency::serializeAndGetData() const
             throw;
         }
     }
-    byteArray.resize(cpuFrequency.ByteSizeLong());
-    if(!cpuFrequency.SerializeToArray(byteArray.data(),byteArray.size()))
-    {
-        THROW_EXCEPTION(exception_T,DataProvider::ERROR_CODES::SERIALIZE_ERROR,"Serialize of data message error !");
-    }
 
 
-    return byteArray;
+    return cpuFrequency;
 }
 
-QByteArray SysFsDataProviderCPUFrequency::deserializeAndSetData(const QByteArray &data)
+void SysFsDataProviderCPUFrequency::timerEvent(QTimerEvent *event)
 {
-    SysFsDriverCPUXList::CPUXList   cpuXlist(m_sysFsDriverManager->getDriverDescriptorsInVector(SysFsDriverCPUXList::DRIVER_NAME));
-    legion::messages::CPUFrequency  cpuFrequency;
-
-    LOG_T(__PRETTY_FUNCTION__);
-
-
-    if(!cpuFrequency.ParseFromArray(data.data(),data.size()))
+    if(event->timerId() == m_timerId)
     {
-        THROW_EXCEPTION(exception_T,DataProvider::ERROR_CODES::INVALID_DATA,"Parse of data message error !");
-    }
+        legion::messages::CPUFrequency cpuFrequency = readCPPFrequency();
 
-    // Skip if no CPUs in message
-    if(cpuFrequency.cpus_size() == 0) {
-        LOG_D("SysFsDataProviderCPUFrequency::deserializeAndSetData - no CPUs in message, skipping");
-        return {};
-    }
-
-    for (int i = 0 ; i < cpuFrequency.cpus_size() ;++i)
-    {
-        if(i >= static_cast<int>(cpuXlist.cpuList().size()))
+        if (!m_differencer.Compare(cpuFrequency, m_lastCpuFrequency))
         {
-            LOG_W(QString(__PRETTY_FUNCTION__) + "- core_id=" + QString::number(i) + QString( " out of range !"));
-            break;
-        }
+            m_lastCpuFrequency = cpuFrequency;
 
-        if(cpuFrequency.cpus().at(i).has_scaling_min_freq())
-        {
-            setData(cpuXlist.cpuList().at(i).m_freq.m_cpuScalingMinFreq,cpuFrequency.cpus().at(i).scaling_min_freq());
-        }
+            LOG_D(QString(__PRETTY_FUNCTION__) + "- CPU Frequency changed, emitting dataChanged signal");
 
-        if(cpuFrequency.cpus().at(i).has_scaling_max_freq())
-        {
-            setData(cpuXlist.cpuList().at(i).m_freq.m_cpuScalingMaxFreq,cpuFrequency.cpus().at(i).scaling_max_freq());
+            emit dataProviderEvent(DataProvider::SubsystemEvent {
+                .m_dataType = this->m_dataType,
+                .m_action = DataProvider::SubsystemEvent::Action::CHANGED,
+                .m_DataProviderSpecificEventType    = {},
+                .m_DataProviderSpecificEventValue   = {}
+            });
         }
     }
-
-    return {};
 }
 
 

@@ -13,7 +13,6 @@
 #include <QObject>
 
 #include <map>
-#include <vector>
 
 namespace  LenovoLegionDaemon {
 
@@ -48,6 +47,9 @@ public:
 
     void forEachDataProviderDo(const std::function<void(DataProvider&)>& func) const;
 
+signals:
+
+    void dataProviderEvent(const LenovoLegionDaemon::DataProvider::SubsystemEvent& event);
 
 private:
 
@@ -56,6 +58,7 @@ private:
 public slots:
 
     void kernelEventHandler(const LenovoLegionDaemon::SysFsDriver::SubsystemEvent& event);
+    void dataProviderEventHandler(const LenovoLegionDaemon::DataProvider::SubsystemEvent& event);
 
 private:
 

@@ -20,7 +20,7 @@ DataProviderNvidiaNvml::~DataProviderNvidiaNvml()
     cleanUp();
 }
 
-QByteArray DataProviderNvidiaNvml::serializeAndGetData() const
+QByteArray DataProviderNvidiaNvml::serializeAndGetData()
 {
     legion::messages::NvidiaNvml gpuData;
     QByteArray                   byteArray;

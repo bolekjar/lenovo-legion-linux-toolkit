@@ -20,7 +20,7 @@ namespace LenovoLegionDaemon {
 SysFsDataProviderFanCurve::SysFsDataProviderFanCurve(SysFsDriverManager* sysFsDriverManager,QObject* parent) : SysFsDataProvider(sysFsDriverManager,parent,dataType) {}
 
 
-QByteArray SysFsDataProviderFanCurve::serializeAndGetData() const
+QByteArray SysFsDataProviderFanCurve::serializeAndGetData()
 {
     legion::messages::FanCurve         fanCurveMsg;
     QByteArray                         byteArray;

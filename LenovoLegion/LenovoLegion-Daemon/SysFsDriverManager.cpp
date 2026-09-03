@@ -106,7 +106,6 @@ void SysFsDriverManager::cleanDrivers()
     for(auto& driver : m_drivers)
     {
         driver.second->clean();
-        delete driver.second;  // Free driver memory
     }
 
     m_drivers.clear();

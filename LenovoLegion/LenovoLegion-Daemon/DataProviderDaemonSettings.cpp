@@ -19,7 +19,7 @@ DataProviderDaemonSettings::DataProviderDaemonSettings(DataProviderManager* data
     m_dataProviderManager(dataProviderManager)
 {}
 
-QByteArray DataProviderDaemonSettings::serializeAndGetData() const
+QByteArray DataProviderDaemonSettings::serializeAndGetData()
 {
     legion::messages::DaemonSettings daemonSettings;
     QByteArray byteArray;

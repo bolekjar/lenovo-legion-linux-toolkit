@@ -20,7 +20,7 @@ SysFsDataProviderCPUPower::SysFsDataProviderCPUPower(SysFsDriverManager* sysFsDr
 
 
 
-QByteArray SysFsDataProviderCPUPower::serializeAndGetData() const
+QByteArray SysFsDataProviderCPUPower::serializeAndGetData()
 {
     legion::messages::CPUPower         cpuPower;
     QByteArray                         byteArray;

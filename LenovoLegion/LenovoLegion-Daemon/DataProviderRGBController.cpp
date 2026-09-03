@@ -24,7 +24,7 @@ namespace LenovoLegionDaemon {
     DataProviderRGBController::~DataProviderRGBController()
     {}
 
-    QByteArray DataProviderRGBController::serializeAndGetData(const QByteArray& data) const
+    QByteArray DataProviderRGBController::serializeAndGetData(const QByteArray& data)
     {
         legion::messages::RGBControllerResponse rgbController;
         QByteArray byteArray;

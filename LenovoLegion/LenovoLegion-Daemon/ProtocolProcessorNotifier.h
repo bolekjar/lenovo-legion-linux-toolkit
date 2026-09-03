@@ -53,6 +53,7 @@ public slots:
 
     void kernelEventHandler(const LenovoLegionDaemon::SysFsDriver::SubsystemEvent& event);
     void moduleSubsystemHandler(const LenovoLegionDaemon::SysFsDriverManager::ModuleSubsystemEvent& event);
+    void dataProviderEventHandler(const LenovoLegionDaemon::DataProvider::SubsystemEvent& event);
 public:
 
     static constexpr quint8  m_dataType = 0;

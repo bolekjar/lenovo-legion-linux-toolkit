@@ -22,7 +22,7 @@ SysFsDataProviderMachineInformation::SysFsDataProviderMachineInformation(SysFsDr
 
 
 
-QByteArray SysFsDataProviderMachineInformation::serializeAndGetData() const
+QByteArray SysFsDataProviderMachineInformation::serializeAndGetData()
 {
     legion::messages::MachineInformation   machineInfo;
     QByteArray                             byteArray;

@@ -22,7 +22,7 @@ namespace LenovoLegionDaemon {
 SysFsDataProviderOther::SysFsDataProviderOther(SysFsDriverManager* sysFsDriverManager,QObject* parent) : SysFsDataProvider(sysFsDriverManager,parent,dataType) {}
 
 
-QByteArray SysFsDataProviderOther::serializeAndGetData() const
+QByteArray SysFsDataProviderOther::serializeAndGetData()
 {
     legion::messages::OtherSettings     otherSettingsMsg;
     QByteArray                          byteArray;

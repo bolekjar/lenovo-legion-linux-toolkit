@@ -39,6 +39,7 @@ void DataProviderManager::initDataProviders()
     for(auto& driver : m_dataProviders)
     {
         driver.second->init();
+        connect(driver.second,&DataProvider::dataProviderEvent,this,&DataProviderManager::dataProviderEventHandler);
     }
 }
 
@@ -76,6 +77,11 @@ void DataProviderManager::kernelEventHandler(const SysFsDriver::SubsystemEvent &
     {
         driver.second->kernelEventHandler(event);
     }
+}
+
+void DataProviderManager::dataProviderEventHandler(const DataProvider::SubsystemEvent &event)
+{
+    emit dataProviderEvent(event);
 }
 
 }

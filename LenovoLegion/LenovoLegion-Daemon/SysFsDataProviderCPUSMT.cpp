@@ -22,7 +22,7 @@ SysFsDataProviderCPUSMT::SysFsDataProviderCPUSMT(SysFsDriverManager* sysFsDriver
 
 
 
-QByteArray SysFsDataProviderCPUSMT::serializeAndGetData() const
+QByteArray SysFsDataProviderCPUSMT::serializeAndGetData()
 {
     legion::messages::CPUSMT       cpuSmt;
     QByteArray                     byteArray;

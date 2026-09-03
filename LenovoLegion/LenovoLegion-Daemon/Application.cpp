@@ -356,8 +356,6 @@ void Application::newConnectionNotificationHandler()
         
         // Connect signals - if this throws, we need to clean up
         try {
-            connect(m_sysFsDriverManager,&SysFsDriverManager::kernelEvent,dynamic_cast<ProtocolProcessorNotifier*>(newProcessor),&ProtocolProcessorNotifier::kernelEventHandler);
-            connect(m_sysFsDriverManager,&SysFsDriverManager::moduleSubsystem,dynamic_cast<ProtocolProcessorNotifier*>(newProcessor),&ProtocolProcessorNotifier::moduleSubsystemHandler);
             connect(dynamic_cast<ProtocolProcessorNotifier*>(newProcessor),&ProtocolProcessorNotifier::clientDisconnected,this,&Application::connectionNotificationDisconnectedHandler);
             newProcessor->start();
             

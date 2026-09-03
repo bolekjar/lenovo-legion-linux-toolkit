@@ -217,6 +217,11 @@ void ToolBarHomeWidget::dataProviderEvent(const legion::messages::Notification &
             });
         }
         break;
+        case legion::messages::Notification::CPU_FREQUENCY_CHANGED:
+        {
+            refreshControlTabByName<CPUFrequencyControl>(CPUFrequencyControl::NAME,*ui->tabWidget_Controls);
+        }
+        break;
         case legion::messages::Notification::THERMAL_MODE_CHANGE:
         {
             Utils::Layout::forAllLayoutsDo(*ui->verticalLayout_PowerProfiles,[](QLayoutItem &item){
@@ -243,6 +248,7 @@ void ToolBarHomeWidget::dataProviderEvent(const legion::messages::Notification &
         {
             refreshControlTabByName<OffsetsControl>(OffsetsControl::NAME,*ui->tabWidget_Controls);
         }
+        break;
         default:
         break;
     }

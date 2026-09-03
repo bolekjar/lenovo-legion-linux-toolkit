@@ -23,7 +23,7 @@ SysFsDataProviderHWMon::SysFsDataProviderHWMon(SysFsDriverManager* sysFsDriverMa
 
 
 
-QByteArray SysFsDataProviderHWMon::serializeAndGetData() const
+QByteArray SysFsDataProviderHWMon::serializeAndGetData()
 {
     legion::messages::HardwareMonitor hardwareMonitoring;
     QByteArray                        byteArray;

@@ -22,7 +22,7 @@ SysFsDataProviderCPUOptions::SysFsDataProviderCPUOptions(SysFsDriverManager* sys
 
 
 
-QByteArray SysFsDataProviderCPUOptions::serializeAndGetData() const
+QByteArray SysFsDataProviderCPUOptions::serializeAndGetData()
 {
     legion::messages::CPUOptions       cpuOption;
     QByteArray                         byteArray;

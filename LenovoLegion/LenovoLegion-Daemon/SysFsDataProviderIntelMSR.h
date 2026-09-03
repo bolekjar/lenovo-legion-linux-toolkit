@@ -20,8 +20,8 @@ public:
     SysFsDataProviderIntelMSR(SysFsDriverManager* sysFsDriverManager,QObject* parent);
 
 
-    virtual QByteArray serializeAndGetData()                    const;
-    virtual QByteArray deserializeAndSetData(const QByteArray&)      ;
+    virtual QByteArray serializeAndGetData()                    ;
+    virtual QByteArray deserializeAndSetData(const QByteArray&) ;
 
 public:
 

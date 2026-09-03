@@ -55,6 +55,7 @@ message Notification
         POWER_CONTROL_CHANGED                   = 7;
         CPU_OFFSET_CHANGED                      = 8;
         FAN_CURVE_CHANGED                       = 9;
+        CPU_FREQUENCY_CHANGED                   = 10;
     }
 
 

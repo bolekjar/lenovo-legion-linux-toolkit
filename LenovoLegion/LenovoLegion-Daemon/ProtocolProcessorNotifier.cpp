@@ -19,6 +19,9 @@
 #include "SysFSDriverLegionIntelMSR.h"
 #include "SysFSDriverLegionFanMode.h"
 
+
+#include "SysFsDataProviderCPUFrequency.h"
+
 #include "../LenovoLegion-PrepareBuild/Notification.pb.h"
 
 #include <QCoreApplication>
@@ -29,7 +32,11 @@ ProtocolProcessorNotifier::ProtocolProcessorNotifier(SysFsDriverManager* sysFsDr
     ProtocolProcessorBase(clientSocket,parent),
     m_sysfsDriverManager(sysFsDriverManager),
     m_dataProviderManger(dataProviderManger)
-{}
+{
+    connect(m_sysfsDriverManager,&SysFsDriverManager::kernelEvent,this,&ProtocolProcessorNotifier::kernelEventHandler);
+    connect(m_sysfsDriverManager,&SysFsDriverManager::moduleSubsystem,this,&ProtocolProcessorNotifier::moduleSubsystemHandler);
+    connect(m_dataProviderManger,&DataProviderManager::dataProviderEvent,this,&ProtocolProcessorNotifier::dataProviderEventHandler);
+}
 
 ProtocolProcessorNotifier::~ProtocolProcessorNotifier()
 {
@@ -230,4 +237,47 @@ void ProtocolProcessorNotifier::moduleSubsystemHandler(const LenovoLegionDaemon:
                                                            },data));
     }
 }
+
+void ProtocolProcessorNotifier::dataProviderEventHandler(const DataProvider::SubsystemEvent &event)
+{
+    LOG_T("ProtocolProcessorNotifier: dataProviderEventHandler " + QString::number(event.m_dataType) + " " + QString::number(static_cast<int>(event.m_action)));
+
+    legion::messages::Notification msg;
+
+    if(!isRunning())
+    {
+        LOG_T("ProtocolProcessorNotifier is not running, ignoring data provider event !");
+        return;
+    }
+
+    if(event.m_dataType == SysFsDataProviderCPUFrequency::dataType)
+    {
+        if(event.m_action == DataProvider::SubsystemEvent::Action::CHANGED)
+        {
+            msg.set_action(legion::messages::Notification::CPU_FREQUENCY_CHANGED);
+        }
+    }
+
+    if(msg.has_action())
+    {
+        QByteArray data;
+
+        data.resize(msg.ByteSizeLong());
+
+        if(!msg.SerializeToArray(data.data(),data.size()))
+        {
+            THROW_EXCEPTION(exception_T,ERROR_CODES::SERIALIZE_ERROR,"Serialize of data message error !");
+        }
+
+
+        m_clientSocket->write(ProtocolParser::parseMessage(MessageHeader{
+                                                               .m_type         = MessageHeader::NOTIFICATION,
+                                                               .m_dataType     = m_dataType,
+                                                               .m_dataLength   = data.length()
+                                                           },data));
+
+        LOG_D("ProtocolProcessorNotifier: dataProviderEventHandler sending notification for dataType=" + QString::number(event.m_dataType) + ", action=" + QString::number(static_cast<int>(event.m_action)));
+    }
+}
+
 }

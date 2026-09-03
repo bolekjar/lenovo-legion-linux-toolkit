@@ -24,7 +24,7 @@ SysFsDataProviderCPUTopology::SysFsDataProviderCPUTopology(SysFsDriverManager* s
 
 
 
-QByteArray SysFsDataProviderCPUTopology::serializeAndGetData() const
+QByteArray SysFsDataProviderCPUTopology::serializeAndGetData()
 {
     legion::messages::CPUTopology     cpuTopologyData;
     QByteArray                        byteArray;

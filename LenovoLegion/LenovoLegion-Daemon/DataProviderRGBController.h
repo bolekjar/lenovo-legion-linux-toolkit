@@ -60,7 +60,7 @@ public:
 
     virtual ~DataProviderRGBController() override;
 
-    virtual QByteArray serializeAndGetData(const QByteArray&)                                const override;
+    virtual QByteArray serializeAndGetData(const QByteArray&)                                      override;
     virtual QByteArray deserializeAndSetData(const QByteArray&)                                    override;
 
     virtual void init() override;

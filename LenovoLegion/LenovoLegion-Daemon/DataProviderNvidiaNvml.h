@@ -33,7 +33,7 @@ public:
     DataProviderNvidiaNvml(QObject* parent);
     virtual ~DataProviderNvidiaNvml() override;
 
-    virtual QByteArray serializeAndGetData()                      const override;
+    virtual QByteArray serializeAndGetData()                            override;
     virtual QByteArray deserializeAndSetData(const QByteArray&)         override;
 
 

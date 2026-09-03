@@ -53,7 +53,7 @@ CPUFrequencyControl::CPUFrequencyControl(DataProvider *dataProvider,QWidget *par
 {
     ui->setupUi(this);
 
-    m_cpuFreqData           = m_dataProvider->getDataMessage<legion::messages::CPUFrequency>(LenovoLegionDaemon::SysFsDataProviderCPUFrequency::dataType);;
+    m_cpuFreqData           = m_dataProvider->getDataMessage<legion::messages::CPUFrequency>(LenovoLegionDaemon::SysFsDataProviderCPUFrequency::dataType);
     m_cpuTopologyData       = m_dataProvider->getDataMessage<legion::messages::CPUTopology>(LenovoLegionDaemon::SysFsDataProviderCPUTopology::dataType);
 
 
@@ -365,6 +365,8 @@ CPUFrequencyControl::~CPUFrequencyControl()
 
 void CPUFrequencyControl::refresh()
 {
+    m_cpuFreqData           = m_dataProvider->getDataMessage<legion::messages::CPUFrequency>(LenovoLegionDaemon::SysFsDataProviderCPUFrequency::dataType);
+
     renderData();
 }
 

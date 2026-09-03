@@ -21,7 +21,7 @@ namespace LenovoLegionDaemon {
 SysFsDataProviderOtherGpuSwitch::SysFsDataProviderOtherGpuSwitch(SysFsDriverManager* sysFsDriverManager,QObject* parent) : SysFsDataProvider(sysFsDriverManager,parent,dataType) {}
 
 
-QByteArray SysFsDataProviderOtherGpuSwitch::serializeAndGetData() const
+QByteArray SysFsDataProviderOtherGpuSwitch::serializeAndGetData()
 {
     legion::messages::GpuSwitchValue    gpuSwitchMsg;
     QByteArray                          byteArray;

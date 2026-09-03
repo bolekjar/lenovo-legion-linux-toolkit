@@ -22,7 +22,7 @@ public:
     explicit DataProviderDaemonSettings(DataProviderManager* dataProviderManager);
     ~DataProviderDaemonSettings() override = default;
 
-    QByteArray serializeAndGetData() const override;
+    QByteArray serializeAndGetData() override;
     QByteArray deserializeAndSetData(const QByteArray& data) override;
 
     void init() override;

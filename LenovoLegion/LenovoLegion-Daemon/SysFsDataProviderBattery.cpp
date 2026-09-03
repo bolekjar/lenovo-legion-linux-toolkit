@@ -23,7 +23,7 @@ SysFsDataProviderBattery::SysFsDataProviderBattery(SysFsDriverManager* sysFsDriv
 
 
 
-QByteArray SysFsDataProviderBattery::serializeAndGetData() const
+QByteArray SysFsDataProviderBattery::serializeAndGetData()
 {
     legion::messages::Battery          battery;
     QByteArray                         byteArray;

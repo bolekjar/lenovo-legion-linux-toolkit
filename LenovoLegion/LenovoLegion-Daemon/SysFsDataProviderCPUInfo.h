@@ -19,7 +19,7 @@ public:
 
     SysFsDataProviderCPUInfo(SysFsDriverManager* sysFsDriverManager,QObject* parent);
 
-    virtual QByteArray serializeAndGetData()                    const override;
+    virtual QByteArray serializeAndGetData() override;
     virtual QByteArray deserializeAndSetData(const QByteArray&)       override;
 
 private:

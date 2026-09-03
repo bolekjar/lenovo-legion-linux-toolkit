@@ -27,6 +27,19 @@ public:
         SERIALIZE_ERROR                     = -2
     };
 
+    struct SubsystemEvent
+    {
+        enum Action : int
+        {
+            CHANGED         = 0,
+        };
+
+        quint8  m_dataType;
+        Action  m_action;
+        QString m_DataProviderSpecificEventType;
+        QString m_DataProviderSpecificEventValue;
+    };
+
 public:
 
     DataProvider(QObject* parent,quint8  dataType);
@@ -38,14 +51,19 @@ public:
 
     virtual ~DataProvider() = default;
 
-    virtual QByteArray serializeAndGetData()                                                                                             const {return {};};
-    virtual QByteArray serializeAndGetData(const QByteArray&)                                                                            const {return {};};
-    virtual QByteArray deserializeAndSetData(const QByteArray&)                                                                                {return {};};
+    virtual QByteArray serializeAndGetData()                                                                                             {return {};};
+    virtual QByteArray serializeAndGetData(const QByteArray&)                                                                            {return {};};
+    virtual QByteArray deserializeAndSetData(const QByteArray&)                                                                          {return {};};
 
     virtual void init()                 {};
     virtual void clean()                {};
 
     virtual void kernelEventHandler(const LenovoLegionDaemon::SysFsDriver::SubsystemEvent &)   {};
+
+
+signals:
+
+    void dataProviderEvent(const LenovoLegionDaemon::DataProvider::SubsystemEvent& event);
 
 private:
 

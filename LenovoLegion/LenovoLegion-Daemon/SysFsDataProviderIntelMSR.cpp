@@ -20,7 +20,7 @@ namespace LenovoLegionDaemon {
 
 SysFsDataProviderIntelMSR::SysFsDataProviderIntelMSR(SysFsDriverManager* sysFsDriverManager,QObject* parent) : SysFsDataProvider(sysFsDriverManager,parent,dataType) {}
 
-QByteArray SysFsDataProviderIntelMSR::serializeAndGetData() const
+QByteArray SysFsDataProviderIntelMSR::serializeAndGetData()
 {
     legion::messages::CpuIntelMSR cpuIntelMSRMessage;;
     QByteArray                    byteArray;
