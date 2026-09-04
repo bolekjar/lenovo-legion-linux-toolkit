@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>600</width>
-    <height>400</height>
+    <width>1039</width>
+    <height>936</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -57,41 +57,41 @@
       </property>
       <item>
        <widget class="QRadioButton" name="radioButton_HybridOn">
-        <property name="text">
-         <string>Hybrid Mode (Default)</string>
-        </property>
         <property name="toolTip">
          <string>Both iGPU and dGPU are available, automatic switching</string>
+        </property>
+        <property name="text">
+         <string>Hybrid Mode (Default)</string>
         </property>
        </widget>
       </item>
       <item>
        <widget class="QRadioButton" name="radioButton_HybridAuto">
-        <property name="text">
-         <string>Hybrid Mode (Auto)</string>
-        </property>
         <property name="toolTip">
          <string>Automatic GPU switching with power optimization</string>
+        </property>
+        <property name="text">
+         <string>Hybrid Mode (Auto)</string>
         </property>
        </widget>
       </item>
       <item>
        <widget class="QRadioButton" name="radioButton_HybridIGPUOnly">
-        <property name="text">
-         <string>iGPU Only</string>
-        </property>
         <property name="toolTip">
          <string>Only integrated GPU is active, discrete GPU is disabled</string>
+        </property>
+        <property name="text">
+         <string>iGPU Only</string>
         </property>
        </widget>
       </item>
       <item>
        <widget class="QRadioButton" name="radioButton_HybridOff">
-        <property name="text">
-         <string>dGPU Only (G-Sync)</string>
-        </property>
         <property name="toolTip">
          <string>Only discrete GPU is active, G-Sync enabled</string>
+        </property>
+        <property name="text">
+         <string>dGPU Only (G-Sync)</string>
         </property>
        </widget>
       </item>
@@ -99,7 +99,139 @@
     </widget>
    </item>
    <item>
-    <spacer name="verticalSpacer_2">
+    <widget class="QGroupBox" name="groupBox_CPUPState">
+     <property name="title">
+      <string>CPU Power State Control</string>
+     </property>
+     <layout class="QHBoxLayout" name="horizontalLayout_5">
+      <property name="topMargin">
+       <number>30</number>
+      </property>
+      <item>
+       <layout class="QVBoxLayout" name="verticalLayout_6">
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_2">
+          <item>
+           <layout class="QVBoxLayout" name="verticalLayout_5">
+            <item>
+             <widget class="QLabel" name="label_CPUPState_MINLimit">
+              <property name="text">
+               <string>MIN Performace limit [%]</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QSpinBox" name="spinBox_CPUPState_MINLimit">
+              <property name="minimum">
+               <number>14</number>
+              </property>
+              <property name="maximum">
+               <number>100</number>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <layout class="QVBoxLayout" name="verticalLayout_4">
+            <item>
+             <widget class="QLabel" name="label_CPUPState_MAXLimit">
+              <property name="text">
+               <string>MAX Performace limit [%]</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QSpinBox" name="spinBox_CPUPState_MAXLimit">
+              <property name="minimum">
+               <number>14</number>
+              </property>
+              <property name="maximum">
+               <number>100</number>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_4">
+          <item>
+           <widget class="QCheckBox" name="checkBox_CPUPStatedisableTurbo">
+            <property name="text">
+             <string>Disable Turbo</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="checkBox_CPUPStatehwpDynamicBoost">
+            <property name="text">
+             <string>HWP Dynamic boost</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout">
+          <item>
+           <widget class="QPushButton" name="pushButton_CPUPState_Default">
+            <property name="text">
+             <string>Default</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="pushButton_CPUPState_Cancel">
+            <property name="text">
+             <string>Cancel</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="pushButton_CPUPState_Apply">
+            <property name="text">
+             <string>Apply</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <layout class="QHBoxLayout" name="horizontalLayout_3">
+            <item>
+             <widget class="QLabel" name="label__CPUPstate_status">
+              <property name="text">
+               <string>Mode:</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QComboBox" name="comboBox_CPUPstate_status"/>
+            </item>
+           </layout>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <spacer name="horizontalSpacer">
+        <property name="orientation">
+         <enum>Qt::Orientation::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>612</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <spacer name="verticalSpacer">
      <property name="orientation">
       <enum>Qt::Orientation::Vertical</enum>
      </property>

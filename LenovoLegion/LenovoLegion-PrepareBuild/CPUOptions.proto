@@ -24,3 +24,13 @@ message CPUSMT
     bool   active  = 1;
     string control = 2;
 }
+
+
+message CPUPState
+{
+    bool    hwp_dynamic_boost = 1;
+    uint32  max_perf_pct      = 2;
+    uint32  min_perf_pct      = 3;
+    bool    no_turbo          = 4;
+    string  status            = 5;
+}

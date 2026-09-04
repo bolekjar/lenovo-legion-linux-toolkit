@@ -107,11 +107,27 @@ QByteArray SysFsDataProviderCPUFrequency::deserializeAndSetData(const QByteArray
         if(cpuFrequency.cpus().at(i).has_scaling_min_freq())
         {
             setData(cpuXlist.cpuList().at(i).m_freq.m_cpuScalingMinFreq,cpuFrequency.cpus().at(i).scaling_min_freq());
+            if(i < m_lastCpuFrequency.cpus_size())
+            {
+                m_lastCpuFrequency.mutable_cpus(i)->set_scaling_min_freq(cpuFrequency.cpus().at(i).scaling_min_freq());
+            }
+            else
+            {
+                LOG_W(QString(__PRETTY_FUNCTION__) + "- core_id=" + QString::number(i) + QString( " out of range in m_lastCpuFrequency !"));
+            }
         }
 
         if(cpuFrequency.cpus().at(i).has_scaling_max_freq())
         {
             setData(cpuXlist.cpuList().at(i).m_freq.m_cpuScalingMaxFreq,cpuFrequency.cpus().at(i).scaling_max_freq());
+            if(i < m_lastCpuFrequency.cpus_size())
+            {
+                m_lastCpuFrequency.mutable_cpus(i)->set_scaling_max_freq(cpuFrequency.cpus().at(i).scaling_max_freq());
+            }
+            else
+            {
+                LOG_W(QString(__PRETTY_FUNCTION__) + "- core_id=" + QString::number(i) + QString( " out of range in m_lastCpuFrequency !"));
+            }
         }
     }
 

@@ -1,5 +1,4 @@
 ﻿
-
-
 ----------------------------------------------------------------------------------------------------------------------
-1) Fix issue in brightness of keyboard - not able to simulate but sometimes shows brightness off and keyboard ligts on.
+1) I have to make review of expecting updates when gui change the values which are dependency on event. If interaction is by gui then no event should be in expectation gui should handle this himself.
+2) Fix issue in brightness of keyboard - not able to simulate but sometimes shows brightness off and keyboard lights on.

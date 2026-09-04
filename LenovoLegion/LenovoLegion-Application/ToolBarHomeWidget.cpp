@@ -84,6 +84,21 @@ void refreshControlTabByName(const QString &name, QTabWidget &tabWidget)
     }
 }
 
+template<class T>
+void execOnControlTabByName(const QString &name, QTabWidget &tabWidget,std::function<void (T&)> func)
+{
+    /*
+     * Refresh tab
+     */
+    for(int i = 0; i < tabWidget.count();++i)
+    {
+        if(tabWidget.tabText(i) == name)
+        {
+            func(*dynamic_cast<T*>(tabWidget.widget(i)));
+        }
+    }
+}
+
 }
 
 
@@ -220,6 +235,11 @@ void ToolBarHomeWidget::dataProviderEvent(const legion::messages::Notification &
         case legion::messages::Notification::CPU_FREQUENCY_CHANGED:
         {
             refreshControlTabByName<CPUFrequencyControl>(CPUFrequencyControl::NAME,*ui->tabWidget_Controls);
+        }
+        break;
+        case legion::messages::Notification::CPU_PSTATE_CHANGED:
+        {
+            refreshControlTabByName<OtherControl>(OtherControl::NAME,*ui->tabWidget_Controls);
         }
         break;
         case legion::messages::Notification::THERMAL_MODE_CHANGE:

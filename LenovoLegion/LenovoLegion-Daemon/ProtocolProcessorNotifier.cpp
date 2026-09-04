@@ -21,6 +21,7 @@
 
 
 #include "SysFsDataProviderCPUFrequency.h"
+#include "SysFsDataProviderCPUPState.h"
 
 #include "../LenovoLegion-PrepareBuild/Notification.pb.h"
 
@@ -255,6 +256,14 @@ void ProtocolProcessorNotifier::dataProviderEventHandler(const DataProvider::Sub
         if(event.m_action == DataProvider::SubsystemEvent::Action::CHANGED)
         {
             msg.set_action(legion::messages::Notification::CPU_FREQUENCY_CHANGED);
+        }
+    }
+
+    if(event.m_dataType == SysFsDataProviderCPUPState::dataType)
+    {
+        if(event.m_action == DataProvider::SubsystemEvent::Action::CHANGED)
+        {
+            msg.set_action(legion::messages::Notification::CPU_PSTATE_CHANGED);
         }
     }
 

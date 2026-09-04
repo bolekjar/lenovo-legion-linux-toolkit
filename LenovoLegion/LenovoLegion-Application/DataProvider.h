@@ -8,6 +8,7 @@
 #pragma once
 
 #include "ProtocolProcessor.h"
+#include "Core/LoggerHolder.h"
 
 #include "QtConcurrent/qtconcurrentrun.h"
 #include <QObject>
@@ -75,12 +76,18 @@ public:
 
     template<class Message, class Request = Message>
     QFuture<Message> getDataMessageAsync(quint8 m_dataType, Request data = {}) const {
-        return QtConcurrent::run(
-            &DataProvider::getDataMessage<Message, Request>,
-            this,
-            m_dataType,
-            std::move(data)
-            );
+        return QtConcurrent::run([this, m_dataType, data = std::move(data)]() {
+            try {
+                return this->getDataMessage<Message, Request>(m_dataType, std::move(data));
+            } catch (const exception_T& e) {
+                LOG_E(QString("DataProvider exception: ").append(e.what()));
+            } catch (const std::exception& e) {
+                LOG_E(QString("Standard exception: ").append(e.what()));
+            } catch (...) {
+                LOG_E("Unknown exception occurred in getDataMessageAsync");
+            }
+            return Message(); // Return a default-constructed Message in case of an exception
+        });
     }
 
 

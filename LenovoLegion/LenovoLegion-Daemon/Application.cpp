@@ -32,6 +32,7 @@
 #include "SysFSDriverLegionIntelMSR.h"
 #include "SysFsDriverCPUInfo.h"
 #include "SysFsDriverLegionMachineInformation.h"
+#include "SysFsDriverCPUIntelPState.h"
 
 
 /*
@@ -53,6 +54,7 @@
 #include "SysFsDataProviderMachineInformation.h"
 #include "SysFsDataProviderOther.h"
 #include "SysFsDataProviderOtherGpuSwitch.h"
+#include "SysFsDataProviderCPUPState.h"
 
 #include "DataProviderNvidiaNvml.h"
 #include "DataProviderDaemonSettings.h"
@@ -102,6 +104,7 @@ Application::Application(int &argc, char *argv[]) :
     m_sysFsDriverManager->addDriver(new SysFSDriverLegionIntelMSR(m_sysFsDriverManager));
     m_sysFsDriverManager->addDriver(new SysFsDriverCPUInfo(m_sysFsDriverManager));
     m_sysFsDriverManager->addDriver(new SysFsDriverLegionMachineInformation(m_sysFsDriverManager));
+    m_sysFsDriverManager->addDriver(new SysFsDriverCPUIntelPState(m_sysFsDriverManager));
 
 
     /*
@@ -127,6 +130,7 @@ Application::Application(int &argc, char *argv[]) :
     m_dataProviderManager->addDataProvider(new SysFsDataProviderMachineInformation(m_sysFsDriverManager,m_dataProviderManager));
     m_dataProviderManager->addDataProvider(new SysFsDataProviderOther(m_sysFsDriverManager,m_dataProviderManager));
     m_dataProviderManager->addDataProvider(new SysFsDataProviderOtherGpuSwitch(m_sysFsDriverManager,m_dataProviderManager));
+    m_dataProviderManager->addDataProvider(new SysFsDataProviderCPUPState(m_sysFsDriverManager,m_dataProviderManager));
 
     m_dataProviderManager->addDataProvider(new DataProviderNvidiaNvml(m_dataProviderManager));
     m_dataProviderManager->addDataProvider(new DataProviderDaemonSettings(m_dataProviderManager));

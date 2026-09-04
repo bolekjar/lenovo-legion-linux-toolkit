@@ -34,6 +34,7 @@ SOURCES +=  \
         SysFsDataProviderCPUFrequency.cpp \
         SysFsDataProviderCPUInfo.cpp \
         SysFsDataProviderCPUOptions.cpp \
+        SysFsDataProviderCPUPState.cpp \
         SysFsDataProviderCPUPower.cpp \
         SysFsDataProviderCPUSMT.cpp \
         SysFsDataProviderCPUTopology.cpp \
@@ -61,6 +62,7 @@ SOURCES +=  \
         SysFsDriverPowerSuplyBattery0.cpp \
         Settings.cpp \
         StringUtils.cpp \
+        SysFsDriverCPUIntelPState.cpp \
         main.cpp
 
 HEADERS += \
@@ -89,6 +91,7 @@ HEADERS += \
     SysFsDataProviderCPUFrequency.h \
     SysFsDataProviderCPUInfo.h \
     SysFsDataProviderCPUOptions.h \
+    SysFsDataProviderCPUPState.h \
     SysFsDataProviderCPUPower.h \
     SysFsDataProviderCPUSMT.h \
     SysFsDataProviderCPUTopology.h \
@@ -107,6 +110,7 @@ HEADERS += \
     SysFsDriverCPUAtom.h \
     SysFsDriverCPUCore.h \
     SysFsDriverCPUInfo.h \
+    SysFsDriverCPUIntelPState.h \
     SysFsDriverCPUXList.h \
     SysFsDriverIntelPowercapRapl.h \
     SysFsDriverLegion.h \
