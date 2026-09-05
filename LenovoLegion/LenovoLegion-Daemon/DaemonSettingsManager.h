@@ -52,6 +52,7 @@ public:
     void loadNvidiaNvml(DataProviderManager* dataProviderManager);
     void loadIntelMSR(DataProviderManager* dataProviderManager);
     void loadOther(DataProviderManager* dataProviderManager);
+    void loadCPUPState(DataProviderManager* dataProviderManager);
 
     // Save individual setting types
     void saveDaemonSettings();
@@ -66,6 +67,7 @@ public:
     void saveNvidiaNvml(DataProviderManager* dataProviderManager);
     void saveIntelMSR(DataProviderManager* dataProviderManager);
     void saveOther(DataProviderManager* dataProviderManager);
+    void saveCPUPState(DataProviderManager* dataProviderManager);
 
     // Access daemon settings
     const legion::messages::DaemonSettings& getDaemonSettings() const;

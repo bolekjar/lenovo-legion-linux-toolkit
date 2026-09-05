@@ -524,4 +524,63 @@ SettingsSaverOther& SettingsSaverOther::saveOther(const legion::messages::OtherS
     return *this;
 }
 
+SettingsLoaderCPUPState::SettingsLoaderCPUPState() :
+    Settings("CPUPStateData")
+{
+}
+
+SettingsLoaderCPUPState &SettingsLoaderCPUPState::loadCPUPState(legion::messages::CPUPState &cpuPState)
+{
+    if (m_settings.contains("status")) {
+        cpuPState.set_status(m_settings.value("status").toString().toStdString());
+    }
+
+    if(m_settings.contains("hwp_dynamic_boost")) {
+        cpuPState.set_hwp_dynamic_boost(m_settings.value("hwp_dynamic_boost").toBool());
+    }
+
+    if (m_settings.contains("no_turbo")) {
+        cpuPState.set_no_turbo(m_settings.value("no_turbo").toBool());
+    }
+
+    if (m_settings.contains("min_perf_pct")) {
+        cpuPState.set_min_perf_pct(m_settings.value("min_perf_pct").toUInt());
+    }
+
+    if (m_settings.contains("max_perf_pct")) {
+        cpuPState.set_max_perf_pct(m_settings.value("max_perf_pct").toUInt());
+    }
+
+    return *this;
+}
+
+SettingsSaverCPUPState::SettingsSaverCPUPState() :
+    Settings("CPUPStateData")
+{
+}
+
+SettingsSaverCPUPState &SettingsSaverCPUPState::saveCPUPState(const legion::messages::CPUPState &cpuPState)
+{
+    if (cpuPState.has_status()) {
+        m_settings.setValue("status", QString::fromStdString(std::string(cpuPState.status())));
+    }
+
+    if(cpuPState.has_hwp_dynamic_boost()) {
+        m_settings.setValue("hwp_dynamic_boost", cpuPState.hwp_dynamic_boost());
+    }
+
+    if(cpuPState.has_no_turbo()) {
+        m_settings.setValue("no_turbo", cpuPState.no_turbo());
+    }
+
+    if(cpuPState.has_min_perf_pct()) {
+        m_settings.setValue("min_perf_pct", cpuPState.min_perf_pct());
+    }
+
+    if(cpuPState.has_max_perf_pct()) {
+        m_settings.setValue("max_perf_pct", cpuPState.max_perf_pct());
+    }
+    return *this;
+}
+
 }

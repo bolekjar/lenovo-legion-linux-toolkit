@@ -115,6 +115,9 @@
            <layout class="QVBoxLayout" name="verticalLayout_5">
             <item>
              <widget class="QLabel" name="label_CPUPState_MINLimit">
+              <property name="toolTip">
+               <string>Minimum power limit (frequency) in percent.</string>
+              </property>
               <property name="text">
                <string>MIN Performace limit [%]</string>
               </property>
@@ -122,6 +125,9 @@
             </item>
             <item>
              <widget class="QSpinBox" name="spinBox_CPUPState_MINLimit">
+              <property name="toolTip">
+               <string>Minimum power limit (frequency) in percent.</string>
+              </property>
               <property name="minimum">
                <number>14</number>
               </property>
@@ -136,6 +142,9 @@
            <layout class="QVBoxLayout" name="verticalLayout_4">
             <item>
              <widget class="QLabel" name="label_CPUPState_MAXLimit">
+              <property name="toolTip">
+               <string>Maximum power limit (frequency) in percent.</string>
+              </property>
               <property name="text">
                <string>MAX Performace limit [%]</string>
               </property>
@@ -143,6 +152,9 @@
             </item>
             <item>
              <widget class="QSpinBox" name="spinBox_CPUPState_MAXLimit">
+              <property name="toolTip">
+               <string>Maximum power limit (frequency) in percent.</string>
+              </property>
               <property name="minimum">
                <number>14</number>
               </property>
@@ -159,6 +171,9 @@
          <layout class="QHBoxLayout" name="horizontalLayout_4">
           <item>
            <widget class="QCheckBox" name="checkBox_CPUPStatedisableTurbo">
+            <property name="toolTip">
+             <string>Disable turbo</string>
+            </property>
             <property name="text">
              <string>Disable Turbo</string>
             </property>
@@ -166,6 +181,9 @@
           </item>
           <item>
            <widget class="QCheckBox" name="checkBox_CPUPStatehwpDynamicBoost">
+            <property name="toolTip">
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;When enabled, this feature briefly and dynamically boosts processor performance (P-state) the moment a task resumes after waiting for disk or network operations to complete (I/O wait).&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;The Goal: &lt;/span&gt;To speed up system responsiveness. While the processor is waiting for data from the disk, it runs at a low frequency to save power. As soon as the disk delivers the data, HWP Dynamic Boost immediately &amp;quot;pushes&amp;quot; the processor to a higher clock speed so the data can be processed without any stutter.&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;When it is useful:&lt;/span&gt; It helps primarily with applications that read and write heavily to the disk, or network services where the lowest possible response time (latency) matters.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            </property>
             <property name="text">
              <string>HWP Dynamic boost</string>
             </property>
@@ -206,7 +224,11 @@
              </widget>
             </item>
             <item>
-             <widget class="QComboBox" name="comboBox_CPUPstate_status"/>
+             <widget class="QComboBox" name="comboBox_CPUPstate_status">
+              <property name="toolTip">
+               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;🟢 Active Mode (Default for Modern CPUs) - In this mode, the Linux kernel hands over frequency scaling control directly to the processor's hardware (HWP - Hardware P-States). &lt;/p&gt;&lt;p&gt;🔵 Passive Mode&lt;/p&gt;&lt;p&gt;In this mode, the driver operates similarly to older, generic scaling drivers (like &lt;span style=&quot; font-family:'monospace'; font-size:14px;&quot;&gt;acpi-cpufreq&lt;/span&gt;).&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+              </property>
+             </widget>
             </item>
            </layout>
           </item>

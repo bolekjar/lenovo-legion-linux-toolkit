@@ -36,7 +36,6 @@ QByteArray SysFsDataProviderCPUPState::serializeAndGetData()
 
 QByteArray SysFsDataProviderCPUPState::deserializeAndSetData(const QByteArray &data)
 {
-    SysFsDriverCPUIntelPState::IntelPState intePState(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverCPUIntelPState::DRIVER_NAME));
     legion::messages::CPUPState cpuPState;
 
     LOG_T(__PRETTY_FUNCTION__);
@@ -47,26 +46,34 @@ QByteArray SysFsDataProviderCPUPState::deserializeAndSetData(const QByteArray &d
     }
 
 
+    {
+        SysFsDriverCPUIntelPState::IntelPState intePState(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverCPUIntelPState::DRIVER_NAME));
 
-    if(cpuPState.has_status() && intePState.m_status.has_value()) {
-        //The driver change his structure need to block kernel event to avoid race condition
-        m_sysFsDriverManager->blockKernelEvent(SysFsDriverCPUIntelPState::DRIVER_NAME,true);
-        auto cleanup =  qScopeGuard([this] { m_sysFsDriverManager->blockKernelEvent(SysFsDriverCPUIntelPState::DRIVER_NAME,false); });
+        if(cpuPState.has_status() && intePState.m_status.has_value()) {
+            //The driver change his structure need to block kernel event to avoid race condition
+            m_sysFsDriverManager->blockKernelEvent(SysFsDriverCPUIntelPState::DRIVER_NAME,true);
+            auto cleanup =  qScopeGuard([this] { m_sysFsDriverManager->blockKernelEvent(SysFsDriverCPUIntelPState::DRIVER_NAME,false); });
 
-        setData(intePState.m_status.value(),cpuPState.status());
-        m_lastCpuPState.set_status(cpuPState.status());
+            setData(intePState.m_status.value(),cpuPState.status());
+            m_lastCpuPState.set_status(cpuPState.status());
 
-        m_sysFsDriverManager->processAllUdevEvents(100);
-        m_sysFsDriverManager->refreshDriver(SysFsDriverCPUIntelPState::DRIVER_NAME);
-
-        //No other changes are avalaible
-        return {};
+            m_sysFsDriverManager->processAllUdevEvents(100);
+            m_sysFsDriverManager->refreshDriver(SysFsDriverCPUIntelPState::DRIVER_NAME);
+        }
     }
+
+    SysFsDriverCPUIntelPState::IntelPState intePState(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverCPUIntelPState::DRIVER_NAME));
+
 
     if(cpuPState.has_hwp_dynamic_boost() && intePState.m_hwp_dynamic_boost.has_value()) {
         setData(intePState.m_hwp_dynamic_boost.value(),cpuPState.hwp_dynamic_boost());
         m_lastCpuPState.set_hwp_dynamic_boost(cpuPState.hwp_dynamic_boost());
     }
+    if(cpuPState.has_no_turbo() && intePState.m_no_turbo.has_value()) {
+        setData(intePState.m_no_turbo.value(),cpuPState.no_turbo());
+        m_lastCpuPState.set_no_turbo(cpuPState.no_turbo());
+    }
+
 
     //
     // You have to set twice becase only one can be set due to min < max. You do not know what is set.
@@ -87,10 +94,6 @@ QByteArray SysFsDataProviderCPUPState::deserializeAndSetData(const QByteArray &d
     if(cpuPState.has_min_perf_pct() && intePState.m_min_perf_pct.has_value()) {
         setData(intePState.m_min_perf_pct.value(),cpuPState.min_perf_pct());
         m_lastCpuPState.set_min_perf_pct(cpuPState.min_perf_pct());
-    }
-    if(cpuPState.has_no_turbo() && intePState.m_no_turbo.has_value()) {
-        setData(intePState.m_no_turbo.value(),cpuPState.no_turbo());
-        m_lastCpuPState.set_no_turbo(cpuPState.no_turbo());
     }
 
     return {};

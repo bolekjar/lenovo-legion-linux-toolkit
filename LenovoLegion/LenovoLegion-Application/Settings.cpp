@@ -463,6 +463,48 @@ void ProfileSettings::loadOther(legion::messages::OtherSettings& msg)
     }
 }
 
+void ProfileSettings::loadCPUPstate(legion::messages::CPUPState &msg)
+{
+    if (m_settings.contains("CPUPState/status")) {
+        msg.set_status(m_settings.value("CPUPState/status").toString().toStdString());
+    }
+    if (m_settings.contains("CPUPState/hwp_dynamic_boost")) {
+        msg.set_hwp_dynamic_boost(m_settings.value("CPUPState/hwp_dynamic_boost").toBool());
+    }
+    if (m_settings.contains("CPUPState/no_turbo")) {
+        msg.set_no_turbo(m_settings.value("CPUPState/no_turbo").toBool());
+    }
+    if (m_settings.contains("CPUPState/min_perf_pct")) {
+        msg.set_min_perf_pct(m_settings.value("CPUPState/min_perf_pct").toUInt());
+    }
+    if (m_settings.contains("CPUPState/max_perf_pct")) {
+        msg.set_max_perf_pct(m_settings.value("CPUPState/max_perf_pct").toUInt());
+    }
+}
+
+void ProfileSettings::saveCPUPstate(const legion::messages::CPUPState &msg)
+{
+    if (msg.has_status()) {
+        m_settings.setValue("CPUPState/status", QString::fromStdString(std::string(msg.status())));
+    }
+    if (msg.has_hwp_dynamic_boost()){
+        m_settings.setValue("CPUPState/hwp_dynamic_boost", msg.hwp_dynamic_boost());
+    }
+    if (msg.has_no_turbo())
+    {
+        m_settings.setValue("CPUPState/no_turbo", msg.no_turbo());
+    }
+    if(msg.has_min_perf_pct()) {
+        m_settings.setValue("CPUPState/min_perf_pct", msg.min_perf_pct());
+    }
+    if(msg.has_max_perf_pct()) {
+        m_settings.setValue("CPUPState/max_perf_pct", msg.max_perf_pct());
+    }
+}
+
+
+
+
 // ProfileManager implementation
 QStringList ProfileManager::listProfiles()
 {

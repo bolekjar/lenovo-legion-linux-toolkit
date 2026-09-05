@@ -129,6 +129,7 @@ public:
     void saveNvidiaNvml(const legion::messages::NvidiaNvml& msg);
     void saveIntelMSR(const legion::messages::CpuIntelMSR& msg);
     void saveOther(const legion::messages::OtherSettings& msg);
+    void saveCPUPstate(const legion::messages::CPUPState& msg);
     
     void loadPowerProfile(legion::messages::PowerProfile& msg);
     void loadCPUOptions(legion::messages::CPUOptions& msg);
@@ -141,6 +142,7 @@ public:
     void loadNvidiaNvml(legion::messages::NvidiaNvml& msg);
     void loadIntelMSR(legion::messages::CpuIntelMSR& msg);
     void loadOther(legion::messages::OtherSettings& msg);
+    void loadCPUPstate(legion::messages::CPUPState& msg);
 };
 
 

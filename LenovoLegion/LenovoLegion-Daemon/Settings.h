@@ -230,4 +230,22 @@ public:
     SettingsSaverOther& saveOther(const legion::messages::OtherSettings &otherSettings);
 };
 
+//CPU PState Settings
+
+class SettingsLoaderCPUPState: protected Settings
+{
+public:
+    explicit SettingsLoaderCPUPState();
+    SettingsLoaderCPUPState& loadCPUPState(legion::messages::CPUPState &cpuPState);
+};
+
+class SettingsSaverCPUPState: protected Settings
+{
+public:
+    explicit SettingsSaverCPUPState();
+    SettingsSaverCPUPState& saveCPUPState(const legion::messages::CPUPState &cpuPState);
+};
+
+
+
 }

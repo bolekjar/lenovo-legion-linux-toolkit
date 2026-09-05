@@ -18,6 +18,7 @@
 #include "../LenovoLegion-Daemon/DataProviderNvidiaNvml.h"
 #include "../LenovoLegion-Daemon/SysFsDataProviderIntelMSR.h"
 #include "../LenovoLegion-Daemon/SysFsDataProviderOther.h"
+#include "../LenovoLegion-Daemon/SysFsDataProviderCPUPState.h"
 
 #include <QMessageBox>
 
@@ -221,6 +222,10 @@ void ToolBarProfilesWidget::onSaveProfile()
         auto otherSettings = m_dataProvider->getDataMessage<legion::messages::OtherSettings>(
             LenovoLegionDaemon::SysFsDataProviderOther::dataType);
         profile.saveOther(otherSettings);
+
+        auto cpuPState = m_dataProvider->getDataMessage<legion::messages::CPUPState>(
+            LenovoLegionDaemon::SysFsDataProviderCPUPState::dataType);
+        profile.saveCPUPstate(cpuPState);
         
         LOG_T(QString("Profile saved successfully: ").append(profileName));
         
@@ -328,6 +333,10 @@ void ToolBarProfilesWidget::onLoadProfile()
         legion::messages::OtherSettings otherSettings;
         profile.loadOther(otherSettings);
         m_dataProvider->setDataMessage(LenovoLegionDaemon::SysFsDataProviderOther::dataType, otherSettings);
+
+        legion::messages::CPUPState cpuPState;
+        profile.loadCPUPstate(cpuPState);
+        m_dataProvider->setDataMessage(LenovoLegionDaemon::SysFsDataProviderCPUPState::dataType, cpuPState);
         
         LOG_T(QString("Profile loaded successfully: ").append(profileName));
         

@@ -20,6 +20,7 @@
 #include "DataProviderNvidiaNvml.h"
 #include "SysFsDataProviderIntelMSR.h"
 #include "SysFsDataProviderOther.h"
+#include "SysFsDataProviderCPUPState.h"
 
 #include <Core/LoggerHolder.h>
 
@@ -81,6 +82,7 @@ void DaemonSettingsManager::loadAllSettings(DataProviderManager* dataProviderMan
     loadNvidiaNvml(dataProviderManager);
     loadIntelMSR(dataProviderManager);
     loadOther(dataProviderManager);
+    loadCPUPState(dataProviderManager);
     LOG_T("DaemonSettingsManager::loadAllSettings - complete");
 }
 
@@ -100,6 +102,7 @@ void DaemonSettingsManager::saveAllSettings(DataProviderManager* dataProviderMan
     saveNvidiaNvml(dataProviderManager);
     saveIntelMSR(dataProviderManager);
     saveOther(dataProviderManager);
+    saveCPUPState(dataProviderManager);
     LOG_D("DaemonSettingsManager::saveAllSettings - complete");
 }
 
@@ -554,6 +557,28 @@ void DaemonSettingsManager::loadOther(DataProviderManager* dataProviderManager)
     }
 }
 
+void DaemonSettingsManager::loadCPUPState(DataProviderManager *dataProviderManager)
+{
+    LOG_T("DaemonSettingsManager::loadCPUPState");
+    try {
+        legion::messages::CPUPState cpuPState;
+        SettingsLoaderCPUPState().loadCPUPState(cpuPState);
+        // Skip if no fields are set
+        if(cpuPState.ByteSizeLong() == 0) {
+            LOG_D("DaemonSettingsManager::loadCPUPState - no saved data, skipping");
+            return;
+        }
+        QByteArray data;
+        data.resize(cpuPState.ByteSizeLong());
+        if(cpuPState.SerializeToArray(data.data(),data.size()))
+        {
+            dataProviderManager->getDataProvider(SysFsDataProviderCPUPState::dataType).deserializeAndSetData(data);
+        }
+    } catch(...) {
+        LOG_W("DaemonSettingsManager::loadCPUPState - failed");
+    }
+}
+
 void DaemonSettingsManager::saveOther(DataProviderManager* dataProviderManager)
 {
     LOG_D("DaemonSettingsManager::saveOther");
@@ -566,6 +591,21 @@ void DaemonSettingsManager::saveOther(DataProviderManager* dataProviderManager)
         }
     } catch(...) {
         LOG_W("DaemonSettingsManager::saveOther - failed");
+    }
+}
+
+void DaemonSettingsManager::saveCPUPState(DataProviderManager *dataProviderManager)
+{
+    LOG_D("DaemonSettingsManager::saveCPUPState");
+    try {
+        auto data = dataProviderManager->getDataProvider(SysFsDataProviderCPUPState::dataType).serializeAndGetData();
+        legion::messages::CPUPState cpuPState;
+        if(cpuPState.ParseFromArray(data.data(), data.size()))
+        {
+            SettingsSaverCPUPState().saveCPUPState(cpuPState);
+        }
+    } catch(...) {
+        LOG_W("DaemonSettingsManager::saveCPUPState - failed");
     }
 }
 
