@@ -21,42 +21,67 @@ namespace  LenovoLegionGui {
 
 
 DataProviderManager::DataProviderManager(QObject *parent) : QObject(parent),
-    m_protocolProcessor(new ProtocolProcessor()),
-    m_protocolProcessorNotifier(new ProtocolProcessorNotifier()),
-    m_dataProvider(new DataProvider(*m_protocolProcessor, this)),
-    m_commThread(new QThread(this))
-{
-    m_protocolProcessor->moveToThread(m_commThread);
-    m_protocolProcessorNotifier->moveToThread(m_commThread);
-
-    connect(m_commThread, &QThread::started, m_protocolProcessor, &ProtocolProcessor::init);
-    connect(m_commThread, &QThread::started, m_protocolProcessorNotifier, &ProtocolProcessorNotifier::init);
-
-
-    connect(m_commThread, &QThread::finished, m_protocolProcessor, &ProtocolProcessor::cleanup);
-    connect(m_commThread, &QThread::finished, m_protocolProcessorNotifier, &ProtocolProcessorNotifier::cleanup);
-    connect(m_commThread, &QThread::finished, m_protocolProcessor, &QObject::deleteLater);
-    connect(m_commThread, &QThread::finished, m_protocolProcessorNotifier, &QObject::deleteLater);
-
-
-    connect(m_protocolProcessor,&ProtocolProcessor::connected,this,&DataProviderManager::protocolProcessorConnected);
-    connect(m_protocolProcessor,&ProtocolProcessor::disconnected,this,&DataProviderManager::protocolProcessorDisconnectd);
-    connect(m_protocolProcessorNotifier,&ProtocolProcessorNotifier::daemonNotification,this,&DataProviderManager::daemonNotificationSlot);
-}
+    m_protocolProcessor(nullptr),
+    m_protocolProcessorNotifier(nullptr),
+    m_dataProvider(nullptr),
+    m_communicationThread(nullptr)
+{}
 
 DataProviderManager::~DataProviderManager()
 {}
 
 void DataProviderManager::init()
 {
-    m_commThread->start();
+    try {
+
+        m_protocolProcessor         = new ProtocolProcessor();
+        m_protocolProcessorNotifier = new ProtocolProcessorNotifier();
+        m_dataProvider              = new DataProvider(*m_protocolProcessor, this);
+        m_communicationThread       = new QThread(this);
+
+        m_protocolProcessor->moveToThread(m_communicationThread);
+        m_protocolProcessorNotifier->moveToThread(m_communicationThread);
+
+        connect(m_communicationThread, &QThread::started, m_protocolProcessor, &ProtocolProcessor::init);
+        connect(m_communicationThread, &QThread::started, m_protocolProcessorNotifier, &ProtocolProcessorNotifier::init);
+
+
+        connect(m_communicationThread, &QThread::finished, m_protocolProcessor, &ProtocolProcessor::cleanup);
+        connect(m_communicationThread, &QThread::finished, m_protocolProcessorNotifier, &ProtocolProcessorNotifier::cleanup);
+        connect(m_communicationThread, &QThread::finished, m_protocolProcessor, &QObject::deleteLater);
+        connect(m_communicationThread, &QThread::finished, m_protocolProcessorNotifier, &QObject::deleteLater);
+
+
+        connect(m_protocolProcessor,&ProtocolProcessor::connected,this,&DataProviderManager::protocolProcessorConnected);
+        connect(m_protocolProcessor,&ProtocolProcessor::disconnected,this,&DataProviderManager::protocolProcessorDisconnectd);
+        connect(m_protocolProcessorNotifier,&ProtocolProcessorNotifier::daemonNotification,this,&DataProviderManager::daemonNotificationSlot);
+        connect(m_protocolProcessor,&ProtocolProcessor::exceptionCaught,this,&DataProviderManager::exceptionCaughtSlot);
+        connect(m_protocolProcessorNotifier,&ProtocolProcessorNotifier::exceptionCaught,this,&DataProviderManager::exceptionCaughtSlot);
+
+        m_communicationThread->start();
+    } catch (...)
+    {
+        cleanup();
+        throw;
+    }
 }
 
 void DataProviderManager::cleanup() noexcept
 {
-    if (m_commThread && m_commThread->isRunning()) {
-        m_commThread->quit();
-        m_commThread->wait();
+    if (m_communicationThread && m_communicationThread->isRunning()) {
+        m_communicationThread->requestInterruption();
+        m_communicationThread->quit();
+        m_communicationThread->wait();
+    }
+
+    if(m_communicationThread)
+    {
+        delete m_communicationThread;
+    }
+
+    if(m_dataProvider)
+    {
+        delete m_dataProvider;
     }
 }
 
@@ -75,6 +100,13 @@ void DataProviderManager::protocolProcessorDisconnectd()
 void DataProviderManager::daemonNotificationSlot(const legion::messages::Notification& msg)
 {
     emit daemonNotification(msg);
+}
+
+void DataProviderManager::exceptionCaughtSlot(const QString &error)
+{
+    LOG_E(QString("DataProviderManager exception: ").append(error));
+
+    THROW_EXCEPTION(exception_T, ERROR_CODES::PROTOCOL_PROCESSOR_ERROR,error.toStdString());
 }
 
 void DataProviderManager::reconnectToDaemon()

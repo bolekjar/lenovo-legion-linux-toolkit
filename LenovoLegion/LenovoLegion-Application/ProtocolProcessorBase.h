@@ -59,6 +59,7 @@ signals:
 
     void connected();
     void disconnected();
+    void exceptionCaught(const QString& error);
 
 protected:
 

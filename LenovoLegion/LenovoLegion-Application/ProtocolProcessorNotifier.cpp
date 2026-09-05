@@ -42,33 +42,42 @@ void ProtocolProcessorNotifier::cleanup() noexcept
 
 void ProtocolProcessorNotifier::timerEvent(QTimerEvent *event)
 {
-
-    if(m_timerId == event->timerId())
-    {
-        if(m_socket->bytesAvailable() > 0)
+    try {
+        if(m_timerId == event->timerId())
         {
-            QByteArray data;
-            auto msg = receiveMessageDataReady(data);
-
-            if(msg.m_type == LenovoLegionDaemon::MessageHeader::Type::NOTIFICATION)
+            if(m_socket->bytesAvailable() > 0)
             {
-                legion::messages::Notification msg;
+                QByteArray data;
+                auto msg = receiveMessageDataReady(data);
 
-                if(!msg.ParseFromArray(data,data.size()))
+                if(msg.m_type == LenovoLegionDaemon::MessageHeader::Type::NOTIFICATION)
                 {
-                    THROW_EXCEPTION(exception_T,ERROR_CODES::INVALID_MESSAGE,"Parse of data message error !");
+                    legion::messages::Notification msg;
+
+                    if(!msg.ParseFromArray(data,data.size()))
+                    {
+                        THROW_EXCEPTION(exception_T,ERROR_CODES::INVALID_MESSAGE,"Parse of data message error !");
+                    }
+
+                    emit daemonNotification(msg);
+
+                    return;
                 }
 
-                emit daemonNotification(msg);
-
-                return;
+                THROW_EXCEPTION(exception_T,ERROR_CODES::INVALID_MESSAGE,"Invalid message");
             }
-
-            THROW_EXCEPTION(exception_T,ERROR_CODES::INVALID_MESSAGE,"Invalid message");
         }
+        ProtocolProcessorBase::timerEvent(event);
     }
-
-    ProtocolProcessorBase::timerEvent(event);
+    catch (const exception_T& e) {
+        emit exceptionCaught(QString::fromStdString(e.what()));
+    }
+    catch (const std::exception& e) {
+        emit exceptionCaught(QString::fromStdString(e.what()));
+    }
+    catch (...) {
+        emit exceptionCaught("Unhandled exception in ProtocolProcessorNotifier::timerEvent");
+    }
 }
 
 }

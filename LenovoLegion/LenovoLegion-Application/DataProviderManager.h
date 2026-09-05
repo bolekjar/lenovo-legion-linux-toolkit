@@ -17,11 +17,20 @@ namespace  LenovoLegionGui {
 
 class ProtocolProcessor;
 class ProtocolProcessorNotifier;
+class CommunicationThread;
 
 
 class DataProviderManager : public QObject
 {
     Q_OBJECT
+
+public:
+
+    enum ERROR_CODES : int {
+        PROTOCOL_PROCESSOR_ERROR = -1
+    };
+
+    DEFINE_EXCEPTION(ProtocolProcessorBase);
 
 public:
 
@@ -49,6 +58,7 @@ private slots:
     void protocolProcessorDisconnectd();
 
     void daemonNotificationSlot(const legion::messages::Notification &msg);
+    void exceptionCaughtSlot(const QString& error);
 
 private:
 
@@ -56,7 +66,7 @@ private:
     ProtocolProcessorNotifier                   *m_protocolProcessorNotifier;
     DataProvider                                *m_dataProvider;
 
-    QThread                                     *m_commThread;
+    QThread                                     *m_communicationThread;
 };
 
 }

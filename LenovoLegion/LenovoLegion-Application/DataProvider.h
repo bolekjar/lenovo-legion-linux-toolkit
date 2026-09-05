@@ -63,10 +63,6 @@ public:
             THROW_EXCEPTION(exception_T, ERROR_CODES::PARSER_ERROR, "Response is not valid");
         }
 
-        if (responseBytes.second.isEmpty()) {
-            THROW_EXCEPTION(exception_T, ERROR_CODES::PARSER_ERROR, "Received empty response");
-        }
-
         if (!msg.ParseFromArray(responseBytes.second.constData(), responseBytes.second.size())) {
             THROW_EXCEPTION(exception_T, ERROR_CODES::PARSER_ERROR, "Parse error");
         }
