@@ -27,8 +27,8 @@
        <rect>
         <x>0</x>
         <y>0</y>
-        <width>1962</width>
-        <height>1570</height>
+        <width>1966</width>
+        <height>1574</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout">
@@ -46,7 +46,7 @@
             <item>
              <widget class="QLabel" name="label_Overview">
               <property name="text">
-               <string>Lenovo Legion Control is a comprehensive system management tool for Lenovo Legion laptops running Linux. It provides detailed hardware monitoring and control over CPU, GPU, cooling, and power management features.</string>
+               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Lenovo Legion Linux Toolkit&lt;/span&gt; is a comprehensive system management tool for Lenovo Legion laptops running Linux. It provides detailed hardware monitoring and control over CPU, GPU, cooling, and power management features. It consists of a kernel driver, a daemon that communicates with the kernel driver, and a GUI interface that communicates with the daemon. The kernel driver uses the WMI interface and allows you to set and define limits on the motherboard. The daemon is directly connected to the kernel driver via the sysfs interface or via the CUDA interface for NVIDIA GPUs. The GUI is connected to the daemon and gives commands to the daemon to individual drivers to change their parameters.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
               </property>
               <property name="wordWrap">
                <bool>true</bool>
@@ -68,13 +68,7 @@
             <item>
              <widget class="QLabel" name="label_Home">
               <property name="text">
-               <string>&lt;b&gt;Power Profile Control:&lt;/b&gt; Select from Quiet, Balanced, Performance, Custom, or Extreme modes. Affects CPU behavior, fan speeds, and power consumption. ACPI platform profile integration.
-&lt;br&gt;&lt;b&gt;Hardware Monitoring:&lt;/b&gt; Real-time display of CPU/GPU temperatures, frequencies, power draw, utilization, and all system sensors. Expandable CPU and GPU details windows.
-&lt;br&gt;&lt;b&gt;CPU Control:&lt;/b&gt; Individual control per core/thread. Set governor (performance, powersave, ondemand), enable/disable cores, manage SMT (Hyper-Threading). Separate P-core and E-core management on hybrid CPUs.
-&lt;br&gt;&lt;b&gt;CPU Frequency Control:&lt;/b&gt; Set minimum and maximum frequency limits per thread. Apply to all cores or individually. Real-time frequency monitoring.
-&lt;br&gt;&lt;b&gt;Power Control:&lt;/b&gt; CPU: Configure PL1/PL2 (TDP limits), PL1 Tau (turbo duration), boost control, cross-load limits, CPU temperature limit. GPU: Set TGP (Total Graphics Power), boost clock, GPU temperature limit. Preset configurations available.
-&lt;br&gt;&lt;b&gt;Fan Control:&lt;/b&gt; Create custom 10-point fan curves. Max fan speed override. Lock fan controller. Real-time temperature monitoring. Auto-normalization of curve points.
-&lt;br&gt;&lt;b&gt;Voltage Offsets Control:&lt;/b&gt; Intel MSR-based undervolting: Core, Uncore, Cache, iGPU, and Analog I/O voltage offsets. NVIDIA GPU: Core and memory clock offsets. Safety presets included.</string>
+               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Power Profile Control:&lt;/span&gt; Select from Quiet, Balanced, Performance, Custom, or Extreme modes. Affects CPU behavior, fan speeds, and power consumption. ACPI platform profile integration. &lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Hardware Monitoring: &lt;/span&gt;Real-time display of CPU/GPU temperatures, frequencies, power draw, utilization, and all system sensors. Expandable CPU and GPU details windows. &lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;CPU Control:&lt;/span&gt; Individual control per core/thread. Set governor (performance, powersave, ondemand), enable/disable cores, manage SMT (Hyper-Threading). Separate P-core and E-core management on hybrid CPUs. &lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;CPU Frequency Control:&lt;/span&gt; Set minimum and maximum frequency limits per thread. Apply to all cores or individually. Real-time frequency monitoring. &lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Power Control: &lt;/span&gt;CPU: Configure PL1/PL2 (TDP limits), PL1 Tau (turbo duration), boost control, cross-load limits, CPU temperature limit. GPU: Set TGP (Total Graphics Power), boost clock, GPU temperature limit. Preset configurations available.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Fan Control: &lt;/span&gt;Create custom 10-point fan curves. Max fan speed override. Lock fan controller. Real-time temperature monitoring. Auto-normalization of curve points. &lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Voltage Offsets Control:&lt;/span&gt; Intel MSR-based undervolting: Core, Uncore, Cache, iGPU, and Analog I/O voltage offsets. NVIDIA GPU: Core and memory clock offsets. Safety presets included.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Other Settings:&lt;/span&gt; It allows you to control the laptop's hardware like a keyboard. Next are the GPU modes and finally the CPU power state.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
               </property>
               <property name="textFormat">
                <enum>Qt::TextFormat::RichText</enum>
@@ -99,13 +93,7 @@
             <item>
              <widget class="QLabel" name="label_Information">
               <property name="text">
-               <string>&lt;b&gt;System:&lt;/b&gt; System vendor/manufacturer.
-&lt;br&gt;&lt;b&gt;Product:&lt;/b&gt; Name, family, SKU, version (e.g., Legion 5 Pro, 82WM).
-&lt;br&gt;&lt;b&gt;BIOS:&lt;/b&gt; Vendor, version, release number, date.
-&lt;br&gt;&lt;b&gt;Board:&lt;/b&gt; Motherboard name, vendor, version.
-&lt;br&gt;&lt;b&gt;Chassis:&lt;/b&gt; Type (laptop/notebook), vendor, version.
-&lt;br&gt;&lt;b&gt;CPU:&lt;/b&gt; Model (e.g., Intel Core i9-14900HX), generation, architecture (x86_64), cache hierarchy (L1/L2/L3).
-&lt;br&gt;&lt;b&gt;GPU:&lt;/b&gt; Name (e.g., NVIDIA RTX 4070), power limits (min/max/default).</string>
+               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;System&lt;/span&gt;: System vendor/manufacturer. &lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Product&lt;/span&gt;: Name, family, SKU, version (e.g., Legion 5 Pro, 82WM). &lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;BIOS&lt;/span&gt;: Vendor, version, release number, date. &lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Board&lt;/span&gt;: Motherboard name, vendor, version. &lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Chassis&lt;/span&gt;: Type (laptop/notebook), vendor, version. &lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;CPU&lt;/span&gt;: Model (e.g., Intel Core i9-14900HX), generation, architecture (x86_64), cache hierarchy (L1/L2/L3). &lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;GPU&lt;/span&gt;: Name (e.g., NVIDIA RTX 4070), power limits (min/max/default).&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
               </property>
               <property name="textFormat">
                <enum>Qt::TextFormat::RichText</enum>
@@ -130,11 +118,7 @@
             <item>
              <widget class="QLabel" name="label_Features">
               <property name="text">
-               <string>&lt;b&gt;Real-time Monitoring:&lt;/b&gt; 500ms refresh rate. All hwmon sensors, Intel RAPL power monitoring, NVIDIA NVML GPU metrics, per-core frequencies.
-&lt;br&gt;&lt;b&gt;Hybrid CPU Support:&lt;/b&gt; Automatic detection of P-cores (Performance) and E-cores (Efficiency) on Intel 12th gen+. Visual distinction and individual control.
-&lt;br&gt;&lt;b&gt;Lenovo Driver Integration:&lt;/b&gt; Native support for Lenovo Legion WMI interface (fan control, power profiles, rapid charge). Falls back to ACPI when unavailable.
-&lt;br&gt;&lt;b&gt;Battery Management:&lt;/b&gt; Charge level, health, cycle count, voltage, current, power draw, charge/discharge rate, estimated runtime.
-&lt;br&gt;&lt;b&gt;Safety Features:&lt;/b&gt; Change detection and confirmation, automatic validation, preset configurations, real-time warnings.</string>
+               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Real-time Monitoring:&lt;/span&gt; 500ms refresh rate. All hwmon sensors, Intel RAPL power monitoring, NVIDIA NVML GPU metrics, per-core frequencies. &lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Hybrid CPU Support:&lt;/span&gt; Automatic detection of P-cores (Performance) and E-cores (Efficiency) on Intel 12th gen+. Visual distinction and individual control. &lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Lenovo Driver Integration: &lt;/span&gt;Native support for Lenovo Legion WMI interface (fan control, power profiles, rapid charge). Falls back to ACPI when unavailable. &lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Battery Management:&lt;/span&gt; Charge level, health, cycle count, voltage, current, power draw, charge/discharge rate, estimated runtime. &lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Safety Features:&lt;/span&gt; Change detection and confirmation, automatic validation, preset configurations, real-time warnings.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
               </property>
               <property name="textFormat">
                <enum>Qt::TextFormat::RichText</enum>
@@ -159,10 +143,7 @@
             <item>
              <widget class="QLabel" name="label_Settings">
               <property name="text">
-               <string>&lt;b&gt;Application Settings:&lt;/b&gt; Start on boot, start minimized to tray, minimize to tray on close, notification preferences, UI theme.
-&lt;br&gt;&lt;b&gt;Profile Management:&lt;/b&gt; Save current configuration as named profile. Import/export profiles as JSON files. Quick switching between saved configurations. Profile includes: power profile, CPU settings, fan curves, voltage offsets.
-&lt;br&gt;&lt;b&gt;Daemon Configuration:&lt;/b&gt; Connection timeout, retry interval, auto-reconnect. View daemon status and logs.
-&lt;br&gt;&lt;b&gt;Advanced Options:&lt;/b&gt; Enable debug logging, experimental features, force unsafe operations (requires confirmation). Reset to defaults.</string>
+               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Application Settings: &lt;/span&gt;Start on boot, start minimized to tray, minimize to tray on close, notification preferences, UI theme. &lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Profile Management:&lt;/span&gt; Save current configuration as named profile. Import/export profiles as JSON files. Quick switching between saved configurations. Profile includes: power profile, CPU settings, fan curves, voltage offsets. &lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Daemon Configuration:&lt;/span&gt; Connection timeout, retry interval, auto-reconnect. View daemon status and logs. &lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Advanced Options:&lt;/span&gt; Enable debug logging, experimental features, force unsafe operations (requires confirmation). Reset to defaults.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
               </property>
               <property name="textFormat">
                <enum>Qt::TextFormat::RichText</enum>
@@ -187,12 +168,7 @@
             <item>
              <widget class="QLabel" name="label_Requirements">
               <property name="text">
-               <string>&lt;b&gt;OS:&lt;/b&gt; Linux kernel 5.0+ (5.17+ recommended for full ACPI platform profile support)
-&lt;br&gt;&lt;b&gt;Hardware:&lt;/b&gt; Lenovo Legion laptop (tested on 5/7 Pro series)
-&lt;br&gt;&lt;b&gt;Daemon:&lt;/b&gt; LenovoLegion-Daemon systemd service running with root privileges
-&lt;br&gt;&lt;b&gt;Kernel Modules:&lt;/b&gt; cpufreq, msr, hwmon, ideapad_laptop or legion_laptop
-&lt;br&gt;&lt;b&gt;Optional:&lt;/b&gt; NVIDIA proprietary drivers (535+) and libnvidia-ml for GPU features
-&lt;br&gt;&lt;b&gt;Build:&lt;/b&gt; Qt 5.15+, protobuf 3.0+, cmake 3.16+</string>
+               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;OS:&lt;/span&gt; Linux kernel 5.0+ (5.17+ recommended for full ACPI platform profile support) &lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Hardware:&lt;/span&gt; Lenovo Legion laptop (tested on 5/7 Pro series) &lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Daemon:&lt;/span&gt; LenovoLegion-Daemon systemd service running with root privileges &lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Kernel Modules:&lt;/span&gt; cpufreq, msr, hwmon, ideapad_laptop or legion_laptop &lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Optional:&lt;/span&gt; NVIDIA proprietary drivers (535+) and libnvidia-ml for GPU features &lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Build: &lt;/span&gt;Qt 5.15+, protobuf 3.0+, cmake 3.16+&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
               </property>
               <property name="textFormat">
                <enum>Qt::TextFormat::RichText</enum>
@@ -217,11 +193,7 @@
             <item>
              <widget class="QLabel" name="label_Tips">
               <property name="text">
-               <string>&lt;b&gt;Undervolting:&lt;/b&gt; Start with -50mV on core/cache, test stability with stress tests (prime95, stress-ng). Decrease by -10mV increments if unstable. Can reduce temps by 10-15°C.
-&lt;br&gt;&lt;b&gt;Fan Curves:&lt;/b&gt; Balance noise vs cooling. Typical points: 30°C→30%, 50°C→40%, 70°C→60%, 85°C→80%, 95°C→100%. Ensure monotonic increase (later points ≥ earlier).
-&lt;br&gt;&lt;b&gt;Power Limits:&lt;/b&gt; Lowering PL1/PL2 reduces heat and noise with minimal performance loss. For gaming: PL1=45W, PL2=65W is good balance. For productivity: PL1=35W, PL2=55W extends battery.
-&lt;br&gt;&lt;b&gt;Battery Life:&lt;/b&gt; Quiet mode + disable E-cores on Intel 12th+ + 1.5-2.0 GHz max freq + lower screen brightness = 2-3x runtime.
-&lt;br&gt;&lt;b&gt;Thermal Throttling:&lt;/b&gt; If temps hit 100°C, lower PL2, improve cooling (laptop stand, clean fans), or reduce max frequency to 4.0-4.5 GHz.</string>
+               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Undervolting: &lt;/span&gt;Start with -50mV on core/cache, test stability with stress tests (prime95, stress-ng). Decrease by -10mV increments if unstable. Can reduce temps by 10-15°C. &lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Fan Curves: &lt;/span&gt;Balance noise vs cooling. Typical points: 30°C→30%, 50°C→40%, 70°C→60%, 85°C→80%, 95°C→100%. Ensure monotonic increase (later points ≥ earlier). &lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Power Limits:&lt;/span&gt; Lowering PL1/PL2 reduces heat and noise with minimal performance loss. For gaming: PL1=45W, PL2=65W is good balance. For productivity: PL1=35W, PL2=55W extends battery. &lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Battery Life:&lt;/span&gt; Quiet mode + disable E-cores on Intel 12th+ + 1.5-2.0 GHz max freq + lower screen brightness = 2-3x runtime. &lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Thermal Throttling: &lt;/span&gt;If temps hit 100°C, lower PL2, improve cooling (laptop stand, clean fans), or reduce max frequency to 4.0-4.5 GHz.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
               </property>
               <property name="textFormat">
                <enum>Qt::TextFormat::RichText</enum>
