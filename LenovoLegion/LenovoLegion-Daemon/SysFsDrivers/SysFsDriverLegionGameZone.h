@@ -13,7 +13,7 @@
 
 namespace LenovoLegionDaemon {
 
-class SysFSDriverLegionGameZone : public SysFsDriver
+class SysFsDriverLegionGameZone : public SysFsDriver
 {
 public:
 
@@ -115,9 +115,9 @@ public:
 
 public:
 
-    SysFSDriverLegionGameZone(QObject * parrent);
+    SysFsDriverLegionGameZone(QObject * parrent);
 
-    ~SysFSDriverLegionGameZone() override = default;
+    ~SysFsDriverLegionGameZone() override = default;
 
     /*
      * Init Driver

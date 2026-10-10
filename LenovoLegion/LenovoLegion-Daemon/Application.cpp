@@ -12,55 +12,53 @@
 
 #include "DataProviderManager.h"
 #include "SysFsDriverManager.h"
-
+#include "DaemonSettingsManager.h"
 
 /*
  * SysFs Drivers
  */
-#include "SysFsDriverCPU.h"
-#include "SysFsDriverCPUXList.h"
-#include "SysFsDriverCPUCore.h"
-#include "SysFsDriverCPUAtom.h"
-#include "SysFsDriverACPIPlatformProfile.h"
-#include "SysFsDriverIntelPowercapRapl.h"
-#include "SysFsDriverPowerSuplyBattery0.h"
-#include "SysFSDriverLegionHWMon.h"
-#include "SysFSDriverLegionFanMode.h"
-#include "SysFSDriverLegionGameZone.h"
-#include "SysFsDriverLegionOther.h"
-#include "SysFsDriverLegionEvents.h"
-#include "SysFSDriverLegionIntelMSR.h"
-#include "SysFsDriverCPUInfo.h"
-#include "SysFsDriverLegionMachineInformation.h"
-#include "SysFsDriverCPUIntelPState.h"
+#include "SysFsDrivers/SysFsDriverCPU.h"
+#include "SysFsDrivers/SysFsDriverCPUXList.h"
+#include "SysFsDrivers/SysFsDriverCPUCore.h"
+#include "SysFsDrivers/SysFsDriverCPUAtom.h"
+#include "SysFsDrivers/SysFsDriverACPIPlatformProfile.h"
+#include "SysFsDrivers/SysFsDriverIntelPowercapRapl.h"
+#include "SysFsDrivers/SysFsDriverPowerSuplyBattery0.h"
+#include "SysFsDrivers/SysFsDriverLegionHWMon.h"
+#include "SysFsDrivers/SysFsDriverLegionFanMode.h"
+#include "SysFsDrivers/SysFsDriverLegionGameZone.h"
+#include "SysFsDrivers/SysFsDriverLegionOther.h"
+#include "SysFsDrivers/SysFsDriverLegionEvents.h"
+#include "SysFsDrivers/SysFsDriverLegionIntelMSR.h"
+#include "SysFsDrivers/SysFsDriverCPUInfo.h"
+#include "SysFsDrivers/SysFsDriverLegionMachineInformation.h"
+#include "SysFsDrivers/SysFsDriverCPUIntelPState.h"
 
 
 /*
  * Data Providers
  */
-#include "SysFsDataProviderHWMon.h"
-#include "SysFsDataProviderCPUTopology.h"
-#include "SysFsDataProviderPowerProfile.h"
-#include "SysFsDataProviderBattery.h"
-#include "SysFsDataProviderCPUPower.h"
-#include "SysFsDataProviderGPUPower.h"
-#include "SysFsDataProviderFanCurve.h"
-#include "SysFsDataProviderFanOption.h"
-#include "SysFsDataProviderCPUFrequency.h"
-#include "SysFsDataProviderCPUOptions.h"
-#include "SysFsDataProviderCPUSMT.h"
-#include "SysFsDataProviderIntelMSR.h"
-#include "SysFsDataProviderCPUInfo.h"
-#include "SysFsDataProviderMachineInformation.h"
-#include "SysFsDataProviderOther.h"
-#include "SysFsDataProviderOtherGpuSwitch.h"
-#include "SysFsDataProviderCPUPState.h"
+#include "SysFsDataProviders/SysFsDataProviderHWMon.h"
+#include "SysFsDataProviders/SysFsDataProviderCPUTopology.h"
+#include "SysFsDataProviders/SysFsDataProviderPowerProfile.h"
+#include "SysFsDataProviders/SysFsDataProviderBattery.h"
+#include "SysFsDataProviders/SysFsDataProviderCPUPower.h"
+#include "SysFsDataProviders/SysFsDataProviderGPUPower.h"
+#include "SysFsDataProviders/SysFsDataProviderFanCurve.h"
+#include "SysFsDataProviders/SysFsDataProviderFanOption.h"
+#include "SysFsDataProviders/SysFsDataProviderCPUFrequency.h"
+#include "SysFsDataProviders/SysFsDataProviderCPUOptions.h"
+#include "SysFsDataProviders/SysFsDataProviderCPUSMT.h"
+#include "SysFsDataProviders/SysFsDataProviderIntelMSR.h"
+#include "SysFsDataProviders/SysFsDataProviderCPUInfo.h"
+#include "SysFsDataProviders/SysFsDataProviderMachineInformation.h"
+#include "SysFsDataProviders/SysFsDataProviderOther.h"
+#include "SysFsDataProviders/SysFsDataProviderOtherGpuSwitch.h"
+#include "SysFsDataProviders/SysFsDataProviderCPUPState.h"
 
-#include "DataProviderNvidiaNvml.h"
-#include "DataProviderDaemonSettings.h"
-#include "DataProviderRGBController.h"
-
-#include "DaemonSettingsManager.h"
+#include "DataProviders/DataProviderNvidiaNvml.h"
+#include "DataProviders/DataProviderRGBController.h"
+#include "DataProviders/DataProviderDaemonSettings.h"
 
 
 #include <Core/LoggerHolder.h>
@@ -70,8 +68,16 @@
 
 #include <QDir>
 
+#include <algorithm>
+#include <vector>
+
 #include <signal.h>
 #include <unistd.h>
+#include <grp.h>
+#include <pwd.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <sys/stat.h>
 
 namespace LenovoLegionDaemon {
 
@@ -89,10 +95,10 @@ Application::Application(int &argc, char *argv[]) :
     /*
      * Add SysFS Drivers
      */
-    m_sysFsDriverManager->addDriver(new SysFSDriverLegionFanMode(m_sysFsDriverManager));
-    m_sysFsDriverManager->addDriver(new SysFSDriverLegionGameZone(m_sysFsDriverManager));
+    m_sysFsDriverManager->addDriver(new SysFsDriverLegionFanMode(m_sysFsDriverManager));
+    m_sysFsDriverManager->addDriver(new SysFsDriverLegionGameZone(m_sysFsDriverManager));
     m_sysFsDriverManager->addDriver(new SysFsDriverLegionOther(m_sysFsDriverManager));
-    m_sysFsDriverManager->addDriver(new SysFSDriverLegionHWMon(m_sysFsDriverManager));
+    m_sysFsDriverManager->addDriver(new SysFsDriverLegionHWMon(m_sysFsDriverManager));
     m_sysFsDriverManager->addDriver(new SysFsDriverCPU(m_sysFsDriverManager));
     m_sysFsDriverManager->addDriver(new SysFsDriverCPUXList(m_sysFsDriverManager));
     m_sysFsDriverManager->addDriver(new SysFsDriverCPUCore(m_sysFsDriverManager));
@@ -101,7 +107,7 @@ Application::Application(int &argc, char *argv[]) :
     m_sysFsDriverManager->addDriver(new SysFsDriverIntelPowercapRapl(m_sysFsDriverManager));
     m_sysFsDriverManager->addDriver(new SysFsDriverPowerSuplyBattery0(m_sysFsDriverManager));
     m_sysFsDriverManager->addDriver(new SysFsDriverLegionEvents(m_sysFsDriverManager));
-    m_sysFsDriverManager->addDriver(new SysFSDriverLegionIntelMSR(m_sysFsDriverManager));
+    m_sysFsDriverManager->addDriver(new SysFsDriverLegionIntelMSR(m_sysFsDriverManager));
     m_sysFsDriverManager->addDriver(new SysFsDriverCPUInfo(m_sysFsDriverManager));
     m_sysFsDriverManager->addDriver(new SysFsDriverLegionMachineInformation(m_sysFsDriverManager));
     m_sysFsDriverManager->addDriver(new SysFsDriverCPUIntelPState(m_sysFsDriverManager));
@@ -156,6 +162,14 @@ void Application::appInitImpl(std::unique_ptr<ApplicationModulesHandler_T>)
     }
 
     /*
+     * Check socket directory
+     */
+    if(!prepareSocketDir())
+    {
+        THROW_EXCEPTION(exception_T,ERROR_CODES::SOCKET_DIR_ERROR,std::string("Socket directory ").append(SOCKET_DIR).append(" is not usable !").c_str());
+    }
+
+    /*
      * Set signal handler
      */
     bj::framework::Signal::SetSignalHandler(SIGINT,std::bind(&Application::signalEventHandler,this,std::placeholders::_1));
@@ -190,10 +204,7 @@ void Application::appInitImpl(std::unique_ptr<ApplicationModulesHandler_T>)
      */
     connect(m_serverSocket,&QLocalServer::newConnection,this,&Application::newConnectionHandler);
 
-    m_serverSocket->setSocketOptions(QLocalServer::WorldAccessOption);
-    m_serverSocket->setMaxPendingConnections(1);
-
-    m_serverSocket->listen(SOCKET_NAME);
+    startServer(m_serverSocket,SOCKET_NAME);
 
 
     /*
@@ -201,10 +212,7 @@ void Application::appInitImpl(std::unique_ptr<ApplicationModulesHandler_T>)
      */
     connect(m_serverSocketNotification,&QLocalServer::newConnection,this,&Application::newConnectionNotificationHandler);
 
-    m_serverSocketNotification->setSocketOptions(QLocalServer::WorldAccessOption);
-    m_serverSocketNotification->setMaxPendingConnections(1);
-
-    m_serverSocketNotification->listen(SOCKET_NAME_NOTIFICATION);
+    startServer(m_serverSocketNotification,SOCKET_NAME_NOTIFICATION);
 
 
 }
@@ -287,6 +295,13 @@ void Application::newConnectionHandler()
             return;
         }
 
+        if(!isClientAuthorized(newSocket))
+        {
+            LOG_W("Unauthorized client, refuse connection !");
+            ProtocolProcessorBase::refuseConnection(newSocket);
+            return;
+        }
+
         if(m_protocolProcessor != nullptr && m_protocolProcessor->isRunning())
         {
             LOG_W("Other client is connected, refuse connection !");
@@ -341,6 +356,13 @@ void Application::newConnectionNotificationHandler()
         if(!newSocket)
         {
             LOG_W("nextPendingConnection returned null!");
+            return;
+        }
+
+        if(!isClientAuthorized(newSocket))
+        {
+            LOG_W("Unauthorized client, refuse notification connection !");
+            ProtocolProcessorBase::refuseConnection(newSocket);
             return;
         }
 
@@ -404,6 +426,114 @@ void Application::connectionNotificationDisconnectedHandler()
     deleteProtocolProcessors<ProtocolProcessorBase,ProtocolProcessorNotifier>(m_protocolProcessorNotification);
 }
 
+
+bool Application::prepareSocketDir() const
+{
+    /*
+     * Normally created by systemd (RuntimeDirectory=), created here when daemon is started manually
+     */
+    if(mkdir(SOCKET_DIR,0755) != 0 && errno != EEXIST)
+    {
+        LOG_E(QString("Unable to create socket directory ").append(SOCKET_DIR).append(" : ").append(strerror(errno)));
+        return false;
+    }
+
+    struct stat st {};
+
+    if(lstat(SOCKET_DIR,&st) != 0)
+    {
+        LOG_E(QString("Unable to stat socket directory ").append(SOCKET_DIR).append(" : ").append(strerror(errno)));
+        return false;
+    }
+
+    if(!S_ISDIR(st.st_mode) || st.st_uid != 0 || (st.st_mode & (S_IWGRP | S_IWOTH)) != 0)
+    {
+        LOG_E(QString("Socket directory ").append(SOCKET_DIR).append(" must be a directory owned by root and writable only by root !"));
+        return false;
+    }
+
+    return true;
+}
+
+void Application::startServer(QLocalServer *server, const char *name)
+{
+    /*
+     * Socket is created as 0660 root:root, group is changed to SOCKET_GROUP afterwards.
+     * If the group is missing, socket stays accessible only by root.
+     */
+    server->setSocketOptions(QLocalServer::UserAccessOption | QLocalServer::GroupAccessOption);
+    server->setMaxPendingConnections(1);
+
+    /*
+     * Remove stale socket after crash, SOCKET_DIR is writable only by root
+     */
+    QLocalServer::removeServer(name);
+
+    if(!server->listen(name))
+    {
+        LOG_E(QString("Unable to listen on ").append(name).append(" : ").append(server->errorString()));
+        return;
+    }
+
+    const struct group* grp = getgrnam(SOCKET_GROUP);
+    if(grp == nullptr)
+    {
+        LOG_E(QString("Group ").append(SOCKET_GROUP).append(" does not exist, socket ").append(server->fullServerName()).append(" is accessible only by root !"));
+        return;
+    }
+
+    if(lchown(server->fullServerName().toLocal8Bit().constData(),0,grp->gr_gid) != 0)
+    {
+        LOG_E(QString("Unable to change group of socket ").append(server->fullServerName()).append(" : ").append(strerror(errno)));
+    }
+}
+
+bool Application::isClientAuthorized(QLocalSocket *socket) const
+{
+    struct ucred cred {};
+    socklen_t    len = sizeof(cred);
+
+    if(getsockopt(static_cast<int>(socket->socketDescriptor()),SOL_SOCKET,SO_PEERCRED,&cred,&len) != 0)
+    {
+        LOG_W(QString("Unable to get client credentials : ").append(strerror(errno)));
+        return false;
+    }
+
+    if(cred.uid == 0)
+    {
+        return true;
+    }
+
+    const struct group*  grp = getgrnam(SOCKET_GROUP);
+    const struct passwd* pwd = getpwuid(cred.uid);
+
+    if(grp == nullptr || pwd == nullptr)
+    {
+        LOG_W(QString("Client uid=").append(QString::number(cred.uid)).append(" is not authorized !"));
+        return false;
+    }
+
+    if(cred.gid == grp->gr_gid)
+    {
+        return true;
+    }
+
+    const gid_t groupId  = grp->gr_gid;
+    int         ngroups  = 0;
+
+    getgrouplist(pwd->pw_name,pwd->pw_gid,nullptr,&ngroups);
+
+    std::vector<gid_t> groups(static_cast<size_t>(ngroups));
+
+    if(getgrouplist(pwd->pw_name,pwd->pw_gid,groups.data(),&ngroups) >= 0 &&
+       std::find(groups.begin(),groups.begin() + ngroups,groupId) != groups.begin() + ngroups)
+    {
+        return true;
+    }
+
+    LOG_W(QString("Client uid=").append(QString::number(cred.uid)).append(" is not member of group ").append(SOCKET_GROUP).append(", not authorized !"));
+    return false;
+}
 
 void Application::signalEventHandler(int signal) noexcept
 {

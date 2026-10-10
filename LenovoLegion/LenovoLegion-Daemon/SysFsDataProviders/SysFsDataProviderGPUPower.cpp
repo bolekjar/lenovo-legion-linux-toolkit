@@ -7,7 +7,7 @@
  */
 
 #include "SysFsDataProviderGPUPower.h"
-#include "SysFsDriverLegionOther.h"
+#include "../SysFsDrivers/SysFsDriverLegionOther.h"
 
 #include "../LenovoLegion-PrepareBuild/GPUPower.pb.h"
 

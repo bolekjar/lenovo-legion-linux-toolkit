@@ -11,7 +11,7 @@
 
 
 
-#include "../LenovoLegion-Daemon/DataProviderDaemonSettings.h"
+#include "../LenovoLegion-Daemon/DataProviders/DataProviderDaemonSettings.h"
 #include "../LenovoLegion-PrepareBuild/DaemonSettings.pb.h"
 
 

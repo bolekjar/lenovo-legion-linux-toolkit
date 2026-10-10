@@ -7,8 +7,8 @@
  */
 
 #include "SysFsDataProviderOther.h"
-#include "SysFSDriverLegionGameZone.h"
-#include "SysFsDriverLegionEvents.h"
+#include "../SysFsDrivers/SysFsDriverLegionGameZone.h"
+#include "../SysFsDrivers/SysFsDriverLegionEvents.h"
 
 
 #include "../LenovoLegion-PrepareBuild/Other.pb.h"
@@ -31,7 +31,7 @@ QByteArray SysFsDataProviderOther::serializeAndGetData()
 
 
     try {
-        SysFSDriverLegionGameZone::GameZone gameZone(m_sysFsDriverManager->getDriverDesriptor(SysFSDriverLegionGameZone::DRIVER_NAME));
+        SysFsDriverLegionGameZone::GameZone gameZone(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverLegionGameZone::DRIVER_NAME));
 
         // DisableTouchPad (disable_tp)
         // Note: disable_tp current_value = 1 means touchpad is DISABLED
@@ -67,7 +67,7 @@ QByteArray SysFsDataProviderOther::serializeAndGetData()
 
 QByteArray SysFsDataProviderOther::deserializeAndSetData(const QByteArray &data)
 {
-    SysFSDriverLegionGameZone::GameZone gameZone(m_sysFsDriverManager->getDriverDesriptor(SysFSDriverLegionGameZone::DRIVER_NAME));
+    SysFsDriverLegionGameZone::GameZone gameZone(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverLegionGameZone::DRIVER_NAME));
     legion::messages::OtherSettings     otherSettingsMsg;
 
     LOG_T(__PRETTY_FUNCTION__);

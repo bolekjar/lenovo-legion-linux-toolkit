@@ -13,9 +13,9 @@
 #include "ThreadControl.h"
 #include "Utils.h"
 
-#include "../LenovoLegion-Daemon/SysFsDataProviderCPUOptions.h"
-#include "../LenovoLegion-Daemon/SysFsDataProviderCPUTopology.h"
-#include "../LenovoLegion-Daemon/SysFsDataProviderCPUSMT.h"
+#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderCPUOptions.h"
+#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderCPUTopology.h"
+#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderCPUSMT.h"
 
 #include <QAbstractItemView>
 

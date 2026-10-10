@@ -9,7 +9,7 @@
 #include "RGBController.h"
 #include "DataProvider.h"
 
-#include "../LenovoLegion-Daemon/DataProviderRGBController.h"
+#include "../LenovoLegion-Daemon/DataProviders/DataProviderRGBController.h"
 
 #include "../LenovoLegion-PrepareBuild/RGBController.pb.h"
 

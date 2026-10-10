@@ -6,7 +6,7 @@
  */
 #pragma once
 
-#include "DataProvider.h"
+#include "../DataProvider.h"
 
 #include "../LenovoLegion-PrepareBuild/MessageRegistry.pb.h"
 

@@ -6,7 +6,7 @@
  *   Jaroslav Bolek <jaroslav.bolek@gmail.com>
  */
 
-#include "SysFSDriverLegionFanMode.h"
+#include "SysFsDriverLegionFanMode.h"
 
 #include <Core/LoggerHolder.h>
 
@@ -15,10 +15,10 @@
 
 namespace LenovoLegionDaemon {
 
-SysFSDriverLegionFanMode::SysFSDriverLegionFanMode(QObject *parrent) : SysFsDriver(DRIVER_NAME,"/sys/class/legion-firmware-attributes/legion-wmi-fan-mode-0/attributes/",{"wmi",{}},parrent,MODULE_NAME)
+SysFsDriverLegionFanMode::SysFsDriverLegionFanMode(QObject *parrent) : SysFsDriver(DRIVER_NAME,"/sys/class/legion-firmware-attributes/legion-wmi-fan-mode-0/attributes/",{"wmi",{}},parrent,MODULE_NAME)
 {}
 
-void SysFSDriverLegionFanMode::init()
+void SysFsDriverLegionFanMode::init()
 {
     LOG_T(__PRETTY_FUNCTION__);
 
@@ -65,7 +65,7 @@ void SysFSDriverLegionFanMode::init()
     }
 }
 
-void SysFSDriverLegionFanMode::handleKernelEvent(const KernelEvent::Event &event)
+void SysFsDriverLegionFanMode::handleKernelEvent(const KernelEvent::Event &event)
 {
     LOG_D(__PRETTY_FUNCTION__ + QString(": Kernel event received ACTION=") + event.m_action + ", DRIVER=" + event.m_driver + ", SYSNAME=" + event.m_sysName + ", SUBSYSTEM=" + event.m_subSystem + ", DEVPATH=" + event.m_devPath);
 

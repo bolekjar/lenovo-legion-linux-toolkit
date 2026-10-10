@@ -8,7 +8,7 @@
 
 #pragma once
 
-#include "DataProviderRGBController.h"
+#include "DataProviders/DataProviderRGBController.h"
 
 namespace LenovoLegionDaemon {
 

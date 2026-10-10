@@ -129,6 +129,7 @@ For all distribution
 15) Copy LenovoLegion-release-1.0.0/LenovoLegion/LenovoLegion-dkms/99-rapl-readonly.rules to /etc/udev/rules.d
 16) Copy LenovoLegion-release-1.0.0/LenovoLegion/LenovoLegion-dkms/rapl-readonly.sh  to /opt/LenovoLegion
 18) chmod 755 /opt/LenovoLegion/rapl-readonly.sh
+19) Copy LenovoLegion-release-1.0.0/LenovoLegion/LenovoLegion-Daemon/lenovo-legion.sysusers to /usr/lib/sysusers.d/lenovo-legion.conf, copy LenovoLegion-release-1.0.0/LenovoLegion/LenovoLegion-Daemon/lenovo-legion-setup.sh to /opt/LenovoLegion and run sudo /opt/LenovoLegion/lenovo-legion-setup.sh (adds your user to the legion group, log in again afterwards)
 20) run systemctl start lenovo-legion-daemon.service and systemctl start lenovo-legion-daemon.service to enable this service
 21) restart
 22) run gui with /opt/LenovoLegion/LenovoLegion

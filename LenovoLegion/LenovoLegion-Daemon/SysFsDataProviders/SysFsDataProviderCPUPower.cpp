@@ -7,7 +7,7 @@
  */
 
 #include "SysFsDataProviderCPUPower.h"
-#include "SysFsDriverLegionOther.h"
+#include "../SysFsDrivers/SysFsDriverLegionOther.h"
 
 #include <Core/LoggerHolder.h>
 

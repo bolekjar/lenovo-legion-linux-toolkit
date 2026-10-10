@@ -7,18 +7,18 @@
 #include "Settings.h"
 
 // Include daemon data provider constants
-#include "../LenovoLegion-Daemon/SysFsDataProviderPowerProfile.h"
-#include "../LenovoLegion-Daemon/SysFsDataProviderCPUOptions.h"
-#include "../LenovoLegion-Daemon/SysFsDataProviderCPUFrequency.h"
-#include "../LenovoLegion-Daemon/SysFsDataProviderFanCurve.h"
-#include "../LenovoLegion-Daemon/SysFsDataProviderFanOption.h"
-#include "../LenovoLegion-Daemon/SysFsDataProviderCPUSMT.h"
-#include "../LenovoLegion-Daemon/SysFsDataProviderCPUPower.h"
-#include "../LenovoLegion-Daemon/SysFsDataProviderGPUPower.h"
-#include "../LenovoLegion-Daemon/DataProviderNvidiaNvml.h"
-#include "../LenovoLegion-Daemon/SysFsDataProviderIntelMSR.h"
-#include "../LenovoLegion-Daemon/SysFsDataProviderOther.h"
-#include "../LenovoLegion-Daemon/SysFsDataProviderCPUPState.h"
+#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderPowerProfile.h"
+#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderCPUOptions.h"
+#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderCPUFrequency.h"
+#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderFanCurve.h"
+#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderFanOption.h"
+#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderCPUSMT.h"
+#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderCPUPower.h"
+#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderGPUPower.h"
+#include "../LenovoLegion-Daemon/DataProviders/DataProviderNvidiaNvml.h"
+#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderIntelMSR.h"
+#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderOther.h"
+#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderCPUPState.h"
 
 #include <QMessageBox>
 

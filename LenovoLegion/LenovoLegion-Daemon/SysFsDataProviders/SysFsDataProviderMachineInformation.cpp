@@ -7,7 +7,7 @@
  */
 
 #include "SysFsDataProviderMachineInformation.h"
-#include "SysFsDriverLegionMachineInformation.h"
+#include "../SysFsDrivers/SysFsDriverLegionMachineInformation.h"
 
 
 #include "../LenovoLegion-PrepareBuild/ComputerInfo.pb.h"

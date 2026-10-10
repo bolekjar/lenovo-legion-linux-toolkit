@@ -15,10 +15,10 @@
 #include <Core/LoggerHolder.h>
 
 
-#include "../LenovoLegion-Daemon/SysFsDataProviderHWMon.h"
-#include "../LenovoLegion-Daemon/SysFsDataProviderCPUTopology.h"
-#include "../LenovoLegion-Daemon/DataProviderNvidiaNvml.h"
-#include "../LenovoLegion-Daemon/SysFsDataProviderCPUInfo.h"
+#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderHWMon.h"
+#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderCPUTopology.h"
+#include "../LenovoLegion-Daemon/DataProviders/DataProviderNvidiaNvml.h"
+#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderCPUInfo.h"
 
 
 #include "CPUFrequency.h"

@@ -7,8 +7,8 @@
  */
 
 #include "SysFsDataProviderBattery.h"
-#include "SysFsDriverPowerSuplyBattery0.h"
-#include "SysFSDriverLegionGameZone.h"
+#include "../SysFsDrivers/SysFsDriverPowerSuplyBattery0.h"
+#include "../SysFsDrivers/SysFsDriverLegionGameZone.h"
 
 
 #include "../LenovoLegion-PrepareBuild/Battery.pb.h"
@@ -32,7 +32,7 @@ QByteArray SysFsDataProviderBattery::serializeAndGetData()
 
     try {
         SysFsDriverPowerSuplyBattery0::PowerSuplyBattery0 batery0(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverPowerSuplyBattery0::DRIVER_NAME));
-        SysFSDriverLegionGameZone::GameZone::Other        other(m_sysFsDriverManager->getDriverDesriptor(SysFSDriverLegionGameZone::DRIVER_NAME));
+        SysFsDriverLegionGameZone::GameZone::Other        other(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverLegionGameZone::DRIVER_NAME));
 
         battery.set_current_charge_mode_value(static_cast<legion::messages::Battery::PowerChargeMode>(getData(other.get_power_charge_mode).toUShort()));
         battery.set_baterry_status(getData(batery0.m_powerSuplyBattery0).toStdString());

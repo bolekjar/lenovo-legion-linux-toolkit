@@ -7,7 +7,7 @@
  */
 
 #include "SysFsDataProviderFanCurve.h"
-#include "SysFSDriverLegionFanMode.h"
+#include "../SysFsDrivers/SysFsDriverLegionFanMode.h"
 
 #include "../LenovoLegion-PrepareBuild/FanControl.pb.h"
 
@@ -29,7 +29,7 @@ QByteArray SysFsDataProviderFanCurve::serializeAndGetData()
 
 
     try {
-        SysFSDriverLegionFanMode::FanMode::FanCurve fanCurve(m_sysFsDriverManager->getDriverDesriptor(SysFSDriverLegionFanMode::DRIVER_NAME));
+        SysFsDriverLegionFanMode::FanMode::FanCurve fanCurve(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverLegionFanMode::DRIVER_NAME));
 
         auto setValuesSteps = [](const std::filesystem::path& path,std::function<void (legion::messages::FanCurve::Default &defaultValues,const QList<QString>& values)> setter,auto map)
         {
@@ -159,7 +159,7 @@ QByteArray SysFsDataProviderFanCurve::serializeAndGetData()
 
 QByteArray SysFsDataProviderFanCurve::deserializeAndSetData(const QByteArray &data)
 {
-    SysFSDriverLegionFanMode::FanMode::FanCurve fanCurve(m_sysFsDriverManager->getDriverDesriptor(SysFSDriverLegionFanMode::DRIVER_NAME));
+    SysFsDriverLegionFanMode::FanMode::FanCurve fanCurve(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverLegionFanMode::DRIVER_NAME));
     legion::messages::FanCurve         fanCurveMsg;
 
     LOG_T(__PRETTY_FUNCTION__);
@@ -169,8 +169,8 @@ QByteArray SysFsDataProviderFanCurve::deserializeAndSetData(const QByteArray &da
         THROW_EXCEPTION(exception_T,DataProvider::ERROR_CODES::INVALID_DATA,"Parse of data message error !");
     }
 
-    m_sysFsDriverManager->blockKernelEvent(SysFSDriverLegionFanMode::DRIVER_NAME,true);
-    auto cleanup =  qScopeGuard([this] { m_sysFsDriverManager->blockKernelEvent(SysFSDriverLegionFanMode::DRIVER_NAME,false); });
+    m_sysFsDriverManager->blockKernelEvent(SysFsDriverLegionFanMode::DRIVER_NAME,true);
+    auto cleanup =  qScopeGuard([this] { m_sysFsDriverManager->blockKernelEvent(SysFsDriverLegionFanMode::DRIVER_NAME,false); });
 
     if(fanCurveMsg.has_current_value()) {
         setData(fanCurve.m_current_value,std::vector<quint8>{

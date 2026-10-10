@@ -5,9 +5,9 @@
 #include "Utils.h"
 #include "WidgetMessage.h"
 
-#include "../LenovoLegion-Daemon/SysFsDataProviderMachineInformation.h"
-#include "../LenovoLegion-Daemon/SysFsDataProviderCPUInfo.h"
-#include "../LenovoLegion-Daemon/DataProviderNvidiaNvml.h"
+#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderMachineInformation.h"
+#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderCPUInfo.h"
+#include "../LenovoLegion-Daemon/DataProviders/DataProviderNvidiaNvml.h"
 #include "../LenovoLegion-PrepareBuild/ComputerInfo.pb.h"
 #include "../LenovoLegion-PrepareBuild/NvidiaNvml.pb.h"
 

@@ -11,17 +11,17 @@
 
 #include <Core/LoggerHolder.h>
 
-#include "SysFsDriverPowerSuplyBattery0.h"
-#include "SysFsDriverCPUXList.h"
-#include "SysFsDriverLegion.h"
-#include "SysFsDriverLegionEvents.h"
-#include "SysFsDriverLegionOther.h"
-#include "SysFSDriverLegionIntelMSR.h"
-#include "SysFSDriverLegionFanMode.h"
+#include "SysFsDrivers/SysFsDriverPowerSuplyBattery0.h"
+#include "SysFsDrivers/SysFsDriverCPUXList.h"
+#include "SysFsDrivers/SysFsDriverLegion.h"
+#include "SysFsDrivers/SysFsDriverLegionEvents.h"
+#include "SysFsDrivers/SysFsDriverLegionOther.h"
+#include "SysFsDrivers/SysFsDriverLegionIntelMSR.h"
+#include "SysFsDrivers/SysFsDriverLegionFanMode.h"
 
 
-#include "SysFsDataProviderCPUFrequency.h"
-#include "SysFsDataProviderCPUPState.h"
+#include "SysFsDataProviders/SysFsDataProviderCPUFrequency.h"
+#include "SysFsDataProviders/SysFsDataProviderCPUPState.h"
 
 #include "../LenovoLegion-PrepareBuild/Notification.pb.h"
 
@@ -154,7 +154,7 @@ void ProtocolProcessorNotifier::kernelEventHandler(const LenovoLegionDaemon::Sys
         }
     }
 
-    if(event.m_driverName == SysFSDriverLegionIntelMSR::DRIVER_NAME)
+    if(event.m_driverName == SysFsDriverLegionIntelMSR::DRIVER_NAME)
     {
         if(event.m_action == SysFsDriver::SubsystemEvent::Action::CHANGED)
         {
@@ -162,7 +162,7 @@ void ProtocolProcessorNotifier::kernelEventHandler(const LenovoLegionDaemon::Sys
         }
     }
 
-    if(event.m_driverName == SysFSDriverLegionFanMode::DRIVER_NAME)
+    if(event.m_driverName == SysFsDriverLegionFanMode::DRIVER_NAME)
     {
         if(event.m_action == SysFsDriver::SubsystemEvent::Action::CHANGED)
         {

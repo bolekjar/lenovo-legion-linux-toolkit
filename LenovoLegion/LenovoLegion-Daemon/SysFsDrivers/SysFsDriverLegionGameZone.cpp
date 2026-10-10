@@ -6,7 +6,7 @@
  *   Jaroslav Bolek <jaroslav.bolek@gmail.com>
  */
 
-#include "SysFSDriverLegionGameZone.h"
+#include "SysFsDriverLegionGameZone.h"
 
 #include <Core/LoggerHolder.h>
 
@@ -17,11 +17,11 @@
 
 namespace LenovoLegionDaemon {
 
-SysFSDriverLegionGameZone::SysFSDriverLegionGameZone(QObject *parrent) : SysFsDriver(DRIVER_NAME,"/sys/class/legion-firmware-attributes/legion-wmi-gamezone-0/attributes/",{"wmi",{}},parrent,MODULE_NAME)
+SysFsDriverLegionGameZone::SysFsDriverLegionGameZone(QObject *parrent) : SysFsDriver(DRIVER_NAME,"/sys/class/legion-firmware-attributes/legion-wmi-gamezone-0/attributes/",{"wmi",{}},parrent,MODULE_NAME)
 {}
 
 
-void SysFSDriverLegionGameZone::init()
+void SysFsDriverLegionGameZone::init()
 {
     LOG_T(__PRETTY_FUNCTION__);
 
@@ -88,7 +88,7 @@ void SysFSDriverLegionGameZone::init()
     }
 }
 
-void SysFSDriverLegionGameZone::handleKernelEvent(const KernelEvent::Event &event)
+void SysFsDriverLegionGameZone::handleKernelEvent(const KernelEvent::Event &event)
 {
     LOG_D(__PRETTY_FUNCTION__ + QString(": Kernel event received ACTION=") + event.m_action + ", DRIVER=" + event.m_driver + ", SYSNAME=" + event.m_sysName + ", SUBSYSTEM=" + event.m_subSystem + ", DEVPATH=" + event.m_devPath);
 

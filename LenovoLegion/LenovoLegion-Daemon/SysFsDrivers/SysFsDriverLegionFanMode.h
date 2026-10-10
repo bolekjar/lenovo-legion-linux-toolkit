@@ -14,7 +14,7 @@
 
 namespace LenovoLegionDaemon {
 
-class SysFSDriverLegionFanMode : public SysFsDriver
+class SysFsDriverLegionFanMode : public SysFsDriver
 {
 
     enum LegionVmiFanModeEventType : int {
@@ -61,9 +61,9 @@ public:
     };
 public:
 
-    SysFSDriverLegionFanMode(QObject * parrent);
+    SysFsDriverLegionFanMode(QObject * parrent);
 
-    ~SysFSDriverLegionFanMode() override = default;
+    ~SysFsDriverLegionFanMode() override = default;
 
     /*
      * Init Driver

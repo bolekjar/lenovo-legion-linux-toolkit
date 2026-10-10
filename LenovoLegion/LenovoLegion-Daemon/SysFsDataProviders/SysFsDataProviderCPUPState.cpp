@@ -6,7 +6,7 @@
  *   Jaroslav Bolek <jaroslav.bolek@gmail.com>
  */
 #include "SysFsDataProviderCPUPState.h"
-#include "SysFsDriverCPUIntelPState.h"
+#include "../SysFsDrivers/SysFsDriverCPUIntelPState.h"
 
 #include <Core/LoggerHolder.h>
 

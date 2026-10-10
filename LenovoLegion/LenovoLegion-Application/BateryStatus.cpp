@@ -11,7 +11,7 @@
 #include "DataProvider.h"
 
 #include "../LenovoLegion-PrepareBuild/Battery.pb.h"
-#include "../LenovoLegion-Daemon/SysFsDataProviderBattery.h"
+#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderBattery.h"
 
 namespace LenovoLegionGui {
 BateryStatus::BateryStatus(DataProvider* dataProvider,QWidget *parent)

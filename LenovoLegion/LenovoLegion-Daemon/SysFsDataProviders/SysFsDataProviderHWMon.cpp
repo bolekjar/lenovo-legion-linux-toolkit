@@ -7,9 +7,9 @@
  */
 
 #include "SysFsDataProviderHWMon.h"
-#include "SysFSDriverLegionHWMon.h"
-#include "SysFsDriverIntelPowercapRapl.h"
-#include "SysFsDriverCPUXList.h"
+#include "../SysFsDrivers/SysFsDriverLegionHWMon.h"
+#include "../SysFsDrivers/SysFsDriverIntelPowercapRapl.h"
+#include "../SysFsDrivers/SysFsDriverCPUXList.h"
 
 #include "../LenovoLegion-PrepareBuild/HWMonitoring.pb.h"
 
@@ -32,7 +32,7 @@ QByteArray SysFsDataProviderHWMon::serializeAndGetData()
     LOG_T(__PRETTY_FUNCTION__);
 
     try {
-        SysFSDriverLegionHWMon::HWMon hwMon(m_sysFsDriverManager->getDriverDescriptorsInVector(SysFSDriverLegionHWMon::DRIVER_NAME));
+        SysFsDriverLegionHWMon::HWMon hwMon(m_sysFsDriverManager->getDriverDescriptorsInVector(SysFsDriverLegionHWMon::DRIVER_NAME));
 
         for(const auto& fanDesc : hwMon.m_legion.m_fans)
         {

@@ -12,8 +12,8 @@
 
 #include "ThreadFrequencyControl.h"
 
-#include "../LenovoLegion-Daemon/SysFsDataProviderCPUFrequency.h"
-#include "../LenovoLegion-Daemon/SysFsDataProviderCPUTopology.h"
+#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderCPUFrequency.h"
+#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderCPUTopology.h"
 
 
 #include <QAbstractItemView>

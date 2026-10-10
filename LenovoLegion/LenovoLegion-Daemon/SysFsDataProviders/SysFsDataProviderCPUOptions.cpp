@@ -7,7 +7,7 @@
  */
 
 #include "SysFsDataProviderCPUOptions.h"
-#include "SysFsDriverCPUXList.h"
+#include "../SysFsDrivers/SysFsDriverCPUXList.h"
 
 
 

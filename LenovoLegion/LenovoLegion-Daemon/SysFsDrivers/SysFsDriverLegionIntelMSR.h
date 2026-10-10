@@ -15,7 +15,7 @@
 
 namespace LenovoLegionDaemon {
 
-class SysFSDriverLegionIntelMSR : public SysFsDriver
+class SysFsDriverLegionIntelMSR : public SysFsDriver
 {
 public:
 
@@ -87,9 +87,9 @@ public:
 
 public:
 
-    SysFSDriverLegionIntelMSR(QObject * parrent);
+    SysFsDriverLegionIntelMSR(QObject * parrent);
 
-    ~SysFSDriverLegionIntelMSR() override = default;
+    ~SysFsDriverLegionIntelMSR() override = default;
 
     /*
      * Init Driver

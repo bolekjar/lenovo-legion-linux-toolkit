@@ -13,9 +13,9 @@
 #include <MainWindow.h>
 
 
-#include "../LenovoLegion-Daemon/SysFsDataProviderFanCurve.h"
-#include "../LenovoLegion-Daemon/SysFsDataProviderFanOption.h"
-#include "../LenovoLegion-Daemon/SysFsDataProviderPowerProfile.h"
+#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderFanCurve.h"
+#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderFanOption.h"
+#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderPowerProfile.h"
 
 
 

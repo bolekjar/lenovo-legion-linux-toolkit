@@ -35,13 +35,16 @@ public:
 
     enum ERROR_CODES : int {
         NOT_ROOT   = -1,
-        SAVE_ERROR = -2
+        SAVE_ERROR = -2,
+        SOCKET_DIR_ERROR = -3
     };
 
 public:
 
-    static constexpr const char* const  SOCKET_NAME                  = "LenovoLegionDaemonSocket";
-    static constexpr const char* const  SOCKET_NAME_NOTIFICATION     = "LenovoLegionDaemonSocketNotifycation";
+    static constexpr const char* const  SOCKET_DIR                   = "/run/lenovo-legion";
+    static constexpr const char* const  SOCKET_NAME                  = "/run/lenovo-legion/LenovoLegionDaemonSocket";
+    static constexpr const char* const  SOCKET_NAME_NOTIFICATION     = "/run/lenovo-legion/LenovoLegionDaemonSocketNotifycation";
+    static constexpr const char* const  SOCKET_GROUP                 = "legion";
 
 public:
 
@@ -91,6 +94,21 @@ private slots:
 private:
 
     void signalEventHandler(int signal) noexcept;
+
+    /*
+     * Create SOCKET_DIR if missing and check it is writable only by root
+     */
+    bool prepareSocketDir() const;
+
+    /*
+     * Start server socket accessible only by root and SOCKET_GROUP members
+     */
+    void startServer(QLocalServer* server,const char* name);
+
+    /*
+     * Check client credentials, allowed is root or SOCKET_GROUP member
+     */
+    bool isClientAuthorized(QLocalSocket* socket) const;
 
     template<class T,class U>
     void deleteProtocolProcessors(T* &protocolProcessor)

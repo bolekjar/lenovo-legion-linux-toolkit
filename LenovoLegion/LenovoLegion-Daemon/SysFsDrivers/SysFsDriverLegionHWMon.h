@@ -13,7 +13,7 @@
 namespace LenovoLegionDaemon {
 
 
-class SysFSDriverLegionHWMon : public SysFsDriver
+class SysFsDriverLegionHWMon : public SysFsDriver
 {
 public:
 
@@ -88,9 +88,9 @@ public:
 
 public:
 
-    SysFSDriverLegionHWMon(QObject * parrent);
+    SysFsDriverLegionHWMon(QObject * parrent);
 
-    ~SysFSDriverLegionHWMon() override = default;
+    ~SysFsDriverLegionHWMon() override = default;
 
     /*
      * Init Driver

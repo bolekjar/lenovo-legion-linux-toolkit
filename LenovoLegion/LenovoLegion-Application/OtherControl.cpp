@@ -12,9 +12,9 @@
 #include "DataProvider.h"
 #include "MainWindow.h"
 
-#include "../LenovoLegion-Daemon/SysFsDataProviderOther.h"
-#include "../LenovoLegion-Daemon/SysFsDataProviderOtherGpuSwitch.h"
-#include "../LenovoLegion-Daemon/SysFsDataProviderCPUPState.h"
+#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderOther.h"
+#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderOtherGpuSwitch.h"
+#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderCPUPState.h"
 
 #include <Core/LoggerHolder.h>
 

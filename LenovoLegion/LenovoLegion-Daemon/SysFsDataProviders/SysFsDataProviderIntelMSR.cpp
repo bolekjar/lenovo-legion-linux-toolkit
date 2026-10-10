@@ -7,7 +7,7 @@
  */
 
 #include "SysFsDataProviderIntelMSR.h"
-#include "SysFSDriverLegionIntelMSR.h"
+#include "../SysFsDrivers/SysFsDriverLegionIntelMSR.h"
 
 
 #include "../LenovoLegion-PrepareBuild/CpuIntelMSR.pb.h"
@@ -29,7 +29,7 @@ QByteArray SysFsDataProviderIntelMSR::serializeAndGetData()
 
 
     try {
-        SysFSDriverLegionIntelMSR::IntelMSR intelMSR(m_sysFsDriverManager->getDriverDesriptor(SysFSDriverLegionIntelMSR::DRIVER_NAME));
+        SysFsDriverLegionIntelMSR::IntelMSR intelMSR(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverLegionIntelMSR::DRIVER_NAME));
 
         cpuIntelMSRMessage.mutable_analogio()->set_max_overvolt(getData(intelMSR.m_analogio_max_overvolt).toInt());
         cpuIntelMSRMessage.mutable_analogio()->set_max_undervolt(getData(intelMSR.m_analogio_max_undervolt).toInt());
@@ -82,7 +82,7 @@ QByteArray SysFsDataProviderIntelMSR::serializeAndGetData()
 
 QByteArray SysFsDataProviderIntelMSR::deserializeAndSetData(const QByteArray &data)
 {
-    SysFSDriverLegionIntelMSR::IntelMSR intelMSR(m_sysFsDriverManager->getDriverDesriptor(SysFSDriverLegionIntelMSR::DRIVER_NAME));
+    SysFsDriverLegionIntelMSR::IntelMSR intelMSR(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverLegionIntelMSR::DRIVER_NAME));
     legion::messages::CpuIntelMSR cpuIntelMSRMessage;
 
     LOG_T(QString(__PRETTY_FUNCTION__));
@@ -98,8 +98,8 @@ QByteArray SysFsDataProviderIntelMSR::deserializeAndSetData(const QByteArray &da
         THROW_EXCEPTION(exception_T,DataProvider::ERROR_CODES::INVALID_DATA,"Parse of data message error !");
     }
 
-    m_sysFsDriverManager->blockKernelEvent(SysFSDriverLegionIntelMSR::DRIVER_NAME,true);
-    auto cleanup =  qScopeGuard([this] { m_sysFsDriverManager->blockKernelEvent(SysFSDriverLegionIntelMSR::DRIVER_NAME,false); });
+    m_sysFsDriverManager->blockKernelEvent(SysFsDriverLegionIntelMSR::DRIVER_NAME,true);
+    auto cleanup =  qScopeGuard([this] { m_sysFsDriverManager->blockKernelEvent(SysFsDriverLegionIntelMSR::DRIVER_NAME,false); });
 
     // Apply only fields that are present
     if(cpuIntelMSRMessage.has_analogio() && cpuIntelMSRMessage.analogio().has_offset()) {

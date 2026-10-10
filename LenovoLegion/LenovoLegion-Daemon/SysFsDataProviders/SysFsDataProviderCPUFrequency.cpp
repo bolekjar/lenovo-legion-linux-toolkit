@@ -7,7 +7,7 @@
  */
 
 #include "SysFsDataProviderCPUFrequency.h"
-#include "SysFsDriverCPUXList.h"
+#include "../SysFsDrivers/SysFsDriverCPUXList.h"
 
 
 #include <Core/LoggerHolder.h>

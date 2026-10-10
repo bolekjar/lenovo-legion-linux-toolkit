@@ -11,9 +11,9 @@
 
 #include <MainWindow.h>
 
-#include "../LenovoLegion-Daemon/SysFsDataProviderCPUPower.h"
-#include "../LenovoLegion-Daemon/SysFsDataProviderGPUPower.h"
-#include "../LenovoLegion-Daemon/SysFsDataProviderPowerProfile.h"
+#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderCPUPower.h"
+#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderGPUPower.h"
+#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderPowerProfile.h"
 
 
 

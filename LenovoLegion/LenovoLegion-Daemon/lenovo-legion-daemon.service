@@ -5,6 +5,8 @@ After=multi-user.target display-manager.target power-profiles-daemon.service
 [Service]
 Type=simple
 ExecStart=/opt/LenovoLegion/LenovoLegion-Daemon
+RuntimeDirectory=lenovo-legion
+RuntimeDirectoryMode=0755
 
 [Install]
 WantedBy=graphical.target

@@ -9,132 +9,157 @@ PKGCONFIG += protobuf hidapi-hidraw
 
 DESTDIR = $${DESTINATION_BIN_PATH}
 
+# Main Framework sources
 SOURCES +=  \
         Application.cpp \
         DaemonSettingsManager.cpp \
         DataProvider.cpp \
-        DataProviderDaemonSettings.cpp \
         DataProviderManager.cpp \
-        DataProviderNvidiaNvml.cpp \
-        DataProviderRGBController.cpp \
         ProtocolParser.cpp \
         ProtocolProcessor.cpp \
         ProtocolProcessorBase.cpp \
         ProtocolProcessorNotifier.cpp \
-        RGBControlers/LenovoRGBControllerC197.cpp \
-        RGBControlers/LenovoRGBControllerC9xx.cpp \
-        RGBControlers/LenovoUSBControllerC9xx.cpp \
         RGBController.cpp \
-        SysFSDriverLegionFanMode.cpp \
-        SysFSDriverLegionGameZone.cpp \
-        SysFSDriverLegionHWMon.cpp \
-        SysFSDriverLegionIntelMSR.cpp \
         SysFsDataProvider.cpp \
-        SysFsDataProviderBattery.cpp \
-        SysFsDataProviderCPUFrequency.cpp \
-        SysFsDataProviderCPUInfo.cpp \
-        SysFsDataProviderCPUOptions.cpp \
-        SysFsDataProviderCPUPState.cpp \
-        SysFsDataProviderCPUPower.cpp \
-        SysFsDataProviderCPUSMT.cpp \
-        SysFsDataProviderCPUTopology.cpp \
-        SysFsDataProviderFanCurve.cpp \
-        SysFsDataProviderFanOption.cpp \
-        SysFsDataProviderGPUPower.cpp \
-        SysFsDataProviderHWMon.cpp \
-        SysFsDataProviderIntelMSR.cpp \
-        SysFsDataProviderMachineInformation.cpp \
-        SysFsDataProviderOther.cpp \
-        SysFsDataProviderOtherGpuSwitch.cpp \
-        SysFsDataProviderPowerProfile.cpp \
         SysFsDriver.cpp \
-        SysFsDriverACPIPlatformProfile.cpp \
-        SysFsDriverCPU.cpp \
-        SysFsDriverCPUAtom.cpp \
-        SysFsDriverCPUCore.cpp \
-        SysFsDriverCPUInfo.cpp \
-        SysFsDriverCPUXList.cpp \
-        SysFsDriverIntelPowercapRapl.cpp \
-        SysFsDriverLegionEvents.cpp \
-        SysFsDriverLegionMachineInformation.cpp \
-        SysFsDriverLegionOther.cpp \
         SysFsDriverManager.cpp \
-        SysFsDriverPowerSuplyBattery0.cpp \
         Settings.cpp \
         StringUtils.cpp \
-        SysFsDriverCPUIntelPState.cpp \
         main.cpp
 
-HEADERS += \
-    Application.h \
-    DaemonSettingsManager.h \
-    DataProvider.h \
-    DataProviderDaemonSettings.h \
-    DataProviderManager.h \
-    DataProviderNvidiaNvml.h \
-    DataProviderRGBController.h \
-    Message.h \
-    ProtocolParser.h \
-    ProtocolProcessor.h \
-    ProtocolProcessorBase.h \
-    ProtocolProcessorNotifier.h \
-    RGBControlers/LenovoRGBControllerC197.h \
-    RGBControlers/LenovoRGBControllerC9xx.h \
-    RGBControlers/LenovoUSBControllerC9xx.h \
-    SysFSDriverLegionFanMode.h \
-    SysFSDriverLegionGameZone.h \
-    Settings.h \
-    SysFSDriverLegionHWMon.h \
-    SysFSDriverLegionIntelMSR.h \
-    SysFsDataProvider.h \
-    SysFsDataProviderBattery.h \
-    SysFsDataProviderCPUFrequency.h \
-    SysFsDataProviderCPUInfo.h \
-    SysFsDataProviderCPUOptions.h \
-    SysFsDataProviderCPUPState.h \
-    SysFsDataProviderCPUPower.h \
-    SysFsDataProviderCPUSMT.h \
-    SysFsDataProviderCPUTopology.h \
-    SysFsDataProviderFanCurve.h \
-    SysFsDataProviderFanOption.h \
-    SysFsDataProviderGPUPower.h \
-    SysFsDataProviderHWMon.h \
-    SysFsDataProviderIntelMSR.h \
-    SysFsDataProviderMachineInformation.h \
-    SysFsDataProviderOther.h \
-    SysFsDataProviderOtherGpuSwitch.h \
-    SysFsDataProviderPowerProfile.h \
-    SysFsDriver.h \
-    SysFsDriverACPIPlatformProfile.h \
-    SysFsDriverCPU.h \
-    SysFsDriverCPUAtom.h \
-    SysFsDriverCPUCore.h \
-    SysFsDriverCPUInfo.h \
-    SysFsDriverCPUIntelPState.h \
-    SysFsDriverCPUXList.h \
-    SysFsDriverIntelPowercapRapl.h \
-    SysFsDriverLegion.h \
-    SysFsDriverLegionEvents.h \
-    SysFsDriverLegionMachineInformation.h \
-    SysFsDriverLegionOther.h \
-    SysFsDriverManager.h \
-    SysFsDriverPowerSuplyBattery0.h \
-    RGBControllerInterface.h \
-    RGBController.h \
-    RGBControllerKeyNames.h \
-    StringUtils.h \
-    RGBControllerDetector.h
+# SysFsDriver sources
+SOURCES += \
+        SysFsDrivers/SysFsDriverLegionFanMode.cpp \
+        SysFsDrivers/SysFsDriverLegionGameZone.cpp \
+        SysFsDrivers/SysFsDriverLegionHWMon.cpp \
+        SysFsDrivers/SysFsDriverLegionIntelMSR.cpp \
+        SysFsDrivers/SysFsDriverCPUAtom.cpp \
+        SysFsDrivers/SysFsDriverCPUCore.cpp \
+        SysFsDrivers/SysFsDriverCPUInfo.cpp \
+        SysFsDrivers/SysFsDriverCPUXList.cpp \
+        SysFsDrivers/SysFsDriverIntelPowercapRapl.cpp \
+        SysFsDrivers/SysFsDriverLegionEvents.cpp \
+        SysFsDrivers/SysFsDriverLegionMachineInformation.cpp \
+        SysFsDrivers/SysFsDriverLegionOther.cpp \
+        SysFsDrivers/SysFsDriverACPIPlatformProfile.cpp \
+        SysFsDrivers/SysFsDriverPowerSuplyBattery0.cpp \
+        SysFsDrivers/SysFsDriverCPU.cpp \
+        SysFsDrivers/SysFsDriverCPUIntelPState.cpp
 
+# SysFS data provider sources
+SOURCES += \
+        SysFsDataProviders/SysFsDataProviderBattery.cpp \
+        SysFsDataProviders/SysFsDataProviderCPUFrequency.cpp \
+        SysFsDataProviders/SysFsDataProviderCPUInfo.cpp \
+        SysFsDataProviders/SysFsDataProviderCPUOptions.cpp \
+        SysFsDataProviders/SysFsDataProviderCPUPState.cpp \
+        SysFsDataProviders/SysFsDataProviderCPUPower.cpp \
+        SysFsDataProviders/SysFsDataProviderCPUSMT.cpp \
+        SysFsDataProviders/SysFsDataProviderCPUTopology.cpp \
+        SysFsDataProviders/SysFsDataProviderFanCurve.cpp \
+        SysFsDataProviders/SysFsDataProviderFanOption.cpp \
+        SysFsDataProviders/SysFsDataProviderGPUPower.cpp \
+        SysFsDataProviders/SysFsDataProviderHWMon.cpp \
+        SysFsDataProviders/SysFsDataProviderIntelMSR.cpp \
+        SysFsDataProviders/SysFsDataProviderMachineInformation.cpp \
+        SysFsDataProviders/SysFsDataProviderOther.cpp \
+        SysFsDataProviders/SysFsDataProviderOtherGpuSwitch.cpp \
+        SysFsDataProviders/SysFsDataProviderPowerProfile.cpp
 
-HEADERS += \
-        RGBControlers/LenovoRGBController.h \
-        RGBControlers/LenovoUSBController.h
+#Data provider sources
+SOURCES += \
+        DataProviders/DataProviderRGBController.cpp \
+        DataProviders/DataProviderNvidiaNvml.cpp \
+        DataProviders/DataProviderDaemonSettings.cpp
 
+# RGB controller sources
 SOURCES += \
         RGBControlers/LenovoRGBController.cpp \
         RGBControlers/LenovoUSBController.cpp \
-        RGBControlers/LenovoUSBControllerDetect.cpp
+        RGBControlers/LenovoUSBControllerDetect.cpp \
+        RGBControlers/LenovoRGBControllerC197.cpp \
+        RGBControlers/LenovoRGBControllerC9xx.cpp \
+        RGBControlers/LenovoUSBControllerC9xx.cpp
 
+
+
+
+#Main Framework headers
+HEADERS += \
+        Application.h \
+        DaemonSettingsManager.h \
+        DataProvider.h \
+        DataProviderManager.h \
+        Message.h \
+        ProtocolParser.h \
+        ProtocolProcessor.h \
+        ProtocolProcessorBase.h \
+        ProtocolProcessorNotifier.h \
+        Settings.h \
+        SysFsDataProvider.h \
+        SysFsDriver.h \
+        SysFsDriverManager.h \
+        RGBControllerInterface.h \
+        RGBController.h \
+        RGBControllerKeyNames.h \
+        StringUtils.h \
+        RGBControllerDetector.h
+
+# SysFsDriver  headers
+HEADERS += \
+        SysFsDrivers/SysFsDriverLegionFanMode.h \
+        SysFsDrivers/SysFsDriverLegionGameZone.h \
+        SysFsDrivers/SysFsDriverLegionHWMon.h \
+        SysFsDrivers/SysFsDriverLegionIntelMSR.h \
+        SysFsDrivers/SysFsDriverCPUAtom.h \
+        SysFsDrivers/SysFsDriverCPUCore.h \
+        SysFsDrivers/SysFsDriverCPUInfo.h \
+        SysFsDrivers/SysFsDriverCPUXList.h \
+        SysFsDrivers/SysFsDriverIntelPowercapRapl.h \
+        SysFsDrivers/SysFsDriverLegionEvents.h \
+        SysFsDrivers/SysFsDriverLegionMachineInformation.h \
+        SysFsDrivers/SysFsDriverLegionOther.h \
+        SysFsDrivers/SysFsDriverACPIPlatformProfile.h \
+        SysFsDrivers/SysFsDriverPowerSuplyBattery0.h \
+        SysFsDrivers/SysFsDriverCPU.h \
+        SysFsDrivers/SysFsDriverCPUIntelPState.h \
+        SysFsDrivers/SysFsDriverLegion.h
+
+
+# SysFS data provider headers
+HEADERS += \
+        SysFsDataProviders/SysFsDataProviderBattery.h \
+        SysFsDataProviders/SysFsDataProviderCPUFrequency.h \
+        SysFsDataProviders/SysFsDataProviderCPUInfo.h \
+        SysFsDataProviders/SysFsDataProviderCPUOptions.h \
+        SysFsDataProviders/SysFsDataProviderCPUPState.h \
+        SysFsDataProviders/SysFsDataProviderCPUPower.h \
+        SysFsDataProviders/SysFsDataProviderCPUSMT.h \
+        SysFsDataProviders/SysFsDataProviderCPUTopology.h \
+        SysFsDataProviders/SysFsDataProviderFanCurve.h \
+        SysFsDataProviders/SysFsDataProviderFanOption.h \
+        SysFsDataProviders/SysFsDataProviderGPUPower.h \
+        SysFsDataProviders/SysFsDataProviderHWMon.h \
+        SysFsDataProviders/SysFsDataProviderIntelMSR.h \
+        SysFsDataProviders/SysFsDataProviderMachineInformation.h \
+        SysFsDataProviders/SysFsDataProviderOther.h \
+        SysFsDataProviders/SysFsDataProviderOtherGpuSwitch.h \
+        SysFsDataProviders/SysFsDataProviderPowerProfile.h
+
+# Data provider headers
+HEADERS += \
+        DataProviders/DataProviderRGBController.h \
+        DataProviders/DataProviderNvidiaNvml.h \
+        DataProviders/DataProviderDaemonSettings.h
+
+
+# RGB controller headers
+HEADERS += \
+        RGBControlers/LenovoRGBController.h \
+        RGBControlers/LenovoUSBController.h \
+        RGBControlers/LenovoRGBControllerC197.h \
+        RGBControlers/LenovoRGBControllerC9xx.h \
+        RGBControlers/LenovoUSBControllerC9xx.h
 
 HEADERS += \
         ../LenovoLegion-PrepareBuild/HWMonitoring.pb.h \
@@ -179,4 +204,6 @@ INCLUDEPATH += $${CUDA_PATH}/include
 LIBS += -L$${CUDA_PATH}/lib64 -l$${PROJECT_LIBS_NAME} -ludev -lnvidia-ml
 
 DISTFILES +=  \
-    lenovo-legion-daemon.service
+    lenovo-legion-daemon.service \
+    lenovo-legion.sysusers \
+    lenovo-legion-setup.sh

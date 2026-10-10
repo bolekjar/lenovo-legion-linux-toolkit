@@ -2,7 +2,7 @@
 
 
 #include "Core/LoggerHolder.h"
-#include "SysFsDriverCPUInfo.h"
+#include "../SysFsDrivers/SysFsDriverCPUInfo.h"
 
 #include "../LenovoLegion-PrepareBuild/ComputerInfo.pb.h"
 

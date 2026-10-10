@@ -7,7 +7,7 @@
  */
 
 #include "SysFsDataProviderOtherGpuSwitch.h"
-#include "SysFSDriverLegionGameZone.h"
+#include "../SysFsDrivers/SysFsDriverLegionGameZone.h"
 
 
 #include "../LenovoLegion-PrepareBuild/Other.pb.h"
@@ -31,7 +31,7 @@ QByteArray SysFsDataProviderOtherGpuSwitch::serializeAndGetData()
     gpuSwitchMsg.set_supported(false);
 
     try {
-        SysFSDriverLegionGameZone::GameZone gameZone(m_sysFsDriverManager->getDriverDesriptor(SysFSDriverLegionGameZone::DRIVER_NAME));
+        SysFsDriverLegionGameZone::GameZone gameZone(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverLegionGameZone::DRIVER_NAME));
 
         if(getData(gameZone.m_gsync.m_supported).toUShort() > 0 && getData(gameZone.m_igpuMode.m_supported).toUShort() > 0)
         {
@@ -63,7 +63,7 @@ QByteArray SysFsDataProviderOtherGpuSwitch::serializeAndGetData()
 
 QByteArray SysFsDataProviderOtherGpuSwitch::deserializeAndSetData(const QByteArray &data)
 {
-    SysFSDriverLegionGameZone::GameZone gameZone(m_sysFsDriverManager->getDriverDesriptor(SysFSDriverLegionGameZone::DRIVER_NAME));
+    SysFsDriverLegionGameZone::GameZone gameZone(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverLegionGameZone::DRIVER_NAME));
     legion::messages::GpuSwitchValue    gpuSwitchMsg;
 
     LOG_T(__PRETTY_FUNCTION__);

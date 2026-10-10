@@ -8,7 +8,7 @@
 #include "DataProviderRGBController.h"
 #include "RGBController.h"
 
-#include "SysFsDriverLegionEvents.h"
+#include "SysFsDrivers/SysFsDriverLegionEvents.h"
 
 #include "Core/LoggerHolder.h"
 

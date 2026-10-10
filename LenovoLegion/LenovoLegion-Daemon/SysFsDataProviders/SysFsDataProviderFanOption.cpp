@@ -9,7 +9,7 @@
 #include "SysFsDataProviderFanOption.h"
 
 
-#include "SysFsDriverLegionOther.h"
+#include "SysFsDrivers/SysFsDriverLegionOther.h"
 
 #include "../LenovoLegion-PrepareBuild/FanControl.pb.h"
 

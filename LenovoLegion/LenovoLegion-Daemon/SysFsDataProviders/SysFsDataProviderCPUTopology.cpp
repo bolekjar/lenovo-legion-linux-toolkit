@@ -7,9 +7,9 @@
  */
 
 #include "SysFsDataProviderCPUTopology.h"
-#include "SysFsDriverCPUCore.h"
-#include "SysFsDriverCPUAtom.h"
-#include "SysFsDriverCPU.h"
+#include "../SysFsDrivers/SysFsDriverCPUCore.h"
+#include "../SysFsDrivers/SysFsDriverCPUAtom.h"
+#include "../SysFsDrivers/SysFsDriverCPU.h"
 
 
 #include "../LenovoLegion-PrepareBuild/CPUTopology.pb.h"

@@ -7,8 +7,8 @@
  */
 
 #include "SysFsDataProviderCPUSMT.h"
-#include "SysFsDriverCPU.h"
-#include "SysFsDriverCPUXList.h"
+#include "../SysFsDrivers/SysFsDriverCPU.h"
+#include "../SysFsDrivers/SysFsDriverCPUXList.h"
 
 #include "../LenovoLegion-PrepareBuild/CPUOptions.pb.h"
 

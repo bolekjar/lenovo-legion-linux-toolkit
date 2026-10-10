@@ -1,12 +1,12 @@
-#include "SysFSDriverLegionIntelMSR.h"
+#include "SysFsDriverLegionIntelMSR.h"
 
 #include <Core/LoggerHolder.h>
 
 namespace LenovoLegionDaemon {
 
-SysFSDriverLegionIntelMSR::SysFSDriverLegionIntelMSR(QObject *parrent) : SysFsDriver(DRIVER_NAME,"/sys/class/legion-intel-msr/intel-msr-0/",{"legion-intel-msr",{}},parrent,MODULE_NAME) {}
+SysFsDriverLegionIntelMSR::SysFsDriverLegionIntelMSR(QObject *parrent) : SysFsDriver(DRIVER_NAME,"/sys/class/legion-intel-msr/intel-msr-0/",{"legion-intel-msr",{}},parrent,MODULE_NAME) {}
 
-void SysFSDriverLegionIntelMSR::init()
+void SysFsDriverLegionIntelMSR::init()
 {
     LOG_T(__PRETTY_FUNCTION__);
 
@@ -43,7 +43,7 @@ void SysFSDriverLegionIntelMSR::init()
     }
 }
 
-void SysFSDriverLegionIntelMSR::handleKernelEvent(const KernelEvent::Event &event)
+void SysFsDriverLegionIntelMSR::handleKernelEvent(const KernelEvent::Event &event)
 {
     LOG_D(__PRETTY_FUNCTION__ + QString(": Kernel event received ACTION=") + event.m_action + ", DRIVER=" + event.m_driver + ", SYSNAME=" + event.m_sysName + ", SUBSYSTEM=" + event.m_subSystem + ", DEVPATH=" + event.m_devPath);
 

@@ -7,8 +7,8 @@
  */
 
 #include "SysFsDataProviderPowerProfile.h"
-#include "SysFSDriverLegionGameZone.h"
-#include "SysFsDriverLegionOther.h"
+#include "SysFsDrivers/SysFsDriverLegionGameZone.h"
+#include "SysFsDrivers/SysFsDriverLegionOther.h"
 
 #include "../LenovoLegion-PrepareBuild/PowerProfile.pb.h"
 
@@ -30,8 +30,8 @@ QByteArray SysFsDataProviderPowerProfile::serializeAndGetData()
     LOG_T(__PRETTY_FUNCTION__);
 
     try {
-        SysFSDriverLegionGameZone::GameZone::SmartFan smartFan(m_sysFsDriverManager->getDriverDesriptor(SysFSDriverLegionGameZone::DRIVER_NAME));
-        SysFSDriverLegionGameZone::GameZone::Other    other(m_sysFsDriverManager->getDriverDesriptor(SysFSDriverLegionGameZone::DRIVER_NAME));
+        SysFsDriverLegionGameZone::GameZone::SmartFan smartFan(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverLegionGameZone::DRIVER_NAME));
+        SysFsDriverLegionGameZone::GameZone::Other    other(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverLegionGameZone::DRIVER_NAME));
         SysFsDriverLegionOther::Other                 otherInOther(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverLegionOther::DRIVER_NAME));
 
         powerProfile.set_current_value(static_cast<legion::messages::PowerProfile::Profiles>(getData(smartFan.m_current_value).toUShort()));
@@ -75,8 +75,8 @@ QByteArray SysFsDataProviderPowerProfile::serializeAndGetData()
 
 QByteArray SysFsDataProviderPowerProfile::deserializeAndSetData(const QByteArray &data)
 {
-    SysFSDriverLegionGameZone::GameZone::SmartFan smartFan(m_sysFsDriverManager->getDriverDesriptor(SysFSDriverLegionGameZone::DRIVER_NAME));
-    SysFSDriverLegionGameZone::GameZone::Other    other(m_sysFsDriverManager->getDriverDesriptor(SysFSDriverLegionGameZone::DRIVER_NAME));
+    SysFsDriverLegionGameZone::GameZone::SmartFan smartFan(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverLegionGameZone::DRIVER_NAME));
+    SysFsDriverLegionGameZone::GameZone::Other    other(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverLegionGameZone::DRIVER_NAME));
     SysFsDriverLegionOther::Other                 otherInOther(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverLegionOther::DRIVER_NAME));
 
     legion::messages::PowerProfile                powerProfile;

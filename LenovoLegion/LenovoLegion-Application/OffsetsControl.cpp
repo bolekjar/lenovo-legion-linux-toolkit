@@ -5,8 +5,8 @@
 
 #include "DataProvider.h"
 
-#include "../LenovoLegion-Daemon/SysFsDataProviderIntelMSR.h"
-#include "../LenovoLegion-Daemon/DataProviderNvidiaNvml.h"
+#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderIntelMSR.h"
+#include "../LenovoLegion-Daemon/DataProviders/DataProviderNvidiaNvml.h"
 
 #include <QAbstractItemView>
 

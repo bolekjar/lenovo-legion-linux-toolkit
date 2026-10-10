@@ -9,8 +9,8 @@
 #include "ui_PowerProfileControl.h"
 #include "DataProvider.h"
 
-#include "../LenovoLegion-Daemon/SysFsDataProviderPowerProfile.h"
-#include "../LenovoLegion-Daemon/SysFsDataProviderBattery.h"
+#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderPowerProfile.h"
+#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderBattery.h"
 
 
 namespace LenovoLegionGui {
