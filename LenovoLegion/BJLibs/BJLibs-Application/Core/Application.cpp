@@ -18,6 +18,7 @@ const char * const                                  Application::app_version = B
 const char * const                                  Application::data_dir    = BL_DATA_DIR_STR;
 const char * const                                  Application::log_dir     = BL_LOG_DIR_STR;
 const char * const                                  Application::modules_dir = BL_MODULES_DIR_STR;
+const char * const                                  Application::run_dir     = BL_RUN_DIR_STR;
 
 Application::Application(std::unique_ptr<ApplicationInterface> app,const char * const app_name) :
      m_application(std::move(app)),

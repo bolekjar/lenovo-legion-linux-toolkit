@@ -58,4 +58,7 @@ namespace bj { namespace framework {
 #define BL_APP_VERSION              BL_APP_VERSION_DEFINE
 #define BL_APP_VERSION_STR          BL_STR(BL_APP_VERSION)
 
+#define BL_RUN_DIR                  BL_RUN_DIR_DEFINE
+#define BL_RUN_DIR_STR              BL_STR(BL_RUN_DIR)
+
 }}

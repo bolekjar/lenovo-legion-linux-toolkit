@@ -83,6 +83,7 @@ namespace LenovoLegionDaemon {
 
 Application::Application(int &argc, char *argv[]) :
     QCoreApplication(argc,argv),
+    m_socketsPath(QCoreApplication::applicationDirPath().append(QDir::separator()).append(bj::framework::Application::run_dir).append(QDir::separator())),
     m_serverSocket(new QLocalServer(this)),
     m_serverSocketNotification(new QLocalServer(this)),
     m_sysFsDriverManager(new SysFsDriverManager(this)),
@@ -91,6 +92,7 @@ Application::Application(int &argc, char *argv[]) :
     m_protocolProcessorNotification(nullptr)
 {
     LoggerHolder::getInstance().init(QCoreApplication::applicationDirPath().append(QDir::separator()).append(bj::framework::Application::log_dir).append(QDir::separator()).append(bj::framework::Application::apps_names[1]).append(".log").toStdString());
+
 
     /*
      * Add SysFS Drivers
@@ -166,7 +168,7 @@ void Application::appInitImpl(std::unique_ptr<ApplicationModulesHandler_T>)
      */
     if(!prepareSocketDir())
     {
-        THROW_EXCEPTION(exception_T,ERROR_CODES::SOCKET_DIR_ERROR,std::string("Socket directory ").append(SOCKET_DIR).append(" is not usable !").c_str());
+        THROW_EXCEPTION(exception_T,ERROR_CODES::SOCKET_DIR_ERROR,std::string("Socket directory ").append(m_socketsPath.toStdString()).append(" is not usable !").c_str());
     }
 
     /*
@@ -204,7 +206,7 @@ void Application::appInitImpl(std::unique_ptr<ApplicationModulesHandler_T>)
      */
     connect(m_serverSocket,&QLocalServer::newConnection,this,&Application::newConnectionHandler);
 
-    startServer(m_serverSocket,SOCKET_NAME);
+    startServer(m_serverSocket,QString(m_socketsPath).append(SOCKET_NAME).toStdString().c_str());
 
 
     /*
@@ -212,7 +214,7 @@ void Application::appInitImpl(std::unique_ptr<ApplicationModulesHandler_T>)
      */
     connect(m_serverSocketNotification,&QLocalServer::newConnection,this,&Application::newConnectionNotificationHandler);
 
-    startServer(m_serverSocketNotification,SOCKET_NAME_NOTIFICATION);
+    startServer(m_serverSocketNotification,QString(m_socketsPath).append(SOCKET_NAME_NOTIFICATION).toStdString().c_str());
 
 
 }
@@ -429,26 +431,17 @@ void Application::connectionNotificationDisconnectedHandler()
 
 bool Application::prepareSocketDir() const
 {
-    /*
-     * Normally created by systemd (RuntimeDirectory=), created here when daemon is started manually
-     */
-    if(mkdir(SOCKET_DIR,0755) != 0 && errno != EEXIST)
-    {
-        LOG_E(QString("Unable to create socket directory ").append(SOCKET_DIR).append(" : ").append(strerror(errno)));
-        return false;
-    }
-
     struct stat st {};
 
-    if(lstat(SOCKET_DIR,&st) != 0)
+    if(lstat(m_socketsPath.toStdString().c_str(),&st) != 0)
     {
-        LOG_E(QString("Unable to stat socket directory ").append(SOCKET_DIR).append(" : ").append(strerror(errno)));
+        LOG_E(QString("Unable to stat socket directory ").append(m_socketsPath).append(" : ").append(strerror(errno)));
         return false;
     }
 
     if(!S_ISDIR(st.st_mode) || st.st_uid != 0 || (st.st_mode & (S_IWGRP | S_IWOTH)) != 0)
     {
-        LOG_E(QString("Socket directory ").append(SOCKET_DIR).append(" must be a directory owned by root and writable only by root !"));
+        LOG_E(QString("Socket directory ").append(m_socketsPath).append(" must be a directory owned by root and writable only by root !"));
         return false;
     }
 

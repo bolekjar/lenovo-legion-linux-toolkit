@@ -41,9 +41,8 @@ public:
 
 public:
 
-    static constexpr const char* const  SOCKET_DIR                   = "/run/lenovo-legion";
-    static constexpr const char* const  SOCKET_NAME                  = "/run/lenovo-legion/LenovoLegionDaemonSocket";
-    static constexpr const char* const  SOCKET_NAME_NOTIFICATION     = "/run/lenovo-legion/LenovoLegionDaemonSocketNotifycation";
+    static constexpr const char* const  SOCKET_NAME                  = "lenovo_legion_daemon.socket";
+    static constexpr const char* const  SOCKET_NAME_NOTIFICATION     = "lenovo_legion_daemon_notification.socket";
     static constexpr const char* const  SOCKET_GROUP                 = "legion";
 
 public:
@@ -138,6 +137,12 @@ private:
     };
 
 private:
+
+    /*
+     * Socket path, SOCKET_DIR is writable only by root and SOCKET_GROUP members
+     */
+    const QString                   m_socketsPath;
+
 
     /*
      * Connections

@@ -30,6 +30,7 @@ public:
     static const char * const                    data_dir;
     static const char * const                    log_dir;
     static const char * const                    modules_dir;
+    static const char * const                    run_dir;
 
 public:
 
