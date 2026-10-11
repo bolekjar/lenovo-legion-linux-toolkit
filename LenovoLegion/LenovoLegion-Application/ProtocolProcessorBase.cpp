@@ -21,7 +21,7 @@ namespace LenovoLegionGui {
 
 ProtocolProcessorBase::ProtocolProcessorBase(const QString& socketName,QObject *parent)
     : QObject(parent)
-    , SOCKET_NAME{QCoreApplication::applicationDirPath().append(QDir::separator()).append(bj::framework::Application::run_dir).append(socketName)}
+    , SOCKET_NAME{QCoreApplication::applicationDirPath().append(QDir::separator()).append(bj::framework::Application::run_dir).append(QDir::separator()).append(socketName)}
     , m_socket{new QLocalSocket{this}}
 {
     connect(m_socket, &QLocalSocket::connected, this, &ProtocolProcessorBase::onConnected);
