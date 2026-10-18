@@ -2,3 +2,21 @@
 ----------------------------------------------------------------------------------------------------------------------
 1) I have to make review of expecting updates when gui change the values which are dependency on event. If interaction is by gui then no event should be in expectation gui should handle this himself.
 2) Fix issue in brightness of keyboard - not able to simulate but sometimes shows brightness off and keyboard lights on.
+3) Daemon ignores sysfs write errors - SysFsDataProvider::setData writes via QTextStream and errors from the kernel store (-EINVAL, -EBUSY, -EOPNOTSUPP) are lost on flush, GUI gets success. Must be done together:
+   a) setData - write unbuffered and check the result of write(), throw on error.
+   b) Protocol - add ERROR_RESPONSE message with error text, otherwise the exception disconnects the GUI (Application::notify deletes protocol processors). GUI shows the text from the daemon.
+   c) Multi-value providers (IntelMSR first) - apply each value separately and collect errors. Now analogio is written first, -EOPNOTSUPP on Meteor/Arrow Lake would skip all other planes, also when settings are restored on start.
+   d) GUI - re-read real values after failed apply (qScopeGuard), e.g. OffsetsControl::on_pushButton_cpuVoltageApply_clicked.
+4) Daemon calls QCoreApplication::exit(0) on protocol processor error (newConnection*Handler) - exits as success, so systemd Restart=on-failure does not restart it. Use non-zero exit code.
+5) Daemon Application::notify - any exception from any object (e.g. data provider timer) disconnects both clients. Disconnect only when the exception comes from the protocol processor.
+6) Kernel fan curve store - sscanf("%hhu") truncates to u8 (266 -> 10) and passes the "<= 10" check. Parse to unsigned int and check range (legion-wmi-fm-sysfs.c).
+7) Kernel MSR read (read_voltage_offset_on_cpu) - waits fixed 10us after mailbox command, busy bit (63) is not checked, may read stale value.
+8) Kernel uv_to_msr/msr_to_uv - comments say mV and 21-bit, code works with uV and 11-bit value.
+9) Cleanup in daemon Application:
+   - merge duplicated newConnectionHandler / newConnectionNotificationHandler (move clientDisconnected signal to ProtocolProcessorBase),
+   - remove useless template parameters and dynamic_cast in deleteProtocolProcessors,
+   - remove dead ProtocolProcessorBase::disconnectedHandlerSlot (start() connects disconnectedHandler, destructor disconnects the slot),
+   - remove unused SysFsStructure forward declaration, SAVE_ERROR, ApplicationModulesLoader.h include, add missing QLocalSocket include.
+10) Optional idle timeout for the client which sends incomplete message - it does not block the daemon anymore, but holds the only allowed connection.
+11) Files from old installations in log, data (mode 0644/0777) are not fixed by tmpfiles, only directories.
+12) Not reviewed yet: GUI widgets (ToolBarSettingsWidget.cpp), RGB/USB controllers (HID data parsing), Rust CLI, WMI parts of the kernel module.
