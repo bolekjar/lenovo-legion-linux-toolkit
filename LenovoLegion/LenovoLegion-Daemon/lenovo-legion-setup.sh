@@ -51,6 +51,15 @@ if ! getent group "$GROUP" > /dev/null; then
     echo "Group '$GROUP' was created."
 fi
 
+# Shared directories log, data: writable by root and group only
+# setgid -> new files inherit group
+APP_DIR="$(dirname "$(readlink -f "$0")")"
+for dir in "$APP_DIR/log" "$APP_DIR/data"; do
+    if [ -d "$dir" ]; then
+        chown root:"$GROUP" "$dir" && chmod 2770 "$dir" || exit 1
+    fi
+done
+
 # Select user
 if [ -z "$TARGET_USER" ]; then
     TARGET_USER="${SUDO_USER:-}"

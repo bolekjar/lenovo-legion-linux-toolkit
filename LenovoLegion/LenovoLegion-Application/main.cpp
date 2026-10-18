@@ -13,8 +13,15 @@
 
 #include <QDebug>
 
+#include <sys/stat.h>
+
 int main(int argc, char *argv[])
 {
+    /*
+     * Files in shared directories (log, data) are writable by group legion, others have no access
+     */
+    umask(0007);
+
     try {
         bj::framework::Application app(std::make_unique<LenovoLegionGui::Application>(argc,argv),bj::framework::Application::apps_names[0]);
 

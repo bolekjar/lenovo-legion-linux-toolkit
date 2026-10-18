@@ -13,6 +13,12 @@
 #include <QTextStream>
 #include <QFileDevice>
 
+#ifdef Q_OS_UNIX
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#endif
+
 
 namespace bj { namespace framework {
 
@@ -39,12 +45,39 @@ void Logger::init(const std::string &pathToLogFile)
         THROW_EXCEPTION(exception_T,ERROR_CODES::FILE_OPEN_ERROR,std::string("The log file engine was initialized: ").append(pathToLogFile));
     }
 
+#ifdef Q_OS_UNIX
+    /*
+     * Log directory may be writable by other users (e.g. group shared), do not follow symlinks
+     * and accept only a regular file, otherwise the file could be redirected to any other file.
+     */
+    const int fd = ::open(pathToLogFile.c_str(), O_WRONLY | O_APPEND | O_CREAT | O_NOFOLLOW | O_CLOEXEC, 0660);
+
+    if(fd < 0)
+    {
+        THROW_EXCEPTION(exception_T,ERROR_CODES::FILE_OPEN_ERROR,std::string("I can not open the file: ").append(pathToLogFile));
+    }
+
+    struct stat st {};
+
+    if(fstat(fd, &st) != 0 || !S_ISREG(st.st_mode) || st.st_nlink != 1)
+    {
+        ::close(fd);
+        THROW_EXCEPTION(exception_T,ERROR_CODES::FILE_OPEN_ERROR,std::string("The log file is not a regular file: ").append(pathToLogFile));
+    }
+
+    if(!m_logFile.open(fd, QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text, QFileDevice::AutoCloseHandle))
+    {
+        ::close(fd);
+        THROW_EXCEPTION(exception_T,ERROR_CODES::FILE_OPEN_ERROR,std::string("I can not open the file: ").append(pathToLogFile));
+    }
+#else
     m_logFile.setFileName(pathToLogFile.c_str());
 
     if(!m_logFile.open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text))
     {
         THROW_EXCEPTION(exception_T,ERROR_CODES::FILE_OPEN_ERROR,std::string("I can not open the file: ").append(pathToLogFile));
     }
+#endif
 }
 
 void Logger::write(const QString &data,SEVERITY severity)
