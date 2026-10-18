@@ -64,7 +64,10 @@ void ProtocolProcessor::readyReadHandler()
         return;
     }
 
-    ProtocolParser::parseMessage(*m_clientSocket,[this](const MessageHeader& header,const QByteArray& data ){
+    /*
+     * Process all complete messages, incomplete one waits for the next readyRead (no blocking of the event loop)
+     */
+    while(isRunning() && ProtocolParser::tryParseMessage(*m_clientSocket,[this](const MessageHeader& header,const QByteArray& data ){
 
         LOG_T(QString("Message header was readed: header.m_type= ").append(QString::number(header.m_type)).append(", header.m_dataType=").append(QString::number(header.m_dataType)).append(", header.m_dataLength=").append(QString::number(header.m_dataLength)));
 
@@ -130,7 +133,7 @@ void ProtocolProcessor::readyReadHandler()
         }
 
         LOG_T(QString("Message received: done !"));
-    });
+    }));
 }
 
 }

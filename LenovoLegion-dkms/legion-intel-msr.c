@@ -10,6 +10,7 @@
 
 #include <linux/version.h>
 #include <linux/kernel.h>
+#include <linux/atomic.h>
 #include <asm/msr.h>
 #include <linux/smp.h>
 #include <linux/sysfs.h>
@@ -30,6 +31,15 @@ struct read_msr_data {
     int plane;
     u64 result;
     int error;
+};
+
+/*
+ * Write voltage offset to specific plane on all CPUs
+ */
+struct write_msr_data {
+    int      plane;
+    int      offset_uv;
+    atomic_t error;
 };
 
 
@@ -100,10 +110,7 @@ static ssize_t validate_offset(const struct legion_intel_msr_private *intel_msr_
  */
 static void write_voltage_offset_on_cpu(void *info)
 {
-    const struct {
-        int plane;
-        int offset_uv;
-    } *data = info;
+    struct write_msr_data *data = info;
 
     const u32 offset_encoded = uv_to_msr(data->offset_uv);
 
@@ -119,7 +126,11 @@ static void write_voltage_offset_on_cpu(void *info)
               ((u64)0x11 << 32) |                        // Command at bits [39:32]
               ((u64)(offset_encoded & 0x7FF) << 21);     // Voltage offset at bits [31:21]
 
-    wrmsr_safe(MSR_VOLTAGE_OFFSET, (const u32)msr_val, (const u32)(msr_val >> 32));
+    const int err = wrmsr_safe(MSR_VOLTAGE_OFFSET, (const u32)msr_val, (const u32)(msr_val >> 32));
+
+    // Keep the first error, runs on all CPUs in parallel
+    if (err)
+        atomic_cmpxchg(&data->error, 0, err);
 }
 
 static void read_voltage_offset_on_cpu(void *info)
@@ -242,29 +253,28 @@ ssize_t legion_intel_msr_offset_read_show(struct legion_intel_msr_private *intel
  */
 ssize_t legion_intel_msr_apply_voltage_offset(struct legion_intel_msr_private *intel_msr_private,const int plane,const int offset_uv)
 {
-    struct {
-        int plane;
-        int offset_uv;
-    } data;
-
-    data.plane = plane;
-    data.offset_uv = offset_uv;
+    struct write_msr_data data = {
+        .plane     = plane,
+        .offset_uv = offset_uv,
+        .error     = ATOMIC_INIT(0),
+    };
 
     guard(mutex)(&intel_msr_private->lock);
+
+    // Validate plane first, it is used as index below
+    const ssize_t ret = validate_offset(intel_msr_private, data.plane, data.offset_uv);
+    if (ret < 0)
+        return ret;
 
     // Check if this plane supports writes
     if (!intel_msr_private->plane_limits[plane].write_supported) {
         return -EOPNOTSUPP;  // Operation not supported
     }
 
-    const ssize_t ret = validate_offset(intel_msr_private, data.plane, data.offset_uv);
-    if (ret < 0)
-        return ret;
-
     // Execute on all CPUs (including 0 to allow reset)
     on_each_cpu(write_voltage_offset_on_cpu, &data, 1);
 
-    return 0;
+    return atomic_read(&data.error);
 }
 
 int  legion_intel_msr_init(struct legion_intel_msr_private *intel_msr_private) {

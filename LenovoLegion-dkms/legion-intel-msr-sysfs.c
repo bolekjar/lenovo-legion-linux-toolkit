@@ -51,6 +51,33 @@ static ssize_t send_event(struct device *dev,const enum legion_events_type type,
 }
 
 /*
+ * Common store of voltage offset for given plane
+ */
+static ssize_t offset_store(struct device *dev,const char *buf,const size_t count,const int plane,const enum legion_events_type event_type)
+{
+	int offset = 0;
+	struct legion_data *priv = dev_get_drvdata(dev);
+
+	/* Critical: Prevent NULL pointer dereference and system freeze */
+	if (!priv) {
+		return -ENODEV;
+	}
+
+	ssize_t ret = kstrtoint(buf, 10, &offset);
+	if (ret < 0)
+		return ret;
+
+	ret = legion_intel_msr_apply_voltage_offset(&priv->intel_msr_private,plane,offset);
+	if (ret < 0)
+		return ret;
+
+	/* Notify only about really applied value */
+	send_event(dev,event_type,offset);
+
+	return (ssize_t)count;
+}
+
+/*
  * Sysfs attribute show/store functions
  */
 static ssize_t cpu_offset_show(struct device *dev,struct device_attribute *attr, char *buf)
@@ -72,23 +99,7 @@ static ssize_t cpu_offset_show(struct device *dev,struct device_attribute *attr,
 
 static ssize_t cpu_offset_store(struct device *dev,struct device_attribute *attr,const char *buf,const size_t count)
 {
-    int cpu_offset = 0;
-	struct legion_data *priv = dev_get_drvdata(dev);
-
-	/* Critical: Prevent NULL pointer dereference and system freeze */
-	if (!priv) {
-		return -ENODEV;
-	}
-
-    if (kstrtoint(buf, 10, &cpu_offset)) {
-    	return -EINVAL;
-    }
-
-    legion_intel_msr_apply_voltage_offset(&priv->intel_msr_private,PLANE_CPU, cpu_offset);
-
-	send_event(dev,LENOVO_INTEL_MSR_PLANE_CPU,cpu_offset);
-
-    return (ssize_t)count;
+	return offset_store(dev,buf,count,PLANE_CPU,LENOVO_INTEL_MSR_PLANE_CPU);
 }
 
 static ssize_t cache_offset_show(struct device *dev,struct device_attribute *attr, char *buf)
@@ -110,23 +121,7 @@ static ssize_t cache_offset_show(struct device *dev,struct device_attribute *att
 
 static ssize_t cache_offset_store(struct device *dev,struct device_attribute *attr,const char *buf,size_t count)
 {
-    int cache_offset = 0;
-	struct legion_data *priv = dev_get_drvdata(dev);
-
-	/* Critical: Prevent NULL pointer dereference and system freeze */
-	if (!priv) {
-		return -ENODEV;
-	}
-
-	const ssize_t ret = kstrtoint(buf, 10, &cache_offset);
-    if (ret < 0)
-        return ret;
-
-    legion_intel_msr_apply_voltage_offset(&priv->intel_msr_private,PLANE_CACHE, cache_offset);
-
-	send_event(dev,LENOVO_INTEL_MSR_PLANE_CACHE,cache_offset);
-
-	return (ssize_t)count;
+	return offset_store(dev,buf,count,PLANE_CACHE,LENOVO_INTEL_MSR_PLANE_CACHE);
 }
 
 static ssize_t gpu_offset_show(struct device *dev,struct device_attribute *attr, char *buf)
@@ -148,24 +143,7 @@ static ssize_t gpu_offset_show(struct device *dev,struct device_attribute *attr,
 
 static ssize_t gpu_offset_store(struct device *dev,struct device_attribute *attr,const char *buf,size_t count)
 {
-    int gpu_offset = 0;
-	struct legion_data *priv = dev_get_drvdata(dev);
-
-	/* Critical: Prevent NULL pointer dereference and system freeze */
-	if (!priv) {
-		return -ENODEV;
-	}
-
-
-	const ssize_t ret = kstrtoint(buf, 10, &gpu_offset);
-    if (ret < 0)
-        return ret;
-
-    legion_intel_msr_apply_voltage_offset(&priv->intel_msr_private,PLANE_GPU, gpu_offset);
-
-	send_event(dev,LENOVO_INTEL_MSR_PLANE_GPU,gpu_offset);
-
-	return (ssize_t)count;
+	return offset_store(dev,buf,count,PLANE_GPU,LENOVO_INTEL_MSR_PLANE_GPU);
 }
 
 static ssize_t uncore_offset_show(struct device *dev,struct device_attribute *attr, char *buf)
@@ -187,23 +165,7 @@ static ssize_t uncore_offset_show(struct device *dev,struct device_attribute *at
 
 static ssize_t uncore_offset_store(struct device *dev,struct device_attribute *attr,const char *buf,size_t count)
 {
-    int uncore_offset = 0;
-	struct legion_data *priv = dev_get_drvdata(dev);
-
-	/* Critical: Prevent NULL pointer dereference and system freeze */
-	if (!priv) {
-		return -ENODEV;
-	}
-
-    const ssize_t ret = kstrtoint(buf, 10, &uncore_offset);
-    if (ret < 0)
-        return ret;
-
-    legion_intel_msr_apply_voltage_offset(&priv->intel_msr_private,PLANE_UNCORE, uncore_offset);
-
-	send_event(dev,LENOVO_INTEL_MSR_PLANE_UNCORE,uncore_offset);
-
-    return (ssize_t)count;
+	return offset_store(dev,buf,count,PLANE_UNCORE,LENOVO_INTEL_MSR_PLANE_UNCORE);
 }
 
 static ssize_t analogio_offset_show(struct device *dev,struct device_attribute *attr, char *buf)
@@ -225,23 +187,7 @@ static ssize_t analogio_offset_show(struct device *dev,struct device_attribute *
 
 static ssize_t analogio_offset_store(struct device *dev,struct device_attribute *attr,const char *buf,size_t count)
 {
-	struct legion_data *priv = dev_get_drvdata(dev);
-    int analogio_offset = 0;
-
-	/* Critical: Prevent NULL pointer dereference and system freeze */
-	if (!priv) {
-		return -ENODEV;
-	}
-
-    const ssize_t ret = kstrtoint(buf, 10, &analogio_offset);
-    if (ret < 0)
-        return ret;
-
-    legion_intel_msr_apply_voltage_offset(&priv->intel_msr_private,PLANE_ANALOGIO, analogio_offset);
-
-	send_event(dev,LENOVO_INTEL_MSR_PLANE_ANALOGIO,analogio_offset);
-
-    return (ssize_t)count;
+	return offset_store(dev,buf,count,PLANE_ANALOGIO,LENOVO_INTEL_MSR_PLANE_ANALOGIO);
 }
 
 

@@ -9,6 +9,8 @@
 
 #include <Core/LoggerHolder.h>
 
+#include <QDeadlineTimer>
+
 namespace LenovoLegionDaemon {
 
 
@@ -26,6 +28,8 @@ void ProtocolParser::parseMessage(QLocalSocket &socket, std::function<void (cons
     memset(&header,0,sizeof(MessageHeader));
     memcpy(&header,bytes.data(),sizeof(MessageHeader));
 
+    validateHeader(header);
+
     /*
      * Read data
      */
@@ -35,6 +39,47 @@ void ProtocolParser::parseMessage(QLocalSocket &socket, std::function<void (cons
      * All looks good
      */
     callback(header,bytes);
+}
+
+bool ProtocolParser::tryParseMessage(QLocalSocket &socket, std::function<void (const MessageHeader &,const QByteArray&)> callback)
+{
+    MessageHeader header;
+
+    if(socket.bytesAvailable() < static_cast<qint64>(sizeof(MessageHeader)))
+    {
+        return false;
+    }
+
+    /*
+     * Peek header, it is consumed only together with the whole message
+     */
+    const QByteArray headerBytes = socket.peek(sizeof(MessageHeader));
+
+    LOG_T(QString("Raw message header = (").append(headerBytes.toHex(':').toStdString()).append(")"));
+
+    memset(&header,0,sizeof(MessageHeader));
+    memcpy(&header,headerBytes.constData(),sizeof(MessageHeader));
+
+    validateHeader(header);
+
+    if(socket.bytesAvailable() < static_cast<qint64>(sizeof(MessageHeader)) + header.m_dataLength)
+    {
+        return false;
+    }
+
+    socket.skip(sizeof(MessageHeader));
+
+    callback(header,socket.read(header.m_dataLength));
+
+    return true;
+}
+
+void ProtocolParser::validateHeader(const MessageHeader &header)
+{
+    if(header.m_dataLength < 0 || header.m_dataLength > MAX_MESSAGE_LENGTH)
+    {
+        THROW_EXCEPTION(exception_T,ERROR_CODES::INVALID_MESSAGE_LENGTH,QString("Invalid message length ").append(QString::number(header.m_dataLength)).append(" !").toStdString().c_str());
+    }
 }
 
 QByteArray ProtocolParser::parseMessage(const MessageHeader &message, const QByteArray &payload)
@@ -57,31 +102,21 @@ QByteArray ProtocolParser::parseMessage(const MessageHeader &message, const QByt
     return bytes;
 }
 
-QByteArray  ProtocolParser::readDataWithTimeout(QLocalSocket &socket, int size)
+QByteArray  ProtocolParser::readDataWithTimeout(QLocalSocket &socket, qsizetype size)
 {
-    QByteArray data;
+    QByteArray        data;
+    QDeadlineTimer    deadline(1000);   // 1 second timeout for the whole data
 
-    // Try to read immediately
-    data.append(socket.read(size));
+    data.reserve(size);
 
-    if(data.size() == size)
+    while(data.size() < size)
     {
-        return data;
-    }
+        data.append(socket.read(size - data.size()));
 
-    // Wait for data to be available (non-blocking with timeout)
-    // This returns control to event loop while waiting
-    if(!socket.waitForReadyRead(1000))  // 1 second timeout
-    {
-        THROW_EXCEPTION(exception_T,ERROR_CODES::DATA_NOT_READY,"Data not ready - timeout waiting for data!");
-    }
-
-    // Read remaining data
-    data.append(socket.read(size - data.size()));
-
-    if(data.size() != size)
-    {
-        THROW_EXCEPTION(exception_T,ERROR_CODES::DATA_NOT_READY,"Data not ready - incomplete read!");
+        if(data.size() < size && !socket.waitForReadyRead(static_cast<int>(deadline.remainingTime())))
+        {
+            THROW_EXCEPTION(exception_T,ERROR_CODES::DATA_NOT_READY,"Data not ready - timeout waiting for data!");
+        }
     }
 
     return data;
