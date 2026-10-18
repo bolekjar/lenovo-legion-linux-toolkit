@@ -146,7 +146,13 @@ Application::Application(int &argc, char *argv[]) :
 }
 
 void Application::appRollBackImpl() noexcept
-{}
+{
+    /*
+     * Initialization failed, remove sockets
+     */
+    m_serverSocket->close();
+    m_serverSocketNotification->close();
+}
 
 void Application::appStartImpl()
 {}
@@ -174,8 +180,32 @@ void Application::appInitImpl(std::unique_ptr<ApplicationModulesHandler_T>)
     /*
      * Set signal handler
      */
-    bj::framework::Signal::SetSignalHandler(SIGINT,std::bind(&Application::signalEventHandler,this,std::placeholders::_1));
-    bj::framework::Signal::SetSignalHandler(SIGTERM,std::bind(&Application::signalEventHandler,this,std::placeholders::_1));
+    if(!bj::framework::Signal::SetSignalHandler(SIGINT,std::bind(&Application::signalEventHandler,this,std::placeholders::_1)) ||
+       !bj::framework::Signal::SetSignalHandler(SIGTERM,std::bind(&Application::signalEventHandler,this,std::placeholders::_1)))
+    {
+        THROW_EXCEPTION(exception_T,ERROR_CODES::SIGNAL_ERROR,std::string("Unable to set signal handler : ").append(strerror(errno)).c_str());
+    }
+
+
+    /*
+     * Start servers before touching the hardware, fail fast if sockets are not usable.
+     * Connections are accepted from the event loop, i.e. after the initialization is finished.
+     */
+
+    /*
+     * Start Server
+     */
+    connect(m_serverSocket,&QLocalServer::newConnection,this,&Application::newConnectionHandler);
+
+    startServer(m_serverSocket,QString(m_socketsPath).append(SOCKET_NAME).toStdString().c_str());
+
+
+    /*
+     * Start notification server
+     */
+    connect(m_serverSocketNotification,&QLocalServer::newConnection,this,&Application::newConnectionNotificationHandler);
+
+    startServer(m_serverSocketNotification,QString(m_socketsPath).append(SOCKET_NAME_NOTIFICATION).toStdString().c_str());
 
 
     /*
@@ -200,23 +230,6 @@ void Application::appInitImpl(std::unique_ptr<ApplicationModulesHandler_T>)
      * Load settings
      */
     DaemonSettingsManager::getInstance().loadAllSettings(m_dataProviderManager);
-
-    /*
-     * Start Server
-     */
-    connect(m_serverSocket,&QLocalServer::newConnection,this,&Application::newConnectionHandler);
-
-    startServer(m_serverSocket,QString(m_socketsPath).append(SOCKET_NAME).toStdString().c_str());
-
-
-    /*
-     * Start notification server
-     */
-    connect(m_serverSocketNotification,&QLocalServer::newConnection,this,&Application::newConnectionNotificationHandler);
-
-    startServer(m_serverSocketNotification,QString(m_socketsPath).append(SOCKET_NAME_NOTIFICATION).toStdString().c_str());
-
-
 }
 
 void Application::appStopImpl() noexcept
@@ -235,6 +248,11 @@ void Application::appStopImpl() noexcept
      * Stop Protocol processors
      */
     deleteProtocolProcessors<ProtocolProcessorBase,ProtocolProcessor>(m_protocolProcessor);
+
+    /*
+     * Event loop is not running anymore, process deferred deletes of protocol processors now
+     */
+    QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
 
     /*
      * Stop Server
@@ -464,8 +482,7 @@ void Application::startServer(QLocalServer *server, const char *name)
 
     if(!server->listen(name))
     {
-        LOG_E(QString("Unable to listen on ").append(name).append(" : ").append(server->errorString()));
-        return;
+        THROW_EXCEPTION(exception_T,ERROR_CODES::SOCKET_LISTEN_ERROR,QString("Unable to listen on ").append(name).append(" : ").append(server->errorString()).toStdString().c_str());
     }
 
     const struct group* grp = getgrnam(SOCKET_GROUP);

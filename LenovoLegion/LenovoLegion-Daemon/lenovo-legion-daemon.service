@@ -5,6 +5,8 @@ After=multi-user.target display-manager.target power-profiles-daemon.service
 [Service]
 Type=simple
 ExecStart=/opt/LenovoLegion/LenovoLegion-Daemon
+Restart=on-failure
+RestartSec=5
 RuntimeDirectory=lenovo-legion
 RuntimeDirectoryMode=0755
 

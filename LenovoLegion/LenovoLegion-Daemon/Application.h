@@ -36,7 +36,9 @@ public:
     enum ERROR_CODES : int {
         NOT_ROOT   = -1,
         SAVE_ERROR = -2,
-        SOCKET_DIR_ERROR = -3
+        SOCKET_DIR_ERROR = -3,
+        SIGNAL_ERROR = -4,
+        SOCKET_LISTEN_ERROR = -5
     };
 
 public:
@@ -92,6 +94,9 @@ private slots:
 
 private:
 
+    /*
+     * Unix signal handler, called from the event loop (see bj::framework::Signal)
+     */
     void signalEventHandler(int signal) noexcept;
 
     /*
@@ -100,7 +105,7 @@ private:
     bool prepareSocketDir() const;
 
     /*
-     * Start server socket accessible only by root and SOCKET_GROUP members
+     * Start server socket accessible only by root and SOCKET_GROUP members, throws on failure
      */
     void startServer(QLocalServer* server,const char* name);
 
@@ -123,15 +128,9 @@ private:
             // Stop the processor (closes socket, prevents new events)
             protocolProcessor->stop();
 
-            // Remove ALL pending events for this object from the event queue
-            // This prevents re-entrant calls during deletion
-            QCoreApplication::removePostedEvents(protocolProcessor);
-            
-            // Process only deferred delete events for child objects (like socket)
-            QCoreApplication::sendPostedEvents(protocolProcessor, QEvent::DeferredDelete);
-
-            // Now safe to delete
-            delete protocolProcessor;
+            // Deferred delete, safe also when called from a slot invoked by the processor itself.
+            // Outside of the event loop call QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete)
+            protocolProcessor->deleteLater();
             protocolProcessor = nullptr;
         }
     };
