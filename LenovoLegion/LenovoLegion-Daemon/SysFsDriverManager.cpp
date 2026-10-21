@@ -10,6 +10,8 @@
 #include <Core/LoggerHolder.h>
 
 #include <QSocketNotifier>
+#include <QDeadlineTimer>
+#include <QTimer>
 
 #include <SysFsDriver.h>
 
@@ -23,54 +25,21 @@ const  SysFsDriver::KernelEvent::Filter SysFsDriverManager::MODULE_SUBSYSTEM_EVE
 
 SysFsDriverManager::SysFsDriverManager(QObject *parent)
     : QObject{parent},
-    m_udev(udev_new()),
+    m_udev(nullptr),
     m_mon(nullptr),
     m_socketNotifier(nullptr)
 {
-    if(m_udev == nullptr)
-    {
-        THROW_EXCEPTION(exception_T,ERROR_CODES::UDEV_INITIALIZED_ERROR,"Udev new error !");
+    try {
+        createUdevMonitor();
+    } catch (...) {
+        destroyUdevMonitor();
+        throw;
     }
-
-    m_mon = udev_monitor_new_from_netlink(m_udev, SysFsDriver::KernelEvent::Filter::NAME.data());
-
-    if(m_mon == nullptr)
-    {
-        THROW_EXCEPTION(exception_T,ERROR_CODES::UDEV_INITIALIZED_ERROR,"Udev monitor error !");
-    }
-
-    if(udev_monitor_enable_receiving(m_mon) < 0)
-    {
-        THROW_EXCEPTION(exception_T,ERROR_CODES::UDEV_INITIALIZED_ERROR,"Udev monitor enable error !");
-    }
-
-    m_socketNotifier = new QSocketNotifier(udev_monitor_get_fd(m_mon), QSocketNotifier::Read, this);
-
-    connect(m_socketNotifier,&QSocketNotifier::activated,this,&SysFsDriverManager::onDataReceived);
-
-    /*
-     * Add module subsystem filter
-     */
-    addUdevMonitorFilter(MODULE_SUBSYSTEM_EVENT_FILTER);
 }
 
 SysFsDriverManager::~SysFsDriverManager()
 {
-    /* Disable socket notifier first to prevent any callbacks during destruction */
-    if (m_socketNotifier) {
-        m_socketNotifier->setEnabled(false);
-        // Qt will delete it automatically since it has 'this' as parent
-    }
-
-    /* free udev monitor */
-    if (m_mon) {
-        udev_monitor_unref(m_mon);
-    }
-
-    /* free udev */
-    if (m_udev) {
-        udev_unref(m_udev);
-    }
+    destroyUdevMonitor();
 
     cleanDrivers();
 }
@@ -159,6 +128,11 @@ const SysFsDriver::DescriptorsInVectorType &SysFsDriverManager::getDriverDescrip
 
 void SysFsDriverManager::processAllUdevEvents(int timeoutInMiliseconds)
 {
+    if (m_socketNotifier == nullptr) {
+        LOG_W(QString(__PRETTY_FUNCTION__) + ": Udev monitor is not available, events are not processed");
+        return;
+    }
+
     // Process ALL pending SocketNotifier events
     // Use poll to check if FD is ready
     pollfd pfd;
@@ -166,10 +140,14 @@ void SysFsDriverManager::processAllUdevEvents(int timeoutInMiliseconds)
     pfd.events = POLLIN;
     pfd.revents = 0;
 
+    // Timeout is for the whole processing, unrelated kernel events must not extend
+    // the wait, the event loop is blocked meanwhile. After the deadline only already
+    // pending events are processed.
+    const QDeadlineTimer deadline(timeoutInMiliseconds);
 
     while (true) {
         pfd.revents = 0;
-        int ret = poll(&pfd, 1, timeoutInMiliseconds);
+        int ret = poll(&pfd, 1, static_cast<int>(deadline.remainingTime()));
 
         // Break conditions:
         if (ret == 0) {
@@ -198,6 +176,11 @@ void SysFsDriverManager::processAllUdevEvents(int timeoutInMiliseconds)
         // Read any available data first (even if POLLHUP is also set)
         if (pfd.revents & POLLIN) {
             onDataReceived(pfd.fd);
+
+            // Monitor was recreated (or is not available) while processing, stop using the old fd
+            if (m_socketNotifier == nullptr || m_socketNotifier->socket() != pfd.fd) {
+                break;
+            }
         }
 
         // Check for hangup AFTER reading data
@@ -211,6 +194,10 @@ void SysFsDriverManager::processAllUdevEvents(int timeoutInMiliseconds)
 
 void SysFsDriverManager::onDataReceived(int)
 {
+    if (m_mon == nullptr) {
+        return;
+    }
+
     struct udev_device *dev = udev_monitor_receive_device(m_mon);
 
     if(dev != nullptr)
@@ -312,6 +299,12 @@ void SysFsDriverManager::onKernelEvent(const SysFsDriver::SubsystemEvent &event)
 
 void SysFsDriverManager::addUdevMonitorFilter(const SysFsDriver::KernelEvent::Filter &filter)
 {
+    // Monitor is not available (failed reconnect), filters of all drivers are added when it is recreated
+    if(m_mon == nullptr)
+    {
+        return;
+    }
+
     if(filter.m_subSystem.size() > 0)
     {
         if(udev_monitor_filter_add_match_subsystem_devtype(m_mon, filter.m_subSystem.toStdString().c_str(), nullptr) < 0)
@@ -321,19 +314,44 @@ void SysFsDriverManager::addUdevMonitorFilter(const SysFsDriver::KernelEvent::Fi
     }
 }
 
-void SysFsDriverManager::reconnectUdevMonitor()
+void SysFsDriverManager::createUdevMonitor()
 {
-    LOG_W(QString(__PRETTY_FUNCTION__) + ": Reconnecting udev monitor");
+    m_udev = udev_new();
+    if (m_udev == nullptr) {
+        THROW_EXCEPTION(exception_T, ERROR_CODES::UDEV_INITIALIZED_ERROR, "Udev new error !");
+    }
 
-    // Disconnect and delete old socket notifier
+    m_mon = udev_monitor_new_from_netlink(m_udev, SysFsDriver::KernelEvent::Filter::NAME.data());
+    if (m_mon == nullptr) {
+        THROW_EXCEPTION(exception_T, ERROR_CODES::UDEV_INITIALIZED_ERROR, "Udev monitor error !");
+    }
+
+    // Add module subsystem filter first
+    addUdevMonitorFilter(MODULE_SUBSYSTEM_EVENT_FILTER);
+
+    // Add driver-specific filters (empty during construction, drivers add them in initDrivers)
+    for (const auto& driver : m_drivers) {
+        addUdevMonitorFilter(driver.second->m_filter);
+    }
+
+    if (udev_monitor_enable_receiving(m_mon) < 0) {
+        THROW_EXCEPTION(exception_T, ERROR_CODES::UDEV_INITIALIZED_ERROR, "Udev monitor enable error !");
+    }
+
+    m_socketNotifier = new QSocketNotifier(udev_monitor_get_fd(m_mon), QSocketNotifier::Read, this);
+    connect(m_socketNotifier, &QSocketNotifier::activated, this, &SysFsDriverManager::onDataReceived);
+}
+
+void SysFsDriverManager::destroyUdevMonitor() noexcept
+{
+    // Notifier may be the sender of the currently running onDataReceived, delete it later
     if (m_socketNotifier) {
         m_socketNotifier->setEnabled(false);
         disconnect(m_socketNotifier, &QSocketNotifier::activated, this, &SysFsDriverManager::onDataReceived);
-        delete m_socketNotifier;
+        m_socketNotifier->deleteLater();
         m_socketNotifier = nullptr;
     }
 
-    // Clean up old monitor and udev
     if (m_mon) {
         udev_monitor_unref(m_mon);
         m_mon = nullptr;
@@ -343,50 +361,30 @@ void SysFsDriverManager::reconnectUdevMonitor()
         udev_unref(m_udev);
         m_udev = nullptr;
     }
+}
 
-    // Recreate udev
-    m_udev = udev_new();
-    if (m_udev == nullptr) {
-        LOG_E(QString(__PRETTY_FUNCTION__) + ": Failed to recreate udev");
+void SysFsDriverManager::reconnectUdevMonitor() noexcept
+{
+    LOG_W(QString(__PRETTY_FUNCTION__) + ": Reconnecting udev monitor");
 
-        THROW_EXCEPTION(exception_T, ERROR_CODES::UDEV_INITIALIZED_ERROR, "Udev new error !");
+    destroyUdevMonitor();
+
+    try {
+        createUdevMonitor();
+
+        LOG_W(QString(__PRETTY_FUNCTION__) + ": Udev monitor reconnected successfully");
+    } catch (const exception_T& ex) {
+        // Keep consistent state (no monitor), kernel events are not received until the next attempt
+        destroyUdevMonitor();
+
+        LOG_E(QString(__PRETTY_FUNCTION__) + ": Failed to reconnect udev monitor (" + ex.descriptionInfo().value().c_str() + "), retry in " + QString::number(UDEV_RECONNECT_RETRY_MS) + " ms");
+
+        QTimer::singleShot(UDEV_RECONNECT_RETRY_MS, this, [this] {
+            if (m_mon == nullptr) {
+                reconnectUdevMonitor();
+            }
+        });
     }
-
-    // Recreate monitor
-    m_mon = udev_monitor_new_from_netlink(m_udev, SysFsDriver::KernelEvent::Filter::NAME.data());
-    if (m_mon == nullptr) {
-        LOG_E(QString(__PRETTY_FUNCTION__) + ": Failed to recreate udev monitor");
-        udev_unref(m_udev);
-        m_udev = nullptr;
-
-        THROW_EXCEPTION(exception_T, ERROR_CODES::UDEV_INITIALIZED_ERROR, "Udev monitor error !");
-    }
-
-    // Re-add all filters
-    // Add module subsystem filter first
-    addUdevMonitorFilter(MODULE_SUBSYSTEM_EVENT_FILTER);
-
-    // Add driver-specific filters
-    for (const auto& driver : m_drivers) {
-        addUdevMonitorFilter(driver.second->m_filter);
-    }
-
-    // Enable receiving
-    if (udev_monitor_enable_receiving(m_mon) < 0) {
-        LOG_E(QString(__PRETTY_FUNCTION__) + ": Failed to enable receiving on new monitor");
-        udev_monitor_unref(m_mon);
-        udev_unref(m_udev);
-        m_mon = nullptr;
-        m_udev = nullptr;
-
-        THROW_EXCEPTION(exception_T, ERROR_CODES::UDEV_INITIALIZED_ERROR, "Udev monitor enable error !");
-    }
-
-    // Create new socket notifier
-    m_socketNotifier = new QSocketNotifier(udev_monitor_get_fd(m_mon), QSocketNotifier::Read, this);
-    connect(m_socketNotifier, &QSocketNotifier::activated, this, &SysFsDriverManager::onDataReceived);
-
-    LOG_W(QString(__PRETTY_FUNCTION__) + ": Udev monitor reconnected successfully");
 }
 
 }

@@ -86,9 +86,25 @@ signals:
 private:
 
     void addUdevMonitorFilter(const SysFsDriver::KernelEvent::Filter& filter);
-    void reconnectUdevMonitor();
+
+    /*
+     * Create udev, monitor (with all filters) and socket notifier, throws on failure
+     */
+    void createUdevMonitor();
+
+    /*
+     * Release udev, monitor and socket notifier, safe on partially created monitor
+     */
+    void destroyUdevMonitor() noexcept;
+
+    /*
+     * Recreate broken udev monitor, does not throw, on failure retries after UDEV_RECONNECT_RETRY_MS
+     */
+    void reconnectUdevMonitor() noexcept;
 
 private:
+
+    static constexpr int UDEV_RECONNECT_RETRY_MS = 5000;
 
     struct udev         *m_udev;
     struct udev_monitor *m_mon;
