@@ -11,6 +11,7 @@
 #include <Core/LoggerHolder.h>
 
 #include <QRandomGenerator>
+#include <QDeadlineTimer>
 
 #include <thread>
 
@@ -44,16 +45,22 @@ void LenovoRGBController::DeviceUpdateProfile()
 {
     LOG_T(QString(__PRETTY_FUNCTION__) + ": Updating active profile on device");
 
-    auto waitForApplyProfileOnController = [this](int maxWaitTimeinMicros = 1000000) {
+    /*
+     * Wait until the keyboard switches the profile. Deadline is measured in real time,
+     * each check is a HID round trip and the daemon event loop is blocked meanwhile.
+     */
+    auto waitForApplyProfileOnController = [this](std::chrono::milliseconds maxWaitTime = std::chrono::milliseconds(1000)) {
+        const QDeadlineTimer deadline(maxWaitTime);
+
         while(fromControlerProfile(controller->getCurrentProfileId()) != m_profiles.active)
         {
-            std::this_thread::sleep_for(std::chrono::microseconds(100));
-            maxWaitTimeinMicros -= 100;
-
-            if(maxWaitTimeinMicros <= 0)
+            if(deadline.hasExpired())
             {
+                LOG_W(QString(__PRETTY_FUNCTION__) + QString(": Timeout waiting for profile switch to profile %1").arg(m_profiles.active));
                 break;
             }
+
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
     };
 

@@ -12,6 +12,7 @@
 #include <QSocketNotifier>
 #include <QDeadlineTimer>
 #include <QTimer>
+#include <QScopeGuard>
 
 #include <SysFsDriver.h>
 
@@ -202,6 +203,9 @@ void SysFsDriverManager::onDataReceived(int)
 
     if(dev != nullptr)
     {
+        // Release device also when a driver handler throws
+        const auto unrefDevice = qScopeGuard([dev] { udev_device_unref(dev); });
+
         SysFsDriver::KernelEvent::Event event = {
             .m_action       = udev_device_get_action(dev)   ,
             .m_driver       = udev_device_get_driver(dev)   ,
@@ -221,8 +225,18 @@ void SysFsDriverManager::onDataReceived(int)
                 {
                     if(event.m_action == "add")
                     {
-                        driver.second->init();
-                        driver.second->validate();
+                        /*
+                         * Failure of one driver must not stop the others, exception from this slot
+                         * would also disconnect clients (Application::notify)
+                         */
+                        try {
+                            driver.second->init();
+                            driver.second->validate();
+                        } catch (const bj::framework::exception::Exception& ex) {
+                            LOG_E(QString(__PRETTY_FUNCTION__) + ": Driver " + driver.second->m_name + " initialization failed after module load (" + ex.descriptionInfo().value().c_str() + "), driver is not available");
+                            driver.second->clean();
+                            continue;
+                        }
 
                         emit moduleSubsystem({
                             .m_moduleName = driver.second->m_module,
@@ -257,8 +271,6 @@ void SysFsDriverManager::onDataReceived(int)
                 }
             }
         }
-
-        udev_device_unref(dev);
     }
     else
     {

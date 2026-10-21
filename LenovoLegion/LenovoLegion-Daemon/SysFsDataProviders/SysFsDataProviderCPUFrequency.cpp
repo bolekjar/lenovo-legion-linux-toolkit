@@ -31,10 +31,16 @@ void SysFsDataProviderCPUFrequency::init()
 
         m_lastCpuFrequency = readCPPFrequency();
 
-        if (nestedDesc != nullptr) {
+        if (nestedDesc != nullptr && !cpuXlist.cpuList().empty()) {
+            /*
+             * File names are the same for all CPUs, take them from the first one
+             */
+            const std::string scalingMinFreqName = cpuXlist.cpuList().front().m_freq.m_cpuScalingMinFreq.filename().string();
+            const std::string scalingMaxFreqName = cpuXlist.cpuList().front().m_freq.m_cpuScalingMaxFreq.filename().string();
+
             for (int i = 0; i < nestedDesc->field_count(); ++i) {
                 const auto* field = nestedDesc->field(i);
-                if (field->name() != cpuXlist.cpuList().at(i).m_freq.m_cpuScalingMinFreq.filename() && field->name() != cpuXlist.cpuList().at(i).m_freq.m_cpuScalingMaxFreq.filename()) {
+                if (field->name() != scalingMinFreqName && field->name() != scalingMaxFreqName) {
                     m_differencer.IgnoreField(field);
                 }
                 else
@@ -134,7 +140,7 @@ QByteArray SysFsDataProviderCPUFrequency::deserializeAndSetData(const QByteArray
     return {};
 }
 
-legion::messages::CPUFrequency SysFsDataProviderCPUFrequency::readCPPFrequency() const
+legion::messages::CPUFrequency SysFsDataProviderCPUFrequency::readCPPFrequency(bool scalingLimitsOnly) const
 {
     legion::messages::CPUFrequency         cpuFrequency;
 
@@ -156,6 +162,14 @@ legion::messages::CPUFrequency SysFsDataProviderCPUFrequency::readCPPFrequency()
                     break;
                 }
 
+                cpux->set_scaling_min_freq(getData(cpuXlist.cpuList().at(i).m_freq.m_cpuScalingMinFreq).toUInt());
+                cpux->set_scaling_max_freq(getData(cpuXlist.cpuList().at(i).m_freq.m_cpuScalingMaxFreq).toUInt());
+
+                if(scalingLimitsOnly)
+                {
+                    continue;
+                }
+
                 if(cpuXlist.cpuList().at(i).m_freq.m_cpuBaseFreq.has_value())
                 {
                     cpux->set_base_freq(getData(cpuXlist.cpuList().at(i).m_freq.m_cpuBaseFreq.value()).toUInt());
@@ -164,9 +178,6 @@ legion::messages::CPUFrequency SysFsDataProviderCPUFrequency::readCPPFrequency()
                 cpux->set_min_freq(getData(cpuXlist.cpuList().at(i).m_freq.m_cpuInfoMinFreq).toUInt());
                 cpux->set_max_freq(getData(cpuXlist.cpuList().at(i).m_freq.m_cpuInfoMaxFreq).toUInt());
                 cpux->set_scaling_cur_freq(getData(cpuXlist.cpuList().at(i).m_freq.m_cpuScalingCurFreq).toUInt());
-                cpux->set_scaling_min_freq(getData(cpuXlist.cpuList().at(i).m_freq.m_cpuScalingMinFreq).toUInt());
-                cpux->set_scaling_max_freq(getData(cpuXlist.cpuList().at(i).m_freq.m_cpuScalingMaxFreq).toUInt());
-
 
                 cpux->set_core_id(getData(cpuXlist.cpuList().at(i).m_topology.value().m_coreId).toUInt());
                 cpux->set_die_id(getData(cpuXlist.cpuList().at(i).m_topology.value().m_dieId).toUInt());
@@ -195,7 +206,8 @@ void SysFsDataProviderCPUFrequency::timerEvent(QTimerEvent *event)
 {
     if(event->timerId() == m_timerId)
     {
-        legion::messages::CPUFrequency cpuFrequency = readCPPFrequency();
+        // Differencer tracks only scaling limits, other fields are not read
+        legion::messages::CPUFrequency cpuFrequency = readCPPFrequency(true);
 
         if (!m_differencer.Compare(cpuFrequency, m_lastCpuFrequency))
         {

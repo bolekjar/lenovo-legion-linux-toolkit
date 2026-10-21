@@ -10,6 +10,10 @@ DataProviderNvidiaNvml::DataProviderNvidiaNvml(QObject* parent)  : DataProvider(
     m_maxGraphicsClock(0),
     m_maxSmClock(0),
     m_maxMemClock(0),
+    m_minGpuOffset(0),
+    m_minMemOffset(0),
+    m_maxGpuOffset(0),
+    m_maxMemOffset(0),
     m_device(nullptr)
 {
 
@@ -228,6 +232,23 @@ QByteArray DataProviderNvidiaNvml::deserializeAndSetData(const QByteArray &data)
         return {};
     }
 
+    /*
+     * Validate request before anything is applied to the device.
+     * Invalid request is only logged and nothing is applied (no exception, it would disconnect the client).
+     * If the range was not read from the device, it is 0 and only zero offset is allowed.
+     */
+    if(nvmlData.has_gpu_offset() && (nvmlData.gpu_offset().value() < m_minGpuOffset || nvmlData.gpu_offset().value() > m_maxGpuOffset))
+    {
+        LOG_E(QString(__PRETTY_FUNCTION__) + QString(" - GPU clock offset %1 is out of range <%2,%3>, request is ignored !").arg(nvmlData.gpu_offset().value()).arg(m_minGpuOffset).arg(m_maxGpuOffset));
+        return {};
+    }
+
+    if(nvmlData.has_memory_offset() && (nvmlData.memory_offset().value() < m_minMemOffset || nvmlData.memory_offset().value() > m_maxMemOffset))
+    {
+        LOG_E(QString(__PRETTY_FUNCTION__) + QString(" - Memory clock offset %1 is out of range <%2,%3>, request is ignored !").arg(nvmlData.memory_offset().value()).arg(m_minMemOffset).arg(m_maxMemOffset));
+        return {};
+    }
+
     if(nvmlData.has_gpu_offset())
     {
         nvmlReturn_t result;
@@ -239,7 +260,7 @@ QByteArray DataProviderNvidiaNvml::deserializeAndSetData(const QByteArray &data)
 
         result = nvmlDeviceSetClockOffsets(m_device, &gpuClkOffset);
         if (NVML_SUCCESS != result) {
-            LOG_D(QString("Failed to set GPU clock offset: %1").arg(nvmlErrorString(result)));
+            LOG_E(QString("Failed to set GPU clock offset: %1").arg(nvmlErrorString(result)));
         }
     }
 
@@ -257,7 +278,7 @@ QByteArray DataProviderNvidiaNvml::deserializeAndSetData(const QByteArray &data)
 
         result = nvmlDeviceSetClockOffsets(m_device, &memClkOffset);
         if (NVML_SUCCESS != result) {
-            LOG_D(QString("Failed to set Memory clock offset: %1").arg(nvmlErrorString(result)));
+            LOG_E(QString("Failed to set Memory clock offset: %1").arg(nvmlErrorString(result)));
         }
     }
 

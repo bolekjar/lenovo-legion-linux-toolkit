@@ -101,11 +101,21 @@ void Application::appStopImpl() noexcept
     disconnect(ApplicationSettings::instance(), &ApplicationSettings::themeChanged,
                this, &Application::onThemeChanged);
     
-    m_aboutWindow->close();
-    m_mainWindow->close();
-
     m_trayIcon->setVisible(false);
     m_trayIcon->contextMenu()->clear();
+
+    /*
+     * Context menu is a child of the main window, detach it before the window is destroyed
+     */
+    m_trayIcon->setContextMenu(nullptr);
+
+    /*
+     * Destroy windows before DataProviderManager cleanup. Widgets (e.g. HWMonitoring) wait
+     * in destructor for their pending async requests, which use DataProvider and
+     * the communication thread.
+     */
+    m_aboutWindow.reset();
+    m_mainWindow.reset();
 
     m_dataProviderManager->cleanup();
 }

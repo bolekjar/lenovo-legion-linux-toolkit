@@ -247,6 +247,32 @@ namespace LenovoLegionDaemon {
             return {};
         }
 
+        /*
+         * Validate request before anything is applied to the device.
+         * Invalid request is only logged and nothing is applied (no exception, it would disconnect the client).
+         */
+        if(rgbController.set_request_flags() & legion::messages::RGBControllerSetRequest::SetRequestFlags::RGBControllerSetRequest_SetRequestFlags_SET_REQUEST_PROFILE)
+        {
+            const auto profiles = m_rgbController->GetProfiles();
+
+            if(rgbController.profile().current() < profiles.min || rgbController.profile().current() > profiles.max)
+            {
+                LOG_E(QString(__PRETTY_FUNCTION__) + QString(" - Profile %1 is out of range <%2,%3>, request is ignored !").arg(rgbController.profile().current()).arg(profiles.min).arg(profiles.max));
+                return {};
+            }
+        }
+
+        if(rgbController.set_request_flags() & legion::messages::RGBControllerSetRequest::SetRequestFlags::RGBControllerSetRequest_SetRequestFlags_SET_REQUEST_BRITNESS)
+        {
+            const auto brightnesses = m_rgbController->GetBrightness();
+
+            if(rgbController.britness().current() < brightnesses.min || rgbController.britness().current() > brightnesses.max)
+            {
+                LOG_E(QString(__PRETTY_FUNCTION__) + QString(" - Brightness %1 is out of range <%2,%3>, request is ignored !").arg(rgbController.britness().current()).arg(brightnesses.min).arg(brightnesses.max));
+                return {};
+            }
+        }
+
         // Apply profile if changed
         if(rgbController.set_request_flags() & legion::messages::RGBControllerSetRequest::SetRequestFlags::RGBControllerSetRequest_SetRequestFlags_SET_REQUEST_PROFILE)
         {

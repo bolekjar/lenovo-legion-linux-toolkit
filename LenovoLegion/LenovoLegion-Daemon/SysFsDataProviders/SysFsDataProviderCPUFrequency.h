@@ -38,7 +38,11 @@ public:
 
 private:
 
-    legion::messages::CPUFrequency readCPPFrequency() const;
+    /*
+     * scalingLimitsOnly - read only online, scaling_min_freq and scaling_max_freq (fields tracked by m_differencer),
+     *                     used by the periodic check, structure of the message is the same as for the full read
+     */
+    legion::messages::CPUFrequency readCPPFrequency(bool scalingLimitsOnly = false) const;
 
     void timerEvent(QTimerEvent *event) override;
 
