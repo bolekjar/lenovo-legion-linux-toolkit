@@ -46,49 +46,44 @@ void PowerProfileControl::refresh()
     renderData();
 }
 
-void PowerProfileControl::on_radioButton_PPPerformance_clicked()
+void PowerProfileControl::setPowerProfile(legion::messages::PowerProfile::Profiles profile)
 {
     legion::messages::PowerProfile data;
 
-    data.set_current_value(legion::messages::PowerProfile::POWER_PROFILE_PERFORMANCE);
+    data.set_current_value(profile);
 
     m_dataProvider->setDataMessage(LenovoLegionDaemon::SysFsDataProviderPowerProfile::dataType,data);
+
+    /*
+     * Re-read the real state, if the write fails no thermal mode event comes
+     * and the selected button would not match the hardware
+     */
+    refresh();
+}
+
+void PowerProfileControl::on_radioButton_PPPerformance_clicked()
+{
+    setPowerProfile(legion::messages::PowerProfile::POWER_PROFILE_PERFORMANCE);
 }
 
 void PowerProfileControl::on_radioButton_PPCustom_clicked()
 {
-    legion::messages::PowerProfile data;
-
-    data.set_current_value(legion::messages::PowerProfile::POWER_PROFILE_CUSTOM);
-
-    m_dataProvider->setDataMessage(LenovoLegionDaemon::SysFsDataProviderPowerProfile::dataType,data);
+    setPowerProfile(legion::messages::PowerProfile::POWER_PROFILE_CUSTOM);
 }
 
 void PowerProfileControl::on_radioButton_PPBalanced_clicked()
 {
-    legion::messages::PowerProfile data;
-
-    data.set_current_value(legion::messages::PowerProfile::POWER_PROFILE_BALANCED);
-
-    m_dataProvider->setDataMessage(LenovoLegionDaemon::SysFsDataProviderPowerProfile::dataType,data);
+    setPowerProfile(legion::messages::PowerProfile::POWER_PROFILE_BALANCED);
 }
 
 void PowerProfileControl::on_radioButton_PPQuiet_clicked()
 {
-    legion::messages::PowerProfile data;
-
-    data.set_current_value(legion::messages::PowerProfile::POWER_PROFILE_QUIET);
-
-    m_dataProvider->setDataMessage(LenovoLegionDaemon::SysFsDataProviderPowerProfile::dataType,data);
+    setPowerProfile(legion::messages::PowerProfile::POWER_PROFILE_QUIET);
 }
 
 void PowerProfileControl::on_radioButton_PPExtreme_clicked()
 {
-    legion::messages::PowerProfile data;
-
-    data.set_current_value(legion::messages::PowerProfile::POWER_PROFILE_EXTREME);
-
-    m_dataProvider->setDataMessage(LenovoLegionDaemon::SysFsDataProviderPowerProfile::dataType,data);
+    setPowerProfile(legion::messages::PowerProfile::POWER_PROFILE_EXTREME);
 }
 
 void PowerProfileControl::renderData()

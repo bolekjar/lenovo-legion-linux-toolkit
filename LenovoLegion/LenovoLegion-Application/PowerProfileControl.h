@@ -56,6 +56,11 @@ private:
 
     void renderData();
 
+    /*
+     * Send power profile to the daemon and re-read the real state (write may fail, then no thermal mode event comes)
+     */
+    void setPowerProfile(legion::messages::PowerProfile::Profiles profile);
+
     Ui::PowerProfileControl *ui;
 
     DataProvider * m_dataProvider;
