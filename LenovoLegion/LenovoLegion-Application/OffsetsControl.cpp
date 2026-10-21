@@ -64,7 +64,7 @@ const QMap<QString, legion::messages::CpuIntelMSR> OffsetsControl::CPU_VOLTAGE_P
 
 const QMap<QString, legion::messages::NvidiaNvml> OffsetsControl::GPU_CLOCK_PRESETS{
     {"None",{}},
-    {"Mild Overclock",[](){
+    {"Conservative",[](){
             legion::messages::NvidiaNvml clock;
 
             clock.mutable_gpu_offset()->set_value(100);
@@ -72,7 +72,7 @@ const QMap<QString, legion::messages::NvidiaNvml> OffsetsControl::GPU_CLOCK_PRES
 
             return clock;
         }(),},
-    {"Moderate Overclock",[](){
+    {"Moderate",[](){
          legion::messages::NvidiaNvml clock;
 
          clock.mutable_gpu_offset()->set_value(150);
@@ -80,7 +80,7 @@ const QMap<QString, legion::messages::NvidiaNvml> OffsetsControl::GPU_CLOCK_PRES
 
          return clock;
      }()},
-    {"Extreme Overclock",[](){
+    {"Aggressive",[](){
          legion::messages::NvidiaNvml clock;
 
          clock.mutable_gpu_offset()->set_value(200);
