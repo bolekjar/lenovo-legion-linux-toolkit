@@ -41,6 +41,10 @@ public:
 
 public slots:
 
+    /*
+     * Returns {true, response} on success. On failure returns {false, error}, error is the UTF-8 description
+     * from the daemon (ERROR_RESPONSE) or empty for other failures (timeout, invalid message, ...).
+     */
     std::pair<bool,QByteArray> getDataRequest(quint8 dataType, const QByteArray& data = {}) noexcept;
     std::pair<bool,QByteArray> setDataRequest(quint8 dataType, const QByteArray& data) noexcept;
 

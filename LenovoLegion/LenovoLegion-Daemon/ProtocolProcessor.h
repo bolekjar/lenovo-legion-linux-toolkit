@@ -8,6 +8,7 @@
 #pragma once
 
 #include "ProtocolProcessorBase.h"
+#include "Message.h"
 
 #include <Core/ExceptionBuilder.h>
 
@@ -40,6 +41,14 @@ private:
 
     virtual void disconnectedHandler() override;
     virtual void readyReadHandler() override;
+
+    /*
+     * Process GET/SET request. Errors of the data provider are sent to the client
+     * as ERROR_RESPONSE, the connection stays open.
+     */
+    void processRequest(const MessageHeader& header,const QByteArray& data);
+
+    void sendMessage(MessageHeader::Type type,quint8 dataType,const QByteArray& payload);
 
 private:
 

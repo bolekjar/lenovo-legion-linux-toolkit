@@ -206,4 +206,5 @@ LIBS += -L$${CUDA_PATH}/lib64 -l$${PROJECT_LIBS_NAME} -ludev -lnvidia-ml
 DISTFILES +=  \
     lenovo-legion-daemon.service \
     lenovo-legion.sysusers \
-    lenovo-legion-setup.sh
+    lenovo-legion-setup.sh \
+    ModulesDesign.md

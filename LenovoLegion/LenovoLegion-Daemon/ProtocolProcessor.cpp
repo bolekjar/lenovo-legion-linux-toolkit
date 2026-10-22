@@ -72,60 +72,14 @@ void ProtocolProcessor::readyReadHandler()
         LOG_T(QString("Message header was readed: header.m_type= ").append(QString::number(header.m_type)).append(", header.m_dataType=").append(QString::number(header.m_dataType)).append(", header.m_dataLength=").append(QString::number(header.m_dataLength)));
 
         switch (header.m_type) {
-        case MessageHeader::GET_DATA_REQUEST: {
-            if(data.size() > 0)
-            {
-                QByteArray reponse = m_dataProviderManager->getDataProvider(header.m_dataType).serializeAndGetData(data);
-                m_clientSocket->write(
-                    ProtocolParser::parseMessage(
-                        MessageHeader {
-                            .m_type         =  MessageHeader::GET_DATA_RESPONSE,
-                            .m_dataType     =  header.m_dataType,
-                            .m_dataLength   = reponse.length()
-                        },
-                        reponse
-                        )
-                    );
-            }
-            else
-            {
-                QByteArray reponse = m_dataProviderManager->getDataProvider(header.m_dataType).serializeAndGetData();
-                m_clientSocket->write(
-                    ProtocolParser::parseMessage(
-                        MessageHeader {
-                            .m_type         =  MessageHeader::GET_DATA_RESPONSE,
-                            .m_dataType     =  header.m_dataType,
-                            .m_dataLength   = reponse.length()
-                        },
-                        reponse
-                        )
-                    );
-            }
-        }
-            break;
-        case MessageHeader::SET_DATA_REQUEST: {
-            QByteArray reponse = m_dataProviderManager->getDataProvider(header.m_dataType).deserializeAndSetData(data);
-            m_clientSocket->write(
-                ProtocolParser::parseMessage(
-                    MessageHeader {
-                        .m_type         =  MessageHeader::SET_DATA_RESPONSE,
-                        .m_dataType     =  header.m_dataType,
-                        .m_dataLength   = reponse.length()
-                    },
-                    reponse
-                    )
-                );
-        }
+        case MessageHeader::GET_DATA_REQUEST:
+        case MessageHeader::SET_DATA_REQUEST:
+            processRequest(header,data);
             break;
         case MessageHeader::GET_DATA_RESPONSE:
-
-            break;
-
         case MessageHeader::SET_DATA_RESPONSE:
-
-            break;
         case MessageHeader::NOTIFICATION:
-
+        case MessageHeader::ERROR_RESPONSE:
             break;
         default:
                 LOG_W(QString("Unkonow message type(").append(QString::number(header.m_type)).append(")"));
@@ -134,6 +88,68 @@ void ProtocolProcessor::readyReadHandler()
 
         LOG_T(QString("Message received: done !"));
     }));
+}
+
+void ProtocolProcessor::processRequest(const MessageHeader &header, const QByteArray &data)
+{
+    QString error;
+
+    /*
+     * Exception must not leave this method, it would go through Qt signal/slot code
+     * and Application::notify would disconnect the client
+     */
+    try {
+        DataProvider& dataProvider = m_dataProviderManager->getDataProvider(header.m_dataType);
+
+        if(header.m_type == MessageHeader::GET_DATA_REQUEST)
+        {
+            sendMessage(MessageHeader::GET_DATA_RESPONSE,header.m_dataType,data.size() > 0 ? dataProvider.serializeAndGetData(data) : dataProvider.serializeAndGetData());
+        }
+        else
+        {
+            sendMessage(MessageHeader::SET_DATA_RESPONSE,header.m_dataType,dataProvider.deserializeAndSetData(data));
+        }
+
+        return;
+    }
+    catch(const bj::framework::exception::Exception& ex)
+    {
+        LOG_E(bj::framework::exception::ExceptionBuilder::print(ex).c_str());
+        error = QString::fromStdString(ex.descriptionInfo().value());
+
+        if(error.isEmpty())
+        {
+            error = "Unknown error !";
+        }
+    }
+    catch(const std::exception& ex)
+    {
+        LOG_E(bj::framework::exception::ExceptionBuilder::print(__FILE__,__PRETTY_FUNCTION__,__LINE__,1,ex).c_str());
+        error = QString::fromUtf8(ex.what());
+    }
+    catch(...)
+    {
+        LOG_E(bj::framework::exception::ExceptionBuilder::print(__FILE__,__PRETTY_FUNCTION__,__LINE__,1,"Unknown error !").c_str());
+        error = "Unknown error !";
+    }
+
+    LOG_E(QString("Request type=").append(QString::number(header.m_type)).append(", dataType=").append(QString::number(header.m_dataType)).append(" failed, sending error response: ").append(error));
+
+    sendMessage(MessageHeader::ERROR_RESPONSE,header.m_dataType,error.toUtf8());
+}
+
+void ProtocolProcessor::sendMessage(MessageHeader::Type type, quint8 dataType, const QByteArray &payload)
+{
+    m_clientSocket->write(
+        ProtocolParser::parseMessage(
+            MessageHeader {
+                .m_type         = type,
+                .m_dataType     = dataType,
+                .m_dataLength   = payload.length()
+            },
+            payload
+            )
+        );
 }
 
 }

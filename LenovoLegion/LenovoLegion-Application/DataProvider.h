@@ -27,7 +27,8 @@ public:
     enum ERROR_CODES : int {
         PARSER_ERROR     = 1,
         SERIALIZE_ERROR  = 2,
-        INVOKE_ERROR     = 3
+        INVOKE_ERROR     = 3,
+        DAEMON_ERROR     = 4
     };
 
 
@@ -60,7 +61,7 @@ public:
         }
 
         if(responseBytes.first == false) {
-            THROW_EXCEPTION(exception_T, ERROR_CODES::PARSER_ERROR, "Response is not valid");
+            throwRequestError(responseBytes.second);
         }
 
         if (!msg.ParseFromArray(responseBytes.second.constData(), responseBytes.second.size())) {
@@ -113,13 +114,24 @@ public:
         }
 
         if(resultBytes.first == false) {
-            THROW_EXCEPTION(exception_T, ERROR_CODES::PARSER_ERROR, "Response is not valid");
+            throwRequestError(resultBytes.second);
         }
 
         return resultBytes.second;
     }
 
 private:
+
+    /*
+     * Failed request, error is the description from the daemon (ERROR_RESPONSE) or empty
+     */
+    [[noreturn]] static void throwRequestError(const QByteArray& error) {
+        if(!error.isEmpty()) {
+            THROW_EXCEPTION(exception_T, ERROR_CODES::DAEMON_ERROR, QString::fromUtf8(error).toStdString().c_str());
+        }
+
+        THROW_EXCEPTION(exception_T, ERROR_CODES::PARSER_ERROR, "Response is not valid");
+    }
 
     ProtocolProcessor& m_protocolProcessor;
 };

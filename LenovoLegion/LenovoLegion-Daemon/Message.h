@@ -25,7 +25,10 @@ struct __attribute__ ((__packed__)) MessageHeader {
         SET_DATA_RESPONSE  = 3,
 
         //Daemon ----> GUI, no reponse
-        NOTIFICATION       = 4
+        NOTIFICATION       = 4,
+
+        //Daemon ----> GUI, response to GET/SET request which failed, payload is UTF-8 error description
+        ERROR_RESPONSE     = 5
     };
 
 

@@ -39,6 +39,12 @@ std::pair<bool,QByteArray> ProtocolProcessor::getDataRequest(quint8 dataType, co
 
         auto msg = receiveMessage(response);
 
+        if(msg.m_type == LenovoLegionDaemon::MessageHeader::ERROR_RESPONSE)
+        {
+            LOG_E(QString("Daemon get data request error (dataType=").append(QString::number(dataType)).append("): ").append(QString::fromUtf8(response)));
+            return std::make_pair(false,response);
+        }
+
         if(msg.m_type != LenovoLegionDaemon::MessageHeader::GET_DATA_RESPONSE)
         {
             THROW_EXCEPTION(exception_T,ERROR_CODES::INVALID_MESSAGE,"Invalid get data request response message");
@@ -68,6 +74,13 @@ std::pair<bool,QByteArray> ProtocolProcessor::setDataRequest(quint8 dataType, co
                     },data);
 
         auto msg = receiveMessage(dataResponse);
+
+        if(msg.m_type == LenovoLegionDaemon::MessageHeader::ERROR_RESPONSE)
+        {
+            LOG_E(QString("Daemon set data request error (dataType=").append(QString::number(dataType)).append("): ").append(QString::fromUtf8(dataResponse)));
+            return std::make_pair(false,dataResponse);
+        }
+
         if(msg.m_type != LenovoLegionDaemon::MessageHeader::SET_DATA_RESPONSE)
         {
             THROW_EXCEPTION(exception_T,ERROR_CODES::INVALID_MESSAGE,"Invalid set data request response message");
