@@ -6,7 +6,6 @@
  *   Jaroslav Bolek <jaroslav.bolek@gmail.com>
  */
 #include "DataProviderManager.h"
-#include "SysFsDriverManager.h"
 
 
 #include <Core/LoggerHolder.h>
@@ -16,9 +15,8 @@
 namespace  LenovoLegionDaemon {
 
 
-DataProviderManager::DataProviderManager(SysFsDriverManager* sysFsDriverManager,QObject* parent)  :
-    QObject(parent),
-    m_sysFsDriverManager(sysFsDriverManager)
+DataProviderManager::DataProviderManager(QObject* parent)  :
+    QObject(parent)
 {}
 
 void DataProviderManager::addDataProvider(DataProvider *driver)
@@ -38,6 +36,8 @@ void DataProviderManager::initDataProviders()
 {
     for(auto& driver : m_dataProviders)
     {
+        connect(driver.second,&DataProvider::notification,this,&DataProviderManager::providerNotification);
+
         driver.second->init();
         connect(driver.second,&DataProvider::dataProviderEvent,this,&DataProviderManager::dataProviderEventHandler);
     }
@@ -68,14 +68,6 @@ void DataProviderManager::forEachDataProviderDo(const std::function<void (DataPr
     for(const auto& driver : m_dataProviders)
     {
         func(*driver.second);
-    }
-}
-
-void DataProviderManager::kernelEventHandler(const SysFsDriver::SubsystemEvent &event)
-{
-    for(auto& driver : m_dataProviders)
-    {
-        driver.second->kernelEventHandler(event);
     }
 }
 

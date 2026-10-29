@@ -5,8 +5,7 @@
 
 #include "DataProvider.h"
 
-#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderIntelMSR.h"
-#include "../LenovoLegion-Daemon/DataProviders/DataProviderNvidiaNvml.h"
+#include "../LenovoLegion-PrepareBuild/MessageRegistry.pb.h"
 
 #include <QAbstractItemView>
 
@@ -437,7 +436,7 @@ void OffsetsControl::on_pushButton_cpuVoltageApply_clicked()
     if(!ui->horizontalSlider_cpuVoltageAnalogIO->isHidden())
         cpuIntelMSR.mutable_analogio()->set_offset(ui->horizontalSlider_cpuVoltageAnalogIO->value() * 1000);
 
-    m_dataProvider->setDataMessage(LenovoLegionDaemon::SysFsDataProviderIntelMSR::dataType,cpuIntelMSR);
+    m_dataProvider->setDataMessage(legion::messages::DataType::CPU_INTEL_MSR,cpuIntelMSR);
 
     readCpuIntelMsrData();
 
@@ -514,7 +513,7 @@ void OffsetsControl::markChanges()
 
 void OffsetsControl::readCpuIntelMsrData()
 {
-    m_cpuIntelMSRData = m_dataProvider->getDataMessage<legion::messages::CpuIntelMSR> (LenovoLegionDaemon::SysFsDataProviderIntelMSR::dataType);
+    m_cpuIntelMSRData = m_dataProvider->getDataMessage<legion::messages::CpuIntelMSR> (legion::messages::DataType::CPU_INTEL_MSR);
 
     /*
      * Normalize => mV
@@ -542,7 +541,7 @@ void OffsetsControl::readCpuIntelMsrData()
 
 void OffsetsControl::readGpuNvmlData()
 {
-    m_gpuNvmlData = m_dataProvider->getDataMessage<legion::messages::NvidiaNvml>(LenovoLegionDaemon::DataProviderNvidiaNvml::dataType);
+    m_gpuNvmlData = m_dataProvider->getDataMessage<legion::messages::NvidiaNvml>(legion::messages::DataType::NVIDIA_NWML);
 }
 
 void OffsetsControl::on_comboBox_cpuVoltagePreset_currentTextChanged(const QString &arg1)
@@ -715,7 +714,7 @@ void OffsetsControl::on_pushButton_GPUApply_clicked()
        gpuNvml.mutable_memory_offset()->set_value(ui->horizontalSlider_GPUMemoryOffset->value());
     }
 
-    m_dataProvider->setDataMessage(LenovoLegionDaemon::DataProviderNvidiaNvml::dataType,gpuNvml);
+    m_dataProvider->setDataMessage(legion::messages::DataType::NVIDIA_NWML,gpuNvml);
 
     readGpuNvmlData();
 

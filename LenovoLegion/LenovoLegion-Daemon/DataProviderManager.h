@@ -16,8 +16,6 @@
 
 namespace  LenovoLegionDaemon {
 
-class SysFsDriverManager;
-
 class DataProviderManager : public QObject
 {
 
@@ -35,7 +33,7 @@ public:
 
 public:
 
-    DataProviderManager(SysFsDriverManager* sysFsDriverManager, QObject* parent);
+    explicit DataProviderManager(QObject* parent);
 
     void addDataProvider(DataProvider* driver);
 
@@ -51,18 +49,16 @@ signals:
 
     void dataProviderEvent(const LenovoLegionDaemon::DataProvider::SubsystemEvent& event);
 
-private:
-
-    void registerDataProviders();
+    /*
+     * Ready notification payload of a data provider (daemon modules)
+     */
+    void providerNotification(const QByteArray& payload);
 
 public slots:
 
-    void kernelEventHandler(const LenovoLegionDaemon::SysFsDriver::SubsystemEvent& event);
     void dataProviderEventHandler(const LenovoLegionDaemon::DataProvider::SubsystemEvent& event);
 
 private:
-
-    SysFsDriverManager*                  m_sysFsDriverManager;
 
     std::map<quint8,DataProvider*>       m_dataProviders;
 };

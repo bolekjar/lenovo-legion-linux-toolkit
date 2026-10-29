@@ -14,15 +14,11 @@
 #include <QTimer>
 #include <QScopeGuard>
 
-#include <SysFsDriver.h>
-
 #include <libudev.h>
 
 #include <poll.h>
 
 namespace LenovoLegionDaemon {
-
-const  SysFsDriver::KernelEvent::Filter SysFsDriverManager::MODULE_SUBSYSTEM_EVENT_FILTER = { "module" ,{}};
 
 SysFsDriverManager::SysFsDriverManager(QObject *parent)
     : QObject{parent},
@@ -41,90 +37,18 @@ SysFsDriverManager::SysFsDriverManager(QObject *parent)
 SysFsDriverManager::~SysFsDriverManager()
 {
     destroyUdevMonitor();
-
-    cleanDrivers();
 }
 
-void SysFsDriverManager::addDriver(SysFsDriver *driver)
+void SysFsDriverManager::addKernelEventListener(const QObject *owner, const Module::KernelEvent::Filter &filter, KernelEventListener listener)
 {
-    if(driver == nullptr)
-    {
-        THROW_EXCEPTION(exception_T,ERROR_CODES::DRIVER_NOT_FOUND,"Driver is nullptr !");
-    }
+    addUdevMonitorFilter(filter.m_subSystem);
 
-    if(m_drivers.insert({driver->m_name,driver}).second == false)
-    {
-        THROW_EXCEPTION(exception_T,ERROR_CODES::DRIVER_ALREADY_LOADED,"Driver already loaded !");
-    };
+    m_kernelEventListeners.push_back({ .m_owner = owner, .m_filter = filter, .m_listener = std::move(listener) });
 }
 
-void SysFsDriverManager::initDrivers()
+void SysFsDriverManager::removeKernelEventListeners(const QObject *owner)
 {
-    for(auto& driver : m_drivers)
-    {
-        driver.second->init();
-        driver.second->validate();
-
-        connect(driver.second,&SysFsDriver::kernelEvent,this,&SysFsDriverManager::onKernelEvent);
-
-        addUdevMonitorFilter(driver.second->m_filter);
-    }
-}
-
-void SysFsDriverManager::cleanDrivers()
-{
-    for(auto& driver : m_drivers)
-    {
-        driver.second->clean();
-    }
-
-    m_drivers.clear();
-}
-
-void SysFsDriverManager::blockKernelEvent(const QString &driverName, bool block)
-{
-    try {
-        m_drivers.at(driverName)->blockKernelEvent(block);
-    } catch (const std::out_of_range& ex) {
-        THROW_EXCEPTION(exception_T,ERROR_CODES::DRIVER_NOT_FOUND,"Driver not found !");
-    }
-}
-
-void SysFsDriverManager::blockSignals(const QString &driverName,bool block)
-{
-    try {
-        m_drivers.at(driverName)->blockSignals(block);
-    } catch (const std::out_of_range& ex) {
-        THROW_EXCEPTION(exception_T,ERROR_CODES::DRIVER_NOT_FOUND,"Driver not found !");
-    }
-}
-
-void SysFsDriverManager::refreshDriver(const QString &driverName)
-{
-    try {
-        m_drivers.at(driverName)->init();
-        m_drivers.at(driverName)->validate();
-    } catch (const std::out_of_range& ex) {
-        THROW_EXCEPTION(exception_T,ERROR_CODES::DRIVER_NOT_FOUND,"Driver not found !");
-    }
-}
-
-const SysFsDriver::DescriptorType&  SysFsDriverManager::getDriverDesriptor(const QString &driverName) const
-{
-    try {
-        return m_drivers.at(driverName)->desriptor();
-    } catch (const std::out_of_range& ex) {
-        THROW_EXCEPTION(exception_T,ERROR_CODES::DRIVER_NOT_FOUND,"Driver not found !");
-    }
-}
-
-const SysFsDriver::DescriptorsInVectorType &SysFsDriverManager::getDriverDescriptorsInVector(const QString &driverName) const
-{
-    try {
-        return m_drivers.at(driverName)->descriptorsInVector();
-    } catch (const std::out_of_range& ex) {
-        THROW_EXCEPTION(exception_T,ERROR_CODES::DRIVER_NOT_FOUND,"Driver not found !");
-    }
+    std::erase_if(m_kernelEventListeners,[owner](const KernelEventListenerEntry& entry) { return entry.m_owner == owner; });
 }
 
 void SysFsDriverManager::processAllUdevEvents(int timeoutInMiliseconds)
@@ -203,73 +127,44 @@ void SysFsDriverManager::onDataReceived(int)
 
     if(dev != nullptr)
     {
-        // Release device also when a driver handler throws
+        // Release device also when a listener throws
         const auto unrefDevice = qScopeGuard([dev] { udev_device_unref(dev); });
 
-        SysFsDriver::KernelEvent::Event event = {
-            .m_action       = udev_device_get_action(dev)   ,
-            .m_driver       = udev_device_get_driver(dev)   ,
-            .m_sysName      = udev_device_get_sysname(dev)  ,
-            .m_subSystem    = udev_device_get_subsystem(dev),
-            .m_devPath      = udev_device_get_devpath(dev)  ,
-            .m_properties   = {}
-        };
+        const QString action    = udev_device_get_action(dev);
+        const QString driver    = udev_device_get_driver(dev);
+        const QString sysName   = udev_device_get_sysname(dev);
+        const QString subSystem = udev_device_get_subsystem(dev);
+        const QString devPath   = udev_device_get_devpath(dev);
 
-         LOG_D(QString(__PRETTY_FUNCTION__) + ": Kernel event received ACTION=" + event.m_action + ", DRIVER=" + event.m_driver + ", SYSNAME=" + event.m_sysName + ", SUBSYSTEM=" + event.m_subSystem + ", DEVPATH=" + event.m_devPath);
+        LOG_D(QString(__PRETTY_FUNCTION__) + ": Kernel event received ACTION=" + action + ", DRIVER=" + driver + ", SYSNAME=" + sysName + ", SUBSYSTEM=" + subSystem + ", DEVPATH=" + devPath);
 
-        if(event.m_subSystem == MODULE_SUBSYSTEM_EVENT_FILTER.m_subSystem)
+        /*
+         * Daemon modules, copy of the list, a listener may add or remove listeners
+         */
+        const auto listeners = m_kernelEventListeners;
+
+        for (const auto& entry : listeners)
         {
-            for(auto& driver : m_drivers)
+            if(entry.m_filter.m_subSystem != subSystem)
             {
-                if(driver.second->m_module == event.m_sysName)
-                {
-                    if(event.m_action == "add")
-                    {
-                        /*
-                         * Failure of one driver must not stop the others, exception from this slot
-                         * would also disconnect clients (Application::notify)
-                         */
-                        try {
-                            driver.second->init();
-                            driver.second->validate();
-                        } catch (const bj::framework::exception::Exception& ex) {
-                            LOG_E(QString(__PRETTY_FUNCTION__) + ": Driver " + driver.second->m_name + " initialization failed after module load (" + ex.descriptionInfo().value().c_str() + "), driver is not available");
-                            driver.second->clean();
-                            continue;
-                        }
-
-                        emit moduleSubsystem({
-                            .m_moduleName = driver.second->m_module,
-                            .m_action     = ModuleSubsystemEvent::Action::ADD
-                        });
-                    }
-
-                    if(event.m_action == "remove")
-                    {
-                        driver.second->clean();
-
-                        emit moduleSubsystem({
-                            .m_moduleName = driver.second->m_module,
-                            .m_action     = ModuleSubsystemEvent::Action::REMOVE
-                        });
-                    }
-                }
+                continue;
             }
-        }
-        else
-        {
-            for (auto& driver : m_drivers)
+
+            Module::KernelEvent moduleEvent {
+                .m_action     = action,
+                .m_driver     = driver,
+                .m_sysName    = sysName,
+                .m_subSystem  = subSystem,
+                .m_devPath    = devPath,
+                .m_properties = {}
+            };
+
+            for (const auto& property : entry.m_filter.m_properties)
             {
-                if(driver.second->m_filter.m_subSystem == event.m_subSystem)
-                {
-                    for (const auto & property :driver.second->m_filter.m_properties)
-                    {
-                        event.m_properties[property] = udev_device_get_property_value(dev, property.toStdString().c_str());
-                    }
-
-                    driver.second->handleKernelEvent(event);
-                }
+                moduleEvent.m_properties[property] = udev_device_get_property_value(dev, property.toStdString().c_str());
             }
+
+            entry.m_listener(moduleEvent);
         }
     }
     else
@@ -304,22 +199,17 @@ void SysFsDriverManager::onDataReceived(int)
     }
 }
 
-void SysFsDriverManager::onKernelEvent(const SysFsDriver::SubsystemEvent &event)
+void SysFsDriverManager::addUdevMonitorFilter(const QString &subSystem)
 {
-    emit kernelEvent(event);
-}
-
-void SysFsDriverManager::addUdevMonitorFilter(const SysFsDriver::KernelEvent::Filter &filter)
-{
-    // Monitor is not available (failed reconnect), filters of all drivers are added when it is recreated
+    // Monitor is not available (failed reconnect), filters of all listeners are added when it is recreated
     if(m_mon == nullptr)
     {
         return;
     }
 
-    if(filter.m_subSystem.size() > 0)
+    if(subSystem.size() > 0)
     {
-        if(udev_monitor_filter_add_match_subsystem_devtype(m_mon, filter.m_subSystem.toStdString().c_str(), nullptr) < 0)
+        if(udev_monitor_filter_add_match_subsystem_devtype(m_mon, subSystem.toStdString().c_str(), nullptr) < 0)
         {
             THROW_EXCEPTION(exception_T,ERROR_CODES::UDEV_INITIALIZED_ERROR,"Udev monitor filter add error !");
         }
@@ -333,17 +223,14 @@ void SysFsDriverManager::createUdevMonitor()
         THROW_EXCEPTION(exception_T, ERROR_CODES::UDEV_INITIALIZED_ERROR, "Udev new error !");
     }
 
-    m_mon = udev_monitor_new_from_netlink(m_udev, SysFsDriver::KernelEvent::Filter::NAME.data());
+    m_mon = udev_monitor_new_from_netlink(m_udev, UDEV_MONITOR_SOURCE);
     if (m_mon == nullptr) {
         THROW_EXCEPTION(exception_T, ERROR_CODES::UDEV_INITIALIZED_ERROR, "Udev monitor error !");
     }
 
-    // Add module subsystem filter first
-    addUdevMonitorFilter(MODULE_SUBSYSTEM_EVENT_FILTER);
-
-    // Add driver-specific filters (empty during construction, drivers add them in initDrivers)
-    for (const auto& driver : m_drivers) {
-        addUdevMonitorFilter(driver.second->m_filter);
+    // Add filters of daemon modules (empty during construction)
+    for (const auto& entry : m_kernelEventListeners) {
+        addUdevMonitorFilter(entry.m_filter.m_subSystem);
     }
 
     if (udev_monitor_enable_receiving(m_mon) < 0) {

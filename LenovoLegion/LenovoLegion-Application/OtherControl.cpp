@@ -12,9 +12,7 @@
 #include "DataProvider.h"
 #include "MainWindow.h"
 
-#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderOther.h"
-#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderOtherGpuSwitch.h"
-#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderCPUPState.h"
+#include "../LenovoLegion-PrepareBuild/MessageRegistry.pb.h"
 
 #include <Core/LoggerHolder.h>
 
@@ -111,11 +109,11 @@ void OtherControl::applySettings()
     }
 
     // Send to daemon
-    m_dataProvider->setDataMessage(LenovoLegionDaemon::SysFsDataProviderOther::dataType, newSettings);
+    m_dataProvider->setDataMessage(legion::messages::DataType::OTHER, newSettings);
 
     // Refresh data from daemon
     m_otherSettingsData = m_dataProvider->getDataMessage<legion::messages::OtherSettings>(
-        LenovoLegionDaemon::SysFsDataProviderOther::dataType);
+        legion::messages::DataType::OTHER);
 
     // Re-render UI
     renderData();
@@ -292,7 +290,7 @@ void OtherControl::applyGpuSwitchSettings()
     }
 
     // Send to daemon
-    m_dataProvider->setDataMessage(LenovoLegionDaemon::SysFsDataProviderOtherGpuSwitch::dataType, newSettings);
+    m_dataProvider->setDataMessage(legion::messages::DataType::OTHER_GPU_SWITCH, newSettings);
 
 
     // Check if restart is needed
@@ -310,7 +308,7 @@ void OtherControl::applyGpuSwitchSettings()
 
     // Refresh data from daemon
     m_gpuSwitchData = m_dataProvider->getDataMessage<legion::messages::GpuSwitchValue>(
-        LenovoLegionDaemon::SysFsDataProviderOtherGpuSwitch::dataType);
+        legion::messages::DataType::OTHER_GPU_SWITCH);
 
 
     // Re-render UI
@@ -358,11 +356,11 @@ void OtherControl::applyCPUPStateSettings()
        newSettings.has_max_perf_pct()       ||
        newSettings.has_status())
     {
-        m_dataProvider->setDataMessage(LenovoLegionDaemon::SysFsDataProviderCPUPState::dataType, newSettings);
+        m_dataProvider->setDataMessage(legion::messages::DataType::CPU_PSTATE, newSettings);
 
         // Refresh data from daemon
         m_cpuPStateData = m_dataProvider->getDataMessage<legion::messages::CPUPState>(
-            LenovoLegionDaemon::SysFsDataProviderCPUPState::dataType);
+            legion::messages::DataType::CPU_PSTATE);
 
         // Re-render UI
         renderCPUPstate();
@@ -456,11 +454,11 @@ void OtherControl::readData()
      * Read data
      */
     m_otherSettingsData = m_dataProvider->getDataMessage<legion::messages::OtherSettings>(
-        LenovoLegionDaemon::SysFsDataProviderOther::dataType);
+        legion::messages::DataType::OTHER);
     m_gpuSwitchData = m_dataProvider->getDataMessage<legion::messages::GpuSwitchValue>(
-        LenovoLegionDaemon::SysFsDataProviderOtherGpuSwitch::dataType);
+        legion::messages::DataType::OTHER_GPU_SWITCH);
     m_cpuPStateData = m_dataProvider->getDataMessage<legion::messages::CPUPState>(
-        LenovoLegionDaemon::SysFsDataProviderCPUPState::dataType);
+        legion::messages::DataType::CPU_PSTATE);
 
     /*
      * Check data availability
@@ -505,11 +503,11 @@ void OtherControl::on_spinBox_CPUPState_MAXLimit_valueChanged(int arg1)
 
 void OtherControl::on_pushButton_CPUPState_Default_clicked()
 {
-    m_dataProvider->setDataMessage(LenovoLegionDaemon::SysFsDataProviderCPUPState::dataType, CPU_PSTATE_PRESET.value("Default"));
+    m_dataProvider->setDataMessage(legion::messages::DataType::CPU_PSTATE, CPU_PSTATE_PRESET.value("Default"));
 
     // Refresh data from daemon
     m_cpuPStateData = m_dataProvider->getDataMessage<legion::messages::CPUPState>(
-        LenovoLegionDaemon::SysFsDataProviderCPUPState::dataType);
+        legion::messages::DataType::CPU_PSTATE);
 
     renderCPUPstate();
 

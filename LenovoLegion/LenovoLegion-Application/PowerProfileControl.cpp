@@ -9,8 +9,7 @@
 #include "ui_PowerProfileControl.h"
 #include "DataProvider.h"
 
-#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderPowerProfile.h"
-#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderBattery.h"
+#include "../LenovoLegion-PrepareBuild/MessageRegistry.pb.h"
 
 
 namespace LenovoLegionGui {
@@ -35,8 +34,8 @@ void PowerProfileControl::refresh()
 {
     m_supportedProfiles.clear();
 
-    m_powerProfileControlData = m_dataProvider->getDataMessage<legion::messages::PowerProfile > (LenovoLegionDaemon::SysFsDataProviderPowerProfile::dataType);
-    m_batteryControlData      = m_dataProvider->getDataMessage<legion::messages::Battery> (LenovoLegionDaemon::SysFsDataProviderBattery::dataType);
+    m_powerProfileControlData = m_dataProvider->getDataMessage<legion::messages::PowerProfile > (legion::messages::DataType::POWER_PROFILE);
+    m_batteryControlData      = m_dataProvider->getDataMessage<legion::messages::Battery> (legion::messages::DataType::BATTERY);
 
     for(int i = 0; i < m_powerProfileControlData.supported_profiles_size(); i++)
     {
@@ -52,7 +51,7 @@ void PowerProfileControl::setPowerProfile(legion::messages::PowerProfile::Profil
 
     data.set_current_value(profile);
 
-    m_dataProvider->setDataMessage(LenovoLegionDaemon::SysFsDataProviderPowerProfile::dataType,data);
+    m_dataProvider->setDataMessage(legion::messages::DataType::POWER_PROFILE,data);
 
     /*
      * Re-read the real state, if the write fails no thermal mode event comes
@@ -179,7 +178,7 @@ void PowerProfileControl::on_checkBox_customFnQ_stateChanged(int arg1)
 
     data.mutable_custom_fnq_enabled()->set_current_value(arg1 != 0);
 
-    m_dataProvider->setDataMessage(LenovoLegionDaemon::SysFsDataProviderPowerProfile::dataType,data);
+    m_dataProvider->setDataMessage(legion::messages::DataType::POWER_PROFILE,data);
 
     refresh();
 }

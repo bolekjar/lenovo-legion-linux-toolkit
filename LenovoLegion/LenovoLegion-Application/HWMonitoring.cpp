@@ -15,10 +15,7 @@
 #include <Core/LoggerHolder.h>
 
 
-#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderHWMon.h"
-#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderCPUTopology.h"
-#include "../LenovoLegion-Daemon/DataProviders/DataProviderNvidiaNvml.h"
-#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderCPUInfo.h"
+#include "../LenovoLegion-PrepareBuild/MessageRegistry.pb.h"
 
 
 #include "CPUFrequency.h"
@@ -36,10 +33,10 @@ HWMonitoring::HWMonitoring(DataProvider *dataProvider,QWidget *parent)
 {
     ui->setupUi(this);
 
-    m_latestHWMonitoringData = m_hwMonitoringData = m_dataProvider->getDataMessage<legion::messages::HardwareMonitor>(LenovoLegionDaemon::SysFsDataProviderHWMon::dataType);
-    m_cpuTopology      = m_dataProvider->getDataMessage<legion::messages::CPUTopology>(LenovoLegionDaemon::SysFsDataProviderCPUTopology::dataType);
-    m_latestNvidiaNvmlData = m_nvidiaNvmlData   = m_dataProvider->getDataMessage<legion::messages::NvidiaNvml>(LenovoLegionDaemon::DataProviderNvidiaNvml::dataType);
-    m_cpuInfoData      = m_dataProvider->getDataMessage<legion::messages::CPUInfo>(LenovoLegionDaemon::SysFsDataProviderCPUInfo::dataType);
+    m_latestHWMonitoringData = m_hwMonitoringData = m_dataProvider->getDataMessage<legion::messages::HardwareMonitor>(legion::messages::DataType::HW_MONITORING);
+    m_cpuTopology      = m_dataProvider->getDataMessage<legion::messages::CPUTopology>(legion::messages::DataType::CPU_TOPOLOGY);
+    m_latestNvidiaNvmlData = m_nvidiaNvmlData   = m_dataProvider->getDataMessage<legion::messages::NvidiaNvml>(legion::messages::DataType::NVIDIA_NWML);
+    m_cpuInfoData      = m_dataProvider->getDataMessage<legion::messages::CPUInfo>(legion::messages::DataType::CPU_INFO);
 
     /*
      * CPU Freq Info Performance GUI elements
@@ -276,7 +273,7 @@ void HWMonitoring::startDataFetch()
 
     m_pendingRequests = 2;
     // --- HW Monitor ---
-    m_refreshFutureHWMon = m_dataProvider->getDataMessageAsync<legion::messages::HardwareMonitor>(LenovoLegionDaemon::SysFsDataProviderHWMon::dataType);
+    m_refreshFutureHWMon = m_dataProvider->getDataMessageAsync<legion::messages::HardwareMonitor>(legion::messages::DataType::HW_MONITORING);
     m_refreshFutureHWMon.then(this, [this](const legion::messages::HardwareMonitor &data){
         if (m_currentState != RefreshState::FETCHING_DATA) return;
 
@@ -290,7 +287,7 @@ void HWMonitoring::startDataFetch()
     });
 
     // --- NVML (Nvidia) ---
-    m_refreshFutureNvml = m_dataProvider->getDataMessageAsync<legion::messages::NvidiaNvml>(LenovoLegionDaemon::DataProviderNvidiaNvml::dataType);
+    m_refreshFutureNvml = m_dataProvider->getDataMessageAsync<legion::messages::NvidiaNvml>(legion::messages::DataType::NVIDIA_NWML);
     m_refreshFutureNvml.then(this, [this](const legion::messages::NvidiaNvml &data){
         if (m_currentState != RefreshState::FETCHING_DATA) return;
 

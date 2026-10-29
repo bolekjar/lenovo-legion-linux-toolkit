@@ -11,7 +11,7 @@
 #include "DataProvider.h"
 
 #include "../LenovoLegion-PrepareBuild/Battery.pb.h"
-#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderBattery.h"
+#include "../LenovoLegion-PrepareBuild/MessageRegistry.pb.h"
 
 namespace LenovoLegionGui {
 BateryStatus::BateryStatus(DataProvider* dataProvider,QWidget *parent)
@@ -31,7 +31,7 @@ BateryStatus::~BateryStatus()
 
 void BateryStatus::refresh()
 {
-    m_bateryControlData = m_dataProvider->getDataMessage<legion::messages::Battery>(LenovoLegionDaemon::SysFsDataProviderBattery::dataType);
+    m_bateryControlData = m_dataProvider->getDataMessage<legion::messages::Battery>(legion::messages::DataType::BATTERY);
     renderData();
 }
 

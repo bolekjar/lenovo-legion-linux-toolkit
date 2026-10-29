@@ -5,9 +5,7 @@
 #include "Utils.h"
 #include "WidgetMessage.h"
 
-#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderMachineInformation.h"
-#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderCPUInfo.h"
-#include "../LenovoLegion-Daemon/DataProviders/DataProviderNvidiaNvml.h"
+#include "../LenovoLegion-PrepareBuild/MessageRegistry.pb.h"
 #include "../LenovoLegion-PrepareBuild/ComputerInfo.pb.h"
 #include "../LenovoLegion-PrepareBuild/NvidiaNvml.pb.h"
 
@@ -92,7 +90,7 @@ void ToolBarInformationWidget::loadMachineInformation()
     
     try {
         m_machineInfo = m_dataProvider->getDataMessage<legion::messages::MachineInformation>(
-            LenovoLegionDaemon::SysFsDataProviderMachineInformation::dataType);
+            legion::messages::DataType::MACHINE_INFORMATION);
     } catch(DataProvider::exception_T& ex)
     {
         LOG_W(QString("Failed to load machine information: ").append(ex.what()));
@@ -136,7 +134,7 @@ void ToolBarInformationWidget::loadCPUInformation()
     
     try {
         m_cpuInfo = m_dataProvider->getDataMessage<legion::messages::CPUInfo>(
-            LenovoLegionDaemon::SysFsDataProviderCPUInfo::dataType);
+            legion::messages::DataType::CPU_INFO);
     } catch(DataProvider::exception_T& ex)
     {
         LOG_W(QString("Failed to load CPU information: ").append(ex.what()));
@@ -177,7 +175,7 @@ void ToolBarInformationWidget::loadGPUInformation()
     
     try {
         m_gpuInfo = m_dataProvider->getDataMessage<legion::messages::NvidiaNvml>(
-            LenovoLegionDaemon::DataProviderNvidiaNvml::dataType);
+            legion::messages::DataType::NVIDIA_NWML);
     } catch(DataProvider::exception_T& ex)
     {
         LOG_W(QString("Failed to load GPU information: ").append(ex.what()));

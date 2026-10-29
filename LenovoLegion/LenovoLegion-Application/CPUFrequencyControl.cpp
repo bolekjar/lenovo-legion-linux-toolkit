@@ -12,8 +12,7 @@
 
 #include "ThreadFrequencyControl.h"
 
-#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderCPUFrequency.h"
-#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderCPUTopology.h"
+#include "../LenovoLegion-PrepareBuild/MessageRegistry.pb.h"
 
 
 #include <QAbstractItemView>
@@ -53,8 +52,8 @@ CPUFrequencyControl::CPUFrequencyControl(DataProvider *dataProvider,QWidget *par
 {
     ui->setupUi(this);
 
-    m_cpuFreqData           = m_dataProvider->getDataMessage<legion::messages::CPUFrequency>(LenovoLegionDaemon::SysFsDataProviderCPUFrequency::dataType);
-    m_cpuTopologyData       = m_dataProvider->getDataMessage<legion::messages::CPUTopology>(LenovoLegionDaemon::SysFsDataProviderCPUTopology::dataType);
+    m_cpuFreqData           = m_dataProvider->getDataMessage<legion::messages::CPUFrequency>(legion::messages::DataType::CPU_FREQUENCY);
+    m_cpuTopologyData       = m_dataProvider->getDataMessage<legion::messages::CPUTopology>(legion::messages::DataType::CPU_TOPOLOGY);
 
 
     ui->comboBoxApplyTo->view()->window()->setWindowFlags( Qt::Popup | Qt::FramelessWindowHint | Qt::NoDropShadowWindowHint | Qt::NoDropShadowWindowHint);
@@ -213,7 +212,7 @@ void CPUFrequencyControl::on_pushButton_CPUFreqControlApply_clicked()
         return true;
     });
 
-    m_dataProvider->setDataMessage(LenovoLegionDaemon::SysFsDataProviderCPUFrequency::dataType,m_cpuFreqData);
+    m_dataProvider->setDataMessage(legion::messages::DataType::CPU_FREQUENCY,m_cpuFreqData);
 
     renderData();
 
@@ -365,7 +364,7 @@ CPUFrequencyControl::~CPUFrequencyControl()
 
 void CPUFrequencyControl::refresh()
 {
-    m_cpuFreqData           = m_dataProvider->getDataMessage<legion::messages::CPUFrequency>(LenovoLegionDaemon::SysFsDataProviderCPUFrequency::dataType);
+    m_cpuFreqData           = m_dataProvider->getDataMessage<legion::messages::CPUFrequency>(legion::messages::DataType::CPU_FREQUENCY);
 
     renderData();
 }

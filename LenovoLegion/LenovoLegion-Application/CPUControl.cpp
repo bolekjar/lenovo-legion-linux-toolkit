@@ -13,9 +13,7 @@
 #include "ThreadControl.h"
 #include "Utils.h"
 
-#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderCPUOptions.h"
-#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderCPUTopology.h"
-#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderCPUSMT.h"
+#include "../LenovoLegion-PrepareBuild/MessageRegistry.pb.h"
 
 #include <QAbstractItemView>
 
@@ -95,9 +93,9 @@ CPUControl::CPUControl(DataProvider *dataProvider, QWidget *parent)
 {
     ui->setupUi(this);
 
-    m_cpuInfoData = m_dataProvider->getDataMessage<legion::messages::CPUOptions>(LenovoLegionDaemon::SysFsDataProviderCPUOptions::dataType);
-    m_cpuTopology = m_dataProvider->getDataMessage<legion::messages::CPUTopology>(LenovoLegionDaemon::SysFsDataProviderCPUTopology::dataType);
-    m_cpuSMTControlData = m_dataProvider->getDataMessage<legion::messages::CPUSMT>(LenovoLegionDaemon::SysFsDataProviderCPUSMT::dataType);
+    m_cpuInfoData = m_dataProvider->getDataMessage<legion::messages::CPUOptions>(legion::messages::DataType::CPU_OPTIONS);
+    m_cpuTopology = m_dataProvider->getDataMessage<legion::messages::CPUTopology>(legion::messages::DataType::CPU_TOPOLOGY);
+    m_cpuSMTControlData = m_dataProvider->getDataMessage<legion::messages::CPUSMT>(legion::messages::DataType::CPU_SMT);
 
 
     if(m_cpuInfoData.cpus().empty()        ||
@@ -398,7 +396,7 @@ void CPUControl::on_pushButton_CPUControlApply_clicked()
         return true;
     });
 
-    m_dataProvider->setDataMessage(LenovoLegionDaemon::SysFsDataProviderCPUOptions::dataType,data);
+    m_dataProvider->setDataMessage(legion::messages::DataType::CPU_OPTIONS,data);
 
     emit widgetEvent(LenovoLegionGui::WidgetMessage{LenovoLegionGui::WidgetMessage::Widget::CPU_CONTROL,LenovoLegionGui::WidgetMessage::Message::CPU_CONTROL_CHANGED});
 }
@@ -485,7 +483,7 @@ void CPUControl::renderData()
         {
             if(QString(m_cpuSMTControlData.control().data()).trimmed() == SMT_OFF_DATA.control().data())
             {
-                m_dataProvider->setDataMessage(LenovoLegionDaemon::SysFsDataProviderCPUSMT::dataType,SMT_ON_DATA);
+                m_dataProvider->setDataMessage(legion::messages::DataType::CPU_SMT,SMT_ON_DATA);
             }
 
             ui->checkBox_DisableSMP->setChecked(false);
@@ -494,7 +492,7 @@ void CPUControl::renderData()
         {
             if(QString(m_cpuSMTControlData.control().data()).trimmed() == SMT_ON_DATA.control().data())
             {
-                m_dataProvider->setDataMessage(LenovoLegionDaemon::SysFsDataProviderCPUSMT::dataType,SMT_OFF_DATA);
+                m_dataProvider->setDataMessage(legion::messages::DataType::CPU_SMT,SMT_OFF_DATA);
             }
 
             ui->checkBox_DisableSMP->setChecked(true);
@@ -511,11 +509,11 @@ void CPUControl::on_checkBox_DisableSMP_checkStateChanged(const Qt::CheckState &
 {
     if(arg1 == Qt::CheckState::Checked)
     {
-        m_dataProvider->setDataMessage(LenovoLegionDaemon::SysFsDataProviderCPUSMT::dataType,SMT_OFF_DATA);
+        m_dataProvider->setDataMessage(legion::messages::DataType::CPU_SMT,SMT_OFF_DATA);
     }
     else
     {
-        m_dataProvider->setDataMessage(LenovoLegionDaemon::SysFsDataProviderCPUSMT::dataType,SMT_ON_DATA);
+        m_dataProvider->setDataMessage(legion::messages::DataType::CPU_SMT,SMT_ON_DATA);
     }
 
 

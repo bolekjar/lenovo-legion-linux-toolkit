@@ -17,10 +17,31 @@
 namespace bj { namespace framework {
 
 
+static bool acceptAllFiles(const QFileInfo&,QString&)
+{
+    return true;
+}
+
+QRegularExpression ApplicationModulesLoader::defaultSuffix()
+{
+    return QRegularExpression("\\.(so|dll)$");
+}
+
 ApplicationModulesLoader::ApplicationModulesLoader(const QRegularExpression &moduleSulfix) :
    m_moduleSulfix(moduleSulfix),
-    m_modulesPath(QDir::homePath().append(QDir::separator()).append("modules").append(QDir::separator()))
+    m_modulesPath(QDir::homePath().append(QDir::separator()).append("modules").append(QDir::separator())),
+    m_fileFilter(acceptAllFiles)
 {}
+
+void ApplicationModulesLoader::setFileFilter(FileFilter filter)
+{
+    m_fileFilter = filter ? std::move(filter) : FileFilter(acceptAllFiles);
+}
+
+const std::vector<ApplicationModulesLoader::Error> &ApplicationModulesLoader::errors() const
+{
+    return m_errors;
+}
 
 void ApplicationModulesLoader::setSuffix(const QRegularExpression &moduleSulfix)
 {
@@ -44,7 +65,8 @@ const QRegularExpression& ApplicationModulesLoader::suffix() const
 
 ApplicationModulesLoader::ApplicationModulesLoader(const QDir& modulePath, const QRegularExpression &moduleSulfix) :
     m_moduleSulfix(moduleSulfix),
-    m_modulesPath(modulePath)
+    m_modulesPath(modulePath),
+    m_fileFilter(acceptAllFiles)
 {}
 
 bool ApplicationModulesLoader::existsPath() const
@@ -60,18 +82,33 @@ int ApplicationModulesLoader::load()
     }
 
     m_modules.clear();
+    m_errors.clear();
     m_modulesPath.refresh();
 
-    for (auto& file : m_modulesPath.entryInfoList())
+    /*
+     * Only files (also symlinks to files, the filter decides), the suffix is matched against the file name
+     */
+    for (auto& file : m_modulesPath.entryInfoList(QDir::Files | QDir::NoDotAndDotDot, QDir::Name))
     {
-        if(file.absoluteFilePath().contains(m_moduleSulfix))
+        if(!file.fileName().contains(m_moduleSulfix))
         {
-            m_modules.emplace_back(file.absoluteFilePath(),1);
+            continue;
+        }
 
-            if(!m_modules.back().load())
-            {
-                m_modules.pop_back();
-            }
+        QString reason;
+
+        if(!m_fileFilter(file,reason))
+        {
+            m_errors.push_back({file.absoluteFilePath(),reason.isEmpty() ? QString("Rejected by the file filter") : reason});
+            continue;
+        }
+
+        m_modules.emplace_back(file.absoluteFilePath(),1);
+
+        if(!m_modules.back().load())
+        {
+            m_errors.push_back({file.absoluteFilePath(),m_modules.back().errorString()});
+            m_modules.pop_back();
         }
     }
 

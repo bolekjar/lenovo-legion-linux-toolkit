@@ -9,7 +9,7 @@
 #include "RGBController.h"
 #include "DataProvider.h"
 
-#include "../LenovoLegion-Daemon/DataProviders/DataProviderRGBController.h"
+#include "../LenovoLegion-PrepareBuild/MessageRegistry.pb.h"
 
 #include "../LenovoLegion-PrepareBuild/RGBController.pb.h"
 
@@ -28,7 +28,7 @@ RGBController::~RGBController()
 
 void RGBController::readRGBControllerData(const uint32_t requestFlags)
 {
-    legion::messages::RGBControllerResponse rgbControllerData = m_dataProvider->getDataMessage<legion::messages::RGBControllerResponse,legion::messages::RGBControllerRequest>(LenovoLegionDaemon::DataProviderRGBController::dataType,[&requestFlags]{
+    legion::messages::RGBControllerResponse rgbControllerData = m_dataProvider->getDataMessage<legion::messages::RGBControllerResponse,legion::messages::RGBControllerRequest>(legion::messages::DataType::RGB_CONTROLLER,[&requestFlags]{
         legion::messages::RGBControllerRequest request;
         request.set_request_flags(requestFlags);
 
@@ -276,7 +276,7 @@ void RGBController::sendRGBControllerData()
 
     if(m_pendingChanges.any())
     {
-        m_dataProvider->setDataMessage(LenovoLegionDaemon::DataProviderRGBController::dataType,rgbControllerData);
+        m_dataProvider->setDataMessage(legion::messages::DataType::RGB_CONTROLLER,rgbControllerData);
     }
 
     if(m_pendingChanges.test(CHANGE_PROFILES) || m_pendingChanges.test(CHANGE_RESET_EFFECTS))
@@ -421,7 +421,7 @@ std::set<int> RGBController::GetLedsIndexesByDeviceSpecificValue(unsigned int va
 
 std::vector<LenovoLegionDaemon::RGBColor> RGBController::GetStateForAllLeds() const
 {
-    legion::messages::RGBControllerResponse rgbControllerData = m_dataProvider->getDataMessage<legion::messages::RGBControllerResponse,legion::messages::RGBControllerRequest>(LenovoLegionDaemon::DataProviderRGBController::dataType,[]{
+    legion::messages::RGBControllerResponse rgbControllerData = m_dataProvider->getDataMessage<legion::messages::RGBControllerResponse,legion::messages::RGBControllerRequest>(legion::messages::DataType::RGB_CONTROLLER,[]{
         legion::messages::RGBControllerRequest request;
         request.set_request_flags(legion::messages::RGBControllerRequest::RequestFlags::RGBControllerRequest_RequestFlags_REQUEST_STATE_FOR_ALL_LEDS);
 

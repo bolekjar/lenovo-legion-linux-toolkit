@@ -19,6 +19,10 @@
 
 #include <BigInt/BigIntegerLibrary.h>
 
+#include <Core/ApplicationModulesLoader.h>
+
+#include <QTemporaryDir>
+
 using LoggerHolder = bj::framework::SingletonHolder<bj::framework::Logger,bj::framework::StaticCreationPolicy,bj::framework::DefaultThreadModel>;
 
 class BJLibs : public QObject
@@ -34,6 +38,7 @@ private slots:
     void test_StackTrace();
     void test_bigInteger();
     void test_connectX();
+    void test_modulesLoader();
 };
 
 BJLibs::BJLibs()
@@ -62,6 +67,88 @@ void BJLibs::test_Logger()
 
 void BJLibs::test_StackTrace(){
     LOG_INFO(bj::framework::StackTrace::getFormatetStackTrace(),LoggerHolder);
+}
+
+void BJLibs::test_modulesLoader()
+{
+#ifndef Q_OS_LINUX
+    QSKIP("Linux only test");
+#else
+    using bj::framework::ApplicationModulesLoader;
+
+    /*
+     * Real shared library, copy of the system zlib (exports zlibVersion)
+     */
+    const QString zlib = "/usr/lib/libz.so.1";
+
+    if(!QFile::exists(zlib))
+    {
+        QSKIP("System zlib not found");
+    }
+
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+
+    auto createFile = [&dir](const QString& name,const QByteArray& content) {
+        QFile file(dir.filePath(name));
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        file.write(content);
+    };
+
+    QVERIFY(QFile::copy(zlib,dir.filePath("libReal.so")));
+    QVERIFY(QFile::copy(zlib,dir.filePath("libRejected.so")));
+    createFile("libBroken.so","not a library");      // load error
+    createFile("readme.txt","text");                 // no module suffix
+    createFile("module.so.txt","text");              // suffix is not at the end
+    createFile("dllnotes","text");                   // old regex ".dll|so$" matched any "?dll"
+    QVERIFY(QDir(dir.path()).mkdir("directory.so")); // directories are ignored
+
+    ApplicationModulesLoader loader{QDir(dir.path())};
+
+    loader.setFileFilter([](const QFileInfo& file,QString& reason) {
+        if(file.fileName() == "libRejected.so")
+        {
+            reason = "test rejection";
+            return false;
+        }
+        return true;
+    });
+
+    /*
+     * Only libReal.so is loaded, libRejected.so is rejected by the filter, libBroken.so can not be loaded
+     */
+    QCOMPARE(loader.load(),1);
+    QCOMPARE(loader.errors().size(),size_t(2));
+
+    QStringList errors;
+    for(const auto& error : loader.errors())
+    {
+        errors << QFileInfo(error.m_file).fileName() + ":" + error.m_reason;
+    }
+
+    QVERIFY2(errors.filter("libRejected.so:test rejection").size() == 1,qPrintable(errors.join("; ")));
+    QVERIFY2(errors.filter("libBroken.so:").size() == 1,qPrintable(errors.join("; ")));
+
+    /*
+     * Existing symbol
+     */
+    auto modules = loader.getModules<const char*()>({"zlibVersion"});
+    QCOMPARE(modules.size(),1);
+    QVERIFY(modules.front().m_factoryFnc() != nullptr);
+
+    /*
+     * Missing symbol is reported as error of the library
+     */
+    QCOMPARE(loader.getModules<void()>({"legion_missing_symbol"}).size(),0);
+    QCOMPARE(QFileInfo(loader.errors().back().m_file).fileName(),QString("libReal.so"));
+
+    /*
+     * Default filter accepts all again
+     */
+    loader.setFileFilter(nullptr);
+    QCOMPARE(loader.load(),2);
+    QCOMPARE(loader.errors().size(),size_t(1));
+#endif
 }
 
 void BJLibs::test_connectX()

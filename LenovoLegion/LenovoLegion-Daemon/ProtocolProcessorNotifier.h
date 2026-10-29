@@ -7,8 +7,6 @@
  */
 #pragma once
 
-#include "SysFsDriver.h"
-#include "SysFsDriverManager.h"
 #include "DataProviderManager.h"
 
 #include "ProtocolProcessorBase.h"
@@ -18,7 +16,6 @@
 namespace LenovoLegionDaemon {
 
 
-class SysFsDriverManager;
 class ProtocolProcessorNotifier : public ProtocolProcessorBase
 {
     Q_OBJECT
@@ -34,7 +31,7 @@ public:
 
 public:
 
-    ProtocolProcessorNotifier(SysFsDriverManager* sysfsDriverManager,DataProviderManager* dataProviderManger,QLocalSocket* clientSocket,QObject* parent);
+    ProtocolProcessorNotifier(DataProviderManager* dataProviderManger,QLocalSocket* clientSocket,QObject* parent);
     ~ProtocolProcessorNotifier();
 
     virtual void stop()  override;
@@ -51,16 +48,17 @@ signals:
 
 public slots:
 
-    void kernelEventHandler(const LenovoLegionDaemon::SysFsDriver::SubsystemEvent& event);
-    void moduleSubsystemHandler(const LenovoLegionDaemon::SysFsDriverManager::ModuleSubsystemEvent& event);
-    void dataProviderEventHandler(const LenovoLegionDaemon::DataProvider::SubsystemEvent& event);
+
+    /*
+     * Ready notification payload of a daemon module, sent as it is
+     */
+    void providerNotificationHandler(const QByteArray& payload);
 public:
 
     static constexpr quint8  m_dataType = 0;
 
 private:
 
-    SysFsDriverManager*     m_sysfsDriverManager;
     DataProviderManager*    m_dataProviderManger;
 };
 

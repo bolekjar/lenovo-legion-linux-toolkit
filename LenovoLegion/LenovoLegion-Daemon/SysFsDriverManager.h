@@ -7,14 +7,15 @@
  */
 #pragma once
 
-#include "SysFsDriver.h"
+#include "../LenovoLegion-DaemonSDK/ModuleTypes.h"
 
 #include <Core/ExceptionBuilder.h>
 
 #include <QObject>
 #include <QString>
 
-#include <map>
+#include <functional>
+#include <vector>
 
 #include <libudev.h>
 
@@ -22,33 +23,20 @@ class QSocketNotifier;
 
 namespace LenovoLegionDaemon {
 
+/*
+ * Kernel (udev) event monitor of the framework. Daemon modules register listeners with filters
+ * (IModuleHost::addKernelEventFilter), every event of the filter subsystem is delivered to them.
+ */
 class SysFsDriverManager : public QObject
 {
     Q_OBJECT
 
-private:
-
-    const static SysFsDriver::KernelEvent::Filter MODULE_SUBSYSTEM_EVENT_FILTER;
 public:
 
     DEFINE_EXCEPTION(SysFsDriverManager);
 
     enum ERROR_CODES : int {
-        DRIVER_NOT_FOUND        = -1,
-        DRIVER_ALREADY_LOADED   = -2,
         UDEV_INITIALIZED_ERROR  = -3,
-    };
-
-    struct ModuleSubsystemEvent
-    {
-        enum class Action
-        {
-            ADD,
-            REMOVE,
-        };
-
-        QString m_moduleName;
-        Action  m_action;
     };
 
 public:
@@ -57,35 +45,27 @@ public:
 
     ~SysFsDriverManager();
 
-    void addDriver(SysFsDriver* driver);
+    /*
+     * Kernel event listeners of daemon modules, called for every event of the filter subsystem
+     * (also for subsystem "module"). Listener must not throw.
+     */
+    using KernelEventListener = std::function<void(const Module::KernelEvent& event)>;
 
-    void initDrivers();
+    void addKernelEventListener(const QObject* owner,const Module::KernelEvent::Filter& filter,KernelEventListener listener);
+    void removeKernelEventListeners(const QObject* owner);
 
-    void cleanDrivers();
-
-
-    void  blockKernelEvent(const QString& driverName,bool block);
-    void  blockSignals(const QString& driverName,bool block);
-    void  refreshDriver(const QString& driverName);
-
-    const SysFsDriver::DescriptorType&          getDriverDesriptor(const QString& driverName) const;
-    const SysFsDriver::DescriptorsInVectorType& getDriverDescriptorsInVector(const QString& driverName) const;
-
+    /*
+     * Process already pending kernel events, wait at most timeout in total (blocks the event loop)
+     */
     void processAllUdevEvents(int timeoutInMiliseconds);
 
 private slots:
 
     void onDataReceived(int socket);
-    void onKernelEvent(const LenovoLegionDaemon::SysFsDriver::SubsystemEvent& event);
-
-signals:
-
-    void moduleSubsystem(const LenovoLegionDaemon::SysFsDriverManager::ModuleSubsystemEvent& event);
-    void kernelEvent(const LenovoLegionDaemon::SysFsDriver::SubsystemEvent& event);
 
 private:
 
-    void addUdevMonitorFilter(const SysFsDriver::KernelEvent::Filter& filter);
+    void addUdevMonitorFilter(const QString& subSystem);
 
     /*
      * Create udev, monitor (with all filters) and socket notifier, throws on failure
@@ -104,14 +84,22 @@ private:
 
 private:
 
-    static constexpr int UDEV_RECONNECT_RETRY_MS = 5000;
+    static constexpr int         UDEV_RECONNECT_RETRY_MS = 5000;
+    static constexpr const char* UDEV_MONITOR_SOURCE     = "kernel";
 
     struct udev         *m_udev;
     struct udev_monitor *m_mon;
 
     QSocketNotifier     *m_socketNotifier;
 
-    std::map<QString,SysFsDriver *> m_drivers;
+    struct KernelEventListenerEntry
+    {
+        const QObject*              m_owner;
+        Module::KernelEvent::Filter m_filter;
+        KernelEventListener         m_listener;
+    };
+
+    std::vector<KernelEventListenerEntry> m_kernelEventListeners;
 };
 
 }

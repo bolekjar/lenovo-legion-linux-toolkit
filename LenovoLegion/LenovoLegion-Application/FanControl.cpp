@@ -13,9 +13,7 @@
 #include <MainWindow.h>
 
 
-#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderFanCurve.h"
-#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderFanOption.h"
-#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderPowerProfile.h"
+#include "../LenovoLegion-PrepareBuild/MessageRegistry.pb.h"
 
 
 
@@ -430,8 +428,8 @@ void FanControl::normalizeCurrentFanCurveControlData(int fromIndex, int value)
 
 void FanControl::on_pushButton_FanCurveApply_clicked()
 {
-    m_dataProvider->setDataMessage(LenovoLegionDaemon::SysFsDataProviderFanCurve::dataType,m_localFanCurveControlData);
-    m_localFanCurveControlData = m_fanCurveControlData = m_dataProvider->getDataMessage<legion::messages::FanCurve>(LenovoLegionDaemon::SysFsDataProviderFanCurve::dataType);
+    m_dataProvider->setDataMessage(legion::messages::DataType::FAN_CURVE,m_localFanCurveControlData);
+    m_localFanCurveControlData = m_fanCurveControlData = m_dataProvider->getDataMessage<legion::messages::FanCurve>(legion::messages::DataType::FAN_CURVE);
     renderFanCurveControlData();
     markChangesFanCurveControlData();
 }
@@ -448,7 +446,7 @@ void FanControl::on_pushButton_MaxSpeed_clicked()
 
     data.mutable_full_speed()->set_current_value(true);
 
-    m_dataProvider->setDataMessage(LenovoLegionDaemon::SysFsDataProviderFanOption::dataType,data);
+    m_dataProvider->setDataMessage(legion::messages::DataType::FAN_OPTION,data);
     refresh();
 }
 
@@ -458,15 +456,15 @@ void FanControl::on_pushButton_Custom_clicked()
 
     data.mutable_full_speed()->set_current_value(false);
 
-    m_dataProvider->setDataMessage(LenovoLegionDaemon::SysFsDataProviderFanOption::dataType,data);
+    m_dataProvider->setDataMessage(legion::messages::DataType::FAN_OPTION,data);
     refresh();
 }
 
 void FanControl::refreshData()
 {
-    m_fanControlData           = m_dataProvider->getDataMessage<legion::messages::FanOption>(LenovoLegionDaemon::SysFsDataProviderFanOption::dataType);
-    m_powerProfileData         = m_dataProvider->getDataMessage<legion::messages::PowerProfile>(LenovoLegionDaemon::SysFsDataProviderPowerProfile::dataType);
-    m_fanCurveControlData      = m_dataProvider->getDataMessage<legion::messages::FanCurve>(LenovoLegionDaemon::SysFsDataProviderFanCurve::dataType);
+    m_fanControlData           = m_dataProvider->getDataMessage<legion::messages::FanOption>(legion::messages::DataType::FAN_OPTION);
+    m_powerProfileData         = m_dataProvider->getDataMessage<legion::messages::PowerProfile>(legion::messages::DataType::POWER_PROFILE);
+    m_fanCurveControlData      = m_dataProvider->getDataMessage<legion::messages::FanCurve>(legion::messages::DataType::FAN_CURVE);
 
 
     if(!m_fanControlData.has_full_speed()           ||

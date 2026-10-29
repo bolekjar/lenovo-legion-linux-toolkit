@@ -21,3 +21,11 @@
 13) Files from old installations in log, data (mode 0644/0777) are not fixed by tmpfiles, only directories.
 14) Not reviewed yet: GUI widgets UI logic (ToolBarSettingsWidget.cpp), Rust CLI.
 15) Not verified: NVML initialized for the whole daemon lifetime may prevent runtime suspend (RTD3) of the NVIDIA dGPU. Check power/runtime_status of the dGPU with all other GPU users closed.
+16) DONE (2026-10-27) - old implementation deleted, daemon hardware code is only in LenovoLegion-DaemonModules (ModulesDesign.md 7.3).
+   Left: RGBControllerInterface.h, RGBControllerKeyNames.h in LenovoLegion-Daemon are the RGB data model shared with the GUI, move them to a common place.
+   Deleted:
+   - LenovoLegion-Daemon: SysFsDrivers/*, SysFsDataProviders/*, DataProviders/DataProviderNvidiaNvml.*, DataProviders/DataProviderRGBController.*, RGBController.*, RGBControlers/*, RGBController*.h, StringUtils.*, SysFsDataProvider.*,
+   - per provider DaemonSettingsManager::load*/save* and SettingsLoader*/SettingsSaver* in Settings.h/.cpp (keep PowerProfiles loader and DaemonSettings),
+   - event conversions in ProtocolProcessorNotifier (kernelEventHandler, dataProviderEventHandler, moduleSubsystemHandler), keep providerNotificationHandler,
+   - entries in LenovoLegion-Daemon.pro, daemon dependencies on cuda/libnvidia-ml and hidapi (only modules NvidiaNvml and RGBController need them),
+   - GUI: replace LenovoLegionDaemon::*::dataType by legion::messages::DataType::*.

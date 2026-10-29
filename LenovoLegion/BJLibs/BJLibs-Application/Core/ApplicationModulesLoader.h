@@ -9,11 +9,13 @@
 
 #include <QRegularExpression>
 #include <QDir>
+#include <QFileInfo>
 #include <QString>
 #include <QLibrary>
 #include <QList>
 
 #include <functional>
+#include <list>
 #include <vector>
 
 
@@ -116,8 +118,27 @@ private:
 
 public:
 
-    ApplicationModulesLoader(const QRegularExpression& moduleSulfix = QRegularExpression(".dll|so$") );
-    ApplicationModulesLoader(const QDir& modulePath,const QRegularExpression& moduleSulfix = QRegularExpression(".dll|so$") );
+    /*
+     * Decides if the file may be loaded, reason is filled when it may not (e.g. security check of owner/permissions)
+     */
+    using FileFilter = std::function<bool(const QFileInfo& file,QString& reason)>;
+
+    /*
+     * File which was not loaded (rejected by the filter, QLibrary load error, missing symbols)
+     */
+    struct Error
+    {
+        QString m_file;
+        QString m_reason;
+    };
+
+    /*
+     * Default suffix of modules, matched against the file name
+     */
+    static QRegularExpression defaultSuffix();
+
+    ApplicationModulesLoader(const QRegularExpression& moduleSulfix = defaultSuffix() );
+    ApplicationModulesLoader(const QDir& modulePath,const QRegularExpression& moduleSulfix = defaultSuffix() );
 
     ApplicationModulesLoader(const ApplicationModulesLoader&)   =  delete;
     ApplicationModulesLoader(const ApplicationModulesLoader &&) =  delete;
@@ -133,10 +154,20 @@ public:
     void setPath(const QDir& modulePath);
 
     /*
+     * Filter called for every file matching the suffix before it is loaded, default accepts all
+     */
+    void setFileFilter(FileFilter filter);
+
+    /*
      * Getters
      */
     const QDir& path()                 const;
     const QRegularExpression& suffix() const;
+
+    /*
+     * Files which were not loaded by the last load() and libraries without the symbols requested by getModules()
+     */
+    const std::vector<Error>& errors() const;
 
 
     /*
@@ -162,8 +193,10 @@ private:
 
     QRegularExpression m_moduleSulfix;
     QDir               m_modulesPath;
+    FileFilter         m_fileFilter;
 
     std::list<QLibrary> m_modules;
+    std::vector<Error>  m_errors;
 };
 
 
@@ -181,6 +214,10 @@ auto ApplicationModulesLoader::getModules(const std::vector<QString>& symbols)
         {
 
             modules.push_back(addModule);
+        }
+        else
+        {
+            m_errors.push_back({module.fileName(),"Required symbols not found"});
         }
     }
 

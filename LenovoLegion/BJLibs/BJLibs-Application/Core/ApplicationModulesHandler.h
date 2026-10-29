@@ -30,6 +30,18 @@ struct ApplicationModulesHandler {
     template<typename ... Signatures>
     auto getModules(const std::vector<QString>& symbols);
 
+    /*
+     * Filter of files before loading (e.g. security check), must be set before load()
+     */
+    void setFileFilter(ApplicationModulesLoader::FileFilter filter);
+
+    /*
+     * Files which were not loaded and libraries without the requested symbols
+     */
+    const std::vector<ApplicationModulesLoader::Error>& errors() const;
+
+    const QDir& path() const;
+
 private:
 
     ApplicationModulesLoader& m_modules;

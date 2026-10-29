@@ -11,9 +11,12 @@
 
 #include "../LenovoLegion-PrepareBuild/DaemonSettings.pb.h"
 
+#include <vector>
+
 namespace LenovoLegionDaemon {
 
 class DataProviderManager;
+class ModuleDataProviderAdapter;
 
 class DaemonSettingsManager
 {
@@ -39,35 +42,16 @@ public:
     void saveAllSettings(DataProviderManager* dataProviderManager);
     void saveAllSettingsOnExit(DataProviderManager* dataProviderManager);
 
+    /*
+     * Daemon modules with persistent settings, sorted by their settings order
+     */
+    static std::vector<ModuleDataProviderAdapter*> persistentModules(DataProviderManager* dataProviderManager);
+
     // Load individual setting types
     void loadDaemonSettings();
-    void loadPowerProfile(DataProviderManager* dataProviderManager);
-    void loadCPUControlData(DataProviderManager* dataProviderManager);
-    void loadCPUFrequency(DataProviderManager* dataProviderManager);
-    void loadFanCurve(DataProviderManager* dataProviderManager);
-    void loadFanOption(DataProviderManager* dataProviderManager);
-    void loadCPUSMT(DataProviderManager* dataProviderManager);
-    void loadCPUPower(DataProviderManager* dataProviderManager);
-    void loadGPUPower(DataProviderManager* dataProviderManager);
-    void loadNvidiaNvml(DataProviderManager* dataProviderManager);
-    void loadIntelMSR(DataProviderManager* dataProviderManager);
-    void loadOther(DataProviderManager* dataProviderManager);
-    void loadCPUPState(DataProviderManager* dataProviderManager);
 
     // Save individual setting types
     void saveDaemonSettings();
-    void savePowerProfile(DataProviderManager* dataProviderManager);
-    void saveCPUControlData(DataProviderManager* dataProviderManager);
-    void saveCPUFrequency(DataProviderManager* dataProviderManager);
-    void saveFanCurve(DataProviderManager* dataProviderManager);
-    void saveFanOption(DataProviderManager* dataProviderManager);
-    void saveCPUSMT(DataProviderManager* dataProviderManager);
-    void saveCPUPower(DataProviderManager* dataProviderManager);
-    void saveGPUPower(DataProviderManager* dataProviderManager);
-    void saveNvidiaNvml(DataProviderManager* dataProviderManager);
-    void saveIntelMSR(DataProviderManager* dataProviderManager);
-    void saveOther(DataProviderManager* dataProviderManager);
-    void saveCPUPState(DataProviderManager* dataProviderManager);
 
     // Access daemon settings
     const legion::messages::DaemonSettings& getDaemonSettings() const;

@@ -7,36 +7,22 @@
  */
 #include "ProtocolProcessorNotifier.h"
 #include "ProtocolParser.h"
-#include "SysFsDriverManager.h"
+#include "DataProviderManager.h"
 
 #include <Core/LoggerHolder.h>
-
-#include "SysFsDrivers/SysFsDriverPowerSuplyBattery0.h"
-#include "SysFsDrivers/SysFsDriverCPUXList.h"
-#include "SysFsDrivers/SysFsDriverLegion.h"
-#include "SysFsDrivers/SysFsDriverLegionEvents.h"
-#include "SysFsDrivers/SysFsDriverLegionOther.h"
-#include "SysFsDrivers/SysFsDriverLegionIntelMSR.h"
-#include "SysFsDrivers/SysFsDriverLegionFanMode.h"
-
-
-#include "SysFsDataProviders/SysFsDataProviderCPUFrequency.h"
-#include "SysFsDataProviders/SysFsDataProviderCPUPState.h"
-
-#include "../LenovoLegion-PrepareBuild/Notification.pb.h"
 
 #include <QCoreApplication>
 
 namespace LenovoLegionDaemon {
 
-ProtocolProcessorNotifier::ProtocolProcessorNotifier(SysFsDriverManager* sysFsDriverManager, DataProviderManager* dataProviderManger, QLocalSocket* clientSocket, QObject* parent) :
+ProtocolProcessorNotifier::ProtocolProcessorNotifier(DataProviderManager* dataProviderManger, QLocalSocket* clientSocket, QObject* parent) :
     ProtocolProcessorBase(clientSocket,parent),
-    m_sysfsDriverManager(sysFsDriverManager),
     m_dataProviderManger(dataProviderManger)
 {
-    connect(m_sysfsDriverManager,&SysFsDriverManager::kernelEvent,this,&ProtocolProcessorNotifier::kernelEventHandler);
-    connect(m_sysfsDriverManager,&SysFsDriverManager::moduleSubsystem,this,&ProtocolProcessorNotifier::moduleSubsystemHandler);
-    connect(m_dataProviderManger,&DataProviderManager::dataProviderEvent,this,&ProtocolProcessorNotifier::dataProviderEventHandler);
+    /*
+     * Notifications are created by daemon modules, they are only forwarded to the client
+     */
+    connect(m_dataProviderManger,&DataProviderManager::providerNotification,this,&ProtocolProcessorNotifier::providerNotificationHandler);
 }
 
 ProtocolProcessorNotifier::~ProtocolProcessorNotifier()
@@ -76,217 +62,21 @@ void ProtocolProcessorNotifier::disconnectedHandler()
     emit clientDisconnected();
 }
 
-void ProtocolProcessorNotifier::kernelEventHandler(const LenovoLegionDaemon::SysFsDriver::SubsystemEvent &event)
+void ProtocolProcessorNotifier::providerNotificationHandler(const QByteArray &payload)
 {
-    LOG_T("ProtocolProcessorNotifier: kernelEventHandler m_driverName=" + event.m_driverName + ", event.m_action=" + QString::number(static_cast<int>(event.m_action)) + ", m_DriverSpecificAction=" + QString(event.m_DriverSpecificEventType.data()) + ", m_DriverSpecificValue=" + event.m_DriverSpecificEventValue.data());
-
     if(!isRunning())
     {
-        LOG_T("ProtocolProcessorNotifier is not running, ignoring kernel event !");
+        LOG_T("ProtocolProcessorNotifier is not running, ignoring module notification !");
         return;
     }
 
-    legion::messages::Notification msg;
+    m_clientSocket->write(ProtocolParser::parseMessage(MessageHeader{
+                                                           .m_type         = MessageHeader::NOTIFICATION,
+                                                           .m_dataType     = m_dataType,
+                                                           .m_dataLength   = payload.length()
+                                                       },payload));
 
-    if(event.m_driverName == SysFsDriverPowerSuplyBattery0::DRIVER_NAME)
-    {
-        if(event.m_action == SysFsDriver::SubsystemEvent::Action::CHANGED)
-        {
-            msg.set_action(legion::messages::Notification::POWER_SUPPLY_BATTERY0_CHANGE);
-        }
-    }
-
-    if(event.m_driverName == SysFsDriverCPUXList::DRIVER_NAME)
-    {
-        if(event.m_action == SysFsDriver::SubsystemEvent::Action::RELOADED)
-        {
-            msg.set_action(legion::messages::Notification::CPU_X_LIST_RELOADED);
-        }
-    }
-
-    if(event.m_driverName == SysFsDriverLegionEvents::DRIVER_NAME)
-    {
-        if(event.m_action == SysFsDriver::SubsystemEvent::Action::CHANGED)
-        {
-            if(static_cast<SysFsDriverLegionEvents::LegionVmiEventType>(QString(event.m_DriverSpecificEventType.data()).toInt()) == SysFsDriverLegionEvents::LegionVmiEventType::LEGION_WMI_EVENT_KEYLOCK_STATUS)
-            {
-                msg.set_action(legion::messages::Notification::KEYLOCK_STATUS_CHANGE);
-                msg.set_key_lock_key(static_cast<legion::messages::Notification_KeylockDisabledBit>(QString(event.m_DriverSpecificEventValue.data()).toUInt()));
-            }
-
-            if(static_cast<SysFsDriverLegionEvents::LegionVmiEventType>(QString(event.m_DriverSpecificEventType.data()).toInt()) == SysFsDriverLegionEvents::LegionVmiEventType::LENOVO_WMI_EVENT_UTILITY)
-            {
-                msg.set_action(legion::messages::Notification::SPECIAL_KEY_PRESSED);
-                msg.set_special_key(static_cast<legion::messages::Notification_SpecialKey>(QString(event.m_DriverSpecificEventValue.data()).toUInt()));
-            }
-
-            if(static_cast<SysFsDriverLegionEvents::LegionVmiEventType>(QString(event.m_DriverSpecificEventType.data()).toInt()) == SysFsDriverLegionEvents::LegionVmiEventType::LEGION_WMI_EVENT_THERMAL_MODE)
-            {
-                msg.set_action(legion::messages::Notification::THERMAL_MODE_CHANGE);
-            }
-        }
-    }
-
-    if(event.m_driverName == SysFsDriverLegionOther::DRIVER_NAME)
-    {
-        if(event.m_action == SysFsDriver::SubsystemEvent::Action::CHANGED)
-        {
-            if(static_cast<SysFsDriverLegionOther::LegionVmiOtherEventType>(QString(event.m_DriverSpecificEventType.data()).toInt()) == SysFsDriverLegionOther::LegionVmiOtherEventType::LENOVO_WMI_OTHER_CPU_STP    ||
-               static_cast<SysFsDriverLegionOther::LegionVmiOtherEventType>(QString(event.m_DriverSpecificEventType.data()).toInt()) == SysFsDriverLegionOther::LegionVmiOtherEventType::LENOVO_WMI_OTHER_CPU_LTP    ||
-               static_cast<SysFsDriverLegionOther::LegionVmiOtherEventType>(QString(event.m_DriverSpecificEventType.data()).toInt()) == SysFsDriverLegionOther::LegionVmiOtherEventType::LENOVO_WMI_OTHER_CPU_PP     ||
-               static_cast<SysFsDriverLegionOther::LegionVmiOtherEventType>(QString(event.m_DriverSpecificEventType.data()).toInt()) == SysFsDriverLegionOther::LegionVmiOtherEventType::LENOVO_WMI_OTHER_CPU_TMP    ||
-               static_cast<SysFsDriverLegionOther::LegionVmiOtherEventType>(QString(event.m_DriverSpecificEventType.data()).toInt()) == SysFsDriverLegionOther::LegionVmiOtherEventType::LENOVO_WMI_OTHER_CPU_CLP    ||
-               static_cast<SysFsDriverLegionOther::LegionVmiOtherEventType>(QString(event.m_DriverSpecificEventType.data()).toInt()) == SysFsDriverLegionOther::LegionVmiOtherEventType::LENOVO_WMI_OTHER_CPU_PL1_TAU||
-               static_cast<SysFsDriverLegionOther::LegionVmiOtherEventType>(QString(event.m_DriverSpecificEventType.data()).toInt()) == SysFsDriverLegionOther::LegionVmiOtherEventType::LENOVO_WMI_OTHER_APU_PPT    ||
-               static_cast<SysFsDriverLegionOther::LegionVmiOtherEventType>(QString(event.m_DriverSpecificEventType.data()).toInt()) == SysFsDriverLegionOther::LegionVmiOtherEventType::LENOVO_WMI_OTHER_GPU_PB     ||
-               static_cast<SysFsDriverLegionOther::LegionVmiOtherEventType>(QString(event.m_DriverSpecificEventType.data()).toInt()) == SysFsDriverLegionOther::LegionVmiOtherEventType::LENOVO_WMI_OTHER_GPU_TAC    ||
-               static_cast<SysFsDriverLegionOther::LegionVmiOtherEventType>(QString(event.m_DriverSpecificEventType.data()).toInt()) == SysFsDriverLegionOther::LegionVmiOtherEventType::LENOVO_WMI_OTHER_GPU_TGP    ||
-               static_cast<SysFsDriverLegionOther::LegionVmiOtherEventType>(QString(event.m_DriverSpecificEventType.data()).toInt()) == SysFsDriverLegionOther::LegionVmiOtherEventType::LENOVO_WMI_OTHER_GPU_TMP)
-            {
-
-                msg.set_action(legion::messages::Notification::POWER_CONTROL_CHANGED);
-            }
-
-            if(static_cast<SysFsDriverLegionOther::LegionVmiOtherEventType>(QString(event.m_DriverSpecificEventType.data()).toInt()) == SysFsDriverLegionOther::LegionVmiOtherEventType::LENOVO_WMI_OTHER_FF_S)
-            {
-                msg.set_action(legion::messages::Notification::FAN_CURVE_CHANGED);
-            }
-        }
-    }
-
-    if(event.m_driverName == SysFsDriverLegionIntelMSR::DRIVER_NAME)
-    {
-        if(event.m_action == SysFsDriver::SubsystemEvent::Action::CHANGED)
-        {
-            msg.set_action(legion::messages::Notification::CPU_OFFSET_CHANGED);
-        }
-    }
-
-    if(event.m_driverName == SysFsDriverLegionFanMode::DRIVER_NAME)
-    {
-        if(event.m_action == SysFsDriver::SubsystemEvent::Action::CHANGED)
-        {
-            msg.set_action(legion::messages::Notification::FAN_CURVE_CHANGED);
-        }
-    }
-
-    if(msg.has_action())
-    {
-        QByteArray data;
-
-        data.resize(msg.ByteSizeLong());
-
-        if(!msg.SerializeToArray(data.data(),data.size()))
-        {
-            THROW_EXCEPTION(exception_T,ERROR_CODES::SERIALIZE_ERROR,"Serialize of data message error !");
-        }
-
-
-        m_clientSocket->write(ProtocolParser::parseMessage(MessageHeader{
-            .m_type         = MessageHeader::NOTIFICATION,
-            .m_dataType     = m_dataType,
-            .m_dataLength   = data.length()
-        },data));
-
-        LOG_D("ProtocolProcessorNotifier: Notification sent !");
-    }
-}
-
-void ProtocolProcessorNotifier::moduleSubsystemHandler(const LenovoLegionDaemon::SysFsDriverManager::ModuleSubsystemEvent &event)
-{
-    LOG_T("ProtocolProcessorNotifier: moduleSubsystemHandler " + event.m_moduleName + " " + QString::number(static_cast<int>(event.m_action)));
-
-    legion::messages::Notification msg;
-
-
-    if(!isRunning())
-    {
-        LOG_T("ProtocolProcessorNotifier is not running, ignoring module subsystem event !");
-        return;
-    }
-
-
-    if(event.m_moduleName == LEGION_MODULE_NAME)
-    {
-        if(event.m_action == SysFsDriverManager::ModuleSubsystemEvent::Action::REMOVE)
-        {
-            msg.set_action(legion::messages::Notification::LENOVO_DRIVER_REMOVED);
-        }
-
-        if(event.m_action == SysFsDriverManager::ModuleSubsystemEvent::Action::ADD)
-        {
-            msg.set_action(legion::messages::Notification::LENOVO_DRIVER_ADDED);
-        }
-    }
-
-    if(msg.has_action())
-    {
-        QByteArray data;
-
-        data.resize(msg.ByteSizeLong());
-
-        if(!msg.SerializeToArray(data.data(),data.size()))
-        {
-            THROW_EXCEPTION(exception_T,ERROR_CODES::SERIALIZE_ERROR,"Serialize of data message error !");
-        }
-
-
-        m_clientSocket->write(ProtocolParser::parseMessage(MessageHeader{
-                                                               .m_type         = MessageHeader::NOTIFICATION,
-                                                               .m_dataType     = m_dataType,
-                                                               .m_dataLength   = data.length()
-                                                           },data));
-    }
-}
-
-void ProtocolProcessorNotifier::dataProviderEventHandler(const DataProvider::SubsystemEvent &event)
-{
-    LOG_T("ProtocolProcessorNotifier: dataProviderEventHandler " + QString::number(event.m_dataType) + " " + QString::number(static_cast<int>(event.m_action)));
-
-    legion::messages::Notification msg;
-
-    if(!isRunning())
-    {
-        LOG_T("ProtocolProcessorNotifier is not running, ignoring data provider event !");
-        return;
-    }
-
-    if(event.m_dataType == SysFsDataProviderCPUFrequency::dataType)
-    {
-        if(event.m_action == DataProvider::SubsystemEvent::Action::CHANGED)
-        {
-            msg.set_action(legion::messages::Notification::CPU_FREQUENCY_CHANGED);
-        }
-    }
-
-    if(event.m_dataType == SysFsDataProviderCPUPState::dataType)
-    {
-        if(event.m_action == DataProvider::SubsystemEvent::Action::CHANGED)
-        {
-            msg.set_action(legion::messages::Notification::CPU_PSTATE_CHANGED);
-        }
-    }
-
-    if(msg.has_action())
-    {
-        QByteArray data;
-
-        data.resize(msg.ByteSizeLong());
-
-        if(!msg.SerializeToArray(data.data(),data.size()))
-        {
-            THROW_EXCEPTION(exception_T,ERROR_CODES::SERIALIZE_ERROR,"Serialize of data message error !");
-        }
-
-
-        m_clientSocket->write(ProtocolParser::parseMessage(MessageHeader{
-                                                               .m_type         = MessageHeader::NOTIFICATION,
-                                                               .m_dataType     = m_dataType,
-                                                               .m_dataLength   = data.length()
-                                                           },data));
-
-        LOG_D("ProtocolProcessorNotifier: dataProviderEventHandler sending notification for dataType=" + QString::number(event.m_dataType) + ", action=" + QString::number(static_cast<int>(event.m_action)));
-    }
+    LOG_D("ProtocolProcessorNotifier: Module notification sent !");
 }
 
 }

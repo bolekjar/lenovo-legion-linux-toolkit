@@ -10,7 +10,6 @@
 #include "Core/ExceptionBuilder.h"
 #include <QObject>
 
-#include "SysFsDriver.h"
 
 namespace LenovoLegionDaemon {
 
@@ -58,12 +57,22 @@ public:
     virtual void init()                 {};
     virtual void clean()                {};
 
-    virtual void kernelEventHandler(const LenovoLegionDaemon::SysFsDriver::SubsystemEvent &)   {};
+
+    /*
+     * Restore saved settings to the hardware / save current state (daemon modules)
+     */
+    virtual void loadSettings()         {};
+    virtual void saveSettings()         {};
 
 
 signals:
 
     void dataProviderEvent(const LenovoLegionDaemon::DataProvider::SubsystemEvent& event);
+
+    /*
+     * Ready notification payload for the client (daemon modules), sent as it is
+     */
+    void notification(const QByteArray& payload);
 
 private:
 

@@ -7,18 +7,7 @@
 #include "Settings.h"
 
 // Include daemon data provider constants
-#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderPowerProfile.h"
-#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderCPUOptions.h"
-#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderCPUFrequency.h"
-#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderFanCurve.h"
-#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderFanOption.h"
-#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderCPUSMT.h"
-#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderCPUPower.h"
-#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderGPUPower.h"
-#include "../LenovoLegion-Daemon/DataProviders/DataProviderNvidiaNvml.h"
-#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderIntelMSR.h"
-#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderOther.h"
-#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderCPUPState.h"
+#include "../LenovoLegion-PrepareBuild/MessageRegistry.pb.h"
 
 #include <QMessageBox>
 
@@ -163,15 +152,15 @@ void ToolBarProfilesWidget::onSaveProfile()
         
         // Read current settings from daemon and save to profile
         auto powerProfile = m_dataProvider->getDataMessage<legion::messages::PowerProfile>(
-            LenovoLegionDaemon::SysFsDataProviderPowerProfile::dataType);
+            legion::messages::DataType::POWER_PROFILE);
         profile.savePowerProfile(powerProfile);
         
         auto cpuOptions = m_dataProvider->getDataMessage<legion::messages::CPUOptions>(
-            LenovoLegionDaemon::SysFsDataProviderCPUOptions::dataType);
+            legion::messages::DataType::CPU_OPTIONS);
         profile.saveCPUOptions(cpuOptions);
         
         auto cpuFrequency = m_dataProvider->getDataMessage<legion::messages::CPUFrequency>(
-            LenovoLegionDaemon::SysFsDataProviderCPUFrequency::dataType);
+            legion::messages::DataType::CPU_FREQUENCY);
         profile.saveCPUFrequency(cpuFrequency);
         
         // Check if power profile is CUSTOM - only save custom settings if it is
@@ -182,34 +171,34 @@ void ToolBarProfilesWidget::onSaveProfile()
             LOG_T("Power profile is CUSTOM - saving FanCurve, CPUPower, and GPUPower");
             
             auto fanCurve = m_dataProvider->getDataMessage<legion::messages::FanCurve>(
-                LenovoLegionDaemon::SysFsDataProviderFanCurve::dataType);
+                legion::messages::DataType::FAN_CURVE);
             profile.saveFanCurve(fanCurve);
             
             auto cpuPower = m_dataProvider->getDataMessage<legion::messages::CPUPower>(
-                LenovoLegionDaemon::SysFsDataProviderCPUPower::dataType);
+                legion::messages::DataType::CPU_POWER);
             profile.saveCPUPower(cpuPower);
             
             auto gpuPower = m_dataProvider->getDataMessage<legion::messages::GPUPower>(
-                LenovoLegionDaemon::SysFsDataProviderGPUPower::dataType);
+                legion::messages::DataType::GPU_POWER);
             profile.saveGPUPower(gpuPower);
         } else {
             LOG_T("Power profile is not CUSTOM - skipping FanCurve, CPUPower, and GPUPower");
         }
         
         auto fanOption = m_dataProvider->getDataMessage<legion::messages::FanOption>(
-            LenovoLegionDaemon::SysFsDataProviderFanOption::dataType);
+            legion::messages::DataType::FAN_OPTION);
         profile.saveFanOption(fanOption);
         
         auto cpuSmt = m_dataProvider->getDataMessage<legion::messages::CPUSMT>(
-            LenovoLegionDaemon::SysFsDataProviderCPUSMT::dataType);
+            legion::messages::DataType::CPU_SMT);
         profile.saveCPUSMT(cpuSmt);
         
         auto nvidiaNvml = m_dataProvider->getDataMessage<legion::messages::NvidiaNvml>(
-            LenovoLegionDaemon::DataProviderNvidiaNvml::dataType);
+            legion::messages::DataType::NVIDIA_NWML);
         profile.saveNvidiaNvml(nvidiaNvml);
         
         auto intelMSR = m_dataProvider->getDataMessage<legion::messages::CpuIntelMSR>(
-            LenovoLegionDaemon::SysFsDataProviderIntelMSR::dataType);
+            legion::messages::DataType::CPU_INTEL_MSR);
 
         intelMSR.mutable_analogio()->set_offset(((intelMSR.analogio().offset() > 0 ? intelMSR.analogio().offset() + 999 : intelMSR.analogio().offset() - 999 ) / 1000) * 1000);
         intelMSR.mutable_cache()->set_offset(((intelMSR.cache().offset() > 0 ? intelMSR.cache().offset() + 999 : intelMSR.cache().offset() - 999 ) / 1000) * 1000);
@@ -220,11 +209,11 @@ void ToolBarProfilesWidget::onSaveProfile()
         profile.saveIntelMSR(intelMSR);
         
         auto otherSettings = m_dataProvider->getDataMessage<legion::messages::OtherSettings>(
-            LenovoLegionDaemon::SysFsDataProviderOther::dataType);
+            legion::messages::DataType::OTHER);
         profile.saveOther(otherSettings);
 
         auto cpuPState = m_dataProvider->getDataMessage<legion::messages::CPUPState>(
-            LenovoLegionDaemon::SysFsDataProviderCPUPState::dataType);
+            legion::messages::DataType::CPU_PSTATE);
         profile.saveCPUPstate(cpuPState);
         
         LOG_T(QString("Profile saved successfully: ").append(profileName));
@@ -292,51 +281,51 @@ void ToolBarProfilesWidget::onLoadProfile()
         // Load settings from profile
         legion::messages::PowerProfile powerProfile;
         profile.loadPowerProfile(powerProfile);
-        m_dataProvider->setDataMessage(LenovoLegionDaemon::SysFsDataProviderPowerProfile::dataType, powerProfile);
+        m_dataProvider->setDataMessage(legion::messages::DataType::POWER_PROFILE, powerProfile);
         
         legion::messages::CPUOptions cpuOptions;
         profile.loadCPUOptions(cpuOptions);
-        m_dataProvider->setDataMessage(LenovoLegionDaemon::SysFsDataProviderCPUOptions::dataType, cpuOptions);
+        m_dataProvider->setDataMessage(legion::messages::DataType::CPU_OPTIONS, cpuOptions);
         
         legion::messages::CPUFrequency cpuFrequency;
         profile.loadCPUFrequency(cpuFrequency);
-        m_dataProvider->setDataMessage(LenovoLegionDaemon::SysFsDataProviderCPUFrequency::dataType, cpuFrequency);
+        m_dataProvider->setDataMessage(legion::messages::DataType::CPU_FREQUENCY, cpuFrequency);
         
         legion::messages::FanCurve fanCurve;
         profile.loadFanCurve(fanCurve);
-        m_dataProvider->setDataMessage(LenovoLegionDaemon::SysFsDataProviderFanCurve::dataType, fanCurve);
+        m_dataProvider->setDataMessage(legion::messages::DataType::FAN_CURVE, fanCurve);
         
         legion::messages::FanOption fanOption;
         profile.loadFanOption(fanOption);
-        m_dataProvider->setDataMessage(LenovoLegionDaemon::SysFsDataProviderFanOption::dataType, fanOption);
+        m_dataProvider->setDataMessage(legion::messages::DataType::FAN_OPTION, fanOption);
         
         legion::messages::CPUSMT cpuSmt;
         profile.loadCPUSMT(cpuSmt);
-        m_dataProvider->setDataMessage(LenovoLegionDaemon::SysFsDataProviderCPUSMT::dataType, cpuSmt);
+        m_dataProvider->setDataMessage(legion::messages::DataType::CPU_SMT, cpuSmt);
               
         legion::messages::CPUPower cpuPower;
         profile.loadCPUPower(cpuPower);
-        m_dataProvider->setDataMessage(LenovoLegionDaemon::SysFsDataProviderCPUPower::dataType, cpuPower);
+        m_dataProvider->setDataMessage(legion::messages::DataType::CPU_POWER, cpuPower);
         
         legion::messages::GPUPower gpuPower;
         profile.loadGPUPower(gpuPower);
-        m_dataProvider->setDataMessage(LenovoLegionDaemon::SysFsDataProviderGPUPower::dataType, gpuPower);
+        m_dataProvider->setDataMessage(legion::messages::DataType::GPU_POWER, gpuPower);
         
         legion::messages::NvidiaNvml nvidiaNvml;
         profile.loadNvidiaNvml(nvidiaNvml);
-        m_dataProvider->setDataMessage(LenovoLegionDaemon::DataProviderNvidiaNvml::dataType, nvidiaNvml);
+        m_dataProvider->setDataMessage(legion::messages::DataType::NVIDIA_NWML, nvidiaNvml);
         
         legion::messages::CpuIntelMSR intelMSR;
         profile.loadIntelMSR(intelMSR);
-        m_dataProvider->setDataMessage(LenovoLegionDaemon::SysFsDataProviderIntelMSR::dataType, intelMSR);
+        m_dataProvider->setDataMessage(legion::messages::DataType::CPU_INTEL_MSR, intelMSR);
         
         legion::messages::OtherSettings otherSettings;
         profile.loadOther(otherSettings);
-        m_dataProvider->setDataMessage(LenovoLegionDaemon::SysFsDataProviderOther::dataType, otherSettings);
+        m_dataProvider->setDataMessage(legion::messages::DataType::OTHER, otherSettings);
 
         legion::messages::CPUPState cpuPState;
         profile.loadCPUPstate(cpuPState);
-        m_dataProvider->setDataMessage(LenovoLegionDaemon::SysFsDataProviderCPUPState::dataType, cpuPState);
+        m_dataProvider->setDataMessage(legion::messages::DataType::CPU_PSTATE, cpuPState);
         
         LOG_T(QString("Profile loaded successfully: ").append(profileName));
         

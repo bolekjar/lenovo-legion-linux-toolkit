@@ -15,50 +15,11 @@
 #include "DaemonSettingsManager.h"
 
 /*
- * SysFs Drivers
+ * Data providers of the framework, hardware is handled by daemon modules (.so in modules/, see ModulesDesign.md)
  */
-#include "SysFsDrivers/SysFsDriverCPU.h"
-#include "SysFsDrivers/SysFsDriverCPUXList.h"
-#include "SysFsDrivers/SysFsDriverCPUCore.h"
-#include "SysFsDrivers/SysFsDriverCPUAtom.h"
-#include "SysFsDrivers/SysFsDriverACPIPlatformProfile.h"
-#include "SysFsDrivers/SysFsDriverIntelPowercapRapl.h"
-#include "SysFsDrivers/SysFsDriverPowerSuplyBattery0.h"
-#include "SysFsDrivers/SysFsDriverLegionHWMon.h"
-#include "SysFsDrivers/SysFsDriverLegionFanMode.h"
-#include "SysFsDrivers/SysFsDriverLegionGameZone.h"
-#include "SysFsDrivers/SysFsDriverLegionOther.h"
-#include "SysFsDrivers/SysFsDriverLegionEvents.h"
-#include "SysFsDrivers/SysFsDriverLegionIntelMSR.h"
-#include "SysFsDrivers/SysFsDriverCPUInfo.h"
-#include "SysFsDrivers/SysFsDriverLegionMachineInformation.h"
-#include "SysFsDrivers/SysFsDriverCPUIntelPState.h"
-
-
-/*
- * Data Providers
- */
-#include "SysFsDataProviders/SysFsDataProviderHWMon.h"
-#include "SysFsDataProviders/SysFsDataProviderCPUTopology.h"
-#include "SysFsDataProviders/SysFsDataProviderPowerProfile.h"
-#include "SysFsDataProviders/SysFsDataProviderBattery.h"
-#include "SysFsDataProviders/SysFsDataProviderCPUPower.h"
-#include "SysFsDataProviders/SysFsDataProviderGPUPower.h"
-#include "SysFsDataProviders/SysFsDataProviderFanCurve.h"
-#include "SysFsDataProviders/SysFsDataProviderFanOption.h"
-#include "SysFsDataProviders/SysFsDataProviderCPUFrequency.h"
-#include "SysFsDataProviders/SysFsDataProviderCPUOptions.h"
-#include "SysFsDataProviders/SysFsDataProviderCPUSMT.h"
-#include "SysFsDataProviders/SysFsDataProviderIntelMSR.h"
-#include "SysFsDataProviders/SysFsDataProviderCPUInfo.h"
-#include "SysFsDataProviders/SysFsDataProviderMachineInformation.h"
-#include "SysFsDataProviders/SysFsDataProviderOther.h"
-#include "SysFsDataProviders/SysFsDataProviderOtherGpuSwitch.h"
-#include "SysFsDataProviders/SysFsDataProviderCPUPState.h"
-
-#include "DataProviders/DataProviderNvidiaNvml.h"
-#include "DataProviders/DataProviderRGBController.h"
 #include "DataProviders/DataProviderDaemonSettings.h"
+
+#include "Modules/ModuleLoader.h"
 
 
 #include <Core/LoggerHolder.h>
@@ -87,7 +48,7 @@ Application::Application(int &argc, char *argv[]) :
     m_serverSocket(new QLocalServer(this)),
     m_serverSocketNotification(new QLocalServer(this)),
     m_sysFsDriverManager(new SysFsDriverManager(this)),
-    m_dataProviderManager(new DataProviderManager(m_sysFsDriverManager,this)),
+    m_dataProviderManager(new DataProviderManager(this)),
     m_protocolProcessor(nullptr),
     m_protocolProcessorNotification(nullptr)
 {
@@ -95,54 +56,9 @@ Application::Application(int &argc, char *argv[]) :
 
 
     /*
-     * Add SysFS Drivers
+     * Data providers of the framework, hardware data providers are daemon modules loaded in appInitImpl
      */
-    m_sysFsDriverManager->addDriver(new SysFsDriverLegionFanMode(m_sysFsDriverManager));
-    m_sysFsDriverManager->addDriver(new SysFsDriverLegionGameZone(m_sysFsDriverManager));
-    m_sysFsDriverManager->addDriver(new SysFsDriverLegionOther(m_sysFsDriverManager));
-    m_sysFsDriverManager->addDriver(new SysFsDriverLegionHWMon(m_sysFsDriverManager));
-    m_sysFsDriverManager->addDriver(new SysFsDriverCPU(m_sysFsDriverManager));
-    m_sysFsDriverManager->addDriver(new SysFsDriverCPUXList(m_sysFsDriverManager));
-    m_sysFsDriverManager->addDriver(new SysFsDriverCPUCore(m_sysFsDriverManager));
-    m_sysFsDriverManager->addDriver(new SysFsDriverCPUAtom(m_sysFsDriverManager));
-    m_sysFsDriverManager->addDriver(new SysFsDriverACPIPlatformProfile(m_sysFsDriverManager));
-    m_sysFsDriverManager->addDriver(new SysFsDriverIntelPowercapRapl(m_sysFsDriverManager));
-    m_sysFsDriverManager->addDriver(new SysFsDriverPowerSuplyBattery0(m_sysFsDriverManager));
-    m_sysFsDriverManager->addDriver(new SysFsDriverLegionEvents(m_sysFsDriverManager));
-    m_sysFsDriverManager->addDriver(new SysFsDriverLegionIntelMSR(m_sysFsDriverManager));
-    m_sysFsDriverManager->addDriver(new SysFsDriverCPUInfo(m_sysFsDriverManager));
-    m_sysFsDriverManager->addDriver(new SysFsDriverLegionMachineInformation(m_sysFsDriverManager));
-    m_sysFsDriverManager->addDriver(new SysFsDriverCPUIntelPState(m_sysFsDriverManager));
-
-
-    /*
-     * Add Data Providers
-     */
-
-    /*
-     * SysFS Data Providers
-     */
-    m_dataProviderManager->addDataProvider(new SysFsDataProviderHWMon(m_sysFsDriverManager,m_dataProviderManager));
-    m_dataProviderManager->addDataProvider(new SysFsDataProviderCPUTopology(m_sysFsDriverManager,m_dataProviderManager));
-    m_dataProviderManager->addDataProvider(new SysFsDataProviderPowerProfile(m_sysFsDriverManager,m_dataProviderManager));
-    m_dataProviderManager->addDataProvider(new SysFsDataProviderBattery(m_sysFsDriverManager,m_dataProviderManager));
-    m_dataProviderManager->addDataProvider(new SysFsDataProviderCPUPower(m_sysFsDriverManager,m_dataProviderManager));
-    m_dataProviderManager->addDataProvider(new SysFsDataProviderGPUPower(m_sysFsDriverManager,m_dataProviderManager));
-    m_dataProviderManager->addDataProvider(new SysFsDataProviderFanCurve(m_sysFsDriverManager,m_dataProviderManager));
-    m_dataProviderManager->addDataProvider(new SysFsDataProviderFanOption(m_sysFsDriverManager,m_dataProviderManager));
-    m_dataProviderManager->addDataProvider(new SysFsDataProviderCPUFrequency(m_sysFsDriverManager,m_dataProviderManager));
-    m_dataProviderManager->addDataProvider(new SysFsDataProviderCPUOptions(m_sysFsDriverManager,m_dataProviderManager));
-    m_dataProviderManager->addDataProvider(new SysFsDataProviderCPUSMT(m_sysFsDriverManager,m_dataProviderManager));
-    m_dataProviderManager->addDataProvider(new SysFsDataProviderIntelMSR(m_sysFsDriverManager,m_dataProviderManager));
-    m_dataProviderManager->addDataProvider(new SysFsDataProviderCPUInfo(m_sysFsDriverManager,m_dataProviderManager));
-    m_dataProviderManager->addDataProvider(new SysFsDataProviderMachineInformation(m_sysFsDriverManager,m_dataProviderManager));
-    m_dataProviderManager->addDataProvider(new SysFsDataProviderOther(m_sysFsDriverManager,m_dataProviderManager));
-    m_dataProviderManager->addDataProvider(new SysFsDataProviderOtherGpuSwitch(m_sysFsDriverManager,m_dataProviderManager));
-    m_dataProviderManager->addDataProvider(new SysFsDataProviderCPUPState(m_sysFsDriverManager,m_dataProviderManager));
-
-    m_dataProviderManager->addDataProvider(new DataProviderNvidiaNvml(m_dataProviderManager));
     m_dataProviderManager->addDataProvider(new DataProviderDaemonSettings(m_dataProviderManager));
-    m_dataProviderManager->addDataProvider(new DataProviderRGBController(m_dataProviderManager));
 }
 
 void Application::appRollBackImpl() noexcept
@@ -157,7 +73,7 @@ void Application::appRollBackImpl() noexcept
 void Application::appStartImpl()
 {}
 
-void Application::appInitImpl(std::unique_ptr<ApplicationModulesHandler_T>)
+void Application::appInitImpl(std::unique_ptr<ApplicationModulesHandler_T> modules)
 {
      LOG_I(QString("Application ").append(bj::framework::Application::apps_names[1]).append(" version=").append(bj::framework::Application::app_version).append(" is starting ..."));
 
@@ -209,21 +125,15 @@ void Application::appInitImpl(std::unique_ptr<ApplicationModulesHandler_T>)
 
 
     /*
-     * Init SysFs drivers
+     * Load daemon modules (.so) from modules/, registered as data providers
      */
-    m_sysFsDriverManager->initDrivers();
+    ModuleLoader::loadModules(*modules,m_sysFsDriverManager,m_dataProviderManager);
 
 
     /*
      * Init Data Providers
      */
     m_dataProviderManager->initDataProviders();
-
-
-    /*
-     * Connect SysFs driver manager events to Data Provider Manager
-     */
-    connect(m_sysFsDriverManager,&SysFsDriverManager::kernelEvent,m_dataProviderManager,&DataProviderManager::kernelEventHandler);
 
 
     /*
@@ -275,12 +185,6 @@ void Application::appStopImpl() noexcept
      * Remove Data Providers
      */
     m_dataProviderManager->cleanDataProviders();
-
-
-    /*
-     * Remove SysFs drivers
-     */
-    m_sysFsDriverManager->cleanDrivers();
 
 
     LOG_I(QString("Application ").append(bj::framework::Application::apps_names[1]).append(" version=").append(bj::framework::Application::app_version).append(" stopped !"));
@@ -398,7 +302,7 @@ void Application::newConnectionNotificationHandler()
 
 
         // Create processor - if this throws, pointer stays null (safe)
-        ProtocolProcessorBase* newProcessor = new ProtocolProcessorNotifier(m_sysFsDriverManager,m_dataProviderManager, newSocket, this);
+        ProtocolProcessorBase* newProcessor = new ProtocolProcessorNotifier(m_dataProviderManager, newSocket, this);
         
         // Connect signals - if this throws, we need to clean up
         try {

@@ -11,9 +11,7 @@
 
 #include <MainWindow.h>
 
-#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderCPUPower.h"
-#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderGPUPower.h"
-#include "../LenovoLegion-Daemon/SysFsDataProviders/SysFsDataProviderPowerProfile.h"
+#include "../LenovoLegion-PrepareBuild/MessageRegistry.pb.h"
 
 
 
@@ -121,9 +119,9 @@ void PowerControl::on_pushButton_CPUPowerControlApply_clicked()
 
 
     //CPU Power Control Apply
-    m_dataProvider->setDataMessage(LenovoLegionDaemon::SysFsDataProviderCPUPower::dataType,cpuPower);
+    m_dataProvider->setDataMessage(legion::messages::DataType::CPU_POWER,cpuPower);
 
-    m_cpuControlData = m_dataProvider->getDataMessage<legion::messages::CPUPower> (LenovoLegionDaemon::SysFsDataProviderCPUPower::dataType);
+    m_cpuControlData = m_dataProvider->getDataMessage<legion::messages::CPUPower> (legion::messages::DataType::CPU_POWER);
 
 
     renderCpuControlData();
@@ -211,8 +209,8 @@ void PowerControl::on_pushButton_GPUPowerControlApply_clicked()
     }
 
     //GPU Power Control Apply
-    m_dataProvider->setDataMessage(LenovoLegionDaemon::SysFsDataProviderGPUPower::dataType,gpuPower);
-    m_gpuControlData = m_dataProvider->getDataMessage<legion::messages::GPUPower> (LenovoLegionDaemon::SysFsDataProviderGPUPower::dataType);
+    m_dataProvider->setDataMessage(legion::messages::DataType::GPU_POWER,gpuPower);
+    m_gpuControlData = m_dataProvider->getDataMessage<legion::messages::GPUPower> (legion::messages::DataType::GPU_POWER);
     renderGpuControlData();
     markChangesGpuControlData();
 }
@@ -575,9 +573,9 @@ void PowerControl::readData()
     /*
      * Read Data
      */
-    m_cpuControlData    = m_dataProvider->getDataMessage<legion::messages::CPUPower> (LenovoLegionDaemon::SysFsDataProviderCPUPower::dataType);
-    m_gpuControlData    = m_dataProvider->getDataMessage<legion::messages::GPUPower> (LenovoLegionDaemon::SysFsDataProviderGPUPower::dataType);
-    m_powerProfileData  = m_dataProvider->getDataMessage<legion::messages::PowerProfile> (LenovoLegionDaemon::SysFsDataProviderPowerProfile::dataType);
+    m_cpuControlData    = m_dataProvider->getDataMessage<legion::messages::CPUPower> (legion::messages::DataType::CPU_POWER);
+    m_gpuControlData    = m_dataProvider->getDataMessage<legion::messages::GPUPower> (legion::messages::DataType::GPU_POWER);
+    m_powerProfileData  = m_dataProvider->getDataMessage<legion::messages::PowerProfile> (legion::messages::DataType::POWER_PROFILE);
 
 
     if(!m_cpuControlData.has_cpu_clp_limit()            ||

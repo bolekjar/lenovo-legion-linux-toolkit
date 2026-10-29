@@ -29,5 +29,20 @@ int ApplicationModulesHandler::reload(const std::chrono::milliseconds &maxWaitFo
     return m_modules.reload(maxWaitForUnloading);
 }
 
+void ApplicationModulesHandler::setFileFilter(ApplicationModulesLoader::FileFilter filter)
+{
+    m_modules.setFileFilter(std::move(filter));
+}
+
+const std::vector<ApplicationModulesLoader::Error> &ApplicationModulesHandler::errors() const
+{
+    return m_modules.errors();
+}
+
+const QDir &ApplicationModulesHandler::path() const
+{
+    return m_modules.path();
+}
+
 
 }}
