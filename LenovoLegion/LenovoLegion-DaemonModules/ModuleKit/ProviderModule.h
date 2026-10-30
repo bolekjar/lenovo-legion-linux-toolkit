@@ -120,29 +120,13 @@ protected:
     template<class Message>
     static QByteArray serialize(const Message& message)
     {
-        QByteArray bytes;
-
-        bytes.resize(static_cast<qsizetype>(message.ByteSizeLong()));
-
-        if(!message.SerializeToArray(bytes.data(),static_cast<int>(bytes.size())))
-        {
-            THROW_EXCEPTION(ProviderException,DataProvider::ERROR_CODES::SERIALIZE_ERROR,"Serialize of data message error !");
-        }
-
-        return bytes;
+        return serializeMessage(message);
     }
 
     template<class Message>
     static Message parse(const QByteArray& bytes)
     {
-        Message message;
-
-        if(!message.ParseFromArray(bytes.constData(),static_cast<int>(bytes.size())))
-        {
-            THROW_EXCEPTION(ProviderException,DataProvider::ERROR_CODES::INVALID_DATA,"Parse of data message error !");
-        }
-
-        return message;
+        return parseMessage<Message>(bytes);
     }
 
 private:

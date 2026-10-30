@@ -70,6 +70,8 @@ QByteArray SysFsDataProviderCPUSMT::deserializeAndSetData(const QByteArray &data
         THROW_EXCEPTION(exception_T,DataProvider::ERROR_CODES::INVALID_DATA,"Parse of data message error !");
     }
 
+    settable(cpuSmt,Origin::REQUEST);
+
     if(cpuSmt.has_control()) {
         setData(smtControl.m_control.value(),cpuSmt.control());
     }
@@ -78,6 +80,46 @@ QByteArray SysFsDataProviderCPUSMT::deserializeAndSetData(const QByteArray &data
 
     m_sysFsDriverManager->refreshDriver(SysFsDriverCPUXList::DRIVER_NAME);
     return {};
+}
+
+QByteArray SysFsDataProviderCPUSMT::settableData(const QByteArray &data, Origin origin)
+{
+    return settableMessage<legion::messages::CPUSMT>(data,[this,origin](legion::messages::CPUSMT& smt) { settable(smt,origin); });
+}
+
+void SysFsDataProviderCPUSMT::settable(legion::messages::CPUSMT &smt, Origin origin) const
+{
+    /*
+     * Kernel control values: on, off, forceoff, notsupported, notimplemented.
+     * Only on/off can be set and only when the current state is on/off
+     * (forceoff can not be reverted until reboot, it is never set by the daemon).
+     */
+    auto switchable = [](const QString& control) { return control == "on" || control == "off"; };
+
+    smt.clear_active();
+
+    if(!smt.has_control())
+    {
+        return;
+    }
+
+    const QString requested = QString::fromStdString(std::string(smt.control())).trimmed();
+    const QString current   = getData(SysFsDriverCPU::CPU::Smt(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverCPU::DRIVER_NAME)).m_control.value());
+
+    if(!switchable(current))
+    {
+        skipField(origin,QString("SMT control=").append(requested),QString("current state is ").append(current));
+        smt.clear_control();
+    }
+    else if(!switchable(requested))
+    {
+        skipField(origin,QString("SMT control=").append(requested),"only on/off can be set");
+        smt.clear_control();
+    }
+    else
+    {
+        smt.set_control(requested.toStdString());
+    }
 }
 
 

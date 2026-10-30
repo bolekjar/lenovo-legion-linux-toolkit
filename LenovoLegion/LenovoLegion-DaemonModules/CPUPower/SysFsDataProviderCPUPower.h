@@ -11,6 +11,7 @@
 
 #include <CpuPower.pb.h>
 #include <MessageRegistry.pb.h>
+#include <PowerProfile.pb.h>
 
 namespace LenovoLegionDaemon::Kit {
 
@@ -24,7 +25,11 @@ public:
     virtual QByteArray serializeAndGetData()                    ;
     virtual QByteArray deserializeAndSetData(const QByteArray&) ;
 
+    QByteArray settableData(const QByteArray& data,Origin origin) override;
+
 private:
+
+    void settable(legion::messages::CPUPower& cpuPower,Origin origin);
 
     void setValue(const std::filesystem::path& path,std::function<void (legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value)> setter,auto map) const;
     void setValuesSteps(const std::filesystem::path& path,std::function<void (legion::messages::CPUPower::Limit::Descriptor &descriptor,const QList<QString>& values)> setter,auto map) const;

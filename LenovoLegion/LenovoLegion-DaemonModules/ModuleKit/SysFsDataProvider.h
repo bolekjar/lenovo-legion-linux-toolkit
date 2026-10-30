@@ -18,6 +18,7 @@
 #include "DataProvider.h"
 #include "SysFsDriverManager.h"
 
+#include <optional>
 #include <string_view>
 #include <vector>
 
@@ -40,6 +41,11 @@ public:
 public:
 
     static QString getData(const std::filesystem::path &path);
+
+    /*
+     * Value of the attribute, empty if the attribute does not exist or can not be read (no exception)
+     */
+    static std::optional<QString> getOptionalData(const std::filesystem::path &path);
 
     static void setData(const std::filesystem::path &path, quint8 value);
     static void setData(const std::filesystem::path &path, quint16 value);

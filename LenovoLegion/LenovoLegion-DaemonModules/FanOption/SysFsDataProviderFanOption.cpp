@@ -70,20 +70,48 @@ QByteArray SysFsDataProviderFanOption::deserializeAndSetData(const QByteArray &d
         THROW_EXCEPTION(exception_T,DataProvider::ERROR_CODES::INVALID_DATA,"Parse of data message error !");
     }
 
+    settable(fanOptionMsg,Origin::REQUEST);
+
     m_sysFsDriverManager->blockKernelEvent(SysFsDriverLegionOther::DRIVER_NAME,true);
     auto cleanup =  qScopeGuard([this] { m_sysFsDriverManager->blockKernelEvent(SysFsDriverLegionOther::DRIVER_NAME,false); });
-    \
-    if(fanOptionMsg.has_full_speed()) {
 
-        if(getData(other.m_fan_full_speed.m_supported).toUShort() > 0)
-        {
-            setData(other.m_fan_full_speed.m_current_value,fanOptionMsg.full_speed().current_value());
-        }
+    if(fanOptionMsg.has_full_speed()) {
+        setData(other.m_fan_full_speed.m_current_value,fanOptionMsg.full_speed().current_value());
     }
 
     m_sysFsDriverManager->processAllUdevEvents(100);
 
     return {};
+}
+
+QByteArray SysFsDataProviderFanOption::settableData(const QByteArray &data, Origin origin)
+{
+    return settableMessage<legion::messages::FanOption>(data,[this,origin](legion::messages::FanOption& fanOption) { settable(fanOption,origin); });
+}
+
+void SysFsDataProviderFanOption::settable(legion::messages::FanOption &fanOption, Origin origin) const
+{
+    if(!fanOption.has_full_speed())
+    {
+        return;
+    }
+
+    fanOption.mutable_full_speed()->clear_default_value();
+    fanOption.mutable_full_speed()->clear_supported();
+
+    if(!fanOption.full_speed().has_current_value())
+    {
+        fanOption.clear_full_speed();
+        return;
+    }
+
+    SysFsDriverLegionOther::Other other(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverLegionOther::DRIVER_NAME));
+
+    if(getData(other.m_fan_full_speed.m_supported).toUShort() == 0)
+    {
+        skipField(origin,QString("fan full_speed=").append(QString::number(fanOption.full_speed().current_value())),"not supported");
+        fanOption.clear_full_speed();
+    }
 }
 
 

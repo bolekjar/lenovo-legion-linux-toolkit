@@ -6,8 +6,23 @@
  *   Jaroslav Bolek <jaroslav.bolek@gmail.com>
  */
 #include "DataProvider.h"
+#include "KitLog.h"
 
 namespace LenovoLegionDaemon::Kit {
+
+void DataProvider::skipField(Origin origin, const QString &field, const QString &reason)
+{
+    const QString message = QString(field).append(" is not settable (").append(reason).append("), skipped");
+
+    if(origin == Origin::REQUEST)
+    {
+        LOG_W(message);
+    }
+    else
+    {
+        LOG_D(message);
+    }
+}
 
 DataProvider::DataProvider(quint8 dataType) :
     m_dataType(dataType)

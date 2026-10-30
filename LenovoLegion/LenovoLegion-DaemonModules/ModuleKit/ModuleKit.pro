@@ -30,6 +30,7 @@ INCLUDEPATH     =  \
 HEADERS += \
     KitException.h \
     KitLog.h \
+    KitMessage.h \
     ModuleEntry.h \
     SysFsDriver.h \
     SysFsDriverManager.h \

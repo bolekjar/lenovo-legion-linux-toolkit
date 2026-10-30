@@ -53,7 +53,7 @@ protected:
     {
         const auto smt = parse<legion::messages::CPUSMT>(message);
 
-        storage.setValue("control", QString::fromStdString(std::string(smt.control())));
+        if (smt.has_control()) storage.setValue("control", QString::fromStdString(std::string(smt.control())));
     }
 };
 

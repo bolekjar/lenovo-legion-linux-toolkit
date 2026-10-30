@@ -31,6 +31,8 @@ public:
     virtual QByteArray serializeAndGetData()                     override;
     virtual QByteArray deserializeAndSetData(const QByteArray&)  override;
 
+    QByteArray settableData(const QByteArray& data,Origin origin) override;
+
 public:
 
     static constexpr quint8  dataType = legion::messages::DataType::CPU_FREQUENCY;
@@ -43,6 +45,8 @@ private:
      *                     used by the periodic check, structure of the message is the same as for the full read
      */
     legion::messages::CPUFrequency readCPPFrequency(bool scalingLimitsOnly = false) const;
+
+    void settable(legion::messages::CPUFrequency& frequency,Origin origin) const;
 
     void timerEvent(QTimerEvent *event) override;
 

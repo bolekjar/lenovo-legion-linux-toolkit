@@ -45,6 +45,7 @@ QByteArray SysFsDataProviderCPUPState::deserializeAndSetData(const QByteArray &d
         THROW_EXCEPTION(exception_T,DataProvider::ERROR_CODES::INVALID_DATA,"Parse of data message error !");
     }
 
+    settable(cpuPState,Origin::REQUEST);
 
     {
         SysFsDriverCPUIntelPState::IntelPState intePState(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverCPUIntelPState::DRIVER_NAME));
@@ -116,6 +117,47 @@ void SysFsDataProviderCPUPState::clean()
     {
         killTimer(m_timerId);
         m_timerId = -1;
+    }
+}
+
+QByteArray SysFsDataProviderCPUPState::settableData(const QByteArray &data, Origin origin)
+{
+    return settableMessage<legion::messages::CPUPState>(data,[this,origin](legion::messages::CPUPState& pstate) { settable(pstate,origin); });
+}
+
+void SysFsDataProviderCPUPState::settable(legion::messages::CPUPState &pstate, Origin origin) const
+{
+    /*
+     * Presence of the other attributes depends on the status, it is checked when they are written (after the status is set)
+     */
+    if(pstate.has_status())
+    {
+        const QString status = QString::fromStdString(std::string(pstate.status())).trimmed();
+
+        /*
+         * "off" unloads the scaling driver, it is never set by the daemon
+         */
+        if(status != "active" && status != "passive")
+        {
+            skipField(origin,QString("intel_pstate status=").append(status),"only active/passive can be set");
+            pstate.clear_status();
+        }
+        else
+        {
+            pstate.set_status(status.toStdString());
+        }
+    }
+
+    if(pstate.has_min_perf_pct() && pstate.min_perf_pct() > 100)
+    {
+        skipField(origin,QString("intel_pstate min_perf_pct=").append(QString::number(pstate.min_perf_pct())),"range <0,100>");
+        pstate.clear_min_perf_pct();
+    }
+
+    if(pstate.has_max_perf_pct() && pstate.max_perf_pct() > 100)
+    {
+        skipField(origin,QString("intel_pstate max_perf_pct=").append(QString::number(pstate.max_perf_pct())),"range <0,100>");
+        pstate.clear_max_perf_pct();
     }
 }
 

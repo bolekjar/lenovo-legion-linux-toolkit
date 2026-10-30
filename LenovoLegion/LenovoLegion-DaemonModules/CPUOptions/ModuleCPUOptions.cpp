@@ -73,8 +73,8 @@ protected:
 
         for(int i = 0; i < options.cpus().size(); ++i)
         {
-            storage.setValue(arrayKey(ARRAY,i,"online"),   options.cpus().at(i).cpu_online());
-            storage.setValue(arrayKey(ARRAY,i,"governor"), QString(options.cpus().at(i).governor().data()).trimmed());
+            if(options.cpus().at(i).has_cpu_online()) storage.setValue(arrayKey(ARRAY,i,"online"),   options.cpus().at(i).cpu_online());
+            if(options.cpus().at(i).has_governor())   storage.setValue(arrayKey(ARRAY,i,"governor"), QString::fromStdString(std::string(options.cpus().at(i).governor())));
         }
 
         if(options.cpus().size() > 0)

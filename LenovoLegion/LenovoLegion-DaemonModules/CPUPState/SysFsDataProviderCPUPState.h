@@ -26,6 +26,8 @@ public:
     virtual QByteArray serializeAndGetData()                         override;
     virtual QByteArray deserializeAndSetData(const QByteArray &data) override;
 
+    QByteArray settableData(const QByteArray& data,Origin origin) override;
+
 
     virtual void init()      override;
     virtual void clean()     override;
@@ -33,6 +35,7 @@ public:
 private:
 
     legion::messages::CPUPState readCPPPState() const;
+    void settable(legion::messages::CPUPState& pstate,Origin origin) const;
     void timerEvent(QTimerEvent *event) override;
 
 public:

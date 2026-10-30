@@ -232,22 +232,7 @@ QByteArray DataProviderNvidiaNvml::deserializeAndSetData(const QByteArray &data)
         return {};
     }
 
-    /*
-     * Validate request before anything is applied to the device.
-     * Invalid request is only logged and nothing is applied (no exception, it would disconnect the client).
-     * If the range was not read from the device, it is 0 and only zero offset is allowed.
-     */
-    if(nvmlData.has_gpu_offset() && (nvmlData.gpu_offset().value() < m_minGpuOffset || nvmlData.gpu_offset().value() > m_maxGpuOffset))
-    {
-        LOG_E(QString(__PRETTY_FUNCTION__) + QString(" - GPU clock offset %1 is out of range <%2,%3>, request is ignored !").arg(nvmlData.gpu_offset().value()).arg(m_minGpuOffset).arg(m_maxGpuOffset));
-        return {};
-    }
-
-    if(nvmlData.has_memory_offset() && (nvmlData.memory_offset().value() < m_minMemOffset || nvmlData.memory_offset().value() > m_maxMemOffset))
-    {
-        LOG_E(QString(__PRETTY_FUNCTION__) + QString(" - Memory clock offset %1 is out of range <%2,%3>, request is ignored !").arg(nvmlData.memory_offset().value()).arg(m_minMemOffset).arg(m_maxMemOffset));
-        return {};
-    }
+    settable(nvmlData,Origin::REQUEST);
 
     if(nvmlData.has_gpu_offset())
     {
@@ -283,6 +268,61 @@ QByteArray DataProviderNvidiaNvml::deserializeAndSetData(const QByteArray &data)
     }
 
     return {};
+}
+
+QByteArray DataProviderNvidiaNvml::settableData(const QByteArray &data, Origin origin)
+{
+    return settableMessage<legion::messages::NvidiaNvml>(data,[this,origin](legion::messages::NvidiaNvml& nvml) { settable(nvml,origin); });
+}
+
+void DataProviderNvidiaNvml::settable(legion::messages::NvidiaNvml &nvml, Origin origin) const
+{
+    /*
+     * If the range was not read from the device, it is 0 and only zero offset is allowed
+     */
+    auto check = [&](bool has,legion::messages::NvidiaNvml::OffsetSettings* offset,qint32 min,qint32 max,const char* field) {
+        if(!has)
+        {
+            return true;
+        }
+
+        offset->clear_min();
+        offset->clear_max();
+
+        if(!offset->has_value())
+        {
+            return false;
+        }
+
+        const QString name = QString(field).append('=').append(QString::number(offset->value()));
+
+        if(m_device == nullptr)
+        {
+            skipField(origin,name,"no NVIDIA GPU device");
+            return false;
+        }
+
+        if(offset->value() < min || offset->value() > max)
+        {
+            skipField(origin,name,QString("range <").append(QString::number(min)).append(',').append(QString::number(max)).append('>'));
+            return false;
+        }
+
+        return true;
+    };
+
+    nvml.clear_hardware_monitor();
+    nvml.clear_name();
+
+    if(!check(nvml.has_gpu_offset(),nvml.mutable_gpu_offset(),m_minGpuOffset,m_maxGpuOffset,"GPU clock offset"))
+    {
+        nvml.clear_gpu_offset();
+    }
+
+    if(!check(nvml.has_memory_offset(),nvml.mutable_memory_offset(),m_minMemOffset,m_maxMemOffset,"memory clock offset"))
+    {
+        nvml.clear_memory_offset();
+    }
 }
 
 void DataProviderNvidiaNvml::init()

@@ -175,6 +175,8 @@ QByteArray SysFsDataProviderGPUPower::deserializeAndSetData(const QByteArray &da
         THROW_EXCEPTION(exception_T,DataProvider::DataProvider::ERROR_CODES::INVALID_DATA,"Parse of data message error !");
     }
 
+    settable(power,Origin::REQUEST);
+
     m_sysFsDriverManager->blockKernelEvent(SysFsDriverLegionOther::DRIVER_NAME,true);
     auto cleanup =  qScopeGuard([this] { m_sysFsDriverManager->blockKernelEvent(SysFsDriverLegionOther::DRIVER_NAME,false); });
 
@@ -191,6 +193,29 @@ QByteArray SysFsDataProviderGPUPower::deserializeAndSetData(const QByteArray &da
     m_sysFsDriverManager->processAllUdevEvents(100);
 
     return {};
+}
+
+
+QByteArray SysFsDataProviderGPUPower::settableData(const QByteArray &data, Origin origin)
+{
+    return settableMessage<legion::messages::GPUPower>(data,[this,origin](legion::messages::GPUPower& gpuPower) { settable(gpuPower,origin); });
+}
+
+void SysFsDataProviderGPUPower::settable(legion::messages::GPUPower &gpuPower, Origin origin)
+{
+    /*
+     * Limits are set in the custom power mode, values are checked against its descriptor (same as the GUI)
+     */
+    constexpr int mode = legion::messages::PowerProfile::POWER_PROFILE_CUSTOM;
+
+    /*
+     * Descriptors of the limits from the hardware (separate copy, the message may be the current state itself)
+     */
+    const auto current = parseMessage<legion::messages::GPUPower>(serializeAndGetData());
+
+    if(gpuPower.has_gpu_power_boost()       && !settableLimit(*gpuPower.mutable_gpu_power_boost(),current.gpu_power_boost(),mode,origin,"gpu_power_boost"))             gpuPower.clear_gpu_power_boost();
+    if(gpuPower.has_gpu_configurable_tgp()  && !settableLimit(*gpuPower.mutable_gpu_configurable_tgp(),current.gpu_configurable_tgp(),mode,origin,"gpu_configurable_tgp"))   gpuPower.clear_gpu_configurable_tgp();
+    if(gpuPower.has_gpu_temperature_limit() && !settableLimit(*gpuPower.mutable_gpu_temperature_limit(),current.gpu_temperature_limit(),mode,origin,"gpu_temperature_limit")) gpuPower.clear_gpu_temperature_limit();
 }
 
 

@@ -769,6 +769,7 @@ classDiagram
     class KitDataProvider["Kit::DataProvider"] {
         +serializeAndGetData()
         +deserializeAndSetData(data)
+        +settableData(data, origin)
         +init() / clean()
         +kernelEventHandler(driverEvent)
         +attach(host, sink)
@@ -943,11 +944,39 @@ sequenceDiagram
         A->>S: ModuleSettingsStorage(settingsGroup)
         A->>M: callModule("load settings") → loadSettings(storage)
         M->>M: readSettings(storage) → zpráva (prázdná = nic se nenastaví)
-        M->>P: deserializeAndSetData(zpráva)
+        M->>P: deserializeAndSetData(zpráva) → settable(zpráva, REQUEST)
     end
-    Note over DSM,P: uložení (saveAllSettings / saveAllSettingsOnExit):<br/>A.saveSettings → M.saveSettings → P.serializeAndGetData → writeSettings(storage)
+    Note over DSM,P: uložení (saveAllSettings / saveAllSettingsOnExit):<br/>A.saveSettings → M.saveSettings → P.settableData(P.serializeAndGetData(), STATE) → writeSettings(storage)
     Note over A: výjimky z nastavení jsou jen zalogované
 ```
+
+#### Co lze nastavit (`settableData`)
+
+Pravidla, která pole zprávy lze zapsat do hardwaru, jsou jen v provideru (`Kit::DataProvider::settableData`, u `IntelMSR` v `ModuleIntelMSR::settable`). Používají se ve dvou případech:
+
+- **Zápis (`deserializeAndSetData`):** zapíše se jen `settable(požadavek, REQUEST)`. Platí to pro přímý zápis z GUI, načtení GUI profilu i načtení nastavení daemonu. Přeskočené pole se zaloguje jako varování, ostatní pole se zapíšou.
+- **Uložení:** uloží se jen `settableData(aktuální stav, STATE)`. Přeskočené pole se loguje jen jako debug. Pole, které se nezapíše, nepřepíše dřív uloženou hodnotu.
+
+Pravidla:
+
+- Pole jen pro čtení (deskriptory, `supported`, `available_governors`, ID topologie atd.) se odstraní bez logu.
+- Neplatná hodnota se odstraní a zaloguje přes `skipField`.
+- Mezní hodnoty se berou vždy z hardwaru, ne z požadavku, protože požadavek obsahuje jen hodnoty.
+- `writeSettings` ukládá jen pole, která ve zprávě jsou (`has_*`).
+
+| Modul | Zapíše se jen |
+|-------|---------------|
+| CPUSMT | `control` `on`/`off`, a jen když je aktuální stav `on`/`off` (ne `forceoff`, `notsupported`, `notimplemented`) |
+| CPUOptions | `online` jen u CPU se souborem `online` (CPU0 nelze vypnout), governor z `scaling_available_governors` u zapnutého CPU, nejvýš tolik CPU, kolik jich je |
+| CPUFrequency | `scaling_min/max_freq` v rozsahu `cpuinfo_min/max_freq` zapnutého CPU |
+| CPUPState | `status` `active`/`passive` (ne `off`), `min/max_perf_pct` v rozsahu 0–100 |
+| CPUPower, GPUPower | hodnota podporovaná v deskriptoru `POWER_PROFILE_CUSTOM`, jedna z `steps`, nebo v rozsahu `<min_value,max_value>` (stejně jako GUI) |
+| FanCurve | celá křivka, 10 bodů s úrovní 0–10 |
+| FanOption, Other, PowerProfile (Fn+Q) | jen když je funkce `supported` |
+| PowerProfile | profil ze `supported_profiles` (ne `UNKNOWN`) |
+| OtherGpuSwitch | platný režim a podporované `gsync` i `igpu_mode`, požadavek bez režimu nic nezapíše |
+| NvidiaNvml | offsety v rozsahu ze zařízení, jen když je NVIDIA GPU |
+| IntelMSR | podporovaná rovina, offset v rozsahu `<-max_undervolt,max_overvolt>` |
 
 ### 9.9 Hranice chyb
 

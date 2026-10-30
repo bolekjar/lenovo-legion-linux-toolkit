@@ -51,6 +51,18 @@ QString SysFsDataProvider::getData(const std::filesystem::path &path)
     return QString::fromUtf8(file.readAll()).trimmed();
 }
 
+std::optional<QString> SysFsDataProvider::getOptionalData(const std::filesystem::path &path)
+{
+    QFile file(QString::fromStdString(path.string()));
+
+    if(!file.open(QIODeviceBase::ReadOnly))
+    {
+        return {};
+    }
+
+    return QString::fromUtf8(file.readAll()).trimmed();
+}
+
 void SysFsDataProvider::writeData(const std::filesystem::path &path, const QByteArray &data)
 {
     QFile file(QString::fromStdString(path.string()));

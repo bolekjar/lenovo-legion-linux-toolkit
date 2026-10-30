@@ -11,6 +11,7 @@
 #include <KitException.h>
 
 #include <MessageRegistry.pb.h>
+#include <NvidiaNvml.pb.h>
 
 #include <nvml.h>
 namespace LenovoLegionDaemon::Kit {
@@ -35,6 +36,8 @@ public:
     virtual QByteArray serializeAndGetData()                            override;
     virtual QByteArray deserializeAndSetData(const QByteArray&)         override;
 
+    QByteArray settableData(const QByteArray& data,Origin origin)       override;
+
 
     virtual void init() override;
     virtual void clean() override;
@@ -42,6 +45,8 @@ public:
 private:
 
     void cleanUp();
+
+    void settable(legion::messages::NvidiaNvml& nvml,Origin origin) const;
 
     /*
      * *************Static data*********************

@@ -99,7 +99,10 @@ void ProviderModule::loadSettings(const Module::ISettingsStorage &storage)
 
 void ProviderModule::saveSettings(Module::ISettingsStorage &storage)
 {
-    writeSettings(storage,provider().serializeAndGetData());
+    /*
+     * Only the settable part of the current state, read-only values are never saved
+     */
+    writeSettings(storage,provider().settableData(provider().serializeAndGetData(),DataProvider::Origin::STATE));
 }
 
 Module::IModuleHost &ProviderModule::host()

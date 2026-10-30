@@ -73,6 +73,16 @@ QByteArray SysFsDataProviderOtherGpuSwitch::deserializeAndSetData(const QByteArr
         THROW_EXCEPTION(exception_T,DataProvider::ERROR_CODES::INVALID_DATA,"Parse of data message error !");
     }
 
+    settable(gpuSwitchMsg,Origin::REQUEST);
+
+    /*
+     * Without the mode nothing is written (packGPUSettings would switch to the default hybrid mode)
+     */
+    if(!gpuSwitchMsg.has_current())
+    {
+        return {};
+    }
+
     // Convert from GpuSwitchValue to packed settings
     PackedGPUSettings packedSettings = packGPUSettings(gpuSwitchMsg);
 
@@ -82,6 +92,36 @@ QByteArray SysFsDataProviderOtherGpuSwitch::deserializeAndSetData(const QByteArr
     LOG_D(QString("GPU Switch: Setting hybrid mode to: ").append(QString::number(gpuSwitchMsg.current())));
 
     return {};
+}
+
+QByteArray SysFsDataProviderOtherGpuSwitch::settableData(const QByteArray &data, Origin origin)
+{
+    return settableMessage<legion::messages::GpuSwitchValue>(data,[this,origin](legion::messages::GpuSwitchValue& gpuSwitch) { settable(gpuSwitch,origin); });
+}
+
+void SysFsDataProviderOtherGpuSwitch::settable(legion::messages::GpuSwitchValue &gpuSwitch, Origin origin) const
+{
+    gpuSwitch.clear_supported();
+
+    if(!gpuSwitch.has_current())
+    {
+        return;
+    }
+
+    SysFsDriverLegionGameZone::GameZone gameZone(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverLegionGameZone::DRIVER_NAME));
+
+    const QString field = QString("GPU hybrid mode=").append(QString::number(gpuSwitch.current()));
+
+    if(!legion::messages::GpuSwitchValue_HybridModeState_IsValid(gpuSwitch.current()))
+    {
+        skipField(origin,field,"unknown mode");
+        gpuSwitch.clear_current();
+    }
+    else if(getData(gameZone.m_gsync.m_supported).toUShort() == 0 || getData(gameZone.m_igpuMode.m_supported).toUShort() == 0)
+    {
+        skipField(origin,field,"not supported");
+        gpuSwitch.clear_current();
+    }
 }
 
 legion::messages::GpuSwitchValue SysFsDataProviderOtherGpuSwitch::unPackGPUSettings(const PackedGPUSettings &packedGPUSettings) const

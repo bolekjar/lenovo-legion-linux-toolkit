@@ -46,7 +46,7 @@ public:
                 m_active(descriptor.find("smtActive") == descriptor.end() ? std::optional<std::filesystem::path>() : descriptor["smtActive"]),
                 m_control(descriptor.find("smtControl") == descriptor.end() ? std::optional<std::filesystem::path>() : descriptor["smtControl"])
             {
-                if(!m_active.has_value() || !m_active.has_value())
+                if(!m_active.has_value() || !m_control.has_value())
                 {
                     THROW_EXCEPTION(exception_T,ERROR_CODES::DRIVER_NOT_AVAILABLE,"Driver " + std::string(DRIVER_NAME) + " is not loaded !");
                 }

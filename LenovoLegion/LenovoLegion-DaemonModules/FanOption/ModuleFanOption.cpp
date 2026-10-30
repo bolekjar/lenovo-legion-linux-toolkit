@@ -63,7 +63,7 @@ protected:
     {
         const auto fanOption = parse<legion::messages::FanOption>(message);
 
-        storage.setValue("full_speed", fanOption.full_speed().current_value());
+        if (fanOption.has_full_speed()) storage.setValue("full_speed", fanOption.full_speed().current_value());
     }
 };
 

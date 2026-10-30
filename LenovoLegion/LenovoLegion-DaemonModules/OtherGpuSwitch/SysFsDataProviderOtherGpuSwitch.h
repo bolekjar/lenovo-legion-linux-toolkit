@@ -41,7 +41,11 @@ public:
     virtual QByteArray serializeAndGetData()                    ;
     virtual QByteArray deserializeAndSetData(const QByteArray&) ;
 
+    QByteArray settableData(const QByteArray& data,Origin origin) override;
+
 private:
+
+    void settable(legion::messages::GpuSwitchValue& gpuSwitch,Origin origin) const;
 
     PackedGPUSettings   packGPUSettings(const legion::messages::GpuSwitchValue& gpuSwitchValue) const;
     legion::messages::GpuSwitchValue unPackGPUSettings(const PackedGPUSettings& packedGPUSettings) const;

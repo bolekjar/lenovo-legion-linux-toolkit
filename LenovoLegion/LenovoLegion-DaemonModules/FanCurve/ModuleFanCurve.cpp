@@ -74,6 +74,11 @@ protected:
         const auto  fanCurve = parse<legion::messages::FanCurve>(message);
         const auto& points   = fanCurve.current_value();
 
+        if (!fanCurve.has_current_value())
+        {
+            return;
+        }
+
         storage.setValue("point1",  points.point1());
         storage.setValue("point2",  points.point2());
         storage.setValue("point3",  points.point3());

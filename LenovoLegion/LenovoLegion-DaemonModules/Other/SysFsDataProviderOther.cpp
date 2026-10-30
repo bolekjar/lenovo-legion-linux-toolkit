@@ -77,6 +77,8 @@ QByteArray SysFsDataProviderOther::deserializeAndSetData(const QByteArray &data)
         THROW_EXCEPTION(exception_T,DataProvider::ERROR_CODES::INVALID_DATA,"Parse of data message error !");
     }
 
+    settable(otherSettingsMsg,Origin::REQUEST);
+
     m_sysFsDriverManager->blockKernelEvent(SysFsDriverLegionEvents::DRIVER_NAME,true);
     auto cleanup =  qScopeGuard([this] { m_sysFsDriverManager->blockKernelEvent(SysFsDriverLegionEvents::DRIVER_NAME,false); });
 
@@ -95,6 +97,53 @@ QByteArray SysFsDataProviderOther::deserializeAndSetData(const QByteArray &data)
     m_sysFsDriverManager->processAllUdevEvents(100);
 
     return {};
+}
+
+QByteArray SysFsDataProviderOther::settableData(const QByteArray &data, Origin origin)
+{
+    return settableMessage<legion::messages::OtherSettings>(data,[this,origin](legion::messages::OtherSettings& settings) { settable(settings,origin); });
+}
+
+void SysFsDataProviderOther::settable(legion::messages::OtherSettings &settings, Origin origin) const
+{
+    if(!settings.has_touch_pad() && !settings.has_win_key())
+    {
+        return;
+    }
+
+    SysFsDriverLegionGameZone::GameZone gameZone(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverLegionGameZone::DRIVER_NAME));
+
+    auto check = [&](bool has,legion::messages::OtherSettings::EnableDisableValue* value,const std::filesystem::path& supported,const char* field) {
+        if(!has)
+        {
+            return true;
+        }
+
+        value->clear_supported();
+
+        if(!value->has_current())
+        {
+            return false;
+        }
+
+        if(getData(supported).toUShort() != 1)
+        {
+            skipField(origin,QString(field).append('=').append(QString::number(value->current())),"not supported");
+            return false;
+        }
+
+        return true;
+    };
+
+    if(!check(settings.has_touch_pad(),settings.mutable_touch_pad(),gameZone.m_disableTP.m_supported,"disable touchpad"))
+    {
+        settings.clear_touch_pad();
+    }
+
+    if(!check(settings.has_win_key(),settings.mutable_win_key(),gameZone.m_disableWinKey.m_supported,"disable win key"))
+    {
+        settings.clear_win_key();
+    }
 }
 
 }

@@ -96,6 +96,8 @@ QByteArray SysFsDataProviderCPUFrequency::deserializeAndSetData(const QByteArray
         THROW_EXCEPTION(exception_T,DataProvider::ERROR_CODES::INVALID_DATA,"Parse of data message error !");
     }
 
+    settable(cpuFrequency,Origin::REQUEST);
+
     // Skip if no CPUs in message
     if(cpuFrequency.cpus_size() == 0) {
         LOG_D("SysFsDataProviderCPUFrequency::deserializeAndSetData - no CPUs in message, skipping");
@@ -138,6 +140,82 @@ QByteArray SysFsDataProviderCPUFrequency::deserializeAndSetData(const QByteArray
     }
 
     return {};
+}
+
+QByteArray SysFsDataProviderCPUFrequency::settableData(const QByteArray &data, Origin origin)
+{
+    return settableMessage<legion::messages::CPUFrequency>(data,[this,origin](legion::messages::CPUFrequency& frequency) { settable(frequency,origin); });
+}
+
+void SysFsDataProviderCPUFrequency::settable(legion::messages::CPUFrequency &frequency, Origin origin) const
+{
+    SysFsDriverCPUXList::CPUXList cpuXlist(m_sysFsDriverManager->getDriverDescriptorsInVector(SysFsDriverCPUXList::DRIVER_NAME));
+
+    const int cpuCount = static_cast<int>(cpuXlist.cpuList().size());
+
+    if(frequency.cpus_size() > cpuCount)
+    {
+        skipField(origin,QString("CPUs ").append(QString::number(cpuCount)).append("..").append(QString::number(frequency.cpus_size() - 1)),QString("only ").append(QString::number(cpuCount)).append(" CPUs present"));
+        frequency.mutable_cpus()->DeleteSubrange(cpuCount,frequency.cpus_size() - cpuCount);
+    }
+
+    for(int i = 0; i < frequency.cpus_size(); ++i)
+    {
+        legion::messages::CPUFrequency::CPUX* cpux = frequency.mutable_cpus(i);
+        const auto&                           cpu  = cpuXlist.cpuList().at(i);
+        const QString                         name = QString("CPU").append(QString::number(i));
+
+        cpux->clear_base_freq();
+        cpux->clear_min_freq();
+        cpux->clear_max_freq();
+        cpux->clear_scaling_cur_freq();
+        cpux->clear_online();
+        cpux->clear_core_id();
+        cpux->clear_die_id();
+        cpux->clear_physical_package_id();
+        cpux->clear_cluster_id();
+
+        if(!cpux->has_scaling_min_freq() && !cpux->has_scaling_max_freq())
+        {
+            continue;
+        }
+
+        /*
+         * Limits of the hardware, not readable when the CPU is offline
+         */
+        const auto minFreq = getOptionalData(cpu.m_freq.m_cpuInfoMinFreq);
+        const auto maxFreq = getOptionalData(cpu.m_freq.m_cpuInfoMaxFreq);
+
+        if(!minFreq.has_value() || !maxFreq.has_value())
+        {
+            skipField(origin,QString(name).append(" scaling limits"),"CPU is offline");
+            cpux->clear_scaling_min_freq();
+            cpux->clear_scaling_max_freq();
+            continue;
+        }
+
+        const uint min = minFreq->toUInt();
+        const uint max = maxFreq->toUInt();
+
+        auto inRange = [&](bool has,uint value,const char* field) {
+            if(has && (value < min || value > max))
+            {
+                skipField(origin,QString(name).append(' ').append(field).append('=').append(QString::number(value)),QString("range <").append(QString::number(min)).append(',').append(QString::number(max)).append('>'));
+                return false;
+            }
+            return true;
+        };
+
+        if(!inRange(cpux->has_scaling_min_freq(),cpux->scaling_min_freq(),"scaling_min_freq"))
+        {
+            cpux->clear_scaling_min_freq();
+        }
+
+        if(!inRange(cpux->has_scaling_max_freq(),cpux->scaling_max_freq(),"scaling_max_freq"))
+        {
+            cpux->clear_scaling_max_freq();
+        }
+    }
 }
 
 legion::messages::CPUFrequency SysFsDataProviderCPUFrequency::readCPPFrequency(bool scalingLimitsOnly) const

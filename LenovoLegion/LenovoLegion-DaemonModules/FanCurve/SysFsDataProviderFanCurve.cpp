@@ -14,6 +14,10 @@
 
 #include <KitLog.h>
 
+#include <QStringList>
+
+#include <utility>
+
 
 namespace LenovoLegionDaemon::Kit {
 
@@ -169,6 +173,8 @@ QByteArray SysFsDataProviderFanCurve::deserializeAndSetData(const QByteArray &da
         THROW_EXCEPTION(exception_T,DataProvider::ERROR_CODES::INVALID_DATA,"Parse of data message error !");
     }
 
+    settable(fanCurveMsg,Origin::REQUEST);
+
     m_sysFsDriverManager->blockKernelEvent(SysFsDriverLegionFanMode::DRIVER_NAME,true);
     auto cleanup =  qScopeGuard([this] { m_sysFsDriverManager->blockKernelEvent(SysFsDriverLegionFanMode::DRIVER_NAME,false); });
 
@@ -190,6 +196,61 @@ QByteArray SysFsDataProviderFanCurve::deserializeAndSetData(const QByteArray &da
     m_sysFsDriverManager->processAllUdevEvents(100);
 
     return {};
+}
+
+QByteArray SysFsDataProviderFanCurve::settableData(const QByteArray &data, Origin origin)
+{
+    return settableMessage<legion::messages::FanCurve>(data,[origin](legion::messages::FanCurve& fanCurve) { settable(fanCurve,origin); });
+}
+
+void SysFsDataProviderFanCurve::settable(legion::messages::FanCurve &fanCurve, Origin origin)
+{
+    /*
+     * Kernel accepts only the whole curve, 10 points with level 0..10 (fan curve is set only in the custom thermal mode, kernel returns -EBUSY otherwise)
+     */
+    static constexpr quint32 MAX_LEVEL = 10;
+
+    fanCurve.clear_cpu_default();
+    fanCurve.clear_gpu_default();
+    fanCurve.clear_cpusen_default();
+    fanCurve.clear_sys_default();
+
+    if(!fanCurve.has_current_value())
+    {
+        return;
+    }
+
+    const auto& points = fanCurve.current_value();
+
+    const std::pair<bool,quint32> values[] = {
+        {points.has_point1(), points.point1()}, {points.has_point2(), points.point2()}, {points.has_point3(), points.point3()},
+        {points.has_point4(), points.point4()}, {points.has_point5(), points.point5()}, {points.has_point6(), points.point6()},
+        {points.has_point7(), points.point7()}, {points.has_point8(), points.point8()}, {points.has_point9(), points.point9()},
+        {points.has_point10(),points.point10()}
+    };
+
+    QStringList curve;
+
+    bool complete = true;
+    bool inRange  = true;
+
+    for(const auto& [has,value] : values)
+    {
+        complete = complete && has;
+        inRange  = inRange && value <= MAX_LEVEL;
+        curve.append(has ? QString::number(value) : QString("-"));
+    }
+
+    if(!complete)
+    {
+        skipField(origin,QString("fan curve=").append(curve.join(',')),"all 10 points are required");
+        fanCurve.clear_current_value();
+    }
+    else if(!inRange)
+    {
+        skipField(origin,QString("fan curve=").append(curve.join(',')),"level range <0,10>");
+        fanCurve.clear_current_value();
+    }
 }
 
 

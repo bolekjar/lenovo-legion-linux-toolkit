@@ -41,14 +41,15 @@ struct Plane
     bool                                (CpuIntelMSR::*m_has)()      const;
     const CpuIntelMSR::VoltageSettings& (CpuIntelMSR::*m_settings)() const;
     CpuIntelMSR::VoltageSettings*       (CpuIntelMSR::*m_mutable)();
+    void                                (CpuIntelMSR::*m_clear)();
 };
 
 const std::array<Plane,5> PLANES {{
-    { "analogio", &CpuIntelMSR::has_analogio, &CpuIntelMSR::analogio, &CpuIntelMSR::mutable_analogio },
-    { "cache",    &CpuIntelMSR::has_cache,    &CpuIntelMSR::cache,    &CpuIntelMSR::mutable_cache    },
-    { "cpu",      &CpuIntelMSR::has_cpu,      &CpuIntelMSR::cpu,      &CpuIntelMSR::mutable_cpu      },
-    { "gpu",      &CpuIntelMSR::has_gpu,      &CpuIntelMSR::gpu,      &CpuIntelMSR::mutable_gpu      },
-    { "uncore",   &CpuIntelMSR::has_uncore,   &CpuIntelMSR::uncore,   &CpuIntelMSR::mutable_uncore   },
+    { "analogio", &CpuIntelMSR::has_analogio, &CpuIntelMSR::analogio, &CpuIntelMSR::mutable_analogio, &CpuIntelMSR::clear_analogio },
+    { "cache",    &CpuIntelMSR::has_cache,    &CpuIntelMSR::cache,    &CpuIntelMSR::mutable_cache,    &CpuIntelMSR::clear_cache    },
+    { "cpu",      &CpuIntelMSR::has_cpu,      &CpuIntelMSR::cpu,      &CpuIntelMSR::mutable_cpu,      &CpuIntelMSR::clear_cpu      },
+    { "gpu",      &CpuIntelMSR::has_gpu,      &CpuIntelMSR::gpu,      &CpuIntelMSR::mutable_gpu,      &CpuIntelMSR::clear_gpu      },
+    { "uncore",   &CpuIntelMSR::has_uncore,   &CpuIntelMSR::uncore,   &CpuIntelMSR::mutable_uncore,   &CpuIntelMSR::clear_uncore   },
 }};
 
 QString offsetKey(const Plane& plane)
@@ -193,15 +194,25 @@ public:
     void saveSettings(ISettingsStorage& storage) override
     {
         /*
-         * Device not available -> nothing is saved, saved settings stay unchanged
+         * Device not available or plane not settable -> nothing is saved, saved settings stay unchanged
          */
-        const CpuIntelMSR message = readState();
+        CpuIntelMSR message = readState();
 
         for(const auto& plane : PLANES)
         {
             if((message.*plane.m_has)() && (message.*plane.m_settings)().has_offset())
             {
-                storage.setValue(offsetKey(plane),roundToMillivolts((message.*plane.m_settings)().offset()));
+                (message.*plane.m_mutable)()->set_offset(roundToMillivolts((message.*plane.m_settings)().offset()));
+            }
+        }
+
+        settable(message,false);
+
+        for(const auto& plane : PLANES)
+        {
+            if((message.*plane.m_has)())
+            {
+                storage.setValue(offsetKey(plane),(message.*plane.m_settings)().offset());
             }
         }
     }
@@ -249,13 +260,74 @@ private:
     /*
      * Write offsets present in the message. Failed write is only logged, the client re-reads the values.
      */
-    void apply(const CpuIntelMSR& message)
+    /*
+     * Only offsets which can be set: plane supported, offset within <-max_undervolt,max_overvolt> (uV).
+     * The same rules for set requests (skipped offset is a warning) and for saving of the settings (current state).
+     */
+    void settable(CpuIntelMSR& message,bool request) const
+    {
+        const CpuIntelMSR current = readState();
+
+        for(const auto& plane : PLANES)
+        {
+            if(!(message.*plane.m_has)())
+            {
+                continue;
+            }
+
+            CpuIntelMSR::VoltageSettings* settings = (message.*plane.m_mutable)();
+
+            settings->clear_max_overvolt();
+            settings->clear_max_undervolt();
+            settings->clear_supported();
+
+            if(!settings->has_offset())
+            {
+                (message.*plane.m_clear)();
+                continue;
+            }
+
+            const auto&   state = (current.*plane.m_settings)();
+            const qint32  min   = -static_cast<qint32>(state.max_undervolt());
+            const qint32  max   = static_cast<qint32>(state.max_overvolt());
+            const QString field = QString("IntelMSR ").append(plane.m_name).append(" offset=").append(QString::number(settings->offset()));
+
+            if(!(current.*plane.m_has)() || !state.supported())
+            {
+                skip(request,field,"not supported");
+                (message.*plane.m_clear)();
+            }
+            else if(settings->offset() < min || settings->offset() > max)
+            {
+                skip(request,field,QString("range <").append(QString::number(min)).append(',').append(QString::number(max)).append('>'));
+                (message.*plane.m_clear)();
+            }
+        }
+    }
+
+    void skip(bool request,const QString& field,const QString& reason) const
+    {
+        const QString message = QString(field).append(" is not settable (").append(reason).append("), skipped");
+
+        if(request)
+        {
+            m_host.logger().warning(message);
+        }
+        else
+        {
+            m_host.logger().debug(message);
+        }
+    }
+
+    void apply(CpuIntelMSR message)
     {
         if(!m_available)
         {
             m_host.logger().error("IntelMSR: device not available, request is ignored !");
             return;
         }
+
+        settable(message,true);
 
         /*
          * Own kernel events are not delivered to the client

@@ -68,8 +68,8 @@ protected:
     {
         const auto profile = parse<legion::messages::PowerProfile>(message);
 
-        storage.setValue("PowerProfile", static_cast<quint32>(profile.current_value()));
-        storage.setValue("custom_fnq_enabled", profile.custom_fnq_enabled().current_value());
+        if (profile.has_current_value())       storage.setValue("PowerProfile", static_cast<quint32>(profile.current_value()));
+        if (profile.has_custom_fnq_enabled())  storage.setValue("custom_fnq_enabled", profile.custom_fnq_enabled().current_value());
     }
 };
 

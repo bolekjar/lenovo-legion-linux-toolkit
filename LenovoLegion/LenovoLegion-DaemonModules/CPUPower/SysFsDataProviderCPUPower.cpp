@@ -212,6 +212,8 @@ QByteArray SysFsDataProviderCPUPower::deserializeAndSetData(const QByteArray &da
         THROW_EXCEPTION(exception_T,DataProvider::DataProvider::ERROR_CODES::INVALID_DATA,"Parse of data message error !");
     }
 
+    settable(cpuPower,Origin::REQUEST);
+
     m_sysFsDriverManager->blockKernelEvent(SysFsDriverLegionOther::DRIVER_NAME,true);
     auto cleanup =  qScopeGuard([this] { m_sysFsDriverManager->blockKernelEvent(SysFsDriverLegionOther::DRIVER_NAME,false); });
 
@@ -239,6 +241,38 @@ QByteArray SysFsDataProviderCPUPower::deserializeAndSetData(const QByteArray &da
 
     m_sysFsDriverManager->processAllUdevEvents(100);
     return {};
+}
+
+QByteArray SysFsDataProviderCPUPower::settableData(const QByteArray &data, Origin origin)
+{
+    return settableMessage<legion::messages::CPUPower>(data,[this,origin](legion::messages::CPUPower& cpuPower) { settable(cpuPower,origin); });
+}
+
+void SysFsDataProviderCPUPower::settable(legion::messages::CPUPower &cpuPower, Origin origin)
+{
+    /*
+     * Limits are set in the custom power mode, values are checked against its descriptor (same as the GUI)
+     */
+    constexpr int mode = legion::messages::PowerProfile::POWER_PROFILE_CUSTOM;
+
+    /*
+     * Descriptors of the limits from the hardware (separate copy, the message may be the current state itself)
+     */
+    const auto current = parseMessage<legion::messages::CPUPower>(serializeAndGetData());
+
+    /*
+     * Not written by the daemon
+     */
+    cpuPower.clear_apus_pptp_limit();
+    cpuPower.clear_cpu_pp_limit();
+
+    if(cpuPower.has_cpu_tmp_limit()            && !settableLimit(*cpuPower.mutable_cpu_tmp_limit(),current.cpu_tmp_limit(),mode,origin,"cpu_tmp_limit"))                       cpuPower.clear_cpu_tmp_limit();
+    if(cpuPower.has_cpu_clp_limit()            && !settableLimit(*cpuPower.mutable_cpu_clp_limit(),current.cpu_clp_limit(),mode,origin,"cpu_clp_limit"))                       cpuPower.clear_cpu_clp_limit();
+    if(cpuPower.has_cpu_ltp_limit()            && !settableLimit(*cpuPower.mutable_cpu_ltp_limit(),current.cpu_ltp_limit(),mode,origin,"cpu_ltp_limit"))                       cpuPower.clear_cpu_ltp_limit();
+    if(cpuPower.has_cpu_stp_limit()            && !settableLimit(*cpuPower.mutable_cpu_stp_limit(),current.cpu_stp_limit(),mode,origin,"cpu_stp_limit"))                       cpuPower.clear_cpu_stp_limit();
+    if(cpuPower.has_cpu_pl1_tau()              && !settableLimit(*cpuPower.mutable_cpu_pl1_tau(),current.cpu_pl1_tau(),mode,origin,"cpu_pl1_tau"))                           cpuPower.clear_cpu_pl1_tau();
+    if(cpuPower.has_gpu_total_onac()           && !settableLimit(*cpuPower.mutable_gpu_total_onac(),current.gpu_total_onac(),mode,origin,"gpu_total_onac"))                     cpuPower.clear_gpu_total_onac();
+    if(cpuPower.has_gpu_to_cpu_dynamic_boost() && !settableLimit(*cpuPower.mutable_gpu_to_cpu_dynamic_boost(),current.gpu_to_cpu_dynamic_boost(),mode,origin,"gpu_to_cpu_dynamic_boost")) cpuPower.clear_gpu_to_cpu_dynamic_boost();
 }
 
 void SysFsDataProviderCPUPower::setValue(const std::filesystem::path &path, std::function<void (legion::messages::CPUPower::Limit::Descriptor &, uint)> setter, auto map) const

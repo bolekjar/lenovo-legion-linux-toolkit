@@ -72,8 +72,8 @@ protected:
 
         for(int i = 0; i < frequency.cpus().size(); ++i)
         {
-            storage.setValue(arrayKey(ARRAY,i,"scaling_min_freq"), frequency.cpus().at(i).scaling_min_freq());
-            storage.setValue(arrayKey(ARRAY,i,"scaling_max_freq"), frequency.cpus().at(i).scaling_max_freq());
+            if(frequency.cpus().at(i).has_scaling_min_freq()) storage.setValue(arrayKey(ARRAY,i,"scaling_min_freq"), frequency.cpus().at(i).scaling_min_freq());
+            if(frequency.cpus().at(i).has_scaling_max_freq()) storage.setValue(arrayKey(ARRAY,i,"scaling_max_freq"), frequency.cpus().at(i).scaling_max_freq());
         }
 
         if(frequency.cpus().size() > 0)
