@@ -26,8 +26,8 @@ Settings::~Settings()
     m_settings.endGroup();
 }
 
-SettingsLoaderPowerProfiles::SettingsLoaderPowerProfiles() :
-    Settings("PowerProfileData")
+SettingsLoaderPowerProfiles::SettingsLoaderPowerProfiles(const QString& prefix) :
+    Settings(QString(prefix).append("PowerProfileData"))
 {
 }
 
@@ -74,6 +74,42 @@ SettingsSaverDaemonSettings& SettingsSaverDaemonSettings::saveDaemonSettings(con
     m_settings.setValue("trace_logging", daemonSettings.trace_logging());
     // Note: save_now is not saved - it's a command flag, not a persistent setting
     return *this;
+}
+
+// Profiles
+SettingsProfiles::SettingsProfiles() :
+    Settings("Profiles")
+{
+}
+
+QString SettingsProfiles::prefix(const QString &name)
+{
+    return QString("Profiles/").append(name).append('/');
+}
+
+QStringList SettingsProfiles::names()
+{
+    return m_settings.childGroups();
+}
+
+bool SettingsProfiles::exists(const QString &name)
+{
+    return names().contains(name);
+}
+
+QString SettingsProfiles::description(const QString &name)
+{
+    return m_settings.value(QString(name).append("/description")).toString();
+}
+
+void SettingsProfiles::setDescription(const QString &name, const QString &description)
+{
+    m_settings.setValue(QString(name).append("/description"),description);
+}
+
+void SettingsProfiles::remove(const QString &name)
+{
+    m_settings.remove(name);
 }
 
 }

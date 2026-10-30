@@ -18,6 +18,7 @@
  * Data providers of the framework, hardware is handled by daemon modules (.so in modules/, see ModulesDesign.md)
  */
 #include "DataProviders/DataProviderDaemonSettings.h"
+#include "DataProviders/DataProviderProfiles.h"
 
 #include "Modules/ModuleLoader.h"
 
@@ -59,6 +60,7 @@ Application::Application(int &argc, char *argv[]) :
      * Data providers of the framework, hardware data providers are daemon modules loaded in appInitImpl
      */
     m_dataProviderManager->addDataProvider(new DataProviderDaemonSettings(m_dataProviderManager));
+    m_dataProviderManager->addDataProvider(new DataProviderProfiles(m_dataProviderManager));
 }
 
 void Application::appRollBackImpl() noexcept

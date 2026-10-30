@@ -9,6 +9,10 @@
 
 #include "ToolBarWidget.h"
 
+#include "../LenovoLegion-PrepareBuild/Profiles.pb.h"
+
+#include <map>
+
 
 namespace Ui {
 class ToolBarProfilesWidget;
@@ -48,7 +52,13 @@ private:
     
     void connectSignals();
     void loadProfilesList();
+    void showProfiles(const legion::messages::Profiles& profiles);
     void updateProfileDetails(const QString& profileName);
+
+    /*
+     * Profiles are saved and applied by the daemon, response is the list of the profiles after the command
+     */
+    void profileCommand(legion::messages::ProfileCommand::Action action,const QString& name,const QString& description = {});
 
     Ui::ToolBarProfilesWidget *ui;
 
@@ -56,6 +66,11 @@ private:
      * Default Action Map, Defined by user
      */
     std::map<std::string,std::list<std::function< void ()>>> m_defaultActionsMap;
+
+    /*
+     * Profiles from the daemon, name -> description
+     */
+    std::map<QString,QString> m_profiles;
 };
 
 }

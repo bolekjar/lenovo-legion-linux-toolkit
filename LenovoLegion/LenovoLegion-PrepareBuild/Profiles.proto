@@ -1,0 +1,33 @@
+edition = "2024";
+
+package legion.messages;
+
+
+/*
+ * Saved profiles of the daemon settings (DataType PROFILES)
+ *  - GET: list of the profiles
+ *  - SET: ProfileCommand, response is the list of the profiles after the command
+ */
+message Profiles
+{
+    message Profile
+    {
+        string name        = 1;
+        string description = 2;
+    }
+
+    repeated Profile profiles = 1;
+}
+
+message ProfileCommand
+{
+    enum Action {
+        SAVE    = 0;    // save the current settings of the hardware as the profile (overwrites existing one)
+        LOAD    = 1;    // apply the profile
+        DELETE  = 2;    // delete the profile
+    }
+
+    Action action      = 1;
+    string name        = 2;
+    string description = 3;    // SAVE only
+}

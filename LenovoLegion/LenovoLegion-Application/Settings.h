@@ -12,16 +12,6 @@
 #include <QStringList>
 
 
-#include "../LenovoLegion-PrepareBuild/PowerProfile.pb.h"
-#include "../LenovoLegion-PrepareBuild/CPUOptions.pb.h"
-#include "../LenovoLegion-PrepareBuild/CPUFrequency.pb.h"
-#include "../LenovoLegion-PrepareBuild/FanControl.pb.h"
-#include "../LenovoLegion-PrepareBuild/CpuPower.pb.h"
-#include "../LenovoLegion-PrepareBuild/GPUPower.pb.h"
-#include "../LenovoLegion-PrepareBuild/NvidiaNvml.pb.h"
-#include "../LenovoLegion-PrepareBuild/CpuIntelMSR.pb.h"
-#include "../LenovoLegion-PrepareBuild/Other.pb.h"
-
 namespace LenovoLegionGui {
 
 
@@ -105,54 +95,6 @@ public:
 signals:
     void settingChanged(LenovoLegionGui::ApplicationSettings::SettingType setting, bool value);
     void themeChanged(LenovoLegionGui::ApplicationSettings::ThemeType theme);
-};
-
-
-class ProfileSettings : protected Settings
-{
-public:
-    explicit ProfileSettings(const QString& profileName);
-    
-    // Profile metadata
-    void saveDescription(const QString& description);
-    QString loadDescription();
-    
-    // Generic save/load methods for protobuf messages
-    void savePowerProfile(const legion::messages::PowerProfile& msg);
-    void saveCPUOptions(const legion::messages::CPUOptions& msg);
-    void saveCPUFrequency(const legion::messages::CPUFrequency& msg);
-    void saveFanCurve(const legion::messages::FanCurve& msg);
-    void saveFanOption(const legion::messages::FanOption& msg);
-    void saveCPUSMT(const legion::messages::CPUSMT& msg);
-    void saveCPUPower(const legion::messages::CPUPower& msg);
-    void saveGPUPower(const legion::messages::GPUPower& msg);
-    void saveNvidiaNvml(const legion::messages::NvidiaNvml& msg);
-    void saveIntelMSR(const legion::messages::CpuIntelMSR& msg);
-    void saveOther(const legion::messages::OtherSettings& msg);
-    void saveCPUPstate(const legion::messages::CPUPState& msg);
-    
-    void loadPowerProfile(legion::messages::PowerProfile& msg);
-    void loadCPUOptions(legion::messages::CPUOptions& msg);
-    void loadCPUFrequency(legion::messages::CPUFrequency& msg);
-    void loadFanCurve(legion::messages::FanCurve& msg);
-    void loadFanOption(legion::messages::FanOption& msg);
-    void loadCPUSMT(legion::messages::CPUSMT& msg);
-    void loadCPUPower(legion::messages::CPUPower& msg);
-    void loadGPUPower(legion::messages::GPUPower& msg);
-    void loadNvidiaNvml(legion::messages::NvidiaNvml& msg);
-    void loadIntelMSR(legion::messages::CpuIntelMSR& msg);
-    void loadOther(legion::messages::OtherSettings& msg);
-    void loadCPUPstate(legion::messages::CPUPState& msg);
-};
-
-
-class ProfileManager
-{
-public:
-    static QStringList listProfiles();
-    static bool profileExists(const QString& profileName);
-    static bool deleteProfile(const QString& profileName);
-    static QString getProfileDescription(const QString& profileName);
 };
 
 

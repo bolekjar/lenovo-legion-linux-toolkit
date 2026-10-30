@@ -6,7 +6,9 @@
    GUI re-reads the values after set, so it shows the real state. Only log the error (LOG_E) in setData: write unbuffered and check the result of write(), no exception, no protocol change.
    Do not throw - exception would disconnect the GUI and stop writing of the other values in the same request (e.g. other IntelMSR planes, -EOPNOTSUPP for analogio on Meteor/Arrow Lake).
 4) DONE - GUI PowerProfileControl radio buttons re-read the real state after set.
-5) GUI ToolBarProfilesWidget::onLoadProfile - sends all sets, but no tab re-reads the data (also on success). Own kernel events are blocked by the daemon during set, so no notification comes. Other tabs may show old values. Related to 1).
+5) DONE - profiles are saved and applied by the daemon (DataType PROFILES, ModulesDesign.md 9.8), GUI only sends the command.
+   Other pages read the data again when they are opened (toolbar pages are created on every switch), only the battery status widget stays.
+   Old GUI profiles in LenovoLegionGui.ini (groups Profile_<name>) are not converted, they have to be saved again.
 6) Daemon calls QCoreApplication::exit(0) on protocol processor error (newConnection*Handler) - exits as success, so systemd Restart=on-failure does not restart it. Use non-zero exit code.
 7) Daemon Application::notify - any exception from any object (e.g. data provider timer) disconnects both clients. Disconnect only when the exception comes from the protocol processor.
 8) Kernel fan curve store - sscanf("%hhu") truncates to u8 (266 -> 10) and passes the "<= 10" check. Parse to unsigned int and check range (legion-wmi-fm-sysfs.c).

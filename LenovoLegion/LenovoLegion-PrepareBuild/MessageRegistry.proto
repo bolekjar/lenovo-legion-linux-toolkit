@@ -23,4 +23,5 @@ enum DataType {
   FAN_OPTION          = 17;
   OTHER_GPU_SWITCH    = 18;
   CPU_PSTATE          = 19;
+  PROFILES            = 20;
 }

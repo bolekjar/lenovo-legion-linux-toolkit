@@ -29,6 +29,7 @@ DISTFILES += \
     Other.proto \
     PowerProfile.proto \
     DaemonSettings.proto \
+    Profiles.proto \
     RGBController.proto
 
 for (PFILE, DISTFILES) {

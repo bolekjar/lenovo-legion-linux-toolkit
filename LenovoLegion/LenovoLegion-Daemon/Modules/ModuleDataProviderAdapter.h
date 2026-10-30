@@ -68,6 +68,12 @@ public:
     void loadSettings() override;
     void saveSettings() override;
 
+    /*
+     * Settings in the groups with the prefix (saved profile, SettingsProfiles::prefix)
+     */
+    void loadSettings(const QString& prefix);
+    void saveSettings(const QString& prefix);
+
 private:
 
     enum class State

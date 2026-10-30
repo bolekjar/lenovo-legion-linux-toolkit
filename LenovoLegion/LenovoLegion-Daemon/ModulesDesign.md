@@ -950,6 +950,16 @@ sequenceDiagram
     Note over A: výjimky z nastavení jsou jen zalogované
 ```
 
+#### Profily
+
+Profily ukládá a aplikuje daemon, GUI nemá vlastní ukládání (`DataType::PROFILES`, `Profiles.proto`, `DataProviderProfiles`):
+
+- GET vrátí seznam profilů (jméno, popis). SET pošle `ProfileCommand` (`SAVE`, `LOAD`, `DELETE`) a odpověď je seznam profilů po provedení příkazu. Neplatné jméno nebo neexistující profil vrátí ERROR_RESPONSE.
+- Profil je stejné nastavení modulů jako uložené nastavení daemonu, jen ve skupinách `Profiles/<jméno>/<settingsGroup>` souboru `LenovoLegion-Daemon.ini` (`SettingsProfiles::prefix`). `DaemonSettingsManager` má pro obojí jednu cestu: `applyModuleSettings(prefix)` a `storeModuleSettings(prefix)`, tedy pořadí modulů, `customOnly` podle uloženého `PowerProfile` a `settableData`.
+- `SAVE` nejdřív smaže celý profil, takže po přepsání v něm nezůstanou staré hodnoty.
+- Jméno nesmí být prázdné, začínat nebo končit mezerou, obsahovat lomítko nebo zpětné lomítko a mít víc než 64 znaků.
+- Staré profily GUI v `LenovoLegionGui.ini` (`Profile_<jméno>`) se nepřevádějí.
+
 #### Co lze nastavit (`settableData`)
 
 Pravidla, která pole zprávy lze zapsat do hardwaru, jsou jen v provideru (`Kit::DataProvider::settableData`, u `IntelMSR` v `ModuleIntelMSR::settable`). Používají se ve dvou případech:

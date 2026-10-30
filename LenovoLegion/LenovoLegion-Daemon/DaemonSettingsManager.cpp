@@ -41,10 +41,17 @@ void DaemonSettingsManager::loadAllSettings(DataProviderManager* dataProviderMan
     }
     
     LOG_T("DaemonSettingsManager::loadAllSettings - applying saved hardware settings");
-    
+
+    applyModuleSettings(dataProviderManager,{});
+
+    LOG_T("DaemonSettingsManager::loadAllSettings - complete");
+}
+
+void DaemonSettingsManager::applyModuleSettings(DataProviderManager* dataProviderManager,const QString& prefix)
+{
     // Load power profile first to check if CUSTOM mode is saved
     legion::messages::PowerProfile savedProfile;
-    SettingsLoaderPowerProfiles().loadPowerProfile(savedProfile);
+    SettingsLoaderPowerProfiles(prefix).loadPowerProfile(savedProfile);
     bool isCustomProfile = savedProfile.current_value() &&
                           savedProfile.current_value() == legion::messages::PowerProfile_Profiles_POWER_PROFILE_CUSTOM;
     
@@ -66,10 +73,8 @@ void DaemonSettingsManager::loadAllSettings(DataProviderManager* dataProviderMan
         }
 
         LOG_T(QString("DaemonSettingsManager::loadAllSettings - ").append(module->info().name));
-        module->loadSettings();
+        module->loadSettings(prefix);
     }
-
-    LOG_T("DaemonSettingsManager::loadAllSettings - complete");
 }
 
 void DaemonSettingsManager::saveAllSettings(DataProviderManager* dataProviderManager)
@@ -78,12 +83,80 @@ void DaemonSettingsManager::saveAllSettings(DataProviderManager* dataProviderMan
 
     saveDaemonSettings();
 
-    for (auto* module : persistentModules(dataProviderManager)) {
-        LOG_T(QString("DaemonSettingsManager::saveAllSettings - ").append(module->info().name));
-        module->saveSettings();
-    }
+    storeModuleSettings(dataProviderManager,{});
 
     LOG_D("DaemonSettingsManager::saveAllSettings - complete");
+}
+
+void DaemonSettingsManager::storeModuleSettings(DataProviderManager* dataProviderManager,const QString& prefix)
+{
+    for (auto* module : persistentModules(dataProviderManager)) {
+        LOG_T(QString("DaemonSettingsManager::saveAllSettings - ").append(module->info().name));
+        module->saveSettings(prefix);
+    }
+}
+
+std::vector<std::pair<QString,QString>> DaemonSettingsManager::profiles()
+{
+    SettingsProfiles                        settings;
+    std::vector<std::pair<QString,QString>> profiles;
+
+    for (const auto& name : settings.names()) {
+        profiles.emplace_back(name,settings.description(name));
+    }
+
+    return profiles;
+}
+
+void DaemonSettingsManager::saveProfile(DataProviderManager* dataProviderManager,const QString& name,const QString& description)
+{
+    checkProfileName(name);
+
+    LOG_D(QString("DaemonSettingsManager::saveProfile - ").append(name));
+
+    /*
+     * Overwrite: values of the old profile which are not settable now must not stay in the profile
+     */
+    {
+        SettingsProfiles settings;
+
+        settings.remove(name);
+        settings.setDescription(name,description);
+    }
+
+    storeModuleSettings(dataProviderManager,SettingsProfiles::prefix(name));
+}
+
+void DaemonSettingsManager::loadProfile(DataProviderManager* dataProviderManager,const QString& name)
+{
+    checkProfileName(name);
+
+    if (!SettingsProfiles().exists(name)) {
+        THROW_EXCEPTION(exception_T,ERROR_CODES::PROFILE_ERROR,QString("Profile ").append(name).append(" does not exist !").toStdString().c_str());
+    }
+
+    LOG_D(QString("DaemonSettingsManager::loadProfile - ").append(name));
+
+    applyModuleSettings(dataProviderManager,SettingsProfiles::prefix(name));
+}
+
+void DaemonSettingsManager::deleteProfile(const QString& name)
+{
+    checkProfileName(name);
+
+    LOG_D(QString("DaemonSettingsManager::deleteProfile - ").append(name));
+
+    SettingsProfiles().remove(name);
+}
+
+void DaemonSettingsManager::checkProfileName(const QString& name)
+{
+    /*
+     * Name is a settings group, slash and backslash would create nested groups
+     */
+    if (name.trimmed().isEmpty() || name != name.trimmed() || name.size() > MAX_PROFILE_NAME_LENGTH || name.contains('/') || name.contains('\\')) {
+        THROW_EXCEPTION(exception_T,ERROR_CODES::PROFILE_ERROR,QString("Invalid profile name \"").append(name).append("\" !").toStdString().c_str());
+    }
 }
 
 std::vector<ModuleDataProviderAdapter*> DaemonSettingsManager::persistentModules(DataProviderManager* dataProviderManager)

@@ -4,10 +4,10 @@
 
 #include "Utils.h"
 #include "WidgetMessage.h"
-#include "Settings.h"
 
 // Include daemon data provider constants
 #include "../LenovoLegion-PrepareBuild/MessageRegistry.pb.h"
+#include "../LenovoLegion-PrepareBuild/Profiles.pb.h"
 
 #include <QMessageBox>
 
@@ -85,15 +85,48 @@ void ToolBarProfilesWidget::connectSignals()
 void ToolBarProfilesWidget::loadProfilesList()
 {
     LOG_T("Loading profiles list");
-    
-    ui->listWidget_Profiles->clear();
-    
-    QStringList profiles = ProfileManager::listProfiles();
-    for (const QString& profileName : profiles) {
-        ui->listWidget_Profiles->addItem(profileName);
+
+    try {
+        showProfiles(m_dataProvider->getDataMessage<legion::messages::Profiles>(legion::messages::DataType::PROFILES));
     }
-    
-    LOG_T(QString("Loaded %1 profiles").arg(profiles.size()));
+    catch (const std::exception& e) {
+        LOG_E(QString("Failed to read profiles: ").append(e.what()));
+        showProfiles({});
+    }
+}
+
+void ToolBarProfilesWidget::showProfiles(const legion::messages::Profiles &profiles)
+{
+    ui->listWidget_Profiles->clear();
+    m_profiles.clear();
+
+    for (const auto& profile : profiles.profiles()) {
+        const QString name = QString::fromStdString(std::string(profile.name()));
+
+        m_profiles[name] = QString::fromStdString(std::string(profile.description()));
+        ui->listWidget_Profiles->addItem(name);
+    }
+
+    LOG_T(QString("Loaded %1 profiles").arg(m_profiles.size()));
+}
+
+void ToolBarProfilesWidget::profileCommand(legion::messages::ProfileCommand::Action action, const QString &name, const QString &description)
+{
+    legion::messages::ProfileCommand command;
+
+    command.set_action(action);
+    command.set_name(name.toStdString());
+    command.set_description(description.toStdString());
+
+    const QByteArray response = m_dataProvider->setDataMessage(legion::messages::DataType::PROFILES, command);
+
+    legion::messages::Profiles profiles;
+
+    if (!profiles.ParseFromArray(response.constData(), static_cast<int>(response.size()))) {
+        THROW_EXCEPTION(DataProvider::exception_T, DataProvider::ERROR_CODES::PARSER_ERROR, "Parse error");
+    }
+
+    showProfiles(profiles);
 }
 
 void ToolBarProfilesWidget::updateProfileDetails(const QString& profileName)
@@ -102,8 +135,8 @@ void ToolBarProfilesWidget::updateProfileDetails(const QString& profileName)
     
     ui->lineEdit_ProfileName->setText(profileName);
     
-    QString description = ProfileManager::getProfileDescription(profileName);
-    ui->lineEdit_ProfileDescription->setText(description);
+    const auto it = m_profiles.find(profileName);
+    ui->lineEdit_ProfileDescription->setText(it != m_profiles.end() ? it->second : QString());
 }
 
 void ToolBarProfilesWidget::onSaveProfile()
@@ -127,7 +160,7 @@ void ToolBarProfilesWidget::onSaveProfile()
     }
     
     // Check if profile already exists
-    if (ProfileManager::profileExists(profileName)) {
+    if (m_profiles.count(profileName) > 0) {
         QMessageBox msgBox(this);
         QPixmap dialogIcon(":/images/icons/dialog.png");
         msgBox.setIconPixmap(dialogIcon.scaled(48, 48, Qt::KeepAspectRatio, Qt::SmoothTransformation));
@@ -144,78 +177,11 @@ void ToolBarProfilesWidget::onSaveProfile()
     LOG_D(QString("Saving profile: ").append(profileName));
     
     try {
-        // Create profile settings object
-        ProfileSettings profile(profileName);
-        
-        // Save description
-        profile.saveDescription(profileDescription);
-        
-        // Read current settings from daemon and save to profile
-        auto powerProfile = m_dataProvider->getDataMessage<legion::messages::PowerProfile>(
-            legion::messages::DataType::POWER_PROFILE);
-        profile.savePowerProfile(powerProfile);
-        
-        auto cpuOptions = m_dataProvider->getDataMessage<legion::messages::CPUOptions>(
-            legion::messages::DataType::CPU_OPTIONS);
-        profile.saveCPUOptions(cpuOptions);
-        
-        auto cpuFrequency = m_dataProvider->getDataMessage<legion::messages::CPUFrequency>(
-            legion::messages::DataType::CPU_FREQUENCY);
-        profile.saveCPUFrequency(cpuFrequency);
-        
-        // Check if power profile is CUSTOM - only save custom settings if it is
-        bool isCustomProfile = powerProfile.thermal_mode() &&
-                               powerProfile.thermal_mode() == legion::messages::PowerProfile_Profiles_POWER_PROFILE_CUSTOM;
-        
-        if (isCustomProfile) {
-            LOG_T("Power profile is CUSTOM - saving FanCurve, CPUPower, and GPUPower");
-            
-            auto fanCurve = m_dataProvider->getDataMessage<legion::messages::FanCurve>(
-                legion::messages::DataType::FAN_CURVE);
-            profile.saveFanCurve(fanCurve);
-            
-            auto cpuPower = m_dataProvider->getDataMessage<legion::messages::CPUPower>(
-                legion::messages::DataType::CPU_POWER);
-            profile.saveCPUPower(cpuPower);
-            
-            auto gpuPower = m_dataProvider->getDataMessage<legion::messages::GPUPower>(
-                legion::messages::DataType::GPU_POWER);
-            profile.saveGPUPower(gpuPower);
-        } else {
-            LOG_T("Power profile is not CUSTOM - skipping FanCurve, CPUPower, and GPUPower");
-        }
-        
-        auto fanOption = m_dataProvider->getDataMessage<legion::messages::FanOption>(
-            legion::messages::DataType::FAN_OPTION);
-        profile.saveFanOption(fanOption);
-        
-        auto cpuSmt = m_dataProvider->getDataMessage<legion::messages::CPUSMT>(
-            legion::messages::DataType::CPU_SMT);
-        profile.saveCPUSMT(cpuSmt);
-        
-        auto nvidiaNvml = m_dataProvider->getDataMessage<legion::messages::NvidiaNvml>(
-            legion::messages::DataType::NVIDIA_NWML);
-        profile.saveNvidiaNvml(nvidiaNvml);
-        
-        auto intelMSR = m_dataProvider->getDataMessage<legion::messages::CpuIntelMSR>(
-            legion::messages::DataType::CPU_INTEL_MSR);
+        /*
+         * Daemon saves the settable part of the current hardware state
+         */
+        profileCommand(legion::messages::ProfileCommand::SAVE, profileName, profileDescription);
 
-        intelMSR.mutable_analogio()->set_offset(((intelMSR.analogio().offset() > 0 ? intelMSR.analogio().offset() + 999 : intelMSR.analogio().offset() - 999 ) / 1000) * 1000);
-        intelMSR.mutable_cache()->set_offset(((intelMSR.cache().offset() > 0 ? intelMSR.cache().offset() + 999 : intelMSR.cache().offset() - 999 ) / 1000) * 1000);
-        intelMSR.mutable_cpu()->set_offset(((intelMSR.cpu().offset() > 0 ? intelMSR.cpu().offset() + 999 : intelMSR.cpu().offset() - 999) / 1000) * 1000);
-        intelMSR.mutable_gpu()->set_offset(((intelMSR.gpu().offset() > 0 ? intelMSR.gpu().offset() + 999 : intelMSR.gpu().offset() - 999 ) / 1000) * 1000);
-        intelMSR.mutable_uncore()->set_offset(((intelMSR.uncore().offset() > 0 ? intelMSR.uncore().offset() + 999 : intelMSR.uncore().offset() - 999 ) / 1000) * 1000);
-
-        profile.saveIntelMSR(intelMSR);
-        
-        auto otherSettings = m_dataProvider->getDataMessage<legion::messages::OtherSettings>(
-            legion::messages::DataType::OTHER);
-        profile.saveOther(otherSettings);
-
-        auto cpuPState = m_dataProvider->getDataMessage<legion::messages::CPUPState>(
-            legion::messages::DataType::CPU_PSTATE);
-        profile.saveCPUPstate(cpuPState);
-        
         LOG_T(QString("Profile saved successfully: ").append(profileName));
         
         QMessageBox msgBox(this);
@@ -225,8 +191,6 @@ void ToolBarProfilesWidget::onSaveProfile()
         msgBox.setText(QString("Profile '").append(profileName).append("' has been saved successfully."));
         msgBox.setStandardButtons(QMessageBox::Ok);
         msgBox.exec();
-        
-        loadProfilesList();
     }
     catch (const std::exception& e) {
         LOG_E(QString("Failed to save profile: ").append(e.what()));
@@ -235,7 +199,7 @@ void ToolBarProfilesWidget::onSaveProfile()
         QPixmap errorIcon(":/images/icons/cross.png");
         msgBox.setIconPixmap(errorIcon.scaled(48, 48, Qt::KeepAspectRatio, Qt::SmoothTransformation));
         msgBox.setWindowTitle("Save Failed");
-        msgBox.setText("Failed to save profile. Check logs for details.");
+        msgBox.setText(QString("Failed to save profile: ").append(e.what()));
         msgBox.setStandardButtons(QMessageBox::Ok);
         msgBox.exec();
     }
@@ -276,57 +240,12 @@ void ToolBarProfilesWidget::onLoadProfile()
     LOG_T(QString("Loading profile: ").append(profileName));
     
     try {
-        ProfileSettings profile(profileName);
-        
-        // Load settings from profile
-        legion::messages::PowerProfile powerProfile;
-        profile.loadPowerProfile(powerProfile);
-        m_dataProvider->setDataMessage(legion::messages::DataType::POWER_PROFILE, powerProfile);
-        
-        legion::messages::CPUOptions cpuOptions;
-        profile.loadCPUOptions(cpuOptions);
-        m_dataProvider->setDataMessage(legion::messages::DataType::CPU_OPTIONS, cpuOptions);
-        
-        legion::messages::CPUFrequency cpuFrequency;
-        profile.loadCPUFrequency(cpuFrequency);
-        m_dataProvider->setDataMessage(legion::messages::DataType::CPU_FREQUENCY, cpuFrequency);
-        
-        legion::messages::FanCurve fanCurve;
-        profile.loadFanCurve(fanCurve);
-        m_dataProvider->setDataMessage(legion::messages::DataType::FAN_CURVE, fanCurve);
-        
-        legion::messages::FanOption fanOption;
-        profile.loadFanOption(fanOption);
-        m_dataProvider->setDataMessage(legion::messages::DataType::FAN_OPTION, fanOption);
-        
-        legion::messages::CPUSMT cpuSmt;
-        profile.loadCPUSMT(cpuSmt);
-        m_dataProvider->setDataMessage(legion::messages::DataType::CPU_SMT, cpuSmt);
-              
-        legion::messages::CPUPower cpuPower;
-        profile.loadCPUPower(cpuPower);
-        m_dataProvider->setDataMessage(legion::messages::DataType::CPU_POWER, cpuPower);
-        
-        legion::messages::GPUPower gpuPower;
-        profile.loadGPUPower(gpuPower);
-        m_dataProvider->setDataMessage(legion::messages::DataType::GPU_POWER, gpuPower);
-        
-        legion::messages::NvidiaNvml nvidiaNvml;
-        profile.loadNvidiaNvml(nvidiaNvml);
-        m_dataProvider->setDataMessage(legion::messages::DataType::NVIDIA_NWML, nvidiaNvml);
-        
-        legion::messages::CpuIntelMSR intelMSR;
-        profile.loadIntelMSR(intelMSR);
-        m_dataProvider->setDataMessage(legion::messages::DataType::CPU_INTEL_MSR, intelMSR);
-        
-        legion::messages::OtherSettings otherSettings;
-        profile.loadOther(otherSettings);
-        m_dataProvider->setDataMessage(legion::messages::DataType::OTHER, otherSettings);
+        /*
+         * Daemon applies the profile, values which can not be set are skipped and logged by the daemon.
+         * Other pages read the data again when they are opened.
+         */
+        profileCommand(legion::messages::ProfileCommand::LOAD, profileName);
 
-        legion::messages::CPUPState cpuPState;
-        profile.loadCPUPstate(cpuPState);
-        m_dataProvider->setDataMessage(legion::messages::DataType::CPU_PSTATE, cpuPState);
-        
         LOG_T(QString("Profile loaded successfully: ").append(profileName));
         
         QMessageBox msgBox(this);
@@ -344,7 +263,7 @@ void ToolBarProfilesWidget::onLoadProfile()
         QPixmap errorIcon(":/images/icons/cross.png");
         msgBox.setIconPixmap(errorIcon.scaled(48, 48, Qt::KeepAspectRatio, Qt::SmoothTransformation));
         msgBox.setWindowTitle("Load Failed");
-        msgBox.setText("Failed to load profile. Check logs for details.");
+        msgBox.setText(QString("Failed to load profile: ").append(e.what()));
         msgBox.setStandardButtons(QMessageBox::Ok);
         msgBox.exec();
     }
@@ -384,7 +303,9 @@ void ToolBarProfilesWidget::onDeleteProfile()
     
     LOG_T(QString("Deleting profile: ").append(profileName));
     
-    if (ProfileManager::deleteProfile(profileName)) {
+    try {
+        profileCommand(legion::messages::ProfileCommand::DELETE, profileName);
+
         LOG_T(QString("Profile deleted successfully: ").append(profileName));
         
         QMessageBox msgBox(this);
@@ -395,17 +316,17 @@ void ToolBarProfilesWidget::onDeleteProfile()
         msgBox.setStandardButtons(QMessageBox::Ok);
         msgBox.exec();
         
-        loadProfilesList();
         ui->lineEdit_ProfileName->clear();
         ui->lineEdit_ProfileDescription->clear();
-    } else {
-        LOG_E(QString("Failed to delete profile: ").append(profileName));
+    }
+    catch (const std::exception& e) {
+        LOG_E(QString("Failed to delete profile: ").append(profileName).append(" : ").append(e.what()));
         
         QMessageBox msgBox(this);
         QPixmap errorIcon(":/images/icons/cross.png");
         msgBox.setIconPixmap(errorIcon.scaled(48, 48, Qt::KeepAspectRatio, Qt::SmoothTransformation));
         msgBox.setWindowTitle("Delete Failed");
-        msgBox.setText("Failed to delete profile.");
+        msgBox.setText(QString("Failed to delete profile: ").append(e.what()));
         msgBox.setStandardButtons(QMessageBox::Ok);
         msgBox.exec();
     }

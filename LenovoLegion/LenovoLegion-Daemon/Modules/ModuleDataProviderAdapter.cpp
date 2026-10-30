@@ -126,24 +126,34 @@ void ModuleDataProviderAdapter::clean()
 
 void ModuleDataProviderAdapter::loadSettings()
 {
-    if(!settingsPolicy().persistent)
-    {
-        return;
-    }
-
-    ModuleSettingsStorage storage(settingsGroup());
-
-    m_host->callModule("load settings",[this,&storage] { m_module->loadSettings(storage); });
+    loadSettings({});
 }
 
 void ModuleDataProviderAdapter::saveSettings()
+{
+    saveSettings({});
+}
+
+void ModuleDataProviderAdapter::loadSettings(const QString &prefix)
 {
     if(!settingsPolicy().persistent)
     {
         return;
     }
 
-    ModuleSettingsStorage storage(settingsGroup());
+    ModuleSettingsStorage storage(QString(prefix).append(settingsGroup()));
+
+    m_host->callModule("load settings",[this,&storage] { m_module->loadSettings(storage); });
+}
+
+void ModuleDataProviderAdapter::saveSettings(const QString &prefix)
+{
+    if(!settingsPolicy().persistent)
+    {
+        return;
+    }
+
+    ModuleSettingsStorage storage(QString(prefix).append(settingsGroup()));
 
     m_host->callModule("save settings",[this,&storage] { m_module->saveSettings(storage); });
 }
