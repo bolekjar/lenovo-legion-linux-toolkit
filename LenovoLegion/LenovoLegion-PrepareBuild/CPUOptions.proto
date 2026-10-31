@@ -23,6 +23,9 @@ message CPUSMT
 {
     bool   active  = 1;
     string control = 2;
+
+    // Values of control which can be set now (read-only), empty = SMT can not be switched
+    repeated string settable_controls = 3;
 }
 
 
@@ -33,4 +36,7 @@ message CPUPState
     uint32  min_perf_pct      = 3;
     bool    no_turbo          = 4;
     string  status            = 5;
+
+    // Values of status which can be set now (read-only), empty = status can not be changed
+    repeated string settable_statuses = 6;
 }

@@ -232,12 +232,18 @@ void OtherControl::renderCPUPstate()
         isVisible = true;
     }
 
-    if(m_cpuPStateData.has_status()) {
+    /*
+     * Daemon reports the status values which can be set now
+     */
+    if(m_cpuPStateData.has_status() && m_cpuPStateData.settable_statuses_size() > 0) {
         ui->comboBox_CPUPstate_status->setVisible(true);
 
         if(ui->comboBox_CPUPstate_status->count() == 0)
         {
-            ui->comboBox_CPUPstate_status->addItems({"active","passive"});
+            for(const auto& status : m_cpuPStateData.settable_statuses())
+            {
+                ui->comboBox_CPUPstate_status->addItem(QString::fromStdString(std::string(status)));
+            }
         }
         else
         {
@@ -344,7 +350,7 @@ void OtherControl::applyCPUPStateSettings()
         newSettings.set_max_perf_pct(static_cast<uint32_t>(ui->spinBox_CPUPState_MAXLimit->value()));
     }
 
-    if(ui->comboBox_CPUPstate_status->currentText().toStdString() != m_cpuPStateData.status())
+    if(ui->comboBox_CPUPstate_status->count() > 0 && ui->comboBox_CPUPstate_status->currentText().toStdString() != m_cpuPStateData.status())
     {
         newSettings.set_status(ui->comboBox_CPUPstate_status->currentText().toStdString());
         refreshCPUControl = true;

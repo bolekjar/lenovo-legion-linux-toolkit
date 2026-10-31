@@ -34,6 +34,11 @@ QByteArray SysFsDataProviderCPUSMT::serializeAndGetData()
 
         cpuSmt.set_control(getData(smtControl.m_control.value()).toStdString());
         cpuSmt.set_active(getData(smtControl.m_active.value()).toUShort() == 1);
+
+        for(const auto& control : settableControls(QString::fromStdString(std::string(cpuSmt.control()))))
+        {
+            cpuSmt.add_settable_controls(control.toStdString());
+        }
     } catch(SysFsDriver::exception_T& ex)
     {
         if(ex.errcodeInfo().value() == SysFsDriver::ERROR_CODES::DRIVER_NOT_AVAILABLE)
@@ -87,16 +92,22 @@ QByteArray SysFsDataProviderCPUSMT::settableData(const QByteArray &data, Origin 
     return settableMessage<legion::messages::CPUSMT>(data,[this,origin](legion::messages::CPUSMT& smt) { settable(smt,origin); });
 }
 
-void SysFsDataProviderCPUSMT::settable(legion::messages::CPUSMT &smt, Origin origin) const
+QStringList SysFsDataProviderCPUSMT::settableControls(const QString &current)
 {
     /*
      * Kernel control values: on, off, forceoff, notsupported, notimplemented.
      * Only on/off can be set and only when the current state is on/off
      * (forceoff can not be reverted until reboot, it is never set by the daemon).
      */
-    auto switchable = [](const QString& control) { return control == "on" || control == "off"; };
+    const QStringList switchable {"on","off"};
 
+    return switchable.contains(current) ? switchable : QStringList();
+}
+
+void SysFsDataProviderCPUSMT::settable(legion::messages::CPUSMT &smt, Origin origin) const
+{
     smt.clear_active();
+    smt.clear_settable_controls();
 
     if(!smt.has_control())
     {
@@ -106,14 +117,16 @@ void SysFsDataProviderCPUSMT::settable(legion::messages::CPUSMT &smt, Origin ori
     const QString requested = QString::fromStdString(std::string(smt.control())).trimmed();
     const QString current   = getData(SysFsDriverCPU::CPU::Smt(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverCPU::DRIVER_NAME)).m_control.value());
 
-    if(!switchable(current))
+    const QStringList settable = settableControls(current);
+
+    if(settable.isEmpty())
     {
         skipField(origin,QString("SMT control=").append(requested),QString("current state is ").append(current));
         smt.clear_control();
     }
-    else if(!switchable(requested))
+    else if(!settable.contains(requested))
     {
-        skipField(origin,QString("SMT control=").append(requested),"only on/off can be set");
+        skipField(origin,QString("SMT control=").append(requested),QString("settable: ").append(settable.join(',')));
         smt.clear_control();
     }
     else

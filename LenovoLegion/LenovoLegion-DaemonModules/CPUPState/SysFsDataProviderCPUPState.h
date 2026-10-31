@@ -36,6 +36,12 @@ private:
 
     legion::messages::CPUPState readCPPPState() const;
     void settable(legion::messages::CPUPState& pstate,Origin origin) const;
+
+    /*
+     * "off" unloads the scaling driver, it is never set by the daemon
+     */
+    inline static const QStringList SETTABLE_STATUSES {"active","passive"};
+
     void timerEvent(QTimerEvent *event) override;
 
 public:

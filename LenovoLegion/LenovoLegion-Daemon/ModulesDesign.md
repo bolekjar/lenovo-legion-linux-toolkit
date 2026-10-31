@@ -973,6 +973,7 @@ Pravidla:
 - Neplatná hodnota se odstraní a zaloguje přes `skipField`.
 - Mezní hodnoty se berou vždy z hardwaru, ne z požadavku, protože požadavek obsahuje jen hodnoty.
 - `writeSettings` ukládá jen pole, která ve zprávě jsou (`has_*`).
+- GUI nezná hodnoty jádra. Co lze nastavit, mu řeknou data: `supported`, rozsahy, `steps`, `supported_profiles`, `available_governors` a u řetězcových hodnot seznam z téhož pravidla (`CPUSMT.settable_controls`, `CPUPState.settable_statuses`).
 
 | Modul | Zapíše se jen |
 |-------|---------------|

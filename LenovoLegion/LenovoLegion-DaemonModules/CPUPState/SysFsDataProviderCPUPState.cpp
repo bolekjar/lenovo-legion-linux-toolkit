@@ -130,16 +130,15 @@ void SysFsDataProviderCPUPState::settable(legion::messages::CPUPState &pstate, O
     /*
      * Presence of the other attributes depends on the status, it is checked when they are written (after the status is set)
      */
+    pstate.clear_settable_statuses();
+
     if(pstate.has_status())
     {
         const QString status = QString::fromStdString(std::string(pstate.status())).trimmed();
 
-        /*
-         * "off" unloads the scaling driver, it is never set by the daemon
-         */
-        if(status != "active" && status != "passive")
+        if(!SETTABLE_STATUSES.contains(status))
         {
-            skipField(origin,QString("intel_pstate status=").append(status),"only active/passive can be set");
+            skipField(origin,QString("intel_pstate status=").append(status),QString("settable: ").append(SETTABLE_STATUSES.join(',')));
             pstate.clear_status();
         }
         else
@@ -191,6 +190,11 @@ legion::messages::CPUPState SysFsDataProviderCPUPState::readCPPPState() const
         if (intePState.m_status.has_value())
         {
             cpuPState.set_status(getData(intePState.m_status.value()).toStdString());
+
+            for(const auto& status : SETTABLE_STATUSES)
+            {
+                cpuPState.add_settable_statuses(status.toStdString());
+            }
         }
     } catch(SysFsDriver::exception_T& ex)
     {

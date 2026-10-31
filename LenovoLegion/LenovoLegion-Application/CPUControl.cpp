@@ -475,9 +475,10 @@ void CPUControl::renderData()
     ui->checkBox_DisableSMP->blockSignals(true);
     ui->checkBox_DisableSMP->setEnabled(false);
     ui->checkBox_DisableSMP->setVisible(false);
-    if(QString(m_cpuSMTControlData.control().data()).trimmed() == SMT_OFF_DATA.control().data() ||
-       QString(m_cpuSMTControlData.control().data()).trimmed() == SMT_ON_DATA.control().data()
-      )
+    /*
+     * Daemon reports the control values which can be set now (empty for forceoff, notsupported, notimplemented)
+     */
+    if(m_cpuSMTControlData.settable_controls_size() > 0)
     {
         if(m_cpuSMTControlData.active())
         {
