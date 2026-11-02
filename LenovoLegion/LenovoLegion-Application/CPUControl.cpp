@@ -480,24 +480,11 @@ void CPUControl::renderData()
      */
     if(m_cpuSMTControlData.settable_controls_size() > 0)
     {
-        if(m_cpuSMTControlData.active())
-        {
-            if(QString(m_cpuSMTControlData.control().data()).trimmed() == SMT_OFF_DATA.control().data())
-            {
-                m_dataProvider->setDataMessage(legion::messages::DataType::CPU_SMT,SMT_ON_DATA);
-            }
-
-            ui->checkBox_DisableSMP->setChecked(false);
-        }
-        else
-        {
-            if(QString(m_cpuSMTControlData.control().data()).trimmed() == SMT_ON_DATA.control().data())
-            {
-                m_dataProvider->setDataMessage(legion::messages::DataType::CPU_SMT,SMT_OFF_DATA);
-            }
-
-            ui->checkBox_DisableSMP->setChecked(true);
-        }
+        /*
+         * Only the real state is shown (SMT is not active also when all sibling threads are switched off one by one),
+         * "on" sent by the checkbox switches all siblings on (CPUSMT module of the daemon)
+         */
+        ui->checkBox_DisableSMP->setChecked(!m_cpuSMTControlData.active());
 
         ui->checkBox_DisableSMP->setEnabled(true);
         ui->checkBox_DisableSMP->blockSignals(false);

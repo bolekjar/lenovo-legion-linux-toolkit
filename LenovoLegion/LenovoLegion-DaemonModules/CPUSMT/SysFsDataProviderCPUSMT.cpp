@@ -78,6 +78,16 @@ QByteArray SysFsDataProviderCPUSMT::deserializeAndSetData(const QByteArray &data
     settable(cpuSmt,Origin::REQUEST);
 
     if(cpuSmt.has_control()) {
+        /*
+         * "on" means SMT active. Writing "on" when the control is already "on" does nothing, so sibling threads
+         * switched off one by one (CPUOptions) would stay off: switch off and on, kernel switches all siblings on.
+         */
+        if(cpuSmt.control() == "on" && getData(smtControl.m_control.value()) == "on" && getData(smtControl.m_active.value()).toUShort() == 0)
+        {
+            LOG_D("SMT control is on but no sibling thread is active, switching SMT off and on");
+            setData(smtControl.m_control.value(),std::string_view("off"));
+        }
+
         setData(smtControl.m_control.value(),cpuSmt.control());
     }
 
@@ -106,6 +116,12 @@ QStringList SysFsDataProviderCPUSMT::settableControls(const QString &current)
 
 void SysFsDataProviderCPUSMT::settable(legion::messages::CPUSMT &smt, Origin origin) const
 {
+    /*
+     * Current state "on" without any active sibling thread (all siblings switched off by CPUOptions) is the real state "off".
+     * Saved "on" would switch the siblings on again after CPUOptions is applied (see deserializeAndSetData).
+     */
+    const bool inactive = origin == Origin::STATE && smt.has_active() && !smt.active();
+
     smt.clear_active();
     smt.clear_settable_controls();
 
@@ -131,7 +147,7 @@ void SysFsDataProviderCPUSMT::settable(legion::messages::CPUSMT &smt, Origin ori
     }
     else
     {
-        smt.set_control(requested.toStdString());
+        smt.set_control((inactive && requested == "on") ? std::string("off") : requested.toStdString());
     }
 }
 

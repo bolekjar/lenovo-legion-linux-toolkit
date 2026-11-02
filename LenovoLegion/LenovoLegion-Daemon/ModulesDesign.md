@@ -978,7 +978,7 @@ Pravidla:
 
 | Modul | Zapíše se jen |
 |-------|---------------|
-| CPUSMT | `control` `on`/`off`, a jen když je aktuální stav `on`/`off` (ne `forceoff`, `notsupported`, `notimplemented`) |
+| CPUSMT | `control` `on`/`off`, a jen když je aktuální stav `on`/`off` (ne `forceoff`, `notsupported`, `notimplemented`). `on` znamená „SMT běží“: při `control=on` a `active=0` (všechna sourozenecká vlákna vypnutá v CPUOptions) daemon zapíše `off` a pak `on`. Tento stav se ukládá jako `off`. |
 | CPUOptions | `online` jen u CPU se souborem `online` (CPU0 nelze vypnout), governor z `scaling_available_governors` u zapnutého CPU, nejvýš tolik CPU, kolik jich je |
 | CPUFrequency | `scaling_min/max_freq` v rozsahu `cpuinfo_min/max_freq` zapnutého CPU |
 | CPUPState | `status` `active`/`passive` (ne `off`), `min/max_perf_pct` v rozsahu 0–100 |
