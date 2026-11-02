@@ -29,6 +29,9 @@
 13) Files from old installations in log, data (mode 0644/0777) are not fixed by tmpfiles, only directories.
 14) Not reviewed yet: GUI widgets UI logic (ToolBarSettingsWidget.cpp), Rust CLI.
 15) Not verified: NVML initialized for the whole daemon lifetime may prevent runtime suspend (RTD3) of the NVIDIA dGPU. Check power/runtime_status of the dGPU with all other GPU users closed.
+   2026-11-02: can not be checked in a session running on the dGPU (Hyprland, quickshell, Chrome hold the dGPU, runtime_status is always active).
+   NVML module does not poll the GPU by a timer, it is queried only by GUI requests. Test: session on the iGPU (hybrid mode, compositor on the iGPU),
+   stop the daemon -> runtime_status suspended?, start the daemon -> still suspended? If not, initialize NVML lazily (first request) and shut it down after idle time.
 16) DONE (2026-10-27) - old implementation deleted, daemon hardware code is only in LenovoLegion-DaemonModules (ModulesDesign.md 7.3).
    Left: RGBControllerInterface.h, RGBControllerKeyNames.h in LenovoLegion-Daemon are the RGB data model shared with the GUI, move them to a common place.
    Deleted:
@@ -37,5 +40,6 @@
    - event conversions in ProtocolProcessorNotifier (kernelEventHandler, dataProviderEventHandler, moduleSubsystemHandler), keep providerNotificationHandler,
    - entries in LenovoLegion-Daemon.pro, daemon dependencies on cuda/libnvidia-ml and hidapi (only modules NvidiaNvml and RGBController need them),
    - GUI: replace LenovoLegionDaemon::*::dataType by legion::messages::DataType::*.
-17) Not verified: Kernel MSR write (write_voltage_offset_on_cpu) is executed on all CPUs in parallel and does not wait for the mailbox (busy bit),
+17) DONE (needs hardware test) - offset is written once on CPU 0 (the same as intel-undervolt), waits for the busy bit before and after the command.
+   Original: Kernel MSR write (write_voltage_offset_on_cpu) is executed on all CPUs in parallel and does not wait for the mailbox (busy bit),
    if the mailbox is shared by the package, parallel commands may overwrite each other. Check with the hardware, maybe write only once per package and wait for the busy bit.

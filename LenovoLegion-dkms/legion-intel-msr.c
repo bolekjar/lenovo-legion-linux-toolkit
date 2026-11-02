@@ -10,7 +10,6 @@
 
 #include <linux/version.h>
 #include <linux/kernel.h>
-#include <linux/atomic.h>
 #include <asm/msr.h>
 #include <linux/smp.h>
 #include <linux/sysfs.h>
@@ -37,12 +36,12 @@ struct read_msr_data {
 };
 
 /*
- * Write voltage offset to specific plane on all CPUs
+ * Write voltage offset to specific plane
  */
 struct write_msr_data {
-    int      plane;
-    int      offset_uv;
-    atomic_t error;
+    int plane;
+    int offset_uv;
+    int error;
 };
 
 
@@ -107,34 +106,6 @@ static ssize_t validate_offset(const struct legion_intel_msr_private *intel_msr_
 
 
 /*
- * Write voltage offset to specific plane on a CPU
- */
-static void write_voltage_offset_on_cpu(void *info)
-{
-    struct write_msr_data *data = info;
-
-    const u32 offset_encoded = uv_to_msr(data->offset_uv);
-
-    // MSR 0x150 format for voltage offset (OC Mailbox):
-    // Based on VoltageShift and intel-undervolt implementations:
-    // [63]    = Busy bit (set to 1 to initiate command)
-    // [47:40] = Domain/Plane ID
-    // [39:32] = Command (0x11 = write voltage offset)
-    // [31:21] = Voltage offset (11-bit signed, two's complement, in 1/1024V units)
-    // [20:0]  = Other fields (ratio, etc - set to 0 for voltage offset)
-    const u64 msr_val = ((u64)1 << 63) |                // Busy bit
-              ((u64)(data->plane & 0xFF) << 40) |        // Domain at bits [47:40]
-              ((u64)0x11 << 32) |                        // Command at bits [39:32]
-              ((u64)(offset_encoded & 0x7FF) << 21);     // Voltage offset at bits [31:21]
-
-    const int err = wrmsr_safe(MSR_VOLTAGE_OFFSET, (const u32)msr_val, (const u32)(msr_val >> 32));
-
-    // Keep the first error, runs on all CPUs in parallel
-    if (err)
-        atomic_cmpxchg(&data->error, 0, err);
-}
-
-/*
  * Wait until the mailbox clears the busy bit, the last read value is returned in value.
  * Runs in IPI context (smp_call_function_single), busy wait only.
  */
@@ -156,6 +127,46 @@ static int wait_mailbox_ready(u64 *value)
     }
 
     return -ETIMEDOUT;
+}
+
+/*
+ * Write voltage offset to specific plane on a CPU
+ */
+static void write_voltage_offset_on_cpu(void *info)
+{
+    struct write_msr_data *data = info;
+    u64 value = 0;
+    int err;
+
+    const u32 offset_encoded = uv_to_msr(data->offset_uv);
+
+    // MSR 0x150 format for voltage offset (OC Mailbox):
+    // Based on VoltageShift and intel-undervolt implementations:
+    // [63]    = Busy bit (set to 1 to initiate command)
+    // [47:40] = Domain/Plane ID
+    // [39:32] = Command (0x11 = write voltage offset)
+    // [31:21] = Voltage offset (11-bit signed, two's complement, in 1/1024V units)
+    // [20:0]  = Other fields (ratio, etc - set to 0 for voltage offset)
+    const u64 msr_val = MSR_OC_MAILBOX_BUSY |           // Busy bit
+              ((u64)(data->plane & 0xFF) << 40) |        // Domain at bits [47:40]
+              ((u64)0x11 << 32) |                        // Command at bits [39:32]
+              ((u64)(offset_encoded & 0x7FF) << 21);     // Voltage offset at bits [31:21]
+
+    // Previous command must be finished, the mailbox is processing one command at a time
+    err = wait_mailbox_ready(&value);
+    if (err) {
+        data->error = err;
+        return;
+    }
+
+    err = wrmsr_safe(MSR_VOLTAGE_OFFSET, (const u32)msr_val, (const u32)(msr_val >> 32));
+    if (err) {
+        data->error = err;
+        return;
+    }
+
+    // Offset is applied when the mailbox clears the busy bit
+    data->error = wait_mailbox_ready(&value);
 }
 
 static void read_voltage_offset_on_cpu(void *info)
@@ -285,7 +296,7 @@ ssize_t legion_intel_msr_apply_voltage_offset(struct legion_intel_msr_private *i
     struct write_msr_data data = {
         .plane     = plane,
         .offset_uv = offset_uv,
-        .error     = ATOMIC_INIT(0),
+        .error     = 0,
     };
 
     guard(mutex)(&intel_msr_private->lock);
@@ -300,10 +311,11 @@ ssize_t legion_intel_msr_apply_voltage_offset(struct legion_intel_msr_private *i
         return -EOPNOTSUPP;  // Operation not supported
     }
 
-    // Execute on all CPUs (including 0 to allow reset)
-    on_each_cpu(write_voltage_offset_on_cpu, &data, 1);
+    // Offset of the plane is common for the whole package (the same as intel-undervolt), one command on CPU 0.
+    // Parallel commands from all CPUs could overwrite each other in the mailbox.
+    smp_call_function_single(0, write_voltage_offset_on_cpu, &data, 1);
 
-    return atomic_read(&data.error);
+    return data.error;
 }
 
 int  legion_intel_msr_init(struct legion_intel_msr_private *intel_msr_private) {
