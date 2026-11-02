@@ -53,15 +53,6 @@ void ProtocolProcessorNotifier::readyReadHandler()
     THROW_EXCEPTION(exception_T,ERROR_CODES::UNEXPECTED_MESSAGE,"ProtocolProcessorNotifier: Unexpected message !");
 }
 
-void ProtocolProcessorNotifier::disconnectedHandler()
-{
-    LOG_D("ProtocolProcessorNotifier client disconnected !");
-    ProtocolProcessorBase::stop();
-    ProtocolProcessorBase::waitForExit();
-
-    emit clientDisconnected();
-}
-
 void ProtocolProcessorNotifier::providerNotificationHandler(const QByteArray &payload)
 {
     if(!isRunning())

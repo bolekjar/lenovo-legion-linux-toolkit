@@ -153,13 +153,13 @@ void Application::appStopImpl() noexcept
     /*
      * Stop notification Protocol processor
      */
-    deleteProtocolProcessors<ProtocolProcessorBase,ProtocolProcessorNotifier>(m_protocolProcessorNotification);
+    deleteProtocolProcessor(m_protocolProcessorNotification);
 
 
     /*
      * Stop Protocol processors
      */
-    deleteProtocolProcessors<ProtocolProcessorBase,ProtocolProcessor>(m_protocolProcessor);
+    deleteProtocolProcessor(m_protocolProcessor);
 
     /*
      * Event loop is not running anymore, process deferred deletes of protocol processors now
@@ -211,145 +211,105 @@ const QDir Application::modulesPath() const
 
 void Application::newConnectionHandler()
 {
-    LOG_D("New connection !");
-
-    try {
-        QLocalSocket* newSocket = m_serverSocket->nextPendingConnection();
-        if(!newSocket)
-        {
-            LOG_W("nextPendingConnection returned null!");
-            return;
-        }
-
-        if(!isClientAuthorized(newSocket))
-        {
-            LOG_W("Unauthorized client, refuse connection !");
-            ProtocolProcessorBase::refuseConnection(newSocket);
-            return;
-        }
-
-        if(m_protocolProcessor != nullptr && m_protocolProcessor->isRunning())
-        {
-            LOG_W("Other client is connected, refuse connection !");
-            ProtocolProcessorBase::refuseConnection(newSocket);
-            return;
-        }
-
-        deleteProtocolProcessors<ProtocolProcessorBase,ProtocolProcessor>(m_protocolProcessor);
-
-        // Create processor - if this throws, pointer stays null (safe)
-        ProtocolProcessorBase* newProcessor = new ProtocolProcessor(m_dataProviderManager, newSocket, this);
-        
-        // Connect signals - if this throws, we need to clean up
-        try {
-            connect(dynamic_cast<ProtocolProcessor*>(newProcessor),&ProtocolProcessor::clientDisconnected,this,&Application::connectionDisconnectedHandler);
-            newProcessor->start();
-            
-            // Only assign to member if everything succeeded
-            m_protocolProcessor = newProcessor;
-        }
-        catch(...) {
-            // Clean up on failure
-            delete newProcessor;
-            throw;
-        }
-    }
-    catch (ProtocolProcessor::exception_T& ex)
-    {
-        if(ex.errcodeInfo().value() == ProtocolProcessorBase::CLIENT_POINTER_ERROR)
-        {
-            bj::framework::exception::ExceptionBuilder::print(ex);
-        }
-        else
-        {
-            LOG_E(bj::framework::exception::ExceptionBuilder::print(ex).c_str());
-            QCoreApplication::exit(0);
-        }
-
-    } catch (...)
-    {
-        LOG_E("New connection unknown error !");
-    }
-
+    acceptConnection<ProtocolProcessor>(m_serverSocket,m_protocolProcessor,"client");
 }
 
 void Application::newConnectionNotificationHandler()
 {
-    LOG_D("New notification connection !");
+    acceptConnection<ProtocolProcessorNotifier>(m_serverSocketNotification,m_protocolProcessorNotification,"notification client");
+}
+
+template<class Processor>
+void Application::acceptConnection(QLocalServer *server, ProtocolProcessorBase *&protocolProcessor, const QString &name)
+{
+    LOG_D(QString("New ").append(name).append(" connection !"));
+
+    QLocalSocket* newSocket = server->nextPendingConnection();
+    if(!newSocket)
+    {
+        LOG_W("nextPendingConnection returned null!");
+        return;
+    }
+
+    if(!isClientAuthorized(newSocket))
+    {
+        LOG_W(QString("Unauthorized ").append(name).append(", refuse connection !"));
+        ProtocolProcessorBase::refuseConnection(newSocket);
+        return;
+    }
+
+    if(protocolProcessor != nullptr && protocolProcessor->isRunning())
+    {
+        LOG_W(QString("Other ").append(name).append(" is connected, refuse connection !"));
+        ProtocolProcessorBase::refuseConnection(newSocket);
+        return;
+    }
+
+    deleteProtocolProcessor(protocolProcessor);
+
+    ProtocolProcessorBase* newProcessor = nullptr;
+    QString                error;
 
     try {
-        QLocalSocket* newSocket = m_serverSocketNotification->nextPendingConnection();
-        if(!newSocket)
-        {
-            LOG_W("nextPendingConnection returned null!");
-            return;
-        }
+        newProcessor = new Processor(m_dataProviderManager, newSocket, this);
 
-        if(!isClientAuthorized(newSocket))
-        {
-            LOG_W("Unauthorized client, refuse notification connection !");
-            ProtocolProcessorBase::refuseConnection(newSocket);
-            return;
-        }
+        connect(newProcessor,&ProtocolProcessorBase::clientDisconnected,this,[this,&protocolProcessor,name]() {
+            LOG_D(QString(name).append(" disconnected, stopping processor !"));
+            deleteProtocolProcessor(protocolProcessor);
+        });
 
-        if(m_protocolProcessorNotification != nullptr && m_protocolProcessorNotification->isRunning())
-        {
-            LOG_W("Other client is connected, refuse notification connection !");
-            ProtocolProcessorBase::refuseConnection(newSocket);
-            return;
-        }
+        newProcessor->start();
 
-
-        deleteProtocolProcessors<ProtocolProcessorBase,ProtocolProcessorNotifier>(m_protocolProcessorNotification);
-
-
-        // Create processor - if this throws, pointer stays null (safe)
-        ProtocolProcessorBase* newProcessor = new ProtocolProcessorNotifier(m_dataProviderManager, newSocket, this);
-        
-        // Connect signals - if this throws, we need to clean up
-        try {
-            connect(dynamic_cast<ProtocolProcessorNotifier*>(newProcessor),&ProtocolProcessorNotifier::clientDisconnected,this,&Application::connectionNotificationDisconnectedHandler);
-            newProcessor->start();
-            
-            // Only assign to member if everything succeeded
-            m_protocolProcessorNotification = newProcessor;
-        }
-        catch(...) {
-            // Clean up on failure
-            delete newProcessor;
-            throw;
-        }
+        // Only assign to member if everything succeeded
+        protocolProcessor = newProcessor;
+        return;
     }
-    catch (ProtocolProcessor::exception_T& ex)
+    catch(const bj::framework::exception::Exception& ex)
     {
-        if(ex.errcodeInfo().value() == ProtocolProcessorBase::CLIENT_POINTER_ERROR)
-        {
-            bj::framework::exception::ExceptionBuilder::print(ex);
-        }
-        else
-        {
-            LOG_E(bj::framework::exception::ExceptionBuilder::print(ex).c_str());
-            QCoreApplication::exit(0);
-        }
+        error = QString::fromStdString(bj::framework::exception::ExceptionBuilder::print(ex));
+    }
+    catch(const std::exception& ex)
+    {
+        error = QString::fromUtf8(ex.what());
+    }
+    catch(...)
+    {
+        error = "Unknown error !";
+    }
 
-    } catch (...)
+    LOG_E(QString("Unable to accept ").append(name).append(" connection, connection is dropped: ").append(error));
+
+    /*
+     * Processor owns the socket (closed and deleted in its destructor)
+     */
+    if(newProcessor != nullptr)
     {
-        LOG_E("New notification connection unknown error !");
+        delete newProcessor;
+    }
+    else
+    {
+        ProtocolProcessorBase::refuseConnection(newSocket);
     }
 }
 
-void Application::connectionDisconnectedHandler()
+void Application::deleteProtocolProcessor(ProtocolProcessorBase *&protocolProcessor)
 {
-    LOG_D("Client disconnected, stopping processor !");
+    if(protocolProcessor == nullptr)
+    {
+        return;
+    }
 
-    deleteProtocolProcessors<ProtocolProcessorBase,ProtocolProcessor>(m_protocolProcessor);
-}
+    // Disconnect ALL signals/slots FIRST to prevent queued signals from delivering
+    disconnect(protocolProcessor, nullptr, nullptr, nullptr);
 
-void Application::connectionNotificationDisconnectedHandler()
-{
-    LOG_D("Client disconnected, stopping notification processor !");
+    // Block signals immediately (additional safety)
+    protocolProcessor->blockSignals(true);
 
-    deleteProtocolProcessors<ProtocolProcessorBase,ProtocolProcessorNotifier>(m_protocolProcessorNotification);
+    // Stop the processor (closes socket, prevents new events)
+    protocolProcessor->stop();
+
+    protocolProcessor->deleteLater();
+    protocolProcessor = nullptr;
 }
 
 
@@ -474,11 +434,10 @@ bool Application::notify(QObject* receiver, QEvent* event) {
       LOG_E(bj::framework::exception::ExceptionBuilder::print(__FILE__,__FUNCTION__,__LINE__,1,"Unknown error !").c_str());
   }
 
-  LOG_D("Application notify error, cleaning protocol processors !");
-
-  deleteProtocolProcessors<ProtocolProcessorBase,ProtocolProcessor>(m_protocolProcessor);
-  deleteProtocolProcessors<ProtocolProcessorBase,ProtocolProcessorNotifier>(m_protocolProcessorNotification);
-
+  /*
+   * Errors of a client connection are handled by its protocol processor (only that client is disconnected),
+   * calls into daemon modules by ModuleHost. Anything else is only logged, the clients stay connected.
+   */
   return false;
 }
 

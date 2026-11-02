@@ -559,7 +559,8 @@ classDiagram
         +appStopImpl()
         +newConnectionHandler()
         +newConnectionNotificationHandler()
-        +connectionDisconnectedHandler()
+        -acceptConnection~Processor~(server, processor, name)
+        -deleteProtocolProcessor(processor)
     }
     QCoreApplication <|-- Application
     ApplicationInterface <|-- Application
@@ -568,17 +569,17 @@ classDiagram
         <<QObject>>
         #QLocalSocket* m_clientSocket
         +start()
-        #readyReadHandlerSlot()
+        #readyReadHandlerSlot() try/catch
+        #dropClient(reason)
         #disconnectedHandler()
-        #sendMessage(type, dataType, data)
+        signal clientDisconnected()
     }
     class ProtocolProcessor {
         +processRequest(header, data)
-        signal clientDisconnected()
+        -sendMessage(type, dataType, data)
     }
     class ProtocolProcessorNotifier {
         +providerNotificationHandler(payload)
-        signal clientDisconnected()
     }
     class ProtocolParser {
         +tryParseMessage()
@@ -997,4 +998,6 @@ Pravidla:
 | `ModuleDataProviderAdapter::init` (`callModule`) | výjimka z `IModule::init` | modul FAILED, GET/SET vrací ERROR_RESPONSE |
 | `ProtocolProcessor::processRequest` | výjimka z `get`/`set` | ERROR_RESPONSE, klient zůstává připojený |
 | `ModuleHost::callModule` | výjimka z kernel události, timeru, nastavení, `clean` | jen log |
-| `Application::notify` | ostatní výjimky z event loopu, např. `ProtocolParser::validateHeader` (délka mimo 0..1 MiB) | odpojí se oba klienti (ToDoList 7) |
+| `ProtocolProcessorBase::readyReadHandlerSlot` | výjimka při čtení zprávy klienta, např. `ProtocolParser::validateHeader` (délka mimo 0..1 MiB), data na notifikačním socketu | odpojí se jen tento klient (`dropClient`) |
+| `Application::acceptConnection` | chyba při vytvoření procesoru nového spojení | spojení se zahodí, daemon běží dál |
+| `Application::notify` | ostatní výjimky z event loopu | jen log, klienti zůstávají připojení |

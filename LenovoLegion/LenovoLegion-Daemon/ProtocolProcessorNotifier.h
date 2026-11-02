@@ -40,11 +40,6 @@ public:
 private:
 
     virtual void readyReadHandler() override;
-    virtual void disconnectedHandler() override;
-
-signals:
-
-    void clientDisconnected();
 
 public slots:
 

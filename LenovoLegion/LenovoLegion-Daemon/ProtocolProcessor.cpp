@@ -40,15 +40,6 @@ void ProtocolProcessor::start()
     ProtocolProcessorBase::start();
 }
 
-void ProtocolProcessor::disconnectedHandler()
-{
-    LOG_T("ProtocolProcessor client disconnected !");
-    ProtocolProcessorBase::stop();
-    ProtocolProcessorBase::waitForExit();
-
-    emit clientDisconnected();
-}
-
 void ProtocolProcessor::readyReadHandler()
 {
 
@@ -95,8 +86,7 @@ void ProtocolProcessor::processRequest(const MessageHeader &header, const QByteA
     QString error;
 
     /*
-     * Exception must not leave this method, it would go through Qt signal/slot code
-     * and Application::notify would disconnect the client
+     * Exception must not leave this method, the client would be disconnected (ProtocolProcessorBase::readyReadHandlerSlot)
      */
     try {
         DataProvider& dataProvider = m_dataProviderManager->getDataProvider(header.m_dataType);

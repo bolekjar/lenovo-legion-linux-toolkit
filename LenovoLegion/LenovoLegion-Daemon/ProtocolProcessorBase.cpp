@@ -32,7 +32,7 @@ ProtocolProcessorBase::~ProtocolProcessorBase()
     m_clientSocket->deleteLater();
 
     disconnect(m_clientSocket, &QLocalSocket::readyRead,this,&ProtocolProcessorBase::readyReadHandlerSlot);
-    disconnect(m_clientSocket, &QLocalSocket::disconnected,this, &ProtocolProcessorBase::disconnectedHandlerSlot);
+    disconnect(m_clientSocket, &QLocalSocket::disconnected,this, &ProtocolProcessorBase::disconnectedHandler);
 
     LOG_T("ProtocolProcessorBase destroyed !");
 }
@@ -100,17 +100,43 @@ bool ProtocolProcessorBase::isRunning() const
 }
 
 void ProtocolProcessorBase::disconnectedHandler()
-{}
+{
+    LOG_D("Client disconnected !");
+
+    stop();
+    waitForExit();
+
+    emit clientDisconnected();
+}
 
 void ProtocolProcessorBase::readyReadHandlerSlot()
 {
-    readyReadHandler();
+    /*
+     * Exception must not leave the slot, Application::notify would only log it and the client
+     * would stay connected with a broken message stream
+     */
+    try {
+        readyReadHandler();
+    }
+    catch(const bj::framework::exception::Exception& ex)
+    {
+        dropClient(QString::fromStdString(bj::framework::exception::ExceptionBuilder::print(ex)));
+    }
+    catch(const std::exception& ex)
+    {
+        dropClient(QString::fromUtf8(ex.what()));
+    }
+    catch(...)
+    {
+        dropClient("Unknown error !");
+    }
 }
 
-void ProtocolProcessorBase::disconnectedHandlerSlot()
+void ProtocolProcessorBase::dropClient(const QString &reason)
 {
-    LOG_D("Client disconnected !");
-    m_clientSocket->close();
+    LOG_E(QString("Client connection error, client is disconnected: ").append(reason));
+
+    m_clientSocket->abort();
 
     disconnectedHandler();
 }

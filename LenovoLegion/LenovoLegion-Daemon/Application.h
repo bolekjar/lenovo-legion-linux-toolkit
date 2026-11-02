@@ -8,18 +8,17 @@
 #pragma once
 
 #include <Core/ApplicationInterface.h>
-#include <Core/ApplicationModulesLoader.h>
 #include <Core/ExceptionBuilder.h>
 
 
 #include <QLocalServer>
+#include <QLocalSocket>
 
 #include <QCoreApplication>
 
 
 namespace LenovoLegionDaemon {
 
-class SysFsStructure;
 class ProtocolProcessorBase;
 class DataProviderManager;
 class SysFsDriverManager;
@@ -35,7 +34,6 @@ public:
 
     enum ERROR_CODES : int {
         NOT_ROOT   = -1,
-        SAVE_ERROR = -2,
         SOCKET_DIR_ERROR = -3,
         SIGNAL_ERROR = -4,
         SOCKET_LISTEN_ERROR = -5
@@ -80,18 +78,6 @@ private slots:
      */
     void newConnectionNotificationHandler();
 
-
-    /*
-     * Connection disconnection handler
-     */
-    void connectionDisconnectedHandler();
-
-
-    /*
-     * Notification connection disconnection handler
-     */
-    void connectionNotificationDisconnectedHandler();
-
 private:
 
     /*
@@ -114,26 +100,18 @@ private:
      */
     bool isClientAuthorized(QLocalSocket* socket) const;
 
-    template<class T,class U>
-    void deleteProtocolProcessors(T* &protocolProcessor)
-    {
-        if(protocolProcessor != nullptr)
-        {
-            // Disconnect ALL signals/slots FIRST to prevent queued signals from delivering
-            disconnect(dynamic_cast<U*>(protocolProcessor), nullptr, nullptr, nullptr);
-            
-            // Block signals immediately (additional safety)
-            protocolProcessor->blockSignals(true);
+    /*
+     * Accept the pending connection of the server, only one client per server, processor is deleted when the client disconnects.
+     * Failure is logged and the connection is dropped, the daemon keeps running.
+     */
+    template<class Processor>
+    void acceptConnection(QLocalServer* server,ProtocolProcessorBase* &protocolProcessor,const QString& name);
 
-            // Stop the processor (closes socket, prevents new events)
-            protocolProcessor->stop();
-
-            // Deferred delete, safe also when called from a slot invoked by the processor itself.
-            // Outside of the event loop call QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete)
-            protocolProcessor->deleteLater();
-            protocolProcessor = nullptr;
-        }
-    };
+    /*
+     * Stop and delete the processor (deferred, safe also from a slot invoked by the processor itself).
+     * Outside of the event loop call QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete).
+     */
+    void deleteProtocolProcessor(ProtocolProcessorBase* &protocolProcessor);
 
 private:
 

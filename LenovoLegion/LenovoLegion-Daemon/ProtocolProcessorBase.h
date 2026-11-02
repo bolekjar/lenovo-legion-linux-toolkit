@@ -44,17 +44,34 @@ public:
     bool isRunning() const;
 
 
+    /*
+     * Message from the client. Exception disconnects only this client (dropClient).
+     */
     virtual void readyReadHandler() = 0;
+
+    /*
+     * Client disconnected, socket is closed and clientDisconnected is emitted
+     */
     virtual void disconnectedHandler();
+
+signals:
+
+    void clientDisconnected();
 
 private slots:
 
     void readyReadHandlerSlot();
-    void disconnectedHandlerSlot();
 
 public:
 
     static void refuseConnection(QLocalSocket* clientSocket);
+
+protected:
+
+    /*
+     * Disconnect the client after an error of its connection (e.g. invalid message), other clients are not affected
+     */
+    void dropClient(const QString& reason);
 
 protected:
 

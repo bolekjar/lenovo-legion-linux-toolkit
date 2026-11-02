@@ -33,13 +33,8 @@ public:
     virtual void stop() override;
     virtual void start() override;
 
-signals:
-
-    void clientDisconnected();
-
 private:
 
-    virtual void disconnectedHandler() override;
     virtual void readyReadHandler() override;
 
     /*
