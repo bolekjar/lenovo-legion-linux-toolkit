@@ -23,6 +23,9 @@
 #define MSR_OC_MAILBOX 0x150
 #define MSR_OC_MAILBOX_CMD_READ_VOLTAGE_LIMIT 0x1A
 
+#define MSR_OC_MAILBOX_BUSY         ((u64)1 << 63)
+#define MSR_OC_MAILBOX_TIMEOUT_US   1000
+
 
 /*
  * Read voltage offset from specific plane on current CPU
@@ -45,23 +48,21 @@ struct write_msr_data {
 
 /*
  * Convert microvolts offset to MSR format
- * Format: 21-bit signed integer in 1/1024 V units (two's complement)
+ * Format: 11-bit signed integer in 1/1024 V units (two's complement), written to bits [31:21] of the mailbox
  */
 static u32 uv_to_msr(int uv)
 {
-    // Convert mV to 1/1024V units
-    // 1mV = 1.024 units of 1/1024V
+    // Convert uV to 1/1024V units (1 mV = 1.024 units), truncated toward zero
     const s32 offset_units = (uv * 1024) / 1000000;
 
-    // Handle two's complement for negative values
-    // Mask to 21 bits
-    return (u32)offset_units & 0x1FFFFF;
+    // Two's complement, 11 bits
+    return (u32)offset_units & 0x7FF;
 }
 
 
 /*
  * Convert MSR format back to microvolts
- * MSR format: 11-bit signed integer in 1/1024 V units
+ * MSR format: 11-bit signed integer in 1/1024 V units, bits [31:21] of the mailbox
  */
 static int msr_to_uv(const u32 msr_value)
 {
@@ -79,7 +80,7 @@ static int msr_to_uv(const u32 msr_value)
         offset_units = (s32)raw_value;
     }
 
-    // Convert from 1/1024V units to mV
+    // Convert from 1/1024V units to uV
     return (offset_units * 1000000) / 1024;
 }
 
@@ -87,17 +88,17 @@ static int msr_to_uv(const u32 msr_value)
 /*
  * Validate voltage offset against per-plane limits
  */
-static ssize_t validate_offset(const struct legion_intel_msr_private *intel_msr_private,const int plane,const  int offset_mv)
+static ssize_t validate_offset(const struct legion_intel_msr_private *intel_msr_private,const int plane,const  int offset_uv)
 {
     if (plane < 0 || plane >= NUM_VOLTAGE_PLANES) {
         return -EINVAL;
     }
 
-    if (offset_mv < -intel_msr_private->plane_limits[plane].max_undervolt_uv) {
+    if (offset_uv < -intel_msr_private->plane_limits[plane].max_undervolt_uv) {
         return -EINVAL;
     }
 
-    if (offset_mv > intel_msr_private->plane_limits[plane].max_overvolt_uv) {
+    if (offset_uv > intel_msr_private->plane_limits[plane].max_overvolt_uv) {
         return -EINVAL;
     }
     return 0;
@@ -133,35 +134,63 @@ static void write_voltage_offset_on_cpu(void *info)
         atomic_cmpxchg(&data->error, 0, err);
 }
 
+/*
+ * Wait until the mailbox clears the busy bit, the last read value is returned in value.
+ * Runs in IPI context (smp_call_function_single), busy wait only.
+ */
+static int wait_mailbox_ready(u64 *value)
+{
+    u32 low = 0, high = 0;
+
+    for (int us = 0; us <= MSR_OC_MAILBOX_TIMEOUT_US; us++) {
+        const int err = rdmsr_safe(MSR_OC_MAILBOX, &low, &high);
+        if (err)
+            return err;
+
+        *value = ((u64)high << 32) | low;
+
+        if (!(*value & MSR_OC_MAILBOX_BUSY))
+            return 0;
+
+        udelay(1);
+    }
+
+    return -ETIMEDOUT;
+}
+
 static void read_voltage_offset_on_cpu(void *info)
 {
     struct read_msr_data *data = info;
-    u32 low = 0, high = 0;
+    u64 value = 0;
 
     // Construct read command for MSR 0x150
     // Command 0x10 = read voltage offset
-    const u64 msr_val = ((u64)1 << 63) |                      // Busy bit
+    const u64 msr_val = MSR_OC_MAILBOX_BUSY |                 // Busy bit
                         ((u64)(data->plane & 0xFF) << 40) |   // Domain
                         ((u64)0x10 << 32);                    // Read command
 
+    // Previous command (e.g. write of the offset) must be finished
+    int err = wait_mailbox_ready(&value);
+    if (err) {
+        data->error = err;
+        return;
+    }
+
     // Write read command
-    int err = wrmsr_safe(MSR_OC_MAILBOX, (u32)msr_val, (u32)(msr_val >> 32));
+    err = wrmsr_safe(MSR_OC_MAILBOX, (u32)msr_val, (u32)(msr_val >> 32));
     if (err) {
         data->error = err;
         return;
     }
 
-    // Small delay for mailbox to process
-    udelay(10);
-
-    // Read result
-    err = rdmsr_safe(MSR_OC_MAILBOX, &low, &high);
+    // Result is valid when the mailbox clears the busy bit
+    err = wait_mailbox_ready(&value);
     if (err) {
         data->error = err;
         return;
     }
 
-    data->result = ((u64)high << 32) | low;
+    data->result = value;
     data->error = 0;
 }
 

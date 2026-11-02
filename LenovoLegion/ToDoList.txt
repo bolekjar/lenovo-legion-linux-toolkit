@@ -14,9 +14,12 @@
    Original: Daemon calls QCoreApplication::exit(0) on protocol processor error (newConnection*Handler) - exits as success, so systemd Restart=on-failure does not restart it. Use non-zero exit code.
 7) DONE - exception from reading of a client message is handled by its protocol processor (ProtocolProcessorBase::readyReadHandlerSlot -> dropClient), only that client is disconnected.
    Application::notify only logs, calls into modules are guarded by ModuleHost.
-8) Kernel fan curve store - sscanf("%hhu") truncates to u8 (266 -> 10) and passes the "<= 10" check. Parse to unsigned int and check range (legion-wmi-fm-sysfs.c).
-9) Kernel MSR read (read_voltage_offset_on_cpu) - waits fixed 10us after mailbox command, busy bit (63) is not checked, may read stale value.
-10) Kernel uv_to_msr/msr_to_uv - comments say mV and 21-bit, code works with uV and 11-bit value.
+8) DONE - every point is parsed by kstrtou8 (out of range is an error), level 0..MAX_FANCURVE_LEVEL.
+   Original: Kernel fan curve store - sscanf("%hhu") truncates to u8 (266 -> 10) and passes the "<= 10" check. Parse to unsigned int and check range (legion-wmi-fm-sysfs.c).
+9) DONE - read waits until the mailbox clears the busy bit before and after the command (timeout 1 ms, -ETIMEDOUT).
+   Original: Kernel MSR read (read_voltage_offset_on_cpu) - waits fixed 10us after mailbox command, busy bit (63) is not checked, may read stale value.
+10) DONE - comments fixed (uV, 11 bits), uv_to_msr masks 11 bits, validate_offset parameter renamed to offset_uv.
+   Original: Kernel uv_to_msr/msr_to_uv - comments say mV and 21-bit, code works with uV and 11-bit value.
 11) DONE - Cleanup in daemon Application:
    - merge duplicated newConnectionHandler / newConnectionNotificationHandler (move clientDisconnected signal to ProtocolProcessorBase),
    - remove useless template parameters and dynamic_cast in deleteProtocolProcessors,
@@ -34,3 +37,5 @@
    - event conversions in ProtocolProcessorNotifier (kernelEventHandler, dataProviderEventHandler, moduleSubsystemHandler), keep providerNotificationHandler,
    - entries in LenovoLegion-Daemon.pro, daemon dependencies on cuda/libnvidia-ml and hidapi (only modules NvidiaNvml and RGBController need them),
    - GUI: replace LenovoLegionDaemon::*::dataType by legion::messages::DataType::*.
+17) Not verified: Kernel MSR write (write_voltage_offset_on_cpu) is executed on all CPUs in parallel and does not wait for the mailbox (busy bit),
+   if the mailbox is shared by the package, parallel commands may overwrite each other. Check with the hardware, maybe write only once per package and wait for the busy bit.

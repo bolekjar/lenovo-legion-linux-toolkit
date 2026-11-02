@@ -20,6 +20,8 @@
 #include <linux/device.h>
 #include <linux/gfp_types.h>
 #include <linux/idr.h>
+#include <linux/kernel.h>
+#include <linux/string.h>
 #include <linux/wmi.h>
 
 // set fan to maximal speed; dust cleaning mode
@@ -44,6 +46,7 @@
 
 
 #define MAX_FANCURVE_SIZE 10
+#define MAX_FANCURVE_LEVEL 10
 
 enum FanTableType
 {
@@ -131,11 +134,48 @@ static ssize_t func_fan_curve_current_value_get(struct kobject *kobj,struct kobj
 			fantable->FSS9);
 }
 
+/*
+ * Parse "p1,p2,...,p10", every point is a level 0..MAX_FANCURVE_LEVEL.
+ * Each point is converted by kstrtou8, out of range value is an error (sscanf("%hhu") truncates 266 to 10).
+ */
+static int parse_fan_curve(const char *buf, const size_t count, u8 points[MAX_FANCURVE_SIZE])
+{
+	char copy[64];
+	char *cursor;
+	char *token;
+	int  size = 0;
+	int  ret;
+
+	if (count >= sizeof(copy))
+		return -EINVAL;
+
+	memcpy(copy, buf, count);
+	copy[count] = '\0';
+
+	cursor = strim(copy);
+
+	while ((token = strsep(&cursor, ",")) != NULL) {
+		if (size >= MAX_FANCURVE_SIZE)
+			return -EINVAL;
+
+		ret = kstrtou8(strim(token), 10, &points[size]);
+		if (ret)
+			return ret;
+
+		if (points[size] > MAX_FANCURVE_LEVEL)
+			return -EINVAL;
+
+		size++;
+	}
+
+	return size == MAX_FANCURVE_SIZE ? 0 : -EINVAL;
+}
+
 static ssize_t func_fan_curve_current_value_set(struct kobject *kobj, struct kobj_attribute *kattr,
 		const char *buf, const size_t count)
 {
 	const struct legion_wmi_fm_priv *priv = dev_get_drvdata(kobj_to_dev(kobj->parent));
-	u8 points[20]  		 = {0};
+	u8 points[MAX_FANCURVE_SIZE] = {0};
 	u8 buffer[0x20] 	 = {0};
 	char event_value[64] = {0};
 	char event_type[64]  = {0};
@@ -157,23 +197,9 @@ static ssize_t func_fan_curve_current_value_set(struct kobject *kobj, struct kob
 		return -EBUSY;
 	}
 
-	if(sscanf(buf,"%hhu,%hhu,%hhu,%hhu,%hhu,%hhu,%hhu,%hhu,%hhu,%hhu",&points[0],
-																      &points[1],
-																      &points[2],
-																      &points[3],
-																      &points[4],
-																	  &points[5],
-																	  &points[6],
-																	  &points[7],
-																	  &points[8],
-																	  &points[9]) != MAX_FANCURVE_SIZE)
-	{
-		return -EINVAL;
-	}
-
-	for (int i = 0;i  < MAX_FANCURVE_SIZE;i++)
-		if(points[i] > 10)
-			return -EINVAL;
+	ret = parse_fan_curve(buf, count, points);
+	if (ret)
+		return ret;
 
 	buffer[0x00] = 1;
 	buffer[0x01] = 0;
