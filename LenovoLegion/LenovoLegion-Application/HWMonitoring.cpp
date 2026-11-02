@@ -360,6 +360,15 @@ HWMonitoring::UIUpdatePackage HWMonitoring::prepareData(const legion::messages::
                                     .arg(latestNvidiaNvmlData.hardware_monitor().power().min_value() / 1000)
                                     .arg(nvidiaNvmlData.hardware_monitor().power().max_value() / 1000);
 
+    /*
+     * Suspended GPU (runtime D3) is not queried by the daemon, it would wake it up
+     */
+    if(latestNvidiaNvmlData.gpu_suspended())
+    {
+        package.m_gpuPowerValue = 0;
+        package.m_gpuPowerText  = QString("%1\nGPU is suspended (power saving)").arg(latestNvidiaNvmlData.name());
+    }
+
 
     /*
      * Fans

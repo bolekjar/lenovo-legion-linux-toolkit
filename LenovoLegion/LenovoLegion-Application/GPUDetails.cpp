@@ -63,6 +63,11 @@ void GPUDetails::init(const legion::messages::NvidiaNvml &nvidiaData)
 
 void GPUDetails::refresh(const legion::messages::NvidiaNvml &nvidiaData)
 {
+    /*
+     * Suspended GPU (runtime D3) is not queried by the daemon, current values are 0
+     */
+    ui->groupBox_GPUDetails->setTitle(QString("GPU Details - %1%2").arg(nvidiaData.name()).arg(nvidiaData.gpu_suspended() ? " (suspended)" : ""));
+
     ui->widget_GPUDetailsGPUUtilization->refresh(nvidiaData.hardware_monitor().gpu_utilization().value() ,0,10,' ',QString("GPU Utilization: %1 %\n"\
                                                                                                            "GPU Utilization min: %2 %\n"\
                                                                                                            "GPU Utilization max: %3 %\n").arg(nvidiaData.hardware_monitor().gpu_utilization().value())

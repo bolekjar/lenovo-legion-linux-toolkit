@@ -14,6 +14,9 @@
 #include <NvidiaNvml.pb.h>
 
 #include <nvml.h>
+
+#include <filesystem>
+#include <optional>
 namespace LenovoLegionDaemon::Kit {
 
 class DataProviderNvidiaNvml : public DataProvider
@@ -49,6 +52,16 @@ private:
     void settable(legion::messages::NvidiaNvml& nvml,Origin origin) const;
 
     /*
+     * Data read from the running GPU (NVML queries wake up a suspended GPU)
+     */
+    void readDynamicData(legion::messages::NvidiaNvml& gpuData);
+
+    /*
+     * GPU is in runtime D3 (or going to it), unknown status is not suspended
+     */
+    bool isSuspended() const;
+
+    /*
      * *************Static data*********************
      */
     quint32      m_maxGraphicsClock;
@@ -70,7 +83,11 @@ private:
      */
 
 
-    nvmlDevice_t m_device;  
+    nvmlDevice_t m_device;
+
+    std::filesystem::path   m_runtimeStatusPath;    // /sys/bus/pci/devices/<bdf>/power/runtime_status
+    std::optional<int>      m_gpuOffset;            // last known clock offsets, reported while the GPU is suspended
+    std::optional<int>      m_memOffset;  
 public:
 
     static constexpr quint8  dataType = legion::messages::DataType::NVIDIA_NWML;

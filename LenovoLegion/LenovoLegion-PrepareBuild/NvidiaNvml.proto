@@ -67,4 +67,8 @@ message NvidiaNvml
 
 
     string name                          = 4;
+
+    // GPU is in runtime D3 (power/runtime_status "suspended"), it is not queried (NVML would wake it up):
+    // hardware_monitor contains only static data, offsets are the last known values
+    bool   gpu_suspended                 = 5;
 }

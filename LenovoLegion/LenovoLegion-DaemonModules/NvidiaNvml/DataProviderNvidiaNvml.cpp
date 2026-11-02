@@ -3,6 +3,8 @@
 
 #include <NvidiaNvml.pb.h>
 
+#include <QFile>
+
 namespace LenovoLegionDaemon::Kit {
 
 
@@ -37,11 +39,6 @@ QByteArray DataProviderNvidiaNvml::serializeAndGetData()
      */
     if(m_device != nullptr)
     {
-        nvmlReturn_t result;
-        unsigned int graphicsClock, smClock, memClock;
-        int gpuOffset, memOffset;
-
-
         LOG_T("Filling NVML GPU data");
 
         /*
@@ -90,110 +87,27 @@ QByteArray DataProviderNvidiaNvml::serializeAndGetData()
 
 
 
-        // Get current clock speeds
-        result = nvmlDeviceGetClockInfo(m_device, NVML_CLOCK_GRAPHICS, &graphicsClock);
-        if (NVML_SUCCESS == result) {
-            gpuData.mutable_hardware_monitor()->mutable_gpu_clock()->set_value(graphicsClock);
+        /*
+         * Suspended GPU (runtime D3) is not queried, every NVML query would wake it up
+         */
+        if(isSuspended())
+        {
+            LOG_T("NVIDIA GPU is suspended, only static data and last known offsets");
+            gpuData.set_gpu_suspended(true);
+        }
+        else
+        {
+            readDynamicData(gpuData);
         }
 
-        result = nvmlDeviceGetClockInfo(m_device, NVML_CLOCK_SM, &smClock);
-        if (NVML_SUCCESS == result) {
-            gpuData.mutable_hardware_monitor()->mutable_sm_clock()->set_value(smClock);
+        if(m_gpuOffset.has_value())
+        {
+            gpuData.mutable_gpu_offset()->set_value(*m_gpuOffset);
         }
 
-        result = nvmlDeviceGetClockInfo(m_device, NVML_CLOCK_MEM, &memClock);
-        if (NVML_SUCCESS == result) {
-            gpuData.mutable_hardware_monitor()->mutable_memory_clock()->set_value(memClock);
-        }
-
-
-        // Get utilization (GPU and memory)
-        nvmlUtilization_t utilization;
-        result = nvmlDeviceGetUtilizationRates(m_device, &utilization);
-        if (NVML_SUCCESS == result) {
-            gpuData.mutable_hardware_monitor()->mutable_gpu_utilization()->set_value(utilization.gpu);
-            gpuData.mutable_hardware_monitor()->mutable_memory_utilization()->set_value(utilization.memory);
-        }
-
-        // Get temperature
-        nvmlTemperature_t tempInfo;
-        tempInfo.version = nvmlTemperature_v1;
-        tempInfo.sensorType = NVML_TEMPERATURE_GPU;
-        result = nvmlDeviceGetTemperatureV(m_device, &tempInfo);
-        if (NVML_SUCCESS == result) {
-            gpuData.mutable_hardware_monitor()->mutable_temperature()->set_value(tempInfo.temperature);
-        }
-
-        // Get memory info
-        nvmlMemory_t memory;
-        result = nvmlDeviceGetMemoryInfo(m_device, &memory);
-        if (NVML_SUCCESS == result) {
-            gpuData.mutable_hardware_monitor()->mutable_memory_use()->set_used(memory.used);
-            gpuData.mutable_hardware_monitor()->mutable_memory_use()->set_free(memory.free);
-            gpuData.mutable_hardware_monitor()->mutable_memory_use()->set_total(memory.total);
-        }
-
-        // Get current power draw
-        unsigned int power_draw;
-        result = nvmlDeviceGetPowerUsage(m_device, &power_draw);
-        if (NVML_SUCCESS == result) {
-            gpuData.mutable_hardware_monitor()->mutable_power()->set_value(power_draw);
-        }
-
-        // Get total energy consumption
-        unsigned long long total_energy;
-        result = nvmlDeviceGetTotalEnergyConsumption(m_device, &total_energy);
-        if (NVML_SUCCESS == result) {
-            gpuData.mutable_hardware_monitor()->mutable_power()->set_total(total_energy);
-        }
-
-        unsigned int default_power_limit;
-        result = nvmlDeviceGetPowerManagementDefaultLimit(m_device, &default_power_limit);
-        if (NVML_SUCCESS == result) {
-            gpuData.mutable_hardware_monitor()->mutable_power()->set_default_value(default_power_limit);
-        }
-
-        // Get enforced power limit (actual limit being enforced)
-        unsigned int enforced_power_limit;
-        result = nvmlDeviceGetEnforcedPowerLimit(m_device, &enforced_power_limit);
-        if (NVML_SUCCESS == result) {
-            gpuData.mutable_hardware_monitor()->mutable_power()->set_enforced_value(enforced_power_limit);
-        }
-
-        // Get PCIe info
-        unsigned int curr_link_gen, curr_link_width;
-        result = nvmlDeviceGetCurrPcieLinkGeneration(m_device, &curr_link_gen);
-        if (NVML_SUCCESS == result) {
-            gpuData.mutable_hardware_monitor()->mutable_pcie()->set_generation(curr_link_gen);
-        }
-
-        result = nvmlDeviceGetCurrPcieLinkWidth(m_device, &curr_link_width);
-        if (NVML_SUCCESS == result) {
-            gpuData.mutable_hardware_monitor()->mutable_pcie()->set_width(curr_link_width);
-        }
-
-        // Get PCIe throughput
-        unsigned int tx_throughput, rx_throughput;
-        result = nvmlDeviceGetPcieThroughput(m_device, NVML_PCIE_UTIL_TX_BYTES, &tx_throughput);
-        if (NVML_SUCCESS == result) {
-            gpuData.mutable_hardware_monitor()->mutable_pcie()->set_tx_bytes(tx_throughput);
-        }
-
-        result = nvmlDeviceGetPcieThroughput(m_device, NVML_PCIE_UTIL_RX_BYTES, &rx_throughput);
-        if (NVML_SUCCESS == result) {
-            gpuData.mutable_hardware_monitor()->mutable_pcie()->set_rx_bytes(rx_throughput);
-        }
-
-        // Get GPU clock offset
-        result = nvmlDeviceGetGpcClkVfOffset(m_device, &gpuOffset);
-        if (NVML_SUCCESS == result) {
-            gpuData.mutable_gpu_offset()->set_value(gpuOffset);
-        }
-
-        // Get Memory clock offset
-        result = nvmlDeviceGetMemClkVfOffset(m_device, &memOffset);
-        if (NVML_SUCCESS == result) {
-            gpuData.mutable_memory_offset()->set_value(memOffset);
+        if(m_memOffset.has_value())
+        {
+            gpuData.mutable_memory_offset()->set_value(*m_memOffset);
         }
     }
     else
@@ -209,6 +123,138 @@ QByteArray DataProviderNvidiaNvml::serializeAndGetData()
     }
 
     return byteArray;
+}
+
+void DataProviderNvidiaNvml::readDynamicData(legion::messages::NvidiaNvml &gpuData)
+{
+    nvmlReturn_t result;
+    unsigned int graphicsClock, smClock, memClock;
+    int gpuOffset, memOffset;
+
+    // Get current clock speeds
+    result = nvmlDeviceGetClockInfo(m_device, NVML_CLOCK_GRAPHICS, &graphicsClock);
+    if (NVML_SUCCESS == result) {
+        gpuData.mutable_hardware_monitor()->mutable_gpu_clock()->set_value(graphicsClock);
+    }
+
+    result = nvmlDeviceGetClockInfo(m_device, NVML_CLOCK_SM, &smClock);
+    if (NVML_SUCCESS == result) {
+        gpuData.mutable_hardware_monitor()->mutable_sm_clock()->set_value(smClock);
+    }
+
+    result = nvmlDeviceGetClockInfo(m_device, NVML_CLOCK_MEM, &memClock);
+    if (NVML_SUCCESS == result) {
+        gpuData.mutable_hardware_monitor()->mutable_memory_clock()->set_value(memClock);
+    }
+
+
+    // Get utilization (GPU and memory)
+    nvmlUtilization_t utilization;
+    result = nvmlDeviceGetUtilizationRates(m_device, &utilization);
+    if (NVML_SUCCESS == result) {
+        gpuData.mutable_hardware_monitor()->mutable_gpu_utilization()->set_value(utilization.gpu);
+        gpuData.mutable_hardware_monitor()->mutable_memory_utilization()->set_value(utilization.memory);
+    }
+
+    // Get temperature
+    nvmlTemperature_t tempInfo;
+    tempInfo.version = nvmlTemperature_v1;
+    tempInfo.sensorType = NVML_TEMPERATURE_GPU;
+    result = nvmlDeviceGetTemperatureV(m_device, &tempInfo);
+    if (NVML_SUCCESS == result) {
+        gpuData.mutable_hardware_monitor()->mutable_temperature()->set_value(tempInfo.temperature);
+    }
+
+    // Get memory info
+    nvmlMemory_t memory;
+    result = nvmlDeviceGetMemoryInfo(m_device, &memory);
+    if (NVML_SUCCESS == result) {
+        gpuData.mutable_hardware_monitor()->mutable_memory_use()->set_used(memory.used);
+        gpuData.mutable_hardware_monitor()->mutable_memory_use()->set_free(memory.free);
+        gpuData.mutable_hardware_monitor()->mutable_memory_use()->set_total(memory.total);
+    }
+
+    // Get current power draw
+    unsigned int power_draw;
+    result = nvmlDeviceGetPowerUsage(m_device, &power_draw);
+    if (NVML_SUCCESS == result) {
+        gpuData.mutable_hardware_monitor()->mutable_power()->set_value(power_draw);
+    }
+
+    // Get total energy consumption
+    unsigned long long total_energy;
+    result = nvmlDeviceGetTotalEnergyConsumption(m_device, &total_energy);
+    if (NVML_SUCCESS == result) {
+        gpuData.mutable_hardware_monitor()->mutable_power()->set_total(total_energy);
+    }
+
+    unsigned int default_power_limit;
+    result = nvmlDeviceGetPowerManagementDefaultLimit(m_device, &default_power_limit);
+    if (NVML_SUCCESS == result) {
+        gpuData.mutable_hardware_monitor()->mutable_power()->set_default_value(default_power_limit);
+    }
+
+    // Get enforced power limit (actual limit being enforced)
+    unsigned int enforced_power_limit;
+    result = nvmlDeviceGetEnforcedPowerLimit(m_device, &enforced_power_limit);
+    if (NVML_SUCCESS == result) {
+        gpuData.mutable_hardware_monitor()->mutable_power()->set_enforced_value(enforced_power_limit);
+    }
+
+    // Get PCIe info
+    unsigned int curr_link_gen, curr_link_width;
+    result = nvmlDeviceGetCurrPcieLinkGeneration(m_device, &curr_link_gen);
+    if (NVML_SUCCESS == result) {
+        gpuData.mutable_hardware_monitor()->mutable_pcie()->set_generation(curr_link_gen);
+    }
+
+    result = nvmlDeviceGetCurrPcieLinkWidth(m_device, &curr_link_width);
+    if (NVML_SUCCESS == result) {
+        gpuData.mutable_hardware_monitor()->mutable_pcie()->set_width(curr_link_width);
+    }
+
+    // Get PCIe throughput
+    unsigned int tx_throughput, rx_throughput;
+    result = nvmlDeviceGetPcieThroughput(m_device, NVML_PCIE_UTIL_TX_BYTES, &tx_throughput);
+    if (NVML_SUCCESS == result) {
+        gpuData.mutable_hardware_monitor()->mutable_pcie()->set_tx_bytes(tx_throughput);
+    }
+
+    result = nvmlDeviceGetPcieThroughput(m_device, NVML_PCIE_UTIL_RX_BYTES, &rx_throughput);
+    if (NVML_SUCCESS == result) {
+        gpuData.mutable_hardware_monitor()->mutable_pcie()->set_rx_bytes(rx_throughput);
+    }
+
+    // Get GPU clock offset
+    result = nvmlDeviceGetGpcClkVfOffset(m_device, &gpuOffset);
+    if (NVML_SUCCESS == result) {
+        m_gpuOffset = gpuOffset;
+    }
+
+    // Get Memory clock offset
+    result = nvmlDeviceGetMemClkVfOffset(m_device, &memOffset);
+    if (NVML_SUCCESS == result) {
+        m_memOffset = memOffset;
+    }
+}
+
+bool DataProviderNvidiaNvml::isSuspended() const
+{
+    if(m_runtimeStatusPath.empty())
+    {
+        return false;
+    }
+
+    QFile file(QString::fromStdString(m_runtimeStatusPath.string()));
+
+    if(!file.open(QIODeviceBase::ReadOnly))
+    {
+        return false;
+    }
+
+    const QByteArray status = file.readAll().trimmed();
+
+    return status == "suspended" || status == "suspending";
 }
 
 QByteArray DataProviderNvidiaNvml::deserializeAndSetData(const QByteArray &data)
@@ -247,6 +293,9 @@ QByteArray DataProviderNvidiaNvml::deserializeAndSetData(const QByteArray &data)
         if (NVML_SUCCESS != result) {
             LOG_E(QString("Failed to set GPU clock offset: %1").arg(nvmlErrorString(result)));
         }
+        else {
+            m_gpuOffset = nvmlData.gpu_offset().value();
+        }
     }
 
     /*
@@ -264,6 +313,9 @@ QByteArray DataProviderNvidiaNvml::deserializeAndSetData(const QByteArray &data)
         result = nvmlDeviceSetClockOffsets(m_device, &memClkOffset);
         if (NVML_SUCCESS != result) {
             LOG_E(QString("Failed to set Memory clock offset: %1").arg(nvmlErrorString(result)));
+        }
+        else {
+            m_memOffset = nvmlData.memory_offset().value();
         }
     }
 
@@ -425,6 +477,28 @@ void DataProviderNvidiaNvml::init()
                 LOG_W(QString("Failed to get Memory clock offset for device %1: %2").arg(i).arg(nvmlErrorString(result)));
             }
 
+            /*
+             * Runtime power status of the PCI device, a suspended GPU is not queried
+             */
+            nvmlPciInfo_t pci;
+            result = nvmlDeviceGetPciInfo(m_device, &pci);
+            if (NVML_SUCCESS == result) {
+                m_runtimeStatusPath = std::filesystem::path("/sys/bus/pci/devices") / QString::asprintf("%04x:%02x:%02x.0",pci.domain,pci.bus,pci.device).toStdString() / "power/runtime_status";
+                LOG_D(QString("NVIDIA GPU runtime status: ").append(QString::fromStdString(m_runtimeStatusPath.string())));
+            }
+            else {
+                LOG_W(QString("Failed to get PCI info for device %1: %2, GPU is always queried").arg(i).arg(nvmlErrorString(result)));
+            }
+
+            // Last known clock offsets
+            int offset = 0;
+            if (nvmlDeviceGetGpcClkVfOffset(m_device, &offset) == NVML_SUCCESS) {
+                m_gpuOffset = offset;
+            }
+            if (nvmlDeviceGetMemClkVfOffset(m_device, &offset) == NVML_SUCCESS) {
+                m_memOffset = offset;
+            }
+
             m_GPUName = QString(name);
             break;
         }
@@ -458,6 +532,10 @@ void DataProviderNvidiaNvml::cleanUp()
             LOG_T("NVML shutdown successful");
         }
     }
+
+    m_runtimeStatusPath.clear();
+    m_gpuOffset.reset();
+    m_memOffset.reset();
 }
 
 }

@@ -28,7 +28,10 @@
 12) Optional idle timeout for the client which sends incomplete message - it does not block the daemon anymore, but holds the only allowed connection.
 13) Files from old installations in log, data (mode 0644/0777) are not fixed by tmpfiles, only directories.
 14) Not reviewed yet: GUI widgets UI logic (ToolBarSettingsWidget.cpp), Rust CLI.
-15) Not verified: NVML initialized for the whole daemon lifetime may prevent runtime suspend (RTD3) of the NVIDIA dGPU. Check power/runtime_status of the dGPU with all other GPU users closed.
+15) DONE (needs test in an iGPU session) - NVML module does not query a suspended GPU (power/runtime_status of the PCI device),
+   it reports gpu_suspended with static data and the last known offsets. GUI HWMonitoring polls NVML every refresh, every NVML query would wake the GPU.
+   Fine-grained RTD3 (DynamicPowerManagement 3) allows suspend with idle NVML clients according to the NVIDIA README.
+   Original: NVML initialized for the whole daemon lifetime may prevent runtime suspend (RTD3) of the NVIDIA dGPU. Check power/runtime_status of the dGPU with all other GPU users closed.
    2026-11-02: can not be checked in a session running on the dGPU (Hyprland, quickshell, Chrome hold the dGPU, runtime_status is always active).
    NVML module does not poll the GPU by a timer, it is queried only by GUI requests. Test: session on the iGPU (hybrid mode, compositor on the iGPU),
    stop the daemon -> runtime_status suspended?, start the daemon -> still suspended? If not, initialize NVML lazily (first request) and shut it down after idle time.
