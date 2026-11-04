@@ -1,0 +1,65 @@
+edition = "2024";
+
+package legion.ui;
+
+import "google/protobuf/descriptor.proto";
+
+
+/*
+ * Presentation of the data in the generic GUI (LenovoLegion-Application/UiDesign.md)
+ */
+
+enum Widget {
+    WIDGET_AUTO = 0;    // by type: bool -> SWITCH, enum or choices_from -> COMBO, number -> SPIN, string -> LABEL
+    SWITCH      = 1;
+    SLIDER      = 2;
+    SPIN        = 3;
+    COMBO       = 4;
+    LABEL       = 5;    // read-only text
+    HIDDEN      = 6;    // helper field (allowed values, supported flag, ...)
+    RADIO       = 7;    // one radio button per choice
+}
+
+/*
+ * What the data of a DataType needs, the GUI groups the tabs and explains missing data by it
+ */
+enum Platform {
+    PLATFORM_GENERIC = 0;   // standard Linux interfaces (cpufreq, intel_pstate, NVML, legion-intel-msr), any notebook
+    PLATFORM_LENOVO  = 1;   // Lenovo Legion kernel driver (legion), Lenovo Legion notebooks only
+}
+
+/*
+ * Paths in the options (min, max, choices_from, supported_from, visible_when, value_from) are relative
+ * to the message which contains the field with the option, e.g. "max_undervolt" in CpuIntelMSR.VoltageSettings
+ * is "cpu.max_undervolt" for "cpu.offset". A leading '-' of min/max negates the value of the field.
+ */
+message FieldUi
+{
+    string label          = 1;    // missing on a leaf -> label of the parent field
+    string unit           = 2;    // unit of the displayed value (after scale)
+    Widget widget         = 3;
+    bool   readonly       = 4;
+    string min            = 5;    // number, or path of the field with the minimum ("min", "-max_undervolt")
+    string max            = 6;
+    string choices_from   = 7;    // path of a repeated string or enum field with the allowed values
+    string supported_from = 8;    // path of a bool field, false hides the field (inherited by the children)
+    string visible_when   = 9;    // "path == value" or "path != value"
+    string hint           = 10;   // note shown under the field (inherited by the children)
+    string value_from     = 11;   // path of the field with the displayed value, the field itself is written
+                                  // (PowerProfile: thermal_mode is shown, current_value is set)
+    double scale          = 12;   // displayed = stored * scale, rounded away from zero (uV -> mV: 0.001)
+    double step           = 13;   // step of SLIDER/SPIN in displayed units, default 1
+                                  // SLIDER/SPIN with not empty choices (choices_from) is shown as COMBO
+    string tooltip        = 14;   // tool tip of the label (inherited by the children)
+    bool   atomic         = 15;   // message field sent as a whole when any of its fields is changed (FanCurve.current_value)
+}
+
+extend google.protobuf.FieldOptions {
+    FieldUi field = 50001;
+}
+
+extend google.protobuf.EnumValueOptions {
+    string value_label = 50002;   // label of the enum value in a COMBO
+    string message     = 50003;   // full name of the message of a DataType value ("legion.messages.CPUPState")
+    Platform platform  = 50004;   // platform of a DataType value, default GENERIC
+}

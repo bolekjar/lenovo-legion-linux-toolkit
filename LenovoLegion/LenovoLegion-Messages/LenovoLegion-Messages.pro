@@ -42,6 +42,7 @@ HEADERS += \
         $${MESSAGES_PATH}/ComputerInfo.pb.h \
         $${MESSAGES_PATH}/DaemonSettings.pb.h \
         $${MESSAGES_PATH}/Profiles.pb.h \
+        $${MESSAGES_PATH}/UiOptions.pb.h \
         $${MESSAGES_PATH}/Other.pb.h \
         $${MESSAGES_PATH}/RGBController.pb.h \
         $${MESSAGES_PATH}/MessageRegistry.pb.h
@@ -62,6 +63,7 @@ SOURCES += \
         $${MESSAGES_PATH}/ComputerInfo.pb.cc \
         $${MESSAGES_PATH}/DaemonSettings.pb.cc \
         $${MESSAGES_PATH}/Profiles.pb.cc \
+        $${MESSAGES_PATH}/UiOptions.pb.cc \
         $${MESSAGES_PATH}/Other.pb.cc \
         $${MESSAGES_PATH}/RGBController.pb.cc \
         $${MESSAGES_PATH}/MessageRegistry.pb.cc

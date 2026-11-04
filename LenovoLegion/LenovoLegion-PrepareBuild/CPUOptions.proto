@@ -2,18 +2,21 @@ edition = "2024";
 
 package legion.messages;
 
+import "UiOptions.proto";
+
 
 message CPUOptions
 {
     message CPUX
     {
-        string   governor             =1;
-        string   available_governors  =2;
-        bool     cpu_online           =3;
-        uint32   cpu_core_id          =4;
-        uint32   die_id               =5;
-        uint32   physical_package_id  =6;
-        uint32   cluster_id           =7;
+        // Governor is sent only for online CPUs, allowed values from available_governors (split by spaces)
+        string   governor             =1 [(legion.ui.field) = { label: "Governor", widget: COMBO, choices_from: "available_governors" }];
+        string   available_governors  =2 [(legion.ui.field) = { widget: HIDDEN }];
+        bool     cpu_online           =3 [(legion.ui.field) = { label: "Enabled" }];
+        uint32   cpu_core_id          =4 [(legion.ui.field) = { label: "CoreId", widget: LABEL }];
+        uint32   die_id               =5 [(legion.ui.field) = { label: "DieId", widget: LABEL }];
+        uint32   physical_package_id  =6 [(legion.ui.field) = { label: "PackageId", widget: LABEL }];
+        uint32   cluster_id           =7 [(legion.ui.field) = { label: "ClusterId", widget: LABEL }];
     }
 
     repeated CPUX cpus = 1;
@@ -21,22 +24,22 @@ message CPUOptions
 
 message CPUSMT
 {
-    bool   active  = 1;
-    string control = 2;
+    bool   active  = 1 [(legion.ui.field) = { widget: HIDDEN }];
+    string control = 2 [(legion.ui.field) = { label: "SMT", widget: COMBO, choices_from: "settable_controls" }];
 
     // Values of control which can be set now (read-only), empty = SMT can not be switched
-    repeated string settable_controls = 3;
+    repeated string settable_controls = 3 [(legion.ui.field) = { widget: HIDDEN }];
 }
 
 
 message CPUPState
 {
-    bool    hwp_dynamic_boost = 1;
-    uint32  max_perf_pct      = 2;
-    uint32  min_perf_pct      = 3;
-    bool    no_turbo          = 4;
-    string  status            = 5;
+    bool    hwp_dynamic_boost = 1 [(legion.ui.field) = { label: "HWP dynamic boost" }];
+    uint32  max_perf_pct      = 2 [(legion.ui.field) = { label: "Max performance", unit: "%", widget: SPIN, min: "min_perf_pct", max: "100" }];
+    uint32  min_perf_pct      = 3 [(legion.ui.field) = { label: "Min performance", unit: "%", widget: SPIN, min: "0", max: "max_perf_pct" }];
+    bool    no_turbo          = 4 [(legion.ui.field) = { label: "Disable turbo" }];
+    string  status            = 5 [(legion.ui.field) = { label: "Driver mode", widget: COMBO, choices_from: "settable_statuses" }];
 
     // Values of status which can be set now (read-only), empty = status can not be changed
-    repeated string settable_statuses = 6;
+    repeated string settable_statuses = 6 [(legion.ui.field) = { widget: HIDDEN }];
 }

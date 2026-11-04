@@ -2,6 +2,8 @@ edition = "2024";
 
 package legion.messages;
 
+import "UiOptions.proto";
+
 
 message NvidiaNvml
 {
@@ -56,19 +58,19 @@ message NvidiaNvml
     }
 
     message OffsetSettings {
-        uint32  max                  = 1;
-        uint32  min                  = 2;
-        int32   value                = 3;
+        uint32  max                  = 1 [(legion.ui.field) = { widget: HIDDEN }];
+        uint32  min                  = 2 [(legion.ui.field) = { widget: HIDDEN }];
+        int32   value                = 3 [(legion.ui.field) = { widget: SLIDER, min: "min", max: "max" }];
     }
 
-    HardwareMonitor   hardware_monitor   = 1;
-    OffsetSettings    gpu_offset         = 2;
-    OffsetSettings    memory_offset      = 3;
+    HardwareMonitor   hardware_monitor   = 1 [(legion.ui.field) = { widget: HIDDEN }];
+    OffsetSettings    gpu_offset         = 2 [(legion.ui.field) = { label: "GPU Clock Offset", unit: "MHz" }];
+    OffsetSettings    memory_offset      = 3 [(legion.ui.field) = { label: "Memory Clock Offset", unit: "MHz" }];
 
 
-    string name                          = 4;
+    string name                          = 4 [(legion.ui.field) = { widget: HIDDEN }];
 
     // GPU is in runtime D3 (power/runtime_status "suspended"), it is not queried (NVML would wake it up):
     // hardware_monitor contains only static data, offsets are the last known values
-    bool   gpu_suspended                 = 5;
+    bool   gpu_suspended                 = 5 [(legion.ui.field) = { widget: HIDDEN }];
 }

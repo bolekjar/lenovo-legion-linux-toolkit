@@ -2,34 +2,38 @@ edition = "2024";
 
 package legion.messages;
 
+import "UiOptions.proto";
+
 
 
 message FanOption
 {
     message Option {
         bool       current_value  = 1;
-        bool       default_value  = 2;
-        bool       supported      = 3;
+        bool       default_value  = 2 [(legion.ui.field) = { widget: HIDDEN }];
+        bool       supported      = 3 [(legion.ui.field) = { widget: HIDDEN }];
     }
 
-    Option full_speed = 1;
+    Option full_speed = 1 [(legion.ui.field) = { label: "Fan full speed", supported_from: "full_speed.supported" }];
 }
 
 
 message FanCurve
 {
+    // Point n is at least n (point10 at least 9) the same as FanControl of the widget pages, the curve is monotonic
+    // (FanCurveEditor), the daemon accepts the levels 0..10
     message Points
     {
-        uint32 point1   =  1;
-        uint32 point2   =  2;
-        uint32 point3   =  3;
-        uint32 point4   =  4;
-        uint32 point5   =  5;
-        uint32 point6   =  6;
-        uint32 point7   =  7;
-        uint32 point8   =  8;
-        uint32 point9   =  9;
-        uint32 point10  =  10;
+        uint32 point1   =  1 [(legion.ui.field) = { label: "Low", widget: SLIDER, min: "1", max: "10" }];
+        uint32 point2   =  2 [(legion.ui.field) = { label: "20%", widget: SLIDER, min: "2", max: "10" }];
+        uint32 point3   =  3 [(legion.ui.field) = { label: "30%", widget: SLIDER, min: "3", max: "10" }];
+        uint32 point4   =  4 [(legion.ui.field) = { label: "40%", widget: SLIDER, min: "4", max: "10" }];
+        uint32 point5   =  5 [(legion.ui.field) = { label: "50%", widget: SLIDER, min: "5", max: "10" }];
+        uint32 point6   =  6 [(legion.ui.field) = { label: "60%", widget: SLIDER, min: "6", max: "10" }];
+        uint32 point7   =  7 [(legion.ui.field) = { label: "70%", widget: SLIDER, min: "7", max: "10" }];
+        uint32 point8   =  8 [(legion.ui.field) = { label: "80%", widget: SLIDER, min: "8", max: "10" }];
+        uint32 point9   =  9 [(legion.ui.field) = { label: "90%", widget: SLIDER, min: "9", max: "10" }];
+        uint32 point10  =  10 [(legion.ui.field) = { label: "High", widget: SLIDER, min: "9", max: "10" }];
     }
 
     message Default
@@ -38,18 +42,19 @@ message FanCurve
         repeated uint32 sensors = 2;
     }
 
-    Points current_value                 = 1;
+    // The kernel accepts only the whole curve: changed points are sent with the other points (atomic)
+    Points current_value                 = 1 [(legion.ui.field) = { atomic: true }];
 
     /*
      * Default Fan Curves for different modes - Legion 5/7 2021+
      */
-    map<uint32, Default>  cpu_default    = 2;
-    map<uint32, Default>  gpu_default    = 3;
+    map<uint32, Default>  cpu_default    = 2 [(legion.ui.field) = { widget: HIDDEN }];
+    map<uint32, Default>  gpu_default    = 3 [(legion.ui.field) = { widget: HIDDEN }];
 
     /*
      * Fan Optionals
      */
-    map<uint32, Default>  cpusen_default = 4;
-    map<uint32, Default>  sys_default    = 5;
+    map<uint32, Default>  cpusen_default = 4 [(legion.ui.field) = { widget: HIDDEN }];
+    map<uint32, Default>  sys_default    = 5 [(legion.ui.field) = { widget: HIDDEN }];
 
 }

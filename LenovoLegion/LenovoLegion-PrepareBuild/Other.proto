@@ -2,29 +2,31 @@ edition = "2024";
 
 package legion.messages;
 
+import "UiOptions.proto";
+
 
 message OtherSettings
 {
     message EnableDisableValue
     {
         bool   current     = 1;
-        bool   supported   = 2;
+        bool   supported   = 2 [(legion.ui.field) = { widget: HIDDEN }];
     }
 
-    EnableDisableValue touch_pad  = 1;
-    EnableDisableValue win_key    = 2;
+    EnableDisableValue touch_pad  = 1 [(legion.ui.field) = { label: "Disable touchpad",    supported_from: "touch_pad.supported" }];
+    EnableDisableValue win_key    = 2 [(legion.ui.field) = { label: "Disable Windows key", supported_from: "win_key.supported" }];
 }
 
 
 message GpuSwitchValue
 {
     enum HybridModeState {
-        HYBRID_MODE_ON            = 0;
-        HYBRID_MODE_ONIGPUONLY    = 1;
-        HYBRID_MODE_ONAUTO        = 2;
-        HYBRID_MODE_OFF           = 3;
+        HYBRID_MODE_ON            = 0 [(legion.ui.value_label) = "Hybrid Mode (Default)"];
+        HYBRID_MODE_ONIGPUONLY    = 1 [(legion.ui.value_label) = "iGPU Only"];
+        HYBRID_MODE_ONAUTO        = 2 [(legion.ui.value_label) = "Hybrid Mode (Auto)"];
+        HYBRID_MODE_OFF           = 3 [(legion.ui.value_label) = "dGPU Only (G-Sync)"];
     }
 
-    HybridModeState   current     = 1;
-    bool              supported   = 2;
+    HybridModeState   current     = 1 [(legion.ui.field) = { label: "GPU mode", supported_from: "supported", hint: "Changing the GPU mode requires a system restart." }];
+    bool              supported   = 2 [(legion.ui.field) = { widget: HIDDEN }];
 }

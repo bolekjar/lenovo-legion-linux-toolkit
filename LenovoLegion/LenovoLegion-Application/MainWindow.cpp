@@ -15,6 +15,7 @@
 #include "ToolBarHelpWidget.h"
 #include "ToolBarInformationWidget.h"
 #include "ToolBarProfilesWidget.h"
+#include "ToolBarQmlPageWidget.h"
 #include "ToolBarSettingsWidget.h"
 #include "ToolBarKeyboardWidget.h"
 
@@ -95,6 +96,15 @@ MainWindow::MainWindow(DataProviderManager &dataProviderManager, QWidget *parent
         if(ui->label_DaemonStatus->text() != DAEMON_CONNECTION_STATUS_CONNECTED.data())
             return;
         ui->toolBar_HBoxLayout->addWidget((new ToolBarProfilesWidget(m_dataProviderManager.dataProvider(),this))->initialize());
+    });
+
+    /*
+     * Pilot page of the generic GUI (UiDesign.md)
+     */
+    toolbarActionInitializer(ui->toolBar->addAction("Preview"),QIcon(":/images/icons/toolbar-home.png"),[this](){
+        if(ui->label_DaemonStatus->text() != DAEMON_CONNECTION_STATUS_CONNECTED.data())
+            return;
+        ui->toolBar_HBoxLayout->addWidget((new ToolBarQmlPageWidget(m_dataProviderManager.dataProvider(),QUrl("qrc:/ui/PreviewPage.qml"),this))->initialize());
     });
 
     toolbarActionInitializer(ui->toolBar->addAction("Keyboard"),QIcon(":/images/icons/keyboard.png"),[this](){

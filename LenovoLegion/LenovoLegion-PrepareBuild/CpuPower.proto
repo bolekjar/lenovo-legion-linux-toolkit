@@ -2,12 +2,15 @@ edition = "2024";
 
 package legion.messages;
 
+import "UiOptions.proto";
+
 
 message CPUPower
 {
     message Limit
     {
-        uint32 current_value        = 1;
+        // Range, steps and support from the descriptor of the custom mode (255), the same as the daemon (settableLimit) and the widget pages
+        uint32 current_value        = 1 [(legion.ui.field) = { widget: SLIDER, min: "mode_descriptor_map[255].min_value", max: "mode_descriptor_map[255].max_value", choices_from: "mode_descriptor_map[255].steps", supported_from: "mode_descriptor_map[255].supported" }];
 
         message Descriptor {
 
@@ -21,16 +24,16 @@ message CPUPower
             uint32 supported                    = 8;
         }
 
-        map<int32, Descriptor> mode_descriptor_map = 2;
+        map<int32, Descriptor> mode_descriptor_map = 2 [(legion.ui.field) = { widget: HIDDEN }];
     }
 
-    Limit apus_pptp_limit           = 1;
-    Limit cpu_clp_limit             = 2;
-    Limit cpu_ltp_limit             = 3;
-    Limit cpu_pl1_tau               = 4;
-    Limit cpu_pp_limit              = 5;
-    Limit cpu_stp_limit             = 6;
-    Limit cpu_tmp_limit             = 7;
-    Limit gpu_to_cpu_dynamic_boost  = 8;
-    Limit gpu_total_onac            = 9;
+    Limit apus_pptp_limit           = 1 [(legion.ui.field) = { widget: HIDDEN }];
+    Limit cpu_clp_limit             = 2 [(legion.ui.field) = { label: "Long Term Power Limit (Cross Loading)", unit: "W", tooltip: "The setting value of maximum CPU power consumption when CPU and GPU are simultaneously fully loaded; the higher the value, the stronger the CPU performance, and the greater heat dissipation capacity required." }];
+    Limit cpu_ltp_limit             = 3 [(legion.ui.field) = { label: "Platform Long Term Power Limit", unit: "W", tooltip: "The setting value of maximum power consumption during continuous operation with pure CPU or AMD Smart Shift System load. The higher the value, the greater the performance of the CPU or System and the greater heat dissipation capacity required." }];
+    Limit cpu_pl1_tau               = 4 [(legion.ui.field) = { label: "PL1 Tau", unit: "s", tooltip: "PL1 power consumption start time." }];
+    Limit cpu_pp_limit              = 5 [(legion.ui.field) = { widget: HIDDEN }];
+    Limit cpu_stp_limit             = 6 [(legion.ui.field) = { label: "Platform Short Term Power Limit", unit: "W", tooltip: "The peak power consumption that can be reached within a short time with pure CPU or AMD Smart Shift System load. The higher the value, the higher the instantaneous performance of the CPU or System." }];
+    Limit cpu_tmp_limit             = 7 [(legion.ui.field) = { label: "Temperature limit", unit: "°C", tooltip: "When the core reaches the temperature set in the thermal wall, it will automatically limit the frequency to control the temperature; this option can be used to limit the power consumption of the CPU." }];
+    Limit gpu_to_cpu_dynamic_boost  = 8 [(legion.ui.field) = { label: "GPU to CPU Dynamic Boost", unit: "W", tooltip: "This is the maximum additional power that can be allocated to the CPU from the GPU based on CPU usage. The higher the value, the better the performance of applications that use the CPU." }];
+    Limit gpu_total_onac            = 9 [(legion.ui.field) = { label: "Total Processor Power Target In AC", unit: "W", tooltip: "The point at which the CPU triggers dynamic power consumption adjustment for the graphics card. Use this point as the setting value at which CPU and GPU dynamic power allocation begins." }];
 }

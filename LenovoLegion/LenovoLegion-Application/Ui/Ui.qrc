@@ -1,0 +1,41 @@
+<RCC>
+    <qresource prefix="/ui">
+        <file alias="ApplyBar.qml">qml/ApplyBar.qml</file>
+        <file alias="AutoSection.qml">qml/AutoSection.qml</file>
+        <file alias="CpuGrid.qml">qml/CpuGrid.qml</file>
+        <file alias="CpuControlPage.qml">qml/CpuControlPage.qml</file>
+        <file alias="CpuFrequencyPage.qml">qml/CpuFrequencyPage.qml</file>
+        <file alias="CpuPowerPage.qml">qml/CpuPowerPage.qml</file>
+        <file alias="FanCurveEditor.qml">qml/FanCurveEditor.qml</file>
+        <file alias="FanCurvePage.qml">qml/FanCurvePage.qml</file>
+        <file alias="FrequencyGrid.qml">qml/FrequencyGrid.qml</file>
+        <file alias="Field.qml">qml/Field.qml</file>
+        <file alias="CpuFrequencyWindow.qml">qml/CpuFrequencyWindow.qml</file>
+        <file alias="DetailWindow.qml">qml/DetailWindow.qml</file>
+        <file alias="GpuDetailsWindow.qml">qml/GpuDetailsWindow.qml</file>
+        <file alias="DevicePage.qml">qml/DevicePage.qml</file>
+        <file alias="GpuPage.qml">qml/GpuPage.qml</file>
+        <file alias="HistoryChart.qml">qml/HistoryChart.qml</file>
+        <file alias="HwMonitorPage.qml">qml/HwMonitorPage.qml</file>
+        <file alias="LimitField.qml">qml/LimitField.qml</file>
+        <file alias="PowerPage.qml">qml/PowerPage.qml</file>
+        <file alias="PowerProfilesPanel.qml">qml/PowerProfilesPanel.qml</file>
+        <file alias="PreviewPage.qml">qml/PreviewPage.qml</file>
+        <file alias="Section.qml">qml/Section.qml</file>
+        <file alias="SettingsPage.qml">qml/SettingsPage.qml</file>
+        <file alias="ThemedButton.qml">qml/ThemedButton.qml</file>
+        <file alias="ThemedComboBox.qml">qml/ThemedComboBox.qml</file>
+        <file alias="ThemedSpinBox.qml">qml/ThemedSpinBox.qml</file>
+        <file alias="ThemedSwitch.qml">qml/ThemedSwitch.qml</file>
+        <file alias="ThemedCheckBox.qml">qml/ThemedCheckBox.qml</file>
+        <file alias="ThemedListBackground.qml">qml/ThemedListBackground.qml</file>
+        <file alias="ThemedListDelegate.qml">qml/ThemedListDelegate.qml</file>
+        <file alias="ThemedRadioButton.qml">qml/ThemedRadioButton.qml</file>
+        <file alias="ThemedScrollBar.qml">qml/ThemedScrollBar.qml</file>
+        <file alias="ThemedSlider.qml">qml/ThemedSlider.qml</file>
+        <file alias="ThemedTabBar.qml">qml/ThemedTabBar.qml</file>
+        <file alias="ThemedTabButton.qml">qml/ThemedTabButton.qml</file>
+        <file alias="ThemedTextField.qml">qml/ThemedTextField.qml</file>
+        <file alias="ThemedToolTip.qml">qml/ThemedToolTip.qml</file>
+    </qresource>
+</RCC>

@@ -38,6 +38,12 @@ public:
 
     DataProvider(ProtocolProcessor & protocolProcessor,QObject *parent);
 
+    /*
+     * Serialized request and response of a data type, used by the generic GUI (Ui/DataSource) which does not know the message type
+     */
+    QByteArray getData(quint8 dataType,const QByteArray& request = {}) const;
+    QByteArray setData(quint8 dataType,const QByteArray& data) const;
+
     template<class Message, class Request = Message>
     Message getDataMessage(quint8 m_dataType,const Request& data = {}) const {
         Message msg;

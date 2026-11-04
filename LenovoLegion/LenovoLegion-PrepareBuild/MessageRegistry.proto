@@ -2,26 +2,30 @@ edition = "2024";
 
 package legion.messages;
 
+import "UiOptions.proto";
+
+// (legion.ui.platform): Lenovo Legion kernel driver needed, the others use standard interfaces
+// (HW_MONITORING and BATTERY are mixed: temperatures, fans and the conservation mode come from the legion driver)
 enum DataType {
   BATTERY             = 0;
-  CPU_INFO            = 1;
-  CPU_FREQUENCY       = 2;
-  CPU_INTEL_MSR       = 3;
-  CPU_OPTIONS         = 4;
-  CPU_POWER           = 5;
-  CPU_TOPOLOGY        = 6;
+  CPU_INFO            = 1 [(legion.ui.message) = "legion.messages.CPUInfo"];
+  CPU_FREQUENCY       = 2 [(legion.ui.message) = "legion.messages.CPUFrequency"];
+  CPU_INTEL_MSR       = 3 [(legion.ui.message) = "legion.messages.CpuIntelMSR"];
+  CPU_OPTIONS         = 4 [(legion.ui.message) = "legion.messages.CPUOptions"];
+  CPU_POWER           = 5 [(legion.ui.message) = "legion.messages.CPUPower", (legion.ui.platform) = PLATFORM_LENOVO];
+  CPU_TOPOLOGY        = 6 [(legion.ui.message) = "legion.messages.CPUTopology"];
   DAEMON_SETTINGS     = 7;
-  FAN_CURVE           = 8;
-  GPU_POWER           = 9;
-  HW_MONITORING       = 10;
-  NVIDIA_NWML         = 11;
-  OTHER               = 12;
-  POWER_PROFILE       = 13;
-  RGB_CONTROLLER      = 14;
-  MACHINE_INFORMATION = 15;
-  CPU_SMT             = 16;
-  FAN_OPTION          = 17;
-  OTHER_GPU_SWITCH    = 18;
-  CPU_PSTATE          = 19;
+  FAN_CURVE           = 8 [(legion.ui.message) = "legion.messages.FanCurve", (legion.ui.platform) = PLATFORM_LENOVO];
+  GPU_POWER           = 9 [(legion.ui.message) = "legion.messages.GPUPower", (legion.ui.platform) = PLATFORM_LENOVO];
+  HW_MONITORING       = 10 [(legion.ui.message) = "legion.messages.HardwareMonitor"];
+  NVIDIA_NWML         = 11 [(legion.ui.message) = "legion.messages.NvidiaNvml"];
+  OTHER               = 12 [(legion.ui.message) = "legion.messages.OtherSettings", (legion.ui.platform) = PLATFORM_LENOVO];
+  POWER_PROFILE       = 13 [(legion.ui.message) = "legion.messages.PowerProfile", (legion.ui.platform) = PLATFORM_LENOVO];
+  RGB_CONTROLLER      = 14 [(legion.ui.platform) = PLATFORM_LENOVO];
+  MACHINE_INFORMATION = 15 [(legion.ui.platform) = PLATFORM_LENOVO];
+  CPU_SMT             = 16 [(legion.ui.message) = "legion.messages.CPUSMT"];
+  FAN_OPTION          = 17 [(legion.ui.message) = "legion.messages.FanOption", (legion.ui.platform) = PLATFORM_LENOVO];
+  OTHER_GPU_SWITCH    = 18 [(legion.ui.message) = "legion.messages.GpuSwitchValue", (legion.ui.platform) = PLATFORM_LENOVO];
+  CPU_PSTATE          = 19 [(legion.ui.message) = "legion.messages.CPUPState"];
   PROFILES            = 20;
 }

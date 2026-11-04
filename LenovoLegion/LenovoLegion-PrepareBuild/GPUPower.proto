@@ -2,11 +2,14 @@ edition = "2024";
 
 package legion.messages;
 
+import "UiOptions.proto";
+
 message GPUPower
 {
     message Limit
     {
-        uint32 current_value        = 1;
+        // Range, steps and support from the descriptor of the custom mode (255), the same as the daemon (settableLimit) and the widget pages
+        uint32 current_value        = 1 [(legion.ui.field) = { widget: SLIDER, min: "mode_descriptor_map[255].min_value", max: "mode_descriptor_map[255].max_value", choices_from: "mode_descriptor_map[255].steps", supported_from: "mode_descriptor_map[255].supported" }];
 
         message Descriptor {
 
@@ -20,10 +23,10 @@ message GPUPower
             uint32 supported        = 8;
         }
 
-        map<int32, Descriptor> mode_descriptor_map = 2;
+        map<int32, Descriptor> mode_descriptor_map = 2 [(legion.ui.field) = { widget: HIDDEN }];
     }
 
-    Limit gpu_configurable_tgp                = 1;
-    Limit gpu_power_boost                     = 2;
-    Limit gpu_temperature_limit               = 3;
+    Limit gpu_configurable_tgp                = 1 [(legion.ui.field) = { label: "Configurable TGP", unit: "W", tooltip: "The additional amount of power consumption that can be allocated on top of the graphics card base power consumption; the higher the consumption, the stronger the graphics card performance, and the greater heat dissipation capacity required." }];
+    Limit gpu_power_boost                     = 2 [(legion.ui.field) = { label: "CPU to GPU Dynamic Boost", unit: "W", tooltip: "This is the maximum additional power that can be allocated to the GPU from the CPU based on CPU usage. The higher the value, the better the performance of applications that use the GPU." }];
+    Limit gpu_temperature_limit               = 3 [(legion.ui.field) = { label: "Temperature limit", unit: "°C", tooltip: "When the graphics card reaches the temperature set in the thermal wall, it will automatically limit the frequency to control the temperature; this option can be used to limit the power consumption of the GPU." }];
 }

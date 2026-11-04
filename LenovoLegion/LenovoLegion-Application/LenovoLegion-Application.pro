@@ -1,7 +1,7 @@
 TEMPLATE = app
 TARGET = $${APPLICATION_NAME}
 
-QT       += core gui widgets network charts
+QT       += core gui widgets network charts qml quick quickwidgets quickcontrols2 concurrent
 
 CONFIG += c++20 link_pkgconfig
 PKGCONFIG += protobuf
@@ -41,6 +41,7 @@ SOURCES +=               \
         ToolBarInformationWidget.cpp \
         ToolBarKeyboardWidget.cpp \
         ToolBarProfilesWidget.cpp \
+        ToolBarQmlPageWidget.cpp \
         ToolBarSettingsWidget.cpp \
         ToolBarWidget.cpp \
         Utils.cpp \
@@ -83,6 +84,7 @@ HEADERS +=          \
         ToolBarInformationWidget.h \
         ToolBarKeyboardWidget.h \
         ToolBarProfilesWidget.h \
+        ToolBarQmlPageWidget.h \
         ToolBarSettingsWidget.h \
         ToolBarWidget.h \
         Utils.h \
@@ -137,3 +139,24 @@ OTHER_FILES += \
     LenovoLegion.desktop
 
 QMAKE_POST_LINK += $$quote($${SYSTEM_CP} $${PROJECT_ROOT_PATH}/LenovoLegion-Application/LenovoLegionIco.png $${DESTINATION_PATH}$$escape_expand(\\n\\t))
+
+# Generic GUI (UiDesign.md): generic data model for QML pages
+SOURCES += \
+        Ui/DataSource.cpp \
+        Ui/FieldModel.cpp \
+        Ui/PageSources.cpp \
+        Ui/Reflection.cpp \
+        Ui/Theme.cpp
+
+HEADERS += \
+        Ui/DataSource.h \
+        Ui/FieldModel.h \
+        Ui/PageSources.h \
+        Ui/Reflection.h \
+        Ui/Theme.h
+
+RESOURCES += \
+        Ui/Ui.qrc
+
+DISTFILES += \
+        UiDesign.md

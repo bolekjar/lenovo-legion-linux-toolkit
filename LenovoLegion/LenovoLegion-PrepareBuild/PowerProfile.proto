@@ -2,26 +2,28 @@ edition = "2024";
 
 package legion.messages;
 
+import "UiOptions.proto";
+
 
 message PowerProfile
 {
     enum Profiles {
-        POWER_PROFILE_UNKNOWN      = 0  ;
-        POWER_PROFILE_QUIET        = 1  ;
-        POWER_PROFILE_BALANCED     = 2  ;
-        POWER_PROFILE_PERFORMANCE  = 3  ;
-        POWER_PROFILE_EXTREME      = 224;
-        POWER_PROFILE_CUSTOM       = 255;
+        POWER_PROFILE_UNKNOWN      = 0 [(legion.ui.value_label) = "UNKNOWN"];
+        POWER_PROFILE_QUIET        = 1 [(legion.ui.value_label) = "QUIET"];
+        POWER_PROFILE_BALANCED     = 2 [(legion.ui.value_label) = "BALANCED"];
+        POWER_PROFILE_PERFORMANCE  = 3 [(legion.ui.value_label) = "PERFORMANCE"];
+        POWER_PROFILE_EXTREME      = 224 [(legion.ui.value_label) = "EXTREME"];
+        POWER_PROFILE_CUSTOM       = 255 [(legion.ui.value_label) = "CUSTOM"];
     }
 
     message CustomFnq {
         bool       current_value  = 1;
-        bool       default_value  = 2;
-        bool       supported      = 3;
+        bool       default_value  = 2 [(legion.ui.field) = { widget: HIDDEN }];
+        bool       supported      = 3 [(legion.ui.field) = { widget: HIDDEN }];
     }
 
-    Profiles   current_value             = 1;  //smart_fan
-    Profiles   thermal_mode              = 2;  //thermal mode
-    CustomFnq  custom_fnq_enabled        = 3;  //custom fn+q
-    repeated Profiles supported_profiles = 4;  //supported profiles
+    Profiles   current_value             = 1 [(legion.ui.field) = { label: "Power Profile", widget: RADIO, value_from: "thermal_mode", choices_from: "supported_profiles" }];  //smart_fan
+    Profiles   thermal_mode              = 2 [(legion.ui.field) = { widget: HIDDEN }];  //thermal mode
+    CustomFnq  custom_fnq_enabled        = 3 [(legion.ui.field) = { label: "Custom - Toggle Fn+Q", supported_from: "custom_fnq_enabled.supported" }];  //custom fn+q
+    repeated Profiles supported_profiles = 4 [(legion.ui.field) = { widget: HIDDEN }];  //supported profiles
 }

@@ -2,21 +2,24 @@ edition = "2024";
 
 package legion.messages;
 
+import "UiOptions.proto";
+
 
 message CPUFrequency
 {
     message CPUX {
-        uint32                 base_freq            =1;
-        uint32                 min_freq             =2;
-        uint32                 max_freq             =3;
-        uint32                 scaling_cur_freq     =4;
-        uint32                 scaling_min_freq     =5;
-        uint32                 scaling_max_freq     =6;
-        bool                   online               =7;
-        uint32                 core_id              =8;
-        uint32                 die_id               =9;
-        uint32                 physical_package_id  =10;
-        uint32                 cluster_id           =11;
+        // Frequencies in kHz, shown in MHz, scaling limits in the range of the thread (cpuinfo_min/max_freq, the same as the daemon)
+        uint32                 base_freq            =1 [(legion.ui.field) = { label: "Base", unit: "MHz", widget: LABEL, scale: 0.001 }];
+        uint32                 min_freq             =2 [(legion.ui.field) = { widget: HIDDEN }];
+        uint32                 max_freq             =3 [(legion.ui.field) = { widget: HIDDEN }];
+        uint32                 scaling_cur_freq     =4 [(legion.ui.field) = { label: "Current", unit: "MHz", widget: LABEL, scale: 0.001 }];
+        uint32                 scaling_min_freq     =5 [(legion.ui.field) = { label: "Min", unit: "MHz", widget: SLIDER, scale: 0.001, min: "min_freq", max: "max_freq" }];
+        uint32                 scaling_max_freq     =6 [(legion.ui.field) = { label: "Max", unit: "MHz", widget: SLIDER, scale: 0.001, min: "min_freq", max: "max_freq" }];
+        bool                   online               =7 [(legion.ui.field) = { widget: HIDDEN }];
+        uint32                 core_id              =8 [(legion.ui.field) = { label: "CoreId", widget: LABEL }];
+        uint32                 die_id               =9 [(legion.ui.field) = { label: "DieId", widget: LABEL }];
+        uint32                 physical_package_id  =10 [(legion.ui.field) = { label: "PackageId", widget: LABEL }];
+        uint32                 cluster_id           =11 [(legion.ui.field) = { label: "ClusterId", widget: LABEL }];
     }
 
     repeated CPUX cpus = 1;
