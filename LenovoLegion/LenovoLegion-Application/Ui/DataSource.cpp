@@ -575,6 +575,90 @@ void DataSource::setValue(const QString &path, const QVariant &value, bool force
     }
 }
 
+bool DataSource::sendCommand(const QVariantMap &values)
+{
+    if(s_dataProvider == nullptr || m_message == nullptr)
+    {
+        return false;
+    }
+
+    const EnumValueDescriptor* type = legion::messages::DataType_descriptor()->FindValueByNumber(m_dataTypeValue);
+    const Descriptor*          descriptor = type != nullptr ? DescriptorPool::generated_pool()->FindMessageTypeByName(type->options().GetExtension(legion::ui::command)) : nullptr;
+
+    if(descriptor == nullptr)
+    {
+        setLastError(QString("Data type ").append(m_dataType).append(" has no command (legion.ui.command)"));
+        return false;
+    }
+
+    std::unique_ptr<Message> command(MessageFactory::generated_factory()->GetPrototype(descriptor)->New());
+
+    for(auto it = values.cbegin(); it != values.cend(); ++it)
+    {
+        const auto fields = Reflection::resolve(descriptor,it.key());
+
+        if(fields.empty())
+        {
+            LOG_W(QString("DataSource ").append(m_dataType).append(": command has unknown field ").append(it.key()));
+            continue;
+        }
+
+        QVariant value = it.value();
+
+        /*
+         * Enum value by name ("LOAD")
+         */
+        const FieldDescriptor* leaf = fields.back().field;
+
+        if(leaf->cpp_type() == FieldDescriptor::CPPTYPE_ENUM && value.typeId() == QMetaType::QString)
+        {
+            const EnumValueDescriptor* enumValue = leaf->enum_type()->FindValueByName(value.toString().toStdString());
+
+            if(enumValue == nullptr)
+            {
+                LOG_W(QString("DataSource ").append(m_dataType).append(": unknown enum value ").append(value.toString()));
+                continue;
+            }
+
+            value = enumValue->number();
+        }
+
+        Reflection::write(*command,fields,value);
+    }
+
+    std::string data;
+
+    if(!command->SerializeToString(&data))
+    {
+        setLastError("Serialize of the command failed");
+        return false;
+    }
+
+    try {
+        const QByteArray response = s_dataProvider->setData(static_cast<quint8>(m_dataTypeValue),QByteArray(data.data(),static_cast<qsizetype>(data.size())));
+        setLastError({});
+        parse(response);
+    }
+    catch(const std::exception& ex)
+    {
+        LOG_E(QString("DataSource ").append(m_dataType).append(": command failed: ").append(ex.what()));
+        setLastError(ex.what());
+        ++m_revision;
+        emit messageChanged();
+        return false;
+    }
+
+    ++m_revision;
+    emit messageChanged();
+
+    return true;
+}
+
+void DataSource::reloadAllSources()
+{
+    reloadAll();
+}
+
 void DataSource::beginChanges()
 {
     ++m_batchDepth;

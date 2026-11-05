@@ -21,6 +21,7 @@
         <file alias="PowerPage.qml">qml/PowerPage.qml</file>
         <file alias="PowerProfilesPanel.qml">qml/PowerProfilesPanel.qml</file>
         <file alias="PreviewPage.qml">qml/PreviewPage.qml</file>
+        <file alias="SavedProfilesPanel.qml">qml/SavedProfilesPanel.qml</file>
         <file alias="Section.qml">qml/Section.qml</file>
         <file alias="SettingsPage.qml">qml/SettingsPage.qml</file>
         <file alias="ThemedButton.qml">qml/ThemedButton.qml</file>

@@ -19,6 +19,13 @@ ComboBox {
         text: combo.textRole.length > 0 ? modelData[combo.textRole] : modelData
         highlighted: combo.highlightedIndex === index
 
+        // Tool tip of the value ((legion.ui.value_tooltip) of choices of a field)
+        ThemedToolTip {
+            visible: item.hovered && text.length > 0
+            delay: 500
+            text: typeof modelData === "object" && modelData !== null && modelData.tooltip !== undefined ? modelData.tooltip : ""
+        }
+
         contentItem: Text {
             text: item.text
             font.bold: item.highlighted && theme.styled

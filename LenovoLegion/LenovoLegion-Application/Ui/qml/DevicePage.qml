@@ -8,7 +8,7 @@ SettingsPage {
 
     // Selected fields, written immediately
     Section {
-        title: "Input"
+        title: "Hardware Control"
         source: DataSource {
             id: other
 
@@ -20,9 +20,16 @@ SettingsPage {
         Field { source: other; path: "win_key.current" }
     }
 
-    AutoSection {
-        title: "GPU Mode"
-        dataType: "OTHER_GPU_SWITCH"
-        autoApply: true
+    // Radio buttons below each other with the tool tips of the modes, the same as OtherControl
+    Section {
+        title: "GPU Control"
+        source: DataSource {
+            id: gpuSwitch
+
+            dataType: "OTHER_GPU_SWITCH"
+            autoApply: true
+        }
+
+        Field { source: gpuSwitch; path: "current"; radioColumns: 1; labelVisible: false }
     }
 }

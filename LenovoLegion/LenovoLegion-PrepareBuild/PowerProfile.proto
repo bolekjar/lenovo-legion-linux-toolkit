@@ -7,13 +7,14 @@ import "UiOptions.proto";
 
 message PowerProfile
 {
+    // Colors of the profiles the same as PowerProfileControl.ui
     enum Profiles {
         POWER_PROFILE_UNKNOWN      = 0 [(legion.ui.value_label) = "UNKNOWN"];
-        POWER_PROFILE_QUIET        = 1 [(legion.ui.value_label) = "QUIET"];
-        POWER_PROFILE_BALANCED     = 2 [(legion.ui.value_label) = "BALANCED"];
-        POWER_PROFILE_PERFORMANCE  = 3 [(legion.ui.value_label) = "PERFORMANCE"];
-        POWER_PROFILE_EXTREME      = 224 [(legion.ui.value_label) = "EXTREME"];
-        POWER_PROFILE_CUSTOM       = 255 [(legion.ui.value_label) = "CUSTOM"];
+        POWER_PROFILE_QUIET        = 1 [(legion.ui.value_label) = "QUIET", (legion.ui.value_color) = "#55aaff"];
+        POWER_PROFILE_BALANCED     = 2 [(legion.ui.value_label) = "BALANCED", (legion.ui.value_color) = "#919191"];
+        POWER_PROFILE_PERFORMANCE  = 3 [(legion.ui.value_label) = "PERFORMANCE", (legion.ui.value_color) = "#ff0000"];
+        POWER_PROFILE_EXTREME      = 224 [(legion.ui.value_label) = "EXTREME", (legion.ui.value_color) = "#000000"];
+        POWER_PROFILE_CUSTOM       = 255 [(legion.ui.value_label) = "CUSTOM", (legion.ui.value_color) = "#aa55ff"];
     }
 
     message CustomFnq {

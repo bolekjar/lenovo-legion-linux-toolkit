@@ -9,6 +9,7 @@ SettingsPage {
     // Presets the same as OffsetsControl::GPU_CLOCK_PRESETS
     Section {
         title: "GPU Clock"
+        presetLabel: "Preset offsets configuration"
         applyBar: true
         source: DataSource {
             id: clock

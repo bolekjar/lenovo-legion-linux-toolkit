@@ -40,6 +40,22 @@ void PageSources::setPage(QObject *page)
 
 bool PageSources::available() const
 {
+    /*
+     * A page without own data sources (detail windows of the HW monitor use the sources of the monitor page)
+     * is always available
+     */
+    bool any = false;
+
+    for(const auto& source : m_sources)
+    {
+        any = any || source != nullptr;
+    }
+
+    if(!any)
+    {
+        return true;
+    }
+
     for(const auto& source : m_sources)
     {
         if(source != nullptr && source->available())

@@ -30,6 +30,7 @@ class Theme : public QObject
     Q_PROPERTY(QColor  groupBackground  READ groupBackground  NOTIFY changed)
     Q_PROPERTY(QColor  groupBorder      READ groupBorder      NOTIFY changed)
     Q_PROPERTY(QColor  titleBackground  READ titleBackground  NOTIFY changed)
+    Q_PROPERTY(QColor  titleBackgroundEnd READ titleBackgroundEnd NOTIFY changed)   // end of the horizontal gradient of QGroupBox::title
     Q_PROPERTY(QColor  titleText        READ titleText        NOTIFY changed)
     Q_PROPERTY(QColor  accent           READ accent           NOTIFY changed)   // borders of inputs and buttons, selection
     Q_PROPERTY(QColor  accentText       READ accentText       NOTIFY changed)   // text on the accent color
@@ -76,6 +77,7 @@ public:
     QColor groupBackground() const    { return m_groupBackground; }
     QColor groupBorder() const        { return m_groupBorder; }
     QColor titleBackground() const    { return m_titleBackground; }
+    QColor titleBackgroundEnd() const { return m_titleBackgroundEnd; }
     QColor titleText() const          { return m_titleText; }
     QColor accent() const             { return m_accent; }
     QColor accentText() const         { return m_accentText; }
@@ -125,6 +127,7 @@ private:
     QColor m_groupBackground;
     QColor m_groupBorder;
     QColor m_titleBackground;
+    QColor m_titleBackgroundEnd;
     QColor m_titleText;
     QColor m_accent;
     QColor m_accentText;

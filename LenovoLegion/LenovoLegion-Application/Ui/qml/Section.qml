@@ -11,58 +11,114 @@ GroupBox {
     property DataSource source
     property bool       applyBar: false
     property var        presets: []      // buttons of the ApplyBar, see ApplyBar.presets
+    property string     presetLabel: "Preset"
     property bool       checkable: false // check box in the title bar (checkable QGroupBox), e.g. opens a detail window
     property bool       checked: false
     property url        titleIcon        // icon before the title (Lenovo Legion: PowerProfilesPanel)
+
+    // Colors of a single group (thread cells: QGroupBox::title { color }, QGroupBox { background-color } of ThreadControl),
+    // undefined = theme
+    property var        titleColor: undefined
+    property var        backgroundColor: undefined
 
     default property alias content: fields.data
 
     Layout.fillWidth: true
 
-    topPadding: (title.length > 0 ? titleBar.height : 0) + padding
+    // QGroupBox { margin-top: 18px; padding: 8px }: the frame starts 18 px under the top, the title tab over it
+    readonly property bool hasTitle: title.length > 0
+    readonly property int  frameTop: hasTitle ? 18 : 0
 
-    // Group and title bar of the theme (QGroupBox, QGroupBox::title of the stylesheet)
+    padding: 8
+    topInset: frameTop
+    topPadding: (hasTitle ? titleBar.height : 0) + padding
+
+    // Frame of the theme (QGroupBox: border, radius 12 px, vertical gradient of the group background to the window)
     background: Rectangle {
-        color: theme.groupBackground
         border.color: theme.groupBorder
         border.width: theme.styled ? 2 : 1
         radius: theme.radius
+        color: section.backgroundColor !== undefined ? section.backgroundColor : theme.groupBackground
+        gradient: section.backgroundColor !== undefined ? null : groupGradient
+
+        Gradient {
+            id: groupGradient
+
+            GradientStop { position: 0.0; color: theme.groupBackground }
+            GradientStop { position: 1.0; color: theme.styled ? theme.window : theme.groupBackground }
+        }
     }
 
-    label: Rectangle {
+    // Title tab of the theme (QGroupBox::title: top left, width of the text, padding 6 px 16 px,
+    // top corners rounded 10 px, horizontal gradient)
+    label: Item {
         id: titleBar
 
-        visible: section.title.length > 0
-        width: section.width
-        height: titleText.implicitHeight + 12
-        color: theme.titleBackground
-        radius: theme.radius
+        visible: section.hasTitle
+        x: 0
+        y: 0
+        implicitWidth: titleRow.implicitWidth + 32      // the group is at least as wide as its title
+        implicitHeight: titleRow.implicitHeight + 12
+        width: implicitWidth
+        height: implicitHeight
+        clip: true
 
-        // Square bottom corners of the title bar
+        // Rounded only at the top: taller rounded rectangle clipped at the bottom
         Rectangle {
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.bottom: parent.bottom
-            height: parent.radius
-            color: parent.color
-        }
-
-        // Check box of a checkable group (QGroupBox::indicator of the stylesheet)
-        Rectangle {
-            id: indicator
-
-            visible: section.checkable
-            x: 12
-            anchors.verticalCenter: parent.verticalCenter
-            width: 16
-            height: 16
-            radius: theme.styled ? 6 : 2
-            border.width: theme.styled ? 2 : 1
-            border.color: section.checked ? theme.accentHover : (theme.styled ? theme.accent : theme.groupBorder)
+            width: parent.width
+            height: parent.height + radius
+            radius: theme.styled ? 10 : 2
             gradient: Gradient {
                 orientation: Gradient.Horizontal
-                GradientStop { position: 0; color: section.checked ? theme.accent : theme.window }
-                GradientStop { position: 1; color: section.checked ? theme.accentHover : theme.window }
+                GradientStop { position: 0.0; color: theme.titleBackground }
+                GradientStop { position: 1.0; color: theme.titleBackgroundEnd }
+            }
+        }
+
+        Row {
+            id: titleRow
+
+            x: 16
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 6
+
+            // Check box of a checkable group (QGroupBox::indicator of the stylesheet)
+            Rectangle {
+                id: indicator
+
+                visible: section.checkable
+                anchors.verticalCenter: parent.verticalCenter
+                width: 16
+                height: 16
+                radius: theme.styled ? 6 : 2
+                border.width: theme.styled ? 2 : 1
+                border.color: section.checked ? theme.accentHover : (theme.styled ? theme.accent : theme.groupBorder)
+                gradient: Gradient {
+                    orientation: Gradient.Horizontal
+                    GradientStop { position: 0; color: section.checked ? theme.accent : theme.window }
+                    GradientStop { position: 1; color: section.checked ? theme.accentHover : theme.window }
+                }
+            }
+
+            Image {
+                anchors.verticalCenter: parent.verticalCenter
+                visible: section.titleIcon.toString().length > 0
+                source: section.titleIcon
+                width: 16
+                height: 16
+                sourceSize: Qt.size(32, 32)
+                fillMode: Image.PreserveAspectFit
+                smooth: true
+            }
+
+            Label {
+                id: titleText
+
+                anchors.verticalCenter: parent.verticalCenter
+                text: section.title
+                color: section.titleColor !== undefined ? section.titleColor : theme.titleText
+                font.bold: true
+                font.letterSpacing: 0.5
             }
         }
 
@@ -71,30 +127,6 @@ GroupBox {
             enabled: section.checkable
             cursorShape: Qt.PointingHandCursor
             onClicked: section.checked = !section.checked
-        }
-
-        Image {
-            id: titleImage
-
-            x: section.checkable ? indicator.x + indicator.width + 6 : 12
-            anchors.verticalCenter: parent.verticalCenter
-            visible: section.titleIcon.toString().length > 0
-            source: section.titleIcon
-            width: visible ? 16 : 0
-            height: 16
-            sourceSize: Qt.size(32, 32)
-            fillMode: Image.PreserveAspectFit
-            smooth: true
-        }
-
-        Label {
-            id: titleText
-
-            x: titleImage.x + (titleImage.visible ? titleImage.width + 6 : 0)
-            anchors.verticalCenter: parent.verticalCenter
-            text: section.title
-            color: theme.titleText
-            font.bold: true
         }
     }
 
@@ -126,6 +158,7 @@ GroupBox {
             visible: section.applyBar
             source: section.source
             presets: section.presets
+            presetLabel: section.presetLabel
         }
     }
 }

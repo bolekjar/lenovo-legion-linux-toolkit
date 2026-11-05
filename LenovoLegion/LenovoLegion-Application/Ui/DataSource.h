@@ -119,6 +119,17 @@ public:
     Q_INVOKABLE void beginChanges();
     Q_INVOKABLE void endChanges();
 
+    /*
+     * Command of the data type ((legion.ui.command), e.g. PROFILES: ProfileCommand {action: "LOAD", name: ...}),
+     * enum values by name or number. The response (message of the data type) replaces the data. True if sent.
+     */
+    Q_INVOKABLE bool sendCommand(const QVariantMap& values);
+
+    /*
+     * All data sources read the data again (after a command which changes everything, e.g. a loaded profile)
+     */
+    Q_INVOKABLE void reloadAllSources();
+
     QStringList fieldPaths() const;
 
     /*

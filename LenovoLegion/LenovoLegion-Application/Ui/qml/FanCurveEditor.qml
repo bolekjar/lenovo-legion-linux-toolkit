@@ -118,6 +118,16 @@ ColumnLayout {
         applyBar: true
         source: curve
 
+        // Default curve: levels 1..10 (the curve FanControl shows outside the custom mode), sent at once (whole curve)
+        presets: [{ text: "Default", values: (function () {
+            const values = {}
+
+            for (let i = 0; i < editor.points.length; ++i)
+                values["current_value." + editor.points[i]] = i + 1
+
+            return values
+        })() }]
+
         // Disabled as a whole outside the custom mode and with Maximum (all points at 10), the same as groupBox_fanCurve
         enabled: editor.editable
 

@@ -46,6 +46,7 @@ SettingsPage {
         id: cpuSection
 
         title: "CPU Power Control"
+        presetLabel: "Preset default Configuration"
         applyBar: true
         enabled: customMode
         source: DataSource {
@@ -69,6 +70,7 @@ SettingsPage {
         id: gpuSection
 
         title: "GPU Power Control"
+        presetLabel: "Preset default Configuration"
         applyBar: true
         enabled: customMode
         source: DataSource {

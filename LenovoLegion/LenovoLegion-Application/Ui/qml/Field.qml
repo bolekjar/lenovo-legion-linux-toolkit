@@ -14,6 +14,7 @@ Item {
     property bool       labelVisible: true
     property bool       vertical: false  // label above the control, radio buttons below each other (narrow panels)
     property bool       labelAfter: false // label right of the control (switch with the text like a check box)
+    property int        radioColumns: 0   // columns of the radio buttons, 0 = all in one row (1: below each other)
 
     // Shown value instead of the value of the field (e.g. default of the power profile for a disabled limit), undefined = field value
     property var        overrideValue: undefined
@@ -43,6 +44,19 @@ Item {
             }
 
             Loader {
+                id: control
+
+                // Tool tip of the field over the control too (the widget pages have it on the label and the control)
+                HoverHandler {
+                    id: controlHover
+                }
+
+                ThemedToolTip {
+                    visible: controlHover.hovered && text.length > 0 && field.fieldModel !== null && field.fieldModel.widget !== "radio"
+                    delay: 500
+                    text: field.fieldModel !== null ? field.fieldModel.tooltip : ""
+                }
+
                 // Only the slider uses the whole width, other controls keep their size
                 Layout.fillWidth: field.fieldModel !== null && (field.fieldModel.widget === "slider" || (field.fieldModel.widget === "radio" && !field.vertical))
                 Layout.alignment: field.vertical ? Qt.AlignHCenter : Qt.AlignLeft | Qt.AlignVCenter
@@ -154,17 +168,25 @@ Item {
 
         // One radio button per choice (allowed values from the data)
         Grid {
-            columns: field.vertical ? 1 : Math.max(field.fieldModel.choices.length, 1)
-            spacing: field.vertical ? 6 : 16
+            columns: field.vertical ? 1 : field.radioColumns > 0 ? field.radioColumns : Math.max(field.fieldModel.choices.length, 1)
+            spacing: field.vertical || field.radioColumns === 1 ? 6 : 16
 
             Repeater {
                 model: field.fieldModel.choices
 
                 delegate: ThemedRadioButton {
                     text: modelData.text
+                    textColor: modelData.color !== undefined ? modelData.color : theme.text
                     checked: field.shownValue === modelData.value
                     enabled: !field.fieldModel.readonly
                     onClicked: field.fieldModel.value = modelData.value
+
+                    // Tool tip of the value ((legion.ui.value_tooltip), radio buttons of OtherControl)
+                    ThemedToolTip {
+                        visible: parent.hovered && text.length > 0
+                        delay: 500
+                        text: modelData.tooltip !== undefined ? modelData.tooltip : ""
+                    }
                 }
             }
         }

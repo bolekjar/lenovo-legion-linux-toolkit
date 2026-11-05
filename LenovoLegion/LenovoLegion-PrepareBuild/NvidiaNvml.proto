@@ -57,10 +57,12 @@ message NvidiaNvml
         PCIe   pcie                      =9;
     }
 
+    // Range of NVML (nvmlDeviceGetGpcClkMinMaxVfOffset / MemClk), the minimum is negative: int32
+    // (was uint32, the same varint on the wire, the lower 32 bits are the same)
     message OffsetSettings {
-        uint32  max                  = 1 [(legion.ui.field) = { widget: HIDDEN }];
-        uint32  min                  = 2 [(legion.ui.field) = { widget: HIDDEN }];
-        int32   value                = 3 [(legion.ui.field) = { widget: SLIDER, min: "min", max: "max" }];
+        int32   max                  = 1 [(legion.ui.field) = { widget: HIDDEN }];
+        int32   min                  = 2 [(legion.ui.field) = { widget: HIDDEN }];
+        int32   value                = 3 [(legion.ui.field) = { widget: SLIDER, min: "min", max: "max", step: 10 }];   // step of OffsetsControl
     }
 
     HardwareMonitor   hardware_monitor   = 1 [(legion.ui.field) = { widget: HIDDEN }];

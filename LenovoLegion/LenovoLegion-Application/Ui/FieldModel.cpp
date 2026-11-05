@@ -170,11 +170,25 @@ QVariantList FieldModel::choices() const
 
     auto enumChoice = [](const EnumValueDescriptor* value) {
         const std::string label = value->options().GetExtension(legion::ui::value_label);
+        const std::string color   = value->options().GetExtension(legion::ui::value_color);
+        const std::string tooltip = value->options().GetExtension(legion::ui::value_tooltip);
 
-        return QVariantMap{
+        QVariantMap choice{
             {"text",  label.empty() ? toQString(value->name()) : QString::fromStdString(label)},
             {"value", value->number()}
         };
+
+        if(!color.empty())
+        {
+            choice.insert("color",QString::fromStdString(color));
+        }
+
+        if(!tooltip.empty())
+        {
+            choice.insert("tooltip",QString::fromStdString(tooltip));
+        }
+
+        return choice;
     };
 
     /*

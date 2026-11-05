@@ -114,6 +114,30 @@ Section {
         return shownKinds().includes(kinds[cpu])
     }
 
+    /*
+     * After new data (Apply of Disable/Enable, daemon notification) the filter can show nothing: "Efficiency"
+     * after the E-threads were disabled (the topology has no active E-threads, the filter is not offered),
+     * "Disabled" after all threads were enabled. Back to ALL the same as the widget page (refresh starts with ALL).
+     */
+    function checkFilter() {
+        if (filter === "ALL")
+            return
+
+        if (!filters.includes(filter)) {
+            filter = "ALL"
+            return
+        }
+
+        for (let cpu = 0; cpu < cpuCount; ++cpu)
+            if (shown(cpu))
+                return
+
+        filter = "ALL"
+    }
+
+    onKindsChanged: checkFilter()
+    onFiltersChanged: checkFilter()
+
     function setOnline(enabled) {
         options.beginChanges()   // one notification for all threads
         for (let cpu = 1; cpu < cpuCount; ++cpu)
@@ -189,7 +213,9 @@ Section {
         Repeater {
             model: grid.cpuCount
 
-            delegate: Rectangle {
+            // Cell of a thread: group with the title tab like ThreadControl (QGroupBox, title color by the core,
+            // background by the kind of the thread)
+            delegate: Section {
                 id: thread
 
                 required property int index
@@ -197,7 +223,7 @@ Section {
                 readonly property FieldModel onlineField:   (options.revision, options.field("cpus[" + index + "].cpu_online"))
                 readonly property FieldModel governorField: (options.revision, options.field("cpus[" + index + "].governor"))
 
-                // Fixed dark background of P/E-threads: light text in all themes, disabled threads (transparent) use the theme
+                // Fixed dark background of P/E-threads: light text in all themes, disabled threads use the theme
                 readonly property color textColor: grid.kinds[index] === "D" ? theme.text : "#e0e0e0"
 
                 Layout.row: index % 8
@@ -205,43 +231,26 @@ Section {
                 Layout.fillWidth: true
 
                 visible: grid.shown(index)
-                implicitHeight: content.implicitHeight + 12
-                implicitWidth: content.implicitWidth + 12
 
-                radius: theme.radius
-                color: grid.kindBackground[grid.kinds[index]]
-                border.width: 1
-                border.color: theme.groupBorder
+                title: grid.kindName[grid.kinds[index]] + ": " + index
+                       + ", CoreId: " + (options.revision, options.daemonValue("cpus[" + index + "].cpu_core_id"))
+                       + ", DieId: " + options.daemonValue("cpus[" + index + "].die_id")
+                titleColor: grid.titleColors[index]
+                backgroundColor: grid.kindBackground[grid.kinds[index]]
 
-                ColumnLayout {
-                    id: content
+                ThemedCheckBox {
+                    text: "Enabled"
+                    checked: thread.onlineField !== null && thread.onlineField.value === true
+                    enabled: thread.index !== 0
+                    onToggled: thread.onlineField.value = checked
+                    textColor: thread.onlineField !== null && thread.onlineField.modified ? theme.modified
+                             : enabled ? thread.textColor : theme.disabledText
+                }
 
-                    anchors.fill: parent
-                    anchors.margins: 6
-                    spacing: 2
-
-                    Label {
-                        text: grid.kindName[grid.kinds[thread.index]] + ": " + thread.index
-                              + ", CoreId: " + (options.revision, options.daemonValue("cpus[" + thread.index + "].cpu_core_id"))
-                              + ", DieId: " + options.daemonValue("cpus[" + thread.index + "].die_id")
-                        color: grid.titleColors[thread.index]
-                        font.bold: true
-                    }
-
-                    ThemedCheckBox {
-                        text: "Enabled"
-                        checked: thread.onlineField !== null && thread.onlineField.value === true
-                        enabled: thread.index !== 0
-                        onToggled: thread.onlineField.value = checked
-                        textColor: thread.onlineField !== null && thread.onlineField.modified ? theme.modified
-                                 : enabled ? thread.textColor : theme.disabledText
-                    }
-
-                    Label {
-                        visible: thread.governorField !== null && thread.governorField.visible
-                        text: "Governor: " + (thread.governorField !== null ? thread.governorField.value : "")
-                        color: thread.governorField !== null && thread.governorField.modified ? theme.modified : thread.textColor
-                    }
+                Label {
+                    visible: thread.governorField !== null && thread.governorField.visible
+                    text: "Governor: " + (thread.governorField !== null ? thread.governorField.value : "")
+                    color: thread.governorField !== null && thread.governorField.modified ? theme.modified : thread.textColor
                 }
             }
         }

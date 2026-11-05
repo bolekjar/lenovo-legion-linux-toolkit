@@ -27,5 +27,5 @@ enum DataType {
   FAN_OPTION          = 17 [(legion.ui.message) = "legion.messages.FanOption", (legion.ui.platform) = PLATFORM_LENOVO];
   OTHER_GPU_SWITCH    = 18 [(legion.ui.message) = "legion.messages.GpuSwitchValue", (legion.ui.platform) = PLATFORM_LENOVO];
   CPU_PSTATE          = 19 [(legion.ui.message) = "legion.messages.CPUPState"];
-  PROFILES            = 20;
+  PROFILES            = 20 [(legion.ui.message) = "legion.messages.Profiles", (legion.ui.command) = "legion.messages.ProfileCommand"];
 }

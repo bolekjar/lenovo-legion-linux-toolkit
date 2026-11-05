@@ -6,6 +6,9 @@ import QtQuick.Controls
 RadioButton {
     id: control
 
+    // Text color, e.g. the color of a power profile ((legion.ui.value_color))
+    property color textColor: theme.text
+
     indicator: Rectangle {
         implicitWidth: 20
         implicitHeight: 20
@@ -39,7 +42,7 @@ RadioButton {
         leftPadding: control.indicator.width + control.spacing
         text: control.text
         font: control.font
-        color: control.enabled ? theme.text : theme.disabledText
+        color: control.enabled ? control.textColor : theme.disabledText
         verticalAlignment: Text.AlignVCenter
     }
 }

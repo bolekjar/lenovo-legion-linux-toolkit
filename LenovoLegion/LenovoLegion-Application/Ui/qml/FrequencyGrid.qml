@@ -36,6 +36,9 @@ Section {
     readonly property var  filters: hybrid ? ["All", "Performance", "Efficiency"] : ["All"]
     property string        filter:  "All"
 
+    // The filter is not offered any more (E-threads disabled, no hybrid topology): back to All
+    onFiltersChanged: if (!filters.includes(filter)) filter = "All"
+
     // Range of the threads of the filter (MHz), the global values are clamped to it
     readonly property int  rangeMin: (frequency.revision, threadsRange(targets(), true))
     readonly property int  rangeMax: (frequency.revision, threadsRange(targets(), false))
@@ -283,7 +286,8 @@ Section {
         Repeater {
             model: grid.threads
 
-            delegate: Rectangle {
+            // Cell of a thread: group with the title tab like ThreadFrequencyControl (QGroupBox, background by the kind)
+            delegate: Section {
                 id: thread
 
                 required property int modelData
@@ -296,56 +300,39 @@ Section {
                 Layout.column: Math.floor(cpu / 8)
                 Layout.fillWidth: true
 
-                implicitHeight: content.implicitHeight + 12
                 implicitWidth: 260
 
-                radius: theme.radius
-                color: grid.kindBackground[grid.kind(cpu)]
-                border.width: 1
-                border.color: theme.groupBorder
+                title: grid.kindName[grid.kind(cpu)] + ": " + cpu
+                       + ", CoreId: " + (frequency.revision, frequency.daemonValue("cpus[" + cpu + "].core_id"))
+                       + ", DieId: " + frequency.daemonValue("cpus[" + cpu + "].die_id")
+                backgroundColor: grid.kindBackground[grid.kind(cpu)]
 
-                ColumnLayout {
-                    id: content
+                Repeater {
+                    model: [{ name: "Min", model: thread.minModel, set: grid.setThreadMin }, { name: "Max", model: thread.maxModel, set: grid.setThreadMax }]
 
-                    anchors.fill: parent
-                    anchors.margins: 6
-                    spacing: 2
+                    delegate: RowLayout {
+                        Layout.fillWidth: true
 
-                    Label {
-                        text: grid.kindName[grid.kind(thread.cpu)] + ": " + thread.cpu
-                              + ", CoreId: " + (frequency.revision, frequency.daemonValue("cpus[" + thread.cpu + "].core_id"))
-                              + ", DieId: " + frequency.daemonValue("cpus[" + thread.cpu + "].die_id")
-                        color: "#e0e0e0"
-                        font.bold: true
-                    }
+                        Label {
+                            Layout.preferredWidth: 30
+                            text: modelData.name
+                            color: modelData.model !== null && modelData.model.modified ? theme.modified : "#e0e0e0"
+                        }
 
-                    Repeater {
-                        model: [{ name: "Min", model: thread.minModel, set: grid.setThreadMin }, { name: "Max", model: thread.maxModel, set: grid.setThreadMax }]
-
-                        delegate: RowLayout {
+                        ThemedSlider {
                             Layout.fillWidth: true
+                            from: modelData.model !== null ? modelData.model.min : 0
+                            to: modelData.model !== null ? modelData.model.max : 1
+                            stepSize: 1
+                            value: modelData.model !== null ? modelData.model.value : 0
+                            onMoved: modelData.set(thread.cpu, Math.round(value))
+                        }
 
-                            Label {
-                                Layout.preferredWidth: 30
-                                text: modelData.name
-                                color: modelData.model !== null && modelData.model.modified ? theme.modified : "#e0e0e0"
-                            }
-
-                            ThemedSlider {
-                                Layout.fillWidth: true
-                                from: modelData.model !== null ? modelData.model.min : 0
-                                to: modelData.model !== null ? modelData.model.max : 1
-                                stepSize: 1
-                                value: modelData.model !== null ? modelData.model.value : 0
-                                onMoved: modelData.set(thread.cpu, Math.round(value))
-                            }
-
-                            Label {
-                                Layout.preferredWidth: 40
-                                text: modelData.model !== null ? modelData.model.value : ""
-                                color: "#e0e0e0"
-                                horizontalAlignment: Text.AlignRight
-                            }
+                        Label {
+                            Layout.preferredWidth: 40
+                            text: modelData.model !== null ? modelData.model.value : ""
+                            color: "#e0e0e0"
+                            horizontalAlignment: Text.AlignRight
                         }
                     }
                 }

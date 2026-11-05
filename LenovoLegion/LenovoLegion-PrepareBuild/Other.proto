@@ -13,20 +13,21 @@ message OtherSettings
         bool   supported   = 2 [(legion.ui.field) = { widget: HIDDEN }];
     }
 
-    EnableDisableValue touch_pad  = 1 [(legion.ui.field) = { label: "Disable touchpad",    supported_from: "touch_pad.supported" }];
-    EnableDisableValue win_key    = 2 [(legion.ui.field) = { label: "Disable Windows key", supported_from: "win_key.supported" }];
+    EnableDisableValue touch_pad  = 1 [(legion.ui.field) = { label: "Disable Touchpad",    tooltip: "When enabled, the touchpad will be disabled", supported_from: "touch_pad.supported" }];
+    EnableDisableValue win_key    = 2 [(legion.ui.field) = { label: "Disable Windows Key", tooltip: "When enabled, the Windows key will be disabled", supported_from: "win_key.supported" }];
 }
 
 
 message GpuSwitchValue
 {
+    // Order, labels and tool tips of the radio buttons the same as OtherControl.ui
     enum HybridModeState {
-        HYBRID_MODE_ON            = 0 [(legion.ui.value_label) = "Hybrid Mode (Default)"];
-        HYBRID_MODE_ONIGPUONLY    = 1 [(legion.ui.value_label) = "iGPU Only"];
-        HYBRID_MODE_ONAUTO        = 2 [(legion.ui.value_label) = "Hybrid Mode (Auto)"];
-        HYBRID_MODE_OFF           = 3 [(legion.ui.value_label) = "dGPU Only (G-Sync)"];
+        HYBRID_MODE_ON            = 0 [(legion.ui.value_label) = "Hybrid Mode (Default)", (legion.ui.value_tooltip) = "Both iGPU and dGPU are available, automatic switching"];
+        HYBRID_MODE_ONAUTO        = 2 [(legion.ui.value_label) = "Hybrid Mode (Auto)",    (legion.ui.value_tooltip) = "Automatic GPU switching with power optimization"];
+        HYBRID_MODE_ONIGPUONLY    = 1 [(legion.ui.value_label) = "iGPU Only",             (legion.ui.value_tooltip) = "Only integrated GPU is active, discrete GPU is disabled"];
+        HYBRID_MODE_OFF           = 3 [(legion.ui.value_label) = "dGPU Only (G-Sync)",    (legion.ui.value_tooltip) = "Only discrete GPU is active, G-Sync enabled"];
     }
 
-    HybridModeState   current     = 1 [(legion.ui.field) = { label: "GPU mode", supported_from: "supported", hint: "Changing the GPU mode requires a system restart." }];
+    HybridModeState   current     = 1 [(legion.ui.field) = { label: "GPU mode", widget: RADIO, supported_from: "supported", hint: "Changing the GPU mode requires a system restart." }];
     bool              supported   = 2 [(legion.ui.field) = { widget: HIDDEN }];
 }

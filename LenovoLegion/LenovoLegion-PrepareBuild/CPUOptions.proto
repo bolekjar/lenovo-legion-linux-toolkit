@@ -32,13 +32,19 @@ message CPUSMT
 }
 
 
+// Labels and order of the fields the same as OtherControl.ui ("Performace" of the original corrected)
 message CPUPState
 {
-    bool    hwp_dynamic_boost = 1 [(legion.ui.field) = { label: "HWP dynamic boost" }];
-    uint32  max_perf_pct      = 2 [(legion.ui.field) = { label: "Max performance", unit: "%", widget: SPIN, min: "min_perf_pct", max: "100" }];
-    uint32  min_perf_pct      = 3 [(legion.ui.field) = { label: "Min performance", unit: "%", widget: SPIN, min: "0", max: "max_perf_pct" }];
-    bool    no_turbo          = 4 [(legion.ui.field) = { label: "Disable turbo" }];
-    string  status            = 5 [(legion.ui.field) = { label: "Driver mode", widget: COMBO, choices_from: "settable_statuses" }];
+    uint32  min_perf_pct      = 3 [(legion.ui.field) = { label: "MIN Performance limit", unit: "%", widget: SPIN, min: "0", max: "max_perf_pct",
+                                    tooltip: "This file dictates the minimum allowed frequency (P-state) that the intel_pstate driver can drop to, expressed as a percentage of the maximum hardware capability." }];
+    uint32  max_perf_pct      = 2 [(legion.ui.field) = { label: "MAX Performance limit", unit: "%", widget: SPIN, min: "min_perf_pct", max: "100",
+                                    tooltip: "Maximum performance limit for your CPU, working hand-in-hand with the no_turbo switch.\nControls the maximum allowed frequency (P-state) as a percentage of the total hardware capability." }];
+    bool    no_turbo          = 4 [(legion.ui.field) = { label: "Disable Turbo",
+                                    tooltip: "Is the standard, used in the Linux kernel to control Turbo Boost." }];
+    bool    hwp_dynamic_boost = 1 [(legion.ui.field) = { label: "HWP Dynamic boost",
+                                    tooltip: "When enabled, this feature briefly and dynamically boosts processor performance (P-state) the moment a task resumes after waiting for disk or network operations to complete (I/O wait).\n\nThe Goal: To speed up system responsiveness. While the processor is waiting for data from the disk, it runs at a low frequency to save power. As soon as the disk delivers the data, HWP Dynamic Boost immediately \"pushes\" the processor to a higher clock speed so the data can be processed without any stutter.\n\nWhen it is useful: It helps primarily with applications that read and write heavily to the disk, or network services where the lowest possible response time (latency) matters." }];
+    string  status            = 5 [(legion.ui.field) = { label: "Mode", widget: COMBO, choices_from: "settable_statuses",
+                                    tooltip: "🟢 Active Mode (Default for Modern CPUs) - In this mode, the Linux kernel hands over frequency scaling control directly to the processor's hardware (HWP - Hardware P-States).\n🔵 Passive Mode - In this mode, the driver operates similarly to older, generic scaling drivers (like acpi-cpufreq)." }];
 
     // Values of status which can be set now (read-only), empty = status can not be changed
     repeated string settable_statuses = 6 [(legion.ui.field) = { widget: HIDDEN }];

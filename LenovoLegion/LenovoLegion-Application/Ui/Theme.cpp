@@ -38,6 +38,7 @@ void Theme::setTheme(ApplicationSettings::ThemeType theme)
         m_groupBackground    = QColor("#fafafa");
         m_groupBorder        = QColor("#e0e0e0");
         m_titleBackground    = QColor("#007acc");
+        m_titleBackgroundEnd = QColor("#0096ff");
         m_titleText          = QColor("#ffffff");
         m_accent             = QColor("#007acc");
         m_accentText         = QColor("#ffffff");
@@ -75,6 +76,7 @@ void Theme::setTheme(ApplicationSettings::ThemeType theme)
         m_groupBackground    = QColor("#787878");
         m_groupBorder        = QColor("#606060");
         m_titleBackground    = QColor("#3c6844");
+        m_titleBackgroundEnd = QColor("#3f7950");
         m_titleText          = QColor("#808080");
         m_accent             = QColor("#3c6844");
         m_accentText         = QColor("#808080");
@@ -112,6 +114,7 @@ void Theme::setTheme(ApplicationSettings::ThemeType theme)
         m_groupBackground    = QColor("#3a3a3d");
         m_groupBorder        = QColor("#3e3e42");
         m_titleBackground    = QColor("#ff8800");
+        m_titleBackgroundEnd = QColor("#cc6600");
         m_titleText          = QColor("#ffffff");
         m_accent             = QColor("#ff8800");
         m_accentText         = QColor("#ffffff");
@@ -167,6 +170,7 @@ void Theme::setTheme(ApplicationSettings::ThemeType theme)
         m_groupBackground    = palette.color(QPalette::Window);
         m_groupBorder        = border;
         m_titleBackground    = palette.color(QPalette::Window);
+        m_titleBackgroundEnd = m_titleBackground;
         m_titleText          = palette.color(QPalette::WindowText);
         m_accent             = palette.color(QPalette::Highlight);
         m_accentText         = palette.color(QPalette::HighlightedText);

@@ -14,13 +14,14 @@ RowLayout {
     //  apply (default): button, values are sent immediately (Default of the widget pages)
     //  apply: false:    item of the "Preset" combo box, values are filled in and sent by Apply (offsets of the widget pages)
     property var        presets: []
+    property string     presetLabel: "Preset"   // label of the preset combo box (texts of the widget pages)
 
     readonly property var applyPresets: presets.filter(preset => preset.apply !== false)
     readonly property var fillPresets:  presets.filter(preset => preset.apply === false)
 
     Label {
         visible: bar.fillPresets.length > 0
-        text: "Preset"
+        text: bar.presetLabel
     }
 
     ThemedComboBox {

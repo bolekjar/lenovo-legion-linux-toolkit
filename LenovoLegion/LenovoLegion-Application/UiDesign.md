@@ -79,13 +79,18 @@ Cesty ve volbách jsou relativní ke zprávě, která obsahuje pole s volbou. Vo
 
 `AUTO`: `bool` → přepínač, enum nebo `choices_from` → výběr, číslo → číselné pole, řetězec → popisek jen pro čtení.
 
-### 3.2 Hodnoty enumu (`(legion.ui.value_label)`)
+### 3.2 Hodnoty enumu (`(legion.ui.value_label)`, `(legion.ui.value_color)`, `(legion.ui.value_tooltip)`)
 
-Popisek hodnoty ve výběru, např. `HYBRID_MODE_ONAUTO` → „Hybrid Mode (Auto)“. Bez popisku se zobrazí jméno hodnoty.
+Popisek hodnoty ve výběru, např. `HYBRID_MODE_ONAUTO` → „Hybrid Mode (Auto)“. Bez popisku se zobrazí jméno hodnoty. `value_color` je barva textu hodnoty u přepínačů (`RADIO`), např. barvy výkonových profilů jako `PowerProfileControl.ui` (QUIET `#55aaff`, BALANCED `#919191`, PERFORMANCE `#ff0000`, EXTREME `#000000`, CUSTOM `#aa55ff`). Bez barvy se použije barva tématu.
+`value_tooltip` je tooltip hodnoty u přepínačů a v seznamu comba (režimy GPU jako `OtherControl.ui`).
 
 ### 3.3 Typ dat (`(legion.ui.message)` na hodnotách `DataType`)
 
 Plné jméno zprávy typu dat, např. `CPU_PSTATE` → `legion.messages.CPUPState`. Z něj `DataSource` vytvoří zprávu přes `DescriptorPool::generated_pool()` a `MessageFactory`. GUI tak nepotřebuje tabulku typů.
+
+### 3.3.1 Příkaz (`(legion.ui.command)` na hodnotách `DataType`)
+
+Typ dat, jehož SET posílá jinou zprávu než GET vrací: `PROFILES` posílá `ProfileCommand` a odpověď je seznam `Profiles`. `DataSource.sendCommand({cesta: hodnota})` sestaví příkaz (enum jménem, např. `"LOAD"`), odešle ho a odpověď načte jako data zdroje. `reloadAllSources()` pak znovu načte všechny zdroje (načtený profil mění všechno). Panel `SavedProfilesPanel` pod výkonovými profily: uložené profily ze správy profilů, Load bez potvrzení.
 
 ### 3.4 Platforma (`(legion.ui.platform)` na hodnotách `DataType`)
 
@@ -131,7 +136,7 @@ Vlastnosti pro QML: `value` (zápis jde do změn), `label`, `unit`, `hint`, `wid
 |------------|------|
 | `SettingsPage` | Posuvná stránka s titulkem; `available`, `platform`, `reason` ze zdrojů dat stránky, bez dat zakázaný obsah s důvodem. |
 | `PageSources` (C++) | Najde všechny `DataSource` stránky: `available` (některý má data), `platform` (`lenovo`, pokud některý potřebuje ovladač), `reason`. |
-| `Section` | Skupina s titulkem, chybou `lastError` a volitelným `ApplyBar`; `checkable`/`checked` přidá zaškrtávátko do titulku (zaškrtávací `QGroupBox`). |
+| `Section` | Skupina jako `QGroupBox` stylesheetu: rámeček 18 px pod horním okrajem s přechodem pozadí, titulek jako záložka vlevo nahoře široká podle textu (odsazení 6/16 px, horní rohy 10 px, vodorovný přechod `titleBackground` → `titleBackgroundEnd`), chyba `lastError` a volitelný `ApplyBar` (`presetLabel`); `titleColor`/`backgroundColor` pro jednotlivou skupinu (buňky vláken v `CpuGrid` a `FrequencyGrid` jako `ThreadControl`/`ThreadFrequencyControl`); `checkable`/`checked` přidá zaškrtávátko do titulku (zaškrtávací `QGroupBox`). |
 | `DetailWindow` | Samostatné okno s tématem aplikace, zobrazené dokud `open`, zavření nastaví `open` na false. |
 | `AutoSection` | `Section`, která vykreslí všechny pole `DataSource` (`fieldPaths()`). |
 | `Field` | Popisek, jednotka, ovládací prvek podle `widget`, poznámka `hint`; `vertical` (popisek nad prvkem, přepínače pod sebou), `labelVisible` a `labelAfter` (popisek vpravo od prvku, „Custom - Toggle Fn+Q“) pro úzké panely. |
@@ -163,7 +168,7 @@ QML nepoužívá stylesheety Qt Widgets (`ToolBarSettingsWidget::getStylesheetTh
 Vlastní pohledy (jen obal generických komponent se stejným `DataSource`):
 
 - **`LimitField`** (hotovo): výkonový limit (`CPUPower.Limit`, `GPUPower.Limit`) jako `PowerControl`. V custom režimu se upravuje `current_value`, jinak je sekce zakázaná a ukazuje výchozí hodnotu aktuálního profilu (`overrideValue`). Rozsah, kroky a podpora jsou z anotace (`mode_descriptor_map[255]`). Předvolby „Preset“ s výchozími hodnotami podporovaných profilů skládá `PowerPage.profilePresets()` z dat.
-- **`FanCurveEditor`** (hotovo): křivka ventilátoru jako `FanControl`. Vlastní tab „Fan Curve“ (`FanCurvePage`, `SettingsPage.fillHeight`), roztažený přes celou stránku: tlačítka Maximum/Custom přes celou šířku nad skupinou „Fan curve“ (mimo custom režim a při Maximum je celá skupina zakázaná) (plná rychlost, jen v custom režimu, když je podporovaná), 10 svislých posuvníků přes celou výšku a šířku, osa 100–0 % na úrovních táhel (úroveň 1–10, bod *n* nejméně *n*, bod 10 nejméně 9 jako `FanControl`, popisky a meze z anotace; táhlo pod mezí se vrátí na mez), monotónní křivka při posunu bodu, tooltip bodu s teplotami a otáčkami výchozích křivek profilu. Mimo custom režim se ukazuje 1–10, při Maximum všude 10. Apply pošle celou křivku (`atomic`).
+- **`FanCurveEditor`** (hotovo): křivka ventilátoru jako `FanControl`. Vlastní tab „Fan Curve“ (`FanCurvePage`, `SettingsPage.fillHeight`), roztažený přes celou stránku: tlačítka Maximum/Custom přes celou šířku nad skupinou „Fan curve“ (mimo custom režim a při Maximum je celá skupina zakázaná) (plná rychlost, jen v custom režimu, když je podporovaná), 10 svislých posuvníků přes celou výšku a šířku, osa 100–0 % na úrovních táhel (úroveň 1–10, bod *n* nejméně *n*, bod 10 nejméně 9 jako `FanControl`, popisky a meze z anotace; táhlo pod mezí se vrátí na mez), monotónní křivka při posunu bodu, tlačítko Default (křivka 1–10, odešle se hned; originál ho nemá), tooltip bodu s teplotami a otáčkami výchozích křivek profilu. Mimo custom režim se ukazuje 1–10, při Maximum všude 10. Apply pošle celou křivku (`atomic`).
 - **`CpuGrid`** (hotovo, stránka „CPU“): vlákna jako `CPUControl`. Mřížka po 8 řádcích, P/E podle topologie, D = vypnutá v datech z daemonu, barvy buněk a titulků jako `ThreadControl` (pevné, mimo témata, text v P/E buňkách vždy světlý). „Show threads“ filtruje mřížku a určuje, na co se použije governor a Enable/Disable. CPU0 nejde vypnout. „Disabled SMP“ se zapíše hned (`applyValues`, „on“ zapne sourozenecká vlákna i při `control` „on“). Apply pošle jen změněná vlákna (prvky `cpus` podle indexu).
 - **`FrequencyGrid`** (hotovo, stránka „CPU“): frekvence vláken jako `CPUFrequencyControl`. Mřížka aktivních vláken (P z `active_cpus_core`, bez nich všechna aktivní, E z `active_cpus_atom`), u vlákna Min/Max v MHz v jeho rozsahu (anotace `CPUFrequency.proto`, `scale`), Min ≤ Max. Globální Min/Max v rozsahu všech vláken se použije na vlákna podle „Show threads“ (oříznuté na jejich rozsah), tlačítka Min/X, X/X a Default nastaví globální Min/Max. Po načtení dat bez změn se globální hodnoty vezmou z prvního vlákna.
 - Další: `RgbKeyboard`, `HwMonitorCharts`.
@@ -186,7 +191,7 @@ Vlastní pohledy (jen obal generických komponent se stejným `DataSource`):
 1. **Pilot** (hotovo, čeká na test): `UiOptions.proto`, anotace `CPUPState`, `OtherSettings`, `GpuSwitchValue`, generický model, komponenty, stránka „Other settings (QML)“ vedle stávající.
 2. Porovnat pilot se stávající stránkou (chování, vzhled, styl). Vzhled podle témat, barva neuložených změn a předvolba Default jsou hotové.
 3. Anotovat ostatní zprávy a typy dat, převést jednoduché stránky. Hotovo: stránka „Power“ (PowerProfile, FanOption, offsety napětí CPU a taktů GPU) v záložce stránky „Preview“ (`PreviewPage.qml`). CPUFrequency je po jednotlivých CPU (`repeated`), patří k vlastnímu pohledu `CpuGrid` (krok 4).
-4. Vlastní pohledy. Hotovo: výkonové limity CPU a GPU (`LimitField`) a křivka ventilátoru (`FanCurveEditor`) na stránce „Fan Curve“, vlákna CPU (`CpuGrid`) a jejich frekvence (`FrequencyGrid`) na stránce „CPU“, HW monitor (`HwMonitorPage`, grafy `HistoryChart`, vždy viditelný přes celou šířku nahoře, všechny skupiny v jedné řadě, titulky grafů na dva řádky), pod ním výkonové profily (`PowerProfilesPanel`, vždy viditelné) vlevo vedle záložek bez nadpisů stránek s okny podrobností (`DetailWindow`: `CpuFrequencyWindow` frekvence po vláknech, `GpuDetailsWindow`), která se otevírají zaškrtnutím sekce (`Section.checkable`/`checked`), berou data stránky a grafy plní jen když jsou zobrazená. Zbývá RGB.
+4. Vlastní pohledy. Hotovo: výkonové limity CPU a GPU (`LimitField`) a křivka ventilátoru (`FanCurveEditor`) na stránce „Fan Curve“, vlákna CPU (`CpuGrid`) a jejich frekvence (`FrequencyGrid`) na stránce „CPU“, HW monitor (`HwMonitorPage`, grafy `HistoryChart` s mřížkou a popisky os písmem 9 px: hodnoty řádků mřížky vlevo, čas „-50 s“ až „0 s“ dole (`sampleInterval`), vždy viditelný přes celou šířku nahoře, všechny skupiny v jedné řadě, titulky grafů na dva řádky), pod ním výkonové profily (`PowerProfilesPanel`, vždy viditelné) vlevo vedle záložek bez nadpisů stránek s okny podrobností (`DetailWindow`: `CpuFrequencyWindow` frekvence po vláknech, `GpuDetailsWindow`), která se otevírají zaškrtnutím sekce (`Section.checkable`/`checked`), berou data stránky a grafy plní jen když jsou zobrazená. Zbývá RGB.
 5. Nahradit stávající stránky, smazat staré widgety.
 
 ## 8. Otevřené otázky

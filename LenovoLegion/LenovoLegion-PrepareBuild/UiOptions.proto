@@ -62,4 +62,8 @@ extend google.protobuf.EnumValueOptions {
     string value_label = 50002;   // label of the enum value in a COMBO
     string message     = 50003;   // full name of the message of a DataType value ("legion.messages.CPUPState")
     Platform platform  = 50004;   // platform of a DataType value, default GENERIC
+    string value_color = 50005;   // text color of the enum value in RADIO/COMBO ("#55aaff"), default color of the theme
+    string value_tooltip = 50006; // tool tip of the enum value in RADIO/COMBO
+    string command     = 50007;   // full name of the command message of a DataType value: SET sends this message,
+                                  // the response is the message of the data type (PROFILES: ProfileCommand -> Profiles)
 }

@@ -17,7 +17,7 @@ class DataSource;
 
 /*
  * Data sources of a page (all DataSource objects in the page) and their state for the tab of the page:
- * the page is available if the daemon provides data of any of them, the platform is "lenovo" if any of them
+ * the page is available if the daemon provides data of any of them (a page without own sources is always available), the platform is "lenovo" if any of them
  * needs the Lenovo Legion kernel driver ((legion.ui.platform) in MessageRegistry.proto)
  */
 class PageSources : public QObject

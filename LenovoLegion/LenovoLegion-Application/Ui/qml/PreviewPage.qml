@@ -25,12 +25,23 @@ Rectangle {
             Layout.fillHeight: true
             spacing: 12
 
-            // Next to the pane of the pages (below the tab bar) down to the bottom
-            PowerProfilesPanel {
+            // Next to the pane of the pages (below the tab bar) down to the bottom: power profiles and below them
+            // the quick switch of the saved profiles
+            ColumnLayout {
                 Layout.preferredWidth: 220
                 Layout.fillWidth: false
                 Layout.fillHeight: true
                 Layout.topMargin: tabs.height
+                spacing: 8
+
+                PowerProfilesPanel {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                }
+
+                SavedProfilesPanel {
+                    Layout.fillWidth: true
+                }
             }
 
             ColumnLayout {

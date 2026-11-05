@@ -9,7 +9,7 @@ SettingsPage {
 
     // All fields of the message by the annotations in CPUOptions.proto
     AutoSection {
-        title: "Intel P-State"
+        title: "CPU Power State Control"
         dataType: "CPU_PSTATE"
         applyBar: true
 
@@ -31,6 +31,7 @@ SettingsPage {
     // Order of the planes and presets (mV) the same as OffsetsControl::CPU_VOLTAGE_PRESETS
     Section {
         title: "CPU Voltage"
+        presetLabel: "Preset undervolting configuration"
         applyBar: true
         source: DataSource {
             id: voltage
