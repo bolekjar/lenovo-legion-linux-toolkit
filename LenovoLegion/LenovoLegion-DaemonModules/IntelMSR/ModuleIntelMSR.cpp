@@ -129,7 +129,16 @@ public:
             throw Error("IntelMSR: parse of data message error !");
         }
 
-        apply(message);
+        /*
+         * Offsets which were not applied are reported to the client (error response), e.g. undervolting
+         * locked in the BIOS: the kernel module reads the offset back and returns EIO
+         */
+        const QStringList errors = apply(message);
+
+        if(!errors.isEmpty())
+        {
+            throw Error(errors.join("; ").toStdString());
+        }
 
         return {};
     }
@@ -319,13 +328,18 @@ private:
         }
     }
 
-    void apply(CpuIntelMSR message)
+    /*
+     * Errors of the offsets which were not written (also logged)
+     */
+    QStringList apply(CpuIntelMSR message)
     {
         if(!m_available)
         {
             m_host.logger().error("IntelMSR: device not available, request is ignored !");
-            return;
+            return { "IntelMSR: device not available" };
         }
+
+        QStringList errors;
 
         settable(message,true);
 
@@ -345,9 +359,14 @@ private:
 
             if(!SysFs::write(attribute(plane,"_offset"),(message.*plane.m_settings)().offset(),&error))
             {
-                m_host.logger().error(QString("IntelMSR: unable to set ").append(plane.m_name).append(" offset ").append(QString::number((message.*plane.m_settings)().offset())).append(" : ").append(error));
+                const QString text = QString("IntelMSR: unable to set ").append(plane.m_name).append(" offset ").append(QString::number((message.*plane.m_settings)().offset())).append(" : ").append(error);
+
+                m_host.logger().error(text);
+                errors.append(text);
             }
         }
+
+        return errors;
     }
 
 private:
