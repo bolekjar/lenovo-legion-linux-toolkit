@@ -99,8 +99,8 @@ ScrollView {
 
             // Not applied changes: the change color of the widget pages
             Rectangle {
-                width: 10
-                height: 10
+                implicitWidth: 10
+                implicitHeight: 10
                 radius: 5
                 color: theme.modified
             }

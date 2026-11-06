@@ -7,12 +7,12 @@ SettingsPage {
     title: "CPU Freq Control"
 
     DataSource {
-        id: topology
+        id: cpuTopology
 
         dataType: "CPU_TOPOLOGY"
     }
 
     FrequencyGrid {
-        topology: topology
+        topology: cpuTopology
     }
 }

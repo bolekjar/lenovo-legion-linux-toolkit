@@ -7,19 +7,19 @@ SettingsPage {
     title: "CPU Control"
 
     DataSource {
-        id: topology
+        id: cpuTopology
 
         dataType: "CPU_TOPOLOGY"
     }
 
     DataSource {
-        id: smt
+        id: smtSource
 
         dataType: "CPU_SMT"
     }
 
     CpuGrid {
-        topology: topology
-        smt: smt
+        topology: cpuTopology
+        smt: smtSource
     }
 }
