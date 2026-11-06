@@ -4,7 +4,7 @@ import QtQuick
 import LenovoLegion.Ui 1.0
 
 SettingsPage {
-    title: "CPU Freq Control (QML preview)"
+    title: "CPU Freq Control"
 
     DataSource {
         id: topology

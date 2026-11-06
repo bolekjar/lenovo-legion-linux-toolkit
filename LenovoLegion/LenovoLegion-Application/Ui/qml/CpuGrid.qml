@@ -30,23 +30,23 @@ Section {
     readonly property var  kindBackground: ({ "P": "#3D2B1F", "E": "#393939", "D": "transparent" })
     readonly property var  kindName:       ({ "P": "P-Thread", "E": "E-Thread", "D": "D-Thread" })
 
-    readonly property int  cpuCount:    (options.revision, options.count("cpus"))
-    readonly property var  performance: (topology.revision, ranges("active_cpus_core"))
-    readonly property var  efficient:   (topology.revision, ranges("active_cpus_atom"))
+    readonly property int  cpuCount:    (options.count("cpus", options.revision))
+    readonly property var  performance: (ranges("active_cpus_core"))
+    readonly property var  efficient:   (ranges("active_cpus_atom"))
     readonly property bool hybrid:      performance.length > 0 && efficient.length > 0
 
     readonly property var  filters: hybrid ? ["ALL", "Enabled", "Disabled", "Performance", "Efficiency"] : ["ALL", "Enabled", "Disabled"]
     property string        filter:  "ALL"
 
-    readonly property var  kinds:       (options.revision, threadKinds())
-    readonly property var  titleColors: (options.revision, threadTitleColors())
+    readonly property var  kinds:       (threadKinds())
+    readonly property var  titleColors: (threadTitleColors())
 
     function ranges(field) {
         const cpus = []
 
-        for (let range = 0; range < topology.count(field); ++range) {
-            const min = topology.value(field + "[" + range + "].cpu_min")
-            const max = topology.value(field + "[" + range + "].cpu_max")
+        for (let range = 0; range < topology.count(field, topology.revision); ++range) {
+            const min = topology.value(field + "[" + range + "].cpu_min", topology.revision)
+            const max = topology.value(field + "[" + range + "].cpu_max", topology.revision)
 
             for (let cpu = min; cpu <= max; ++cpu)
                 cpus.push(cpu)
@@ -62,7 +62,7 @@ Section {
         const result = []
 
         for (let cpu = 0; cpu < cpuCount; ++cpu) {
-            if (!options.daemonValue("cpus[" + cpu + "].cpu_online"))
+            if (!options.daemonValue("cpus[" + cpu + "].cpu_online", options.revision))
                 result.push("D")
             else if (efficient.includes(cpu))
                 result.push("E")
@@ -88,7 +88,7 @@ Section {
                     order.push(cpu)
 
         for (const cpu of order) {
-            const coreId = options.daemonValue("cpus[" + cpu + "].cpu_core_id")
+            const coreId = options.daemonValue("cpus[" + cpu + "].cpu_core_id", options.revision)
 
             if (coreId !== core) {
                 color = (color + 1) % 2
@@ -143,7 +143,7 @@ Section {
         options.beginChanges()   // one notification for all threads
         for (let cpu = 1; cpu < cpuCount; ++cpu)
             if (shown(cpu))
-                options.field("cpus[" + cpu + "].cpu_online").value = enabled
+                options.field("cpus[" + cpu + "].cpu_online", options.revision).value = enabled
         options.endChanges()
     }
 
@@ -152,7 +152,7 @@ Section {
         options.beginChanges()
         for (let cpu = 0; cpu < cpuCount; ++cpu)
             if (shown(cpu) && kinds[cpu] !== "D")
-                options.field("cpus[" + cpu + "].governor").value = governor
+                options.field("cpus[" + cpu + "].governor", options.revision).value = governor
         options.endChanges()
     }
 
@@ -162,8 +162,8 @@ Section {
 
         ThemedCheckBox {
             text: "Disabled SMP"
-            visible: grid.smt !== null && (grid.smt.revision, grid.smt.count("settable_controls")) > 0
-            checked: grid.smt !== null && (grid.smt.revision, grid.smt.value("active")) === false
+            visible: grid.smt !== null && (grid.smt.count("settable_controls", grid.smt.revision)) > 0
+            checked: grid.smt !== null && (grid.smt.value("active", grid.smt.revision)) === false
             // "on"/"off" always written (applyValues): "on" switches the sibling threads on also when the control is already "on"
             onToggled: grid.smt.applyValues({ "control": checked ? "off" : "on" })
         }
@@ -189,8 +189,8 @@ Section {
 
         ThemedComboBox {
             implicitWidth: 150
-            model: (options.revision, options.repeatedValues("cpus[0].available_governors"))
-            currentIndex: count > 0 ? find((options.revision, options.daemonValue("cpus[0].governor"))) : -1
+            model: (options.repeatedValues("cpus[0].available_governors", options.revision))
+            currentIndex: count > 0 ? find((options.daemonValue("cpus[0].governor", options.revision))) : -1
             onActivated: index => grid.setGovernor(textAt(index))
         }
 
@@ -243,8 +243,8 @@ Section {
 
                 required property int index
 
-                readonly property FieldModel onlineField:   (options.revision, options.field("cpus[" + index + "].cpu_online"))
-                readonly property FieldModel governorField: (options.revision, options.field("cpus[" + index + "].governor"))
+                readonly property FieldModel onlineField:   (options.field("cpus[" + index + "].cpu_online", options.revision))
+                readonly property FieldModel governorField: (options.field("cpus[" + index + "].governor", options.revision))
 
                 // Fixed dark background of P/E-threads: light text in all themes, disabled threads use the theme
                 readonly property color textColor: grid.kinds[index] === "D" ? theme.text : "#e0e0e0"
@@ -259,8 +259,8 @@ Section {
                 visible: grid.shown(index)
 
                 title: grid.kindName[grid.kinds[index]] + ": " + index
-                       + ", CoreId: " + (options.revision, options.daemonValue("cpus[" + index + "].cpu_core_id"))
-                       + ", DieId: " + options.daemonValue("cpus[" + index + "].die_id")
+                       + ", CoreId: " + (options.daemonValue("cpus[" + index + "].cpu_core_id", options.revision))
+                       + ", DieId: " + options.daemonValue("cpus[" + index + "].die_id", options.revision)
                 titleColor: grid.titleColors[index]
                 backgroundColor: grid.kindBackground[grid.kinds[index]]
 

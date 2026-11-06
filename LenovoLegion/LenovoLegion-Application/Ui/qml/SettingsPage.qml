@@ -9,7 +9,7 @@ ScrollView {
     id: page
 
     property string title
-    property bool   transparent: false   // inside a pane (tab widget of PreviewPage), the pane paints the background
+    property bool   transparent: false   // inside a pane (tab widget of HomePage), the pane paints the background
 
     // Change bar at the bottom of the page: "N changes not applied · Cancel · Apply" of all data sources of the page,
     // shown only with changes, stays visible while scrolling. The groups (Section) show only their presets.

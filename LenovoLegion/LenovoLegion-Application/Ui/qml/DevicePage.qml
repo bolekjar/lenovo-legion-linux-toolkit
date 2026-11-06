@@ -4,7 +4,7 @@ import QtQuick
 import LenovoLegion.Ui 1.0
 
 SettingsPage {
-    title: "Device (QML preview)"
+    title: "Device"
 
     // Groups next to each other on a wide page
     columnWidth: 540

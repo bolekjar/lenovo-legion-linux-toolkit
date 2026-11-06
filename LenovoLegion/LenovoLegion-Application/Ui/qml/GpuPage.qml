@@ -4,7 +4,7 @@ import QtQuick
 import LenovoLegion.Ui 1.0
 
 SettingsPage {
-    title: "GPU (QML preview)"
+    title: "GPU"
 
     // Presets the same as OffsetsControl::GPU_CLOCK_PRESETS
     Section {

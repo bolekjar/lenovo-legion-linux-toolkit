@@ -14,7 +14,7 @@ import LenovoLegion.Ui 1.0
 SettingsPage {
     id: page
 
-    title: "HW Monitoring (QML preview)"
+    title: "HW Monitoring"
 
     readonly property int refreshInterval: 500
 
@@ -47,9 +47,9 @@ SettingsPage {
     function ranges(field) {
         const cpus = []
 
-        for (let range = 0; range < topology.count(field); ++range) {
-            const min = topology.value(field + "[" + range + "].cpu_min")
-            const max = topology.value(field + "[" + range + "].cpu_max")
+        for (let range = 0; range < topology.count(field, topology.revision); ++range) {
+            const min = topology.value(field + "[" + range + "].cpu_min", topology.revision)
+            const max = topology.value(field + "[" + range + "].cpu_max", topology.revision)
 
             for (let cpu = min; cpu <= max; ++cpu)
                 cpus.push(cpu)
@@ -58,8 +58,8 @@ SettingsPage {
         return cpus
     }
 
-    readonly property var performance: (topology.revision, ranges("active_cpus_core"))
-    readonly property var efficient:   (topology.revision, ranges("active_cpus_atom"))
+    readonly property var performance: (ranges("active_cpus_core"))
+    readonly property var efficient:   (ranges("active_cpus_atom"))
 
     // Range of the frequency charts (MHz): info min/max and scaling min/max of the threads
     function frequencyRange(cpus) {
@@ -67,10 +67,10 @@ SettingsPage {
 
         for (const cpu of cpus) {
             const prefix = "cpux_freq[" + cpu + "]."
-            range.min      = Math.min(range.min,      hw.value(prefix + "cpu_info_min_freq") / 1000)
-            range.max      = Math.max(range.max,      hw.value(prefix + "cpu_info_max_freq") / 1000)
-            range.scaleMin = Math.min(range.scaleMin, hw.value(prefix + "cpu_scaling_min_freq") / 1000)
-            range.scaleMax = Math.max(range.scaleMax, hw.value(prefix + "cpu_scaling_max_freq") / 1000)
+            range.min      = Math.min(range.min,      hw.value(prefix + "cpu_info_min_freq", hw.revision) / 1000)
+            range.max      = Math.max(range.max,      hw.value(prefix + "cpu_info_max_freq", hw.revision) / 1000)
+            range.scaleMin = Math.min(range.scaleMin, hw.value(prefix + "cpu_scaling_min_freq", hw.revision) / 1000)
+            range.scaleMax = Math.max(range.scaleMax, hw.value(prefix + "cpu_scaling_max_freq", hw.revision) / 1000)
         }
 
         return cpus.length > 0 ? range : { min: 0, max: 0, scaleMin: 0, scaleMax: 0 }
@@ -80,7 +80,7 @@ SettingsPage {
         let sum = 0
 
         for (const cpu of cpus)
-            sum += hw.value("cpux_freq[" + cpu + "].cpu_scaling_cur_freq")
+            sum += hw.value("cpux_freq[" + cpu + "].cpu_scaling_cur_freq", hw.revision)
 
         return cpus.length > 0 ? Math.floor(sum / cpus.length / 1000) : 0
     }
@@ -93,8 +93,8 @@ SettingsPage {
              + name + " Scale Max Frequency: " + range.scaleMax + " MHz"
     }
 
-    readonly property var performanceRange: (hw.revision, frequencyRange(performance))
-    readonly property var efficientRange:   (hw.revision, frequencyRange(efficient))
+    readonly property var performanceRange: (frequencyRange(performance))
+    readonly property var efficientRange:   (frequencyRange(efficient))
     readonly property var allRange:         efficient.length > 0 ? { min: Math.min(performanceRange.min, efficientRange.min), max: Math.max(performanceRange.max, efficientRange.max),
                                                                      scaleMin: Math.min(performanceRange.scaleMin, efficientRange.scaleMin), scaleMax: Math.max(performanceRange.scaleMax, efficientRange.scaleMax) }
                                                                  : performanceRange
@@ -106,7 +106,7 @@ SettingsPage {
 
     function sample() {
         const now = Date.now()
-        const energy = hw.value("intel_power.power_cap_cpu_energy")
+        const energy = hw.value("intel_power.power_cap_cpu_energy", hw.revision)
         const elapsed = (now - previousTime) * 1000
 
         if (previousEnergy >= 0 && elapsed > refreshInterval * 800 && elapsed < refreshInterval * 1200)
@@ -119,13 +119,13 @@ SettingsPage {
         pAverage.push(averageFrequency(performance))
         eAverage.push(averageFrequency(efficient))
         cpuPowerChart.push(cpuPower)
-        gpuPowerChart.push(nvml.value("gpu_suspended") ? 0 : nvml.value("hardware_monitor.power.value") / 1000)
+        gpuPowerChart.push(nvml.value("gpu_suspended", nvml.revision) ? 0 : nvml.value("hardware_monitor.power.value", nvml.revision) / 1000)
 
         for (let i = 0; i < temps.count; ++i)
-            temps.itemAt(i).push(hw.value("legion.temps[" + i + "].temp_value") / 1000)
+            temps.itemAt(i).push(hw.value("legion.temps[" + i + "].temp_value", hw.revision) / 1000)
 
         for (let i = 0; i < fans.count; ++i)
-            fans.itemAt(i).push(hw.value("legion.fans[" + i + "].fan_speed"))
+            fans.itemAt(i).push(hw.value("legion.fans[" + i + "].fan_speed", hw.revision))
 
         if (cpuWindow.open)
             cpuWindow.sample()
@@ -236,7 +236,7 @@ SettingsPage {
                     title: "CPU Power [%1 W]"
                     minimum: 0
                     maximum: 250
-                    tooltip: (cpuInfo.revision, cpuInfo.value("cpu_model")) + "\nPower : " + Math.round(value) + " W\nPower min: 0 W\nPower max: 250 W"
+                    tooltip: (cpuInfo.value("cpu_model", cpuInfo.revision)) + "\nPower : " + Math.round(value) + " W\nPower min: 0 W\nPower max: 250 W"
                 }
 
                 HistoryChart {
@@ -245,10 +245,10 @@ SettingsPage {
                     twoLines: true
                     title: "GPU Power [%1 W]"
                     minimum: 0
-                    maximum: (nvml.revision, nvml.value("hardware_monitor.power.max_value") / 1000)
-                    tooltip: (nvml.revision, nvml.value("gpu_suspended")) ? nvml.value("name") + "\nGPU is suspended (power saving)"
-                           : nvml.value("name") + "\nPower: " + Math.round(value) + " W\nPower min: " + Math.round(nvml.value("hardware_monitor.power.min_value") / 1000)
-                             + " W\nPower max: " + Math.round(nvml.value("hardware_monitor.power.max_value") / 1000) + " W"
+                    maximum: (nvml.value("hardware_monitor.power.max_value", nvml.revision) / 1000)
+                    tooltip: (nvml.value("gpu_suspended", nvml.revision)) ? nvml.value("name", nvml.revision) + "\nGPU is suspended (power saving)"
+                           : nvml.value("name", nvml.revision) + "\nPower: " + Math.round(value) + " W\nPower min: " + Math.round(nvml.value("hardware_monitor.power.min_value", nvml.revision) / 1000)
+                             + " W\nPower max: " + Math.round(nvml.value("hardware_monitor.power.max_value", nvml.revision) / 1000) + " W"
                 }
             }
         }
@@ -264,12 +264,12 @@ SettingsPage {
                 Repeater {
                     id: temps
 
-                    model: (hw.revision, hw.count("legion.temps"))
+                    model: (hw.count("legion.temps", hw.revision))
 
                     delegate: HistoryChart {
                         required property int index
 
-                        readonly property string label: hw.value("legion.temps[" + index + "].temp_label")
+                        readonly property string label: hw.value("legion.temps[" + index + "].temp_label", hw.revision)
 
                         Layout.fillWidth: true
 
@@ -296,14 +296,14 @@ SettingsPage {
                 Repeater {
                     id: fans
 
-                    model: (hw.revision, hw.count("legion.fans"))
+                    model: (hw.count("legion.fans", hw.revision))
 
                     delegate: HistoryChart {
                         required property int index
 
-                        readonly property string label: hw.value("legion.fans[" + index + "].fan_label")
-                        readonly property int    speedMin: hw.value("legion.fans[" + index + "].fan_speed_min")
-                        readonly property int    speedMax: hw.value("legion.fans[" + index + "].fan_speed_max") + 100
+                        readonly property string label: hw.value("legion.fans[" + index + "].fan_label", hw.revision)
+                        readonly property int    speedMin: hw.value("legion.fans[" + index + "].fan_speed_min", hw.revision)
+                        readonly property int    speedMax: hw.value("legion.fans[" + index + "].fan_speed_max", hw.revision) + 100
 
                         Layout.fillWidth: true
 

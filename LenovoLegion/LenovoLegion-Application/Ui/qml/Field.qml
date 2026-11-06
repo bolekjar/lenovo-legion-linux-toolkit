@@ -19,7 +19,7 @@ Item {
     // Shown value instead of the value of the field (e.g. default of the power profile for a disabled limit), undefined = field value
     property var        overrideValue: undefined
 
-    readonly property FieldModel fieldModel: source !== null && path.length > 0 ? source.field(path) : null
+    readonly property FieldModel fieldModel: source !== null && path.length > 0 ? source.field(path, source.revision) : null
     readonly property var        shownValue: overrideValue !== undefined ? overrideValue : (fieldModel !== null ? fieldModel.value : undefined)
 
     visible: fieldModel !== null && fieldModel.visible

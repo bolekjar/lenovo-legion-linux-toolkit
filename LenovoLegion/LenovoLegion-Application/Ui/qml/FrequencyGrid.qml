@@ -29,10 +29,10 @@ Section {
     readonly property var  kindBackground: ({ "P": "#3D2B1F", "E": "#393939" })
     readonly property var  kindName:       ({ "P": "P-Thread", "E": "E-Thread" })
 
-    readonly property var  performance: (topology.revision, topology.count("active_cpus_core") > 0 ? ranges("active_cpus_core") : ranges("active_cpus"))
-    readonly property var  efficient:   (topology.revision, ranges("active_cpus_atom"))
+    readonly property var  performance: (topology.count("active_cpus_core", topology.revision) > 0 ? ranges("active_cpus_core") : ranges("active_cpus"))
+    readonly property var  efficient:   (ranges("active_cpus_atom"))
     readonly property var  threads:     performance.concat(efficient)
-    readonly property bool hybrid:      topology.count("active_cpus_core") > 0 && efficient.length > 0
+    readonly property bool hybrid:      topology.count("active_cpus_core", topology.revision) > 0 && efficient.length > 0
 
     readonly property var  filters: hybrid ? ["All", "Performance", "Efficiency"] : ["All"]
     property string        filter:  "All"
@@ -41,8 +41,8 @@ Section {
     onFiltersChanged: if (!filters.includes(filter)) filter = "All"
 
     // Range of the threads of the filter (MHz), the global values are clamped to it
-    readonly property int  rangeMin: (frequency.revision, threadsRange(targets(), true))
-    readonly property int  rangeMax: (frequency.revision, threadsRange(targets(), false))
+    readonly property int  rangeMin: (threadsRange(targets(), true))
+    readonly property int  rangeMax: (threadsRange(targets(), false))
 
     // Global Min/Max, initial values from the first active thread
     property int globalMin: 0
@@ -56,9 +56,9 @@ Section {
     function ranges(field) {
         const cpus = []
 
-        for (let range = 0; range < topology.count(field); ++range) {
-            const min = topology.value(field + "[" + range + "].cpu_min")
-            const max = topology.value(field + "[" + range + "].cpu_max")
+        for (let range = 0; range < topology.count(field, topology.revision); ++range) {
+            const min = topology.value(field + "[" + range + "].cpu_min", topology.revision)
+            const max = topology.value(field + "[" + range + "].cpu_max", topology.revision)
 
             for (let cpu = min; cpu <= max; ++cpu)
                 cpus.push(cpu)
@@ -67,8 +67,8 @@ Section {
         return cpus
     }
 
-    function minField(cpu) { return frequency.field("cpus[" + cpu + "].scaling_min_freq") }
-    function maxField(cpu) { return frequency.field("cpus[" + cpu + "].scaling_max_freq") }
+    function minField(cpu) { return frequency.field("cpus[" + cpu + "].scaling_min_freq", frequency.revision) }
+    function maxField(cpu) { return frequency.field("cpus[" + cpu + "].scaling_max_freq", frequency.revision) }
 
     function threadsRange(cpus, minimum) {
         let result = minimum ? Number.MAX_VALUE : 0
@@ -313,8 +313,8 @@ Section {
                 required property int modelData
 
                 readonly property int        cpu:      modelData
-                readonly property FieldModel minModel: (frequency.revision, grid.minField(cpu))
-                readonly property FieldModel maxModel: (frequency.revision, grid.maxField(cpu))
+                readonly property FieldModel minModel: (grid.minField(cpu))
+                readonly property FieldModel maxModel: (grid.maxField(cpu))
 
                 readonly property var position: cells.placement.positions[cpu] !== undefined ? cells.placement.positions[cpu] : [0, 0]
 
@@ -324,8 +324,8 @@ Section {
                 Layout.preferredWidth: grid.cellWidth
 
                 title: grid.kindName[grid.kind(cpu)] + ": " + cpu
-                       + ", CoreId: " + (frequency.revision, frequency.daemonValue("cpus[" + cpu + "].core_id"))
-                       + ", DieId: " + frequency.daemonValue("cpus[" + cpu + "].die_id")
+                       + ", CoreId: " + (frequency.daemonValue("cpus[" + cpu + "].core_id", frequency.revision))
+                       + ", DieId: " + frequency.daemonValue("cpus[" + cpu + "].die_id", frequency.revision)
                 backgroundColor: grid.kindBackground[grid.kind(cpu)]
 
                 // Min and Max of the thread in one range slider (Min raises Max, Max lowers Min: setThreadMin/Max)

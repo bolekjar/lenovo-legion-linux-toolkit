@@ -29,15 +29,15 @@ ColumnLayout {
     }
 
     readonly property var  points:             ["point1", "point2", "point3", "point4", "point5", "point6", "point7", "point8", "point9", "point10"]
-    readonly property bool custom:             profileSource !== null && profileSource.revision >= 0 && profileSource.value("thermal_mode") === 255
-    readonly property bool fullSpeedSupported: fanSource !== null && fanSource.revision >= 0 && fanSource.value("full_speed.supported") === true
+    readonly property bool custom:             profileSource !== null && profileSource.revision >= 0 && profileSource.value("thermal_mode", profileSource.revision) === 255
+    readonly property bool fullSpeedSupported: fanSource !== null && fanSource.revision >= 0 && fanSource.value("full_speed.supported", fanSource.revision) === true
     // value() is not tracked: the revision of the source is a dependency of the binding
-    readonly property bool fullSpeed:          fullSpeedSupported && fanSource.revision >= 0 && fanSource.value("full_speed.current_value") === true
+    readonly property bool fullSpeed:          fullSpeedSupported && fanSource.revision >= 0 && fanSource.value("full_speed.current_value", fanSource.revision) === true
     readonly property bool editable:           custom && !fullSpeed
-    readonly property int  profile:            profileSource !== null && profileSource.revision >= 0 ? profileSource.value("current_value") : 0
+    readonly property int  profile:            profileSource !== null && profileSource.revision >= 0 ? profileSource.value("current_value", profileSource.revision) : 0
 
     function pointModel(index) {
-        return curve.field("current_value." + points[index])
+        return curve.field("current_value." + points[index], curve.revision)
     }
 
     /*
@@ -70,8 +70,8 @@ ColumnLayout {
         const speeds = []
 
         for (const [map, name] of curves) {
-            const sensors = (curve.revision, curve.repeatedValues(map + "[" + profile + "].sensors"))
-            const fans    = curve.repeatedValues(map + "[" + profile + "].fan")
+            const sensors = (curve.repeatedValues(map + "[" + profile + "].sensors", curve.revision))
+            const fans    = curve.repeatedValues(map + "[" + profile + "].fan", curve.revision)
 
             if (sensors.length > index)
                 temperatures.push(name + " temp: " + (sensors[index] === 127 ? "N/A" : sensors[index]) + " ℃")
@@ -95,7 +95,7 @@ ColumnLayout {
             autoExclusive: true
             checked: editor.fullSpeed
             enabled: editor.custom && editor.fullSpeedSupported
-            onClicked: editor.fanSource.field("full_speed.current_value").value = true
+            onClicked: editor.fanSource.field("full_speed.current_value", editor.fanSource.revision).value = true
         }
 
         ThemedButton {
@@ -106,7 +106,7 @@ ColumnLayout {
             autoExclusive: true
             checked: !editor.fullSpeed
             enabled: editor.custom && editor.fullSpeedSupported
-            onClicked: editor.fanSource.field("full_speed.current_value").value = false
+            onClicked: editor.fanSource.field("full_speed.current_value", editor.fanSource.revision).value = false
         }
     }
 
@@ -181,7 +181,7 @@ ColumnLayout {
 
                     required property int index
 
-                    readonly property FieldModel pointField: (curve.revision, editor.pointModel(index))
+                    readonly property FieldModel pointField: (editor.pointModel(index))
                     readonly property int        shown: !editor.custom ? index + 1
                                                       : editor.fullSpeed ? 10
                                                       : (pointField !== null ? pointField.value : 0)

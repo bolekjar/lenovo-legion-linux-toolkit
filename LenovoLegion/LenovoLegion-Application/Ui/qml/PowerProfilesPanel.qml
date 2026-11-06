@@ -41,7 +41,7 @@ Section {
     }
 
     // Profile shown (thermal mode, value_from) and the allowed profiles with their colors ((legion.ui.value_color))
-    readonly property FieldModel profile:  (power.revision, power.field("current_value"))
+    readonly property FieldModel profile:  (power.field("current_value", power.revision))
     readonly property var        choices:  profile !== null ? profile.choices : []
     readonly property var        active:   {
         for (const choice of choices)

@@ -24,14 +24,14 @@ Section {
     readonly property var names: {
         const result = []
 
-        for (let i = 0; i < (profiles.revision, profiles.count("profiles")); ++i)
-            result.push(profiles.value("profiles[" + i + "].name"))
+        for (let i = 0; i < (profiles.count("profiles", profiles.revision)); ++i)
+            result.push(profiles.value("profiles[" + i + "].name", profiles.revision))
 
         return result
     }
 
     function description(index) {
-        return index >= 0 ? (profiles.revision, profiles.value("profiles[" + index + "].description")) : ""
+        return index >= 0 ? (profiles.value("profiles[" + index + "].description", profiles.revision)) : ""
     }
 
     enabled: profiles.available

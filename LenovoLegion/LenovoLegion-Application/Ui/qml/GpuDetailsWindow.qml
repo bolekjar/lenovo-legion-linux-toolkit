@@ -17,13 +17,13 @@ DetailWindow {
     minimumHeight: 600
 
     function hm(path) {
-        return window.nvmlSource.value("hardware_monitor." + path)
+        return window.nvmlSource.value("hardware_monitor." + path, window.nvmlSource.revision)
     }
 
     // Theoretical maximum of the PCIe link in MB/s (GB/s per lane by the generation)
-    readonly property real pcieMax: (window.nvmlSource.revision, Math.floor(([0, 0.25, 0.5, 0.984, 1.969, 3.938, 7.877][hm("pcie.generation_max")] ?? 0) * hm("pcie.width_max") * 1024))
+    readonly property real pcieMax: (Math.floor(([0, 0.25, 0.5, 0.984, 1.969, 3.938, 7.877][hm("pcie.generation_max")] ?? 0) * hm("pcie.width_max") * 1024))
     readonly property int  chartHeight: 180
-    readonly property real memoryTotal: (window.nvmlSource.revision, hm("memory_use.total") / (1024 * 1024))
+    readonly property real memoryTotal: (hm("memory_use.total") / (1024 * 1024))
 
     function sample() {
         coreClock.push(hm("gpu_clock.value"))
@@ -43,7 +43,7 @@ DetailWindow {
     }
 
     Section {
-        title: (window.nvmlSource.revision, "GPU Details - " + window.nvmlSource.value("name") + (window.nvmlSource.value("gpu_suspended") ? " (suspended)" : ""))
+        title: ("GPU Details - " + window.nvmlSource.value("name", window.nvmlSource.revision) + (window.nvmlSource.value("gpu_suspended", window.nvmlSource.revision) ? " (suspended)" : ""))
 
         RowLayout {
             Layout.fillWidth: true
@@ -61,8 +61,8 @@ DetailWindow {
                         Layout.preferredHeight: window.chartHeight
                         Layout.fillWidth: true
                         title: "Core Clock [%1 MHz]"
-                        maximum: (window.nvmlSource.revision, window.hm("gpu_clock.max_value"))
-                        tooltip: (window.nvmlSource.revision, window.minMaxText("Core Clock", value, "MHz", "gpu_clock"))
+                        maximum: (window.hm("gpu_clock.max_value"))
+                        tooltip: (window.minMaxText("Core Clock", value, "MHz", "gpu_clock"))
                     }
 
                     HistoryChart {
@@ -70,8 +70,8 @@ DetailWindow {
                         Layout.preferredHeight: window.chartHeight
                         Layout.fillWidth: true
                         title: "Memory Clock [%1 MHz]"
-                        maximum: (window.nvmlSource.revision, window.hm("memory_clock.max_value"))
-                        tooltip: (window.nvmlSource.revision, window.minMaxText("Memory Clock", value, "MHz", "memory_clock"))
+                        maximum: (window.hm("memory_clock.max_value"))
+                        tooltip: (window.minMaxText("Memory Clock", value, "MHz", "memory_clock"))
                     }
 
                     HistoryChart {
@@ -79,8 +79,8 @@ DetailWindow {
                         Layout.preferredHeight: window.chartHeight
                         Layout.fillWidth: true
                         title: "SM Clock [%1 MHz]"
-                        maximum: (window.nvmlSource.revision, window.hm("sm_clock.max_value"))
-                        tooltip: (window.nvmlSource.revision, window.minMaxText("SM Clock", value, "MHz", "sm_clock"))
+                        maximum: (window.hm("sm_clock.max_value"))
+                        tooltip: (window.minMaxText("SM Clock", value, "MHz", "sm_clock"))
                     }
                 }
             }
@@ -97,8 +97,8 @@ DetailWindow {
                         Layout.preferredHeight: window.chartHeight
                         Layout.fillWidth: true
                         title: "GPU [%1 %]"
-                        maximum: (window.nvmlSource.revision, window.hm("gpu_utilization.max_value"))
-                        tooltip: (window.nvmlSource.revision, window.minMaxText("GPU Utilization", value, "%", "gpu_utilization"))
+                        maximum: (window.hm("gpu_utilization.max_value"))
+                        tooltip: (window.minMaxText("GPU Utilization", value, "%", "gpu_utilization"))
                     }
 
                     HistoryChart {
@@ -106,8 +106,8 @@ DetailWindow {
                         Layout.preferredHeight: window.chartHeight
                         Layout.fillWidth: true
                         title: "Memory [%1 %]"
-                        maximum: (window.nvmlSource.revision, window.hm("memory_utilization.max_value"))
-                        tooltip: (window.nvmlSource.revision, window.minMaxText("Memory Utilization", value, "%", "memory_utilization"))
+                        maximum: (window.hm("memory_utilization.max_value"))
+                        tooltip: (window.minMaxText("Memory Utilization", value, "%", "memory_utilization"))
                     }
 
                     HistoryChart {
@@ -134,9 +134,9 @@ DetailWindow {
                     Layout.fillWidth: true
                     title: "Temperature [%1 °C]"
                     // Slowdown threshold of NVML: critical, 10 °C under it warning
-                    warning: (window.nvmlSource.revision, window.hm("temperature.slowdown")) > 0 ? window.hm("temperature.slowdown") - 10 : NaN
-                    critical: (window.nvmlSource.revision, window.hm("temperature.slowdown")) > 0 ? window.hm("temperature.slowdown") : NaN
-                    maximum: (window.nvmlSource.revision, window.hm("temperature.shutdown"))
+                    warning: (window.hm("temperature.slowdown")) > 0 ? window.hm("temperature.slowdown") - 10 : NaN
+                    critical: (window.hm("temperature.slowdown")) > 0 ? window.hm("temperature.slowdown") : NaN
+                    maximum: (window.hm("temperature.shutdown"))
                     tooltip: "Temperature: " + Math.round(value) + " °C\nTemperature min: 0 °C\nTemperature max: " + maximum + " °C"
                 }
 
@@ -145,8 +145,8 @@ DetailWindow {
                     Layout.preferredHeight: window.chartHeight
                     Layout.fillWidth: true
                     title: "Power [%1 W]"
-                    maximum: (window.nvmlSource.revision, Math.floor(window.hm("power.max_value") / 1000))
-                    tooltip: (window.nvmlSource.revision, "Power: " + Math.round(value) + " W\nPower min: " + Math.floor(window.hm("power.min_value") / 1000) + " W\nPower max: " + maximum + " W")
+                    maximum: (Math.floor(window.hm("power.max_value") / 1000))
+                    tooltip: ("Power: " + Math.round(value) + " W\nPower min: " + Math.floor(window.hm("power.min_value") / 1000) + " W\nPower max: " + maximum + " W")
                 }
 
                 HistoryChart {
@@ -172,8 +172,7 @@ DetailWindow {
         Label {
             Layout.fillWidth: true
             wrapMode: Text.Wrap
-            text: (window.nvmlSource.revision,
-                   "GPU Max Clock: " + window.hm("gpu_clock.max_value") + " MHz\n"
+            text: ("GPU Max Clock: " + window.hm("gpu_clock.max_value") + " MHz\n"
                  + "GPU Min Clock: " + window.hm("gpu_clock.min_value") + " MHz\n"
                  + "GPU Max SM Clock: " + window.hm("sm_clock.max_value") + " MHz\n"
                  + "GPU Min SM Clock: " + window.hm("sm_clock.min_value") + " MHz\n"

@@ -4,7 +4,7 @@ import QtQuick
 import LenovoLegion.Ui 1.0
 
 SettingsPage {
-    title: "CPU Control (QML preview)"
+    title: "CPU Control"
 
     DataSource {
         id: topology

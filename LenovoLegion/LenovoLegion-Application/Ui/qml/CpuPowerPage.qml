@@ -5,7 +5,7 @@ import QtQuick
 import LenovoLegion.Ui 1.0
 
 SettingsPage {
-    title: "CPU Power (QML preview)"
+    title: "CPU Power"
 
     // Groups next to each other on a wide page
     columnWidth: 540

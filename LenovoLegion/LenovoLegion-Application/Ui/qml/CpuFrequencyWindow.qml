@@ -33,26 +33,25 @@ DetailWindow {
     function cacheText() {
         const lines = []
 
-        for (let i = 0; i < window.infoSource.count("caches"); ++i)
-            lines.push("CPU Cache L" + window.infoSource.value("caches[" + i + "].level") + "," + window.infoSource.value("caches[" + i + "].type") + ": " + window.infoSource.value("caches[" + i + "].size"))
+        for (let i = 0; i < window.infoSource.count("caches", window.infoSource.revision); ++i)
+            lines.push("CPU Cache L" + window.infoSource.value("caches[" + i + "].level", window.infoSource.revision) + "," + window.infoSource.value("caches[" + i + "].type", window.infoSource.revision) + ": " + window.infoSource.value("caches[" + i + "].size", window.infoSource.revision))
 
         return lines.join("\n")
     }
 
     Section {
-        title: (window.infoSource.revision, "CPU Details (" + String(window.infoSource.value("cpu_model")).trim() + ")")
+        title: ("CPU Details (" + String(window.infoSource.value("cpu_model", window.infoSource.revision)).trim() + ")")
 
         Label {
             Layout.fillWidth: true
             wrapMode: Text.Wrap
-            text: (window.infoSource.revision, window.topologySource.revision,
-                   "CPU Generation: " + String(window.infoSource.value("cpu_generation")).trim() + "\n"
-                 + "CPU Architecture: " + String(window.infoSource.value("architecture")).trim() + "\n"
-                 + "CPU Cores: " + (window.topologySource.count("active_cpus") > 0 ? window.topologySource.value("active_cpus[0].cpu_max") + 1 : -1) + "\n"
+            text: ("CPU Generation: " + String(window.infoSource.value("cpu_generation", window.infoSource.revision)).trim() + "\n"
+                 + "CPU Architecture: " + String(window.infoSource.value("architecture", window.infoSource.revision)).trim() + "\n"
+                 + "CPU Cores: " + (window.topologySource.count("active_cpus", window.topologySource.revision) > 0 ? window.topologySource.value("active_cpus[0].cpu_max", window.topologySource.revision) + 1 : -1) + "\n"
                  + "CPU Min Frequency: " + window.range.scaleMin + " MHz\n"
                  + "CPU Max Frequency: " + window.range.scaleMax + " MHz\n"
                  + window.cacheText() + "\n"
-                 + "CPU Physical Package Id: " + window.infoSource.value("physical_package_id"))
+                 + "CPU Physical Package Id: " + window.infoSource.value("physical_package_id", window.infoSource.revision))
         }
     }
 
@@ -82,18 +81,18 @@ DetailWindow {
                     property int base: 0
 
                     function sample() {
-                        scalingMin = window.hwSource.value(prefix + "cpu_scaling_min_freq") / 1000
-                        scalingMax = window.hwSource.value(prefix + "cpu_scaling_max_freq") / 1000
-                        base = window.hwSource.value(prefix + "cpu_base_freq") / 1000
-                        push(Math.floor(window.hwSource.value(prefix + "cpu_scaling_cur_freq") / 1000))
+                        scalingMin = window.hwSource.value(prefix + "cpu_scaling_min_freq", window.hwSource.revision) / 1000
+                        scalingMax = window.hwSource.value(prefix + "cpu_scaling_max_freq", window.hwSource.revision) / 1000
+                        base = window.hwSource.value(prefix + "cpu_base_freq", window.hwSource.revision) / 1000
+                        push(Math.floor(window.hwSource.value(prefix + "cpu_scaling_cur_freq", window.hwSource.revision) / 1000))
                     }
 
                     Layout.fillWidth: true
                     implicitHeight: 104
                     title: (isPerformance ? "P-Core: " : "E-Core: ") + modelData + " [%1 MHz]"
                     fieldWidth: 4
-                    minimum: (window.hwSource.revision, window.hwSource.value(prefix + "cpu_info_min_freq") / 1000)
-                    maximum: (window.hwSource.revision, window.hwSource.value(prefix + "cpu_info_max_freq") / 1000)
+                    minimum: (window.hwSource.value(prefix + "cpu_info_min_freq", window.hwSource.revision) / 1000)
+                    maximum: (window.hwSource.value(prefix + "cpu_info_max_freq", window.hwSource.revision) / 1000)
                     tooltip: "Current CPU Frequency: " + Math.round(value) + " MHz\n"
                            + "Scaling Min Frequency: " + scalingMin + " MHz\n"
                            + "Scaling Max Frequency: " + scalingMax + " MHz\n"

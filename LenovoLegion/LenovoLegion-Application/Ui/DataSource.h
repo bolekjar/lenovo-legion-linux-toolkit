@@ -140,6 +140,17 @@ public:
     QStringList fieldPaths() const;
 
     /*
+     * QML: the variants with the revision argument ("source.value(path, source.revision)") make the binding depend on
+     * the revision, it is evaluated again when the data change (calls of C++ functions are not tracked by bindings).
+     * The revision is not used.
+     */
+    Q_INVOKABLE LenovoLegionGui::FieldModel* field(const QString& path,int revision) { Q_UNUSED(revision) return field(path); }
+    Q_INVOKABLE QVariant     value(const QString& path,int revision) const          { Q_UNUSED(revision) return value(path); }
+    Q_INVOKABLE QVariant     daemonValue(const QString& path,int revision) const    { Q_UNUSED(revision) return daemonValue(path); }
+    Q_INVOKABLE QVariantList repeatedValues(const QString& path,int revision) const { Q_UNUSED(revision) return repeatedValues(path); }
+    Q_INVOKABLE int          count(const QString& path,int revision) const          { Q_UNUSED(revision) return count(path); }
+
+    /*
      * Model of the field, created once per path (owned by the data source)
      */
     Q_INVOKABLE LenovoLegionGui::FieldModel* field(const QString& path);

@@ -87,7 +87,7 @@ MainWindow::MainWindow(DataProviderManager &dataProviderManager, QWidget *parent
     toolbarActionInitializer(ui->toolBar->addAction("Home"),QIcon(":/images/icons/toolbar-home.png"),[this](){
         if(ui->label_DaemonStatus->text() != DAEMON_CONNECTION_STATUS_CONNECTED.data())
             return;
-        ui->toolBar_HBoxLayout->addWidget((new ToolBarQmlPageWidget(m_dataProviderManager.dataProvider(),QUrl("qrc:/ui/PreviewPage.qml"),this))->initialize());
+        ui->toolBar_HBoxLayout->addWidget((new ToolBarQmlPageWidget(m_dataProviderManager.dataProvider(),QUrl("qrc:/ui/HomePage.qml"),this))->initialize());
     }, true);
 
     toolbarActionInitializer(ui->toolBar->addAction("Profiles"),QIcon(":/images/icons/toolbar-user.png"),[this](){

@@ -5,7 +5,7 @@ import QtQuick
 import LenovoLegion.Ui 1.0
 
 SettingsPage {
-    title: "Power (QML preview)"
+    title: "Power"
 
     // Groups next to each other on a wide page
     columnWidth: 540
@@ -21,7 +21,7 @@ SettingsPage {
      * Presets with the default values of the supported power profiles (the same as the preset combo box of PowerControl)
      */
     function profilePresets(source,limits) {
-        const profile = power.field("current_value")
+        const profile = power.field("current_value", power.revision)
         const presets = [{ text: "NONE", apply: false, values: {} }]
 
         if (source === null || profile === null)
@@ -34,7 +34,7 @@ SettingsPage {
             const values = {}
 
             for (const limit of limits)
-                values[limit + ".current_value"] = source.value(limit + ".mode_descriptor_map[" + choice.value + "].default_value")
+                values[limit + ".current_value"] = source.value(limit + ".mode_descriptor_map[" + choice.value + "].default_value", source.revision)
 
             presets.push({ text: choice.text, apply: false, values: values })
         }
@@ -42,7 +42,7 @@ SettingsPage {
         return presets
     }
 
-    readonly property bool customMode: power.revision >= 0 && power.value("thermal_mode") === 255
+    readonly property bool customMode: power.revision >= 0 && power.value("thermal_mode", power.revision) === 255
 
     // Limits can be changed only in the custom thermal mode, order the same as PowerControl
     Section {
@@ -66,7 +66,7 @@ SettingsPage {
             delegate: LimitField { source: cpuPower; profileSource: power; limitPath: modelData }
         }
 
-        presets: (cpuPower.revision, power.revision, profilePresets(cpuPower,cpuSection.limits))
+        presets: (profilePresets(cpuPower,cpuSection.limits))
     }
 
     Section {
@@ -90,6 +90,6 @@ SettingsPage {
             delegate: LimitField { source: gpuPower; profileSource: power; limitPath: modelData }
         }
 
-        presets: (gpuPower.revision, power.revision, profilePresets(gpuPower,gpuSection.limits))
+        presets: (profilePresets(gpuPower,gpuSection.limits))
     }
 }

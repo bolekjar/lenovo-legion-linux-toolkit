@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: GPL-2.0
-// Pages of the generic GUI (toolbar page "Preview", UiDesign.md): HW monitor always visible over the whole width,
+// Pages of the generic GUI (toolbar page "Home", UiDesign.md): HW monitor always visible over the whole width,
 // below it the power profiles (always visible) next to the settings pages in tabs
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
 Rectangle {
-    id: preview
+    id: home
 
     color: theme.window
 

@@ -22,7 +22,7 @@
         <file alias="Notifications.qml">qml/Notifications.qml</file>
         <file alias="PowerPage.qml">qml/PowerPage.qml</file>
         <file alias="PowerProfilesPanel.qml">qml/PowerProfilesPanel.qml</file>
-        <file alias="PreviewPage.qml">qml/PreviewPage.qml</file>
+        <file alias="HomePage.qml">qml/HomePage.qml</file>
         <file alias="SavedProfilesPanel.qml">qml/SavedProfilesPanel.qml</file>
         <file alias="Section.qml">qml/Section.qml</file>
         <file alias="SettingsPage.qml">qml/SettingsPage.qml</file>

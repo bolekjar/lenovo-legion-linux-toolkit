@@ -38,7 +38,7 @@ GroupBox {
     // The content uses the whole height of a stretched group (power profiles panel, fan curve), otherwise it stays at the top
     property bool       stretchContent: false
 
-    // Host of the notifications (PreviewPage): errors are shown there, otherwise in the group
+    // Host of the notifications (HomePage): errors are shown there, otherwise in the group
     property Item       notificationHost: null
 
     Component.onCompleted: {

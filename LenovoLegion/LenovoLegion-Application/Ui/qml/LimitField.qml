@@ -11,10 +11,10 @@ Field {
     property DataSource profileSource    // POWER_PROFILE
     property string     limitPath    // e.g. "cpu_ltp_limit"
 
-    readonly property bool custom: profileSource !== null && profileSource.revision >= 0 && profileSource.value("thermal_mode") === 255
+    readonly property bool custom: profileSource !== null && profileSource.revision >= 0 && profileSource.value("thermal_mode", profileSource.revision) === 255
 
     path: limitPath + ".current_value"
 
     overrideValue: custom || profileSource === null || source === null ? undefined
-                 : (source.revision, source.value(limitPath + ".mode_descriptor_map[" + profileSource.value("current_value") + "].default_value"))
+                 : (source.value(limitPath + ".mode_descriptor_map[" + profileSource.value("current_value") + "].default_value", source.revision))
 }

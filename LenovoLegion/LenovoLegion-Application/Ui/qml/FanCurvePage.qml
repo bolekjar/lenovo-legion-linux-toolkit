@@ -6,7 +6,7 @@ import QtQuick.Layouts
 import LenovoLegion.Ui 1.0
 
 SettingsPage {
-    title: "Fan Curve (QML preview)"
+    title: "Fan Curve"
 
     // The fan curve uses the whole page the same as FanControl in its tab
     fillHeight: true
