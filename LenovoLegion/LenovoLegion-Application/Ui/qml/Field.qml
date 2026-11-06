@@ -111,7 +111,10 @@ Item {
     Component {
         id: sliderControl
 
+        // Gap between the slider and its value: the handle at the maximum does not touch the text
         RowLayout {
+            spacing: 12
+
             ThemedSlider {
                 Layout.fillWidth: true
 
@@ -124,11 +127,33 @@ Item {
                 onMoved: field.fieldModel.value = Math.round(value / field.fieldModel.step) * field.fieldModel.step
             }
 
+            // Value with the unit in a cell of the width of the longest value (the slider does not move with the text)
             Label {
-                Layout.preferredWidth: 50
+                id: valueLabel
 
-                text: field.shownValue
+                readonly property string unit: field.fieldModel.unit.length > 0 ? " " + field.fieldModel.unit : ""
+
+                Layout.preferredWidth: Math.max(56, Math.ceil(Math.max(minimumText.advanceWidth, maximumText.advanceWidth)) + 8)
+                Layout.alignment: Qt.AlignVCenter
+
+                text: field.shownValue + unit
                 horizontalAlignment: Text.AlignRight
+                verticalAlignment: Text.AlignVCenter
+
+                // TextMetrics is not an item (no parent): the label by its id
+                TextMetrics {
+                    id: minimumText
+
+                    font: valueLabel.font
+                    text: (field.fieldModel.min !== undefined ? field.fieldModel.min : 0) + valueLabel.unit
+                }
+
+                TextMetrics {
+                    id: maximumText
+
+                    font: valueLabel.font
+                    text: (field.fieldModel.max !== undefined ? field.fieldModel.max : 100) + valueLabel.unit
+                }
             }
         }
     }
@@ -205,7 +230,8 @@ Item {
         required property Item owner
 
         // Long labels (power limits) are wrapped, the controls stay aligned
-        Layout.preferredWidth: owner.vertical || owner.labelAfter ? -1 : 300
+        // Narrow fields (a page in columns): the label takes at most 45 % of the width, the control fits
+        Layout.preferredWidth: owner.vertical || owner.labelAfter ? -1 : Math.min(300, Math.max(160, owner.width * 0.45))
         Layout.fillWidth: owner.vertical || owner.labelAfter
         wrapMode: Text.Wrap
         horizontalAlignment: owner.vertical ? Text.AlignHCenter : Text.AlignLeft
@@ -217,6 +243,19 @@ Item {
         text: owner.fieldModel === null ? ""
             : (owner.label.length > 0 ? owner.label : owner.fieldModel.label)
               + (owner.fieldModel.unit.length > 0 ? " [" + owner.fieldModel.unit + "]" : "")
+
+        // Changed value: a mark besides the color (visible also without the colors) in a space reserved always,
+        // the label does not get wider or wrap when the value is changed
+        leftPadding: owner.vertical ? 0 : 14
+
+        Label {
+            x: 0
+            y: parent.topPadding
+            visible: !owner.vertical && owner.fieldModel !== null && owner.fieldModel.modified
+            text: "●"
+            font: parent.font
+            color: parent.color
+        }
 
         HoverHandler {
             id: hover

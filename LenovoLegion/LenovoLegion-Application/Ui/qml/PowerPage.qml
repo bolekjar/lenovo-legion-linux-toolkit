@@ -7,6 +7,9 @@ import LenovoLegion.Ui 1.0
 SettingsPage {
     title: "Power (QML preview)"
 
+    // Groups next to each other on a wide page
+    columnWidth: 540
+
     // Power profile (custom mode, presets), changed in PowerProfilesPanel next to the tabs
     DataSource {
         id: power

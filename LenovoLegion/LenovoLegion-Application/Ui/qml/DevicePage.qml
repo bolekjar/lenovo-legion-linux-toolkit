@@ -6,6 +6,9 @@ import LenovoLegion.Ui 1.0
 SettingsPage {
     title: "Device (QML preview)"
 
+    // Groups next to each other on a wide page
+    columnWidth: 540
+
     // Selected fields, written immediately
     Section {
         title: "Hardware Control"

@@ -277,6 +277,8 @@ SettingsPage {
                         title: label + " [%1 °C]"
                         minimum: 30
                         maximum: 110
+                        warning: 75
+                        critical: 90
                         tooltip: label + ": " + Math.round(value) + " °C\n" + label + " min: 30 °C\n" + label + " max: 100 °C"
                     }
                 }
@@ -309,6 +311,8 @@ SettingsPage {
                         title: label + " [%1 RPM]"
                         minimum: speedMin
                         maximum: speedMax
+                        // High speed is only loud, not a failure: warning only
+                        warning: speedMin + (speedMax - 100 - speedMin) * 0.85
                         tooltip: "Fan " + label + " Speed: " + Math.round(value) + " RPM\nFan " + label + " Speed min: " + speedMin + " RPM\nFan " + label + " Speed max: " + speedMax + " RPM"
                     }
                 }

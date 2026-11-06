@@ -12,7 +12,8 @@ TabButton {
     property bool   available: true
     property string reason
 
-    // Icon before the text (Lenovo Legion tabs) and the tool tip of an available tab
+    // Icon of the function before the text, Legion badge after the text (Lenovo tabs), tool tip of an available tab
+    property url    functionIcon
     property url    iconSource
     property string hint
 
@@ -33,19 +34,22 @@ TabButton {
     // Not selected tab is lower (margin-top: 4px)
     topInset: selected ? 0 : 4
 
+    // Icon of the function in the color of the text, the text, the Legion badge of the Lenovo tabs
+    readonly property color textColor: control.grayed && !control.selected ? theme.disabledText
+                                     : control.selected ? theme.accentText
+                                     : control.hovered ? theme.text : theme.tabText
+
     contentItem: Row {
         spacing: 6
 
-        Image {
+        // Monochrome icon colored by the text color
+        TintedIcon {
             anchors.verticalCenter: parent.verticalCenter
-            visible: control.iconSource.toString().length > 0
-            source: control.iconSource
+            visible: control.functionIcon.toString().length > 0
             width: 16
             height: 16
-            sourceSize: Qt.size(32, 32)
-            fillMode: Image.PreserveAspectFit
-            smooth: true
-            opacity: control.grayed && !control.selected ? 0.5 : 1.0
+            source: control.functionIcon
+            color: control.textColor
         }
 
         Text {
@@ -53,9 +57,20 @@ TabButton {
             text: control.text
             font.bold: control.selected && theme.styled
             font.pixelSize: theme.fontPixelSize
-            color: control.grayed && !control.selected ? theme.disabledText
-                 : control.selected ? theme.accentText
-                 : control.hovered ? theme.text : theme.tabText
+            color: control.textColor
+        }
+
+        // Badge: controlled by the Lenovo Legion kernel driver
+        Image {
+            anchors.verticalCenter: parent.verticalCenter
+            visible: control.iconSource.toString().length > 0
+            source: control.iconSource
+            width: 14
+            height: 14
+            sourceSize: Qt.size(32, 32)
+            fillMode: Image.PreserveAspectFit
+            smooth: true
+            opacity: control.grayed && !control.selected ? 0.5 : 1.0
         }
     }
 

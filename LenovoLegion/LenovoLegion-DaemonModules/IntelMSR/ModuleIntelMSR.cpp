@@ -359,10 +359,16 @@ private:
 
             if(!SysFs::write(attribute(plane,"_offset"),(message.*plane.m_settings)().offset(),&error))
             {
-                const QString text = QString("IntelMSR: unable to set ").append(plane.m_name).append(" offset ").append(QString::number((message.*plane.m_settings)().offset())).append(" : ").append(error);
+                const qint32 offset = (message.*plane.m_settings)().offset();
 
-                m_host.logger().error(text);
-                errors.append(text);
+                m_host.logger().error(QString("IntelMSR: unable to set ").append(plane.m_name).append(" offset ").append(QString::number(offset)).append(" : ").append(error));
+
+                /*
+                 * The offset is checked before (supported plane, range), the kernel module reads it back after the write:
+                 * a failed write means that the CPU ignored it, usually undervolting disabled in the BIOS
+                 */
+                errors.append(QString("CPU voltage offset ").append(plane.m_name).append(' ').append(QString::number(offset / 1000)).append(" mV was not applied (")
+                              .append(error).append("): undervolting is probably disabled in the BIOS"));
             }
         }
 

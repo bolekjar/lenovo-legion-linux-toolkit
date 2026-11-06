@@ -15,6 +15,7 @@ RowLayout {
     //  apply: false:    item of the "Preset" combo box, values are filled in and sent by Apply (offsets of the widget pages)
     property var        presets: []
     property string     presetLabel: "Preset"   // label of the preset combo box (texts of the widget pages)
+    property bool       showApply: true         // Cancel/Apply (hidden on a page with the change bar, SettingsPage)
 
     readonly property var applyPresets: presets.filter(preset => preset.apply !== false)
     readonly property var fillPresets:  presets.filter(preset => preset.apply === false)
@@ -48,12 +49,14 @@ RowLayout {
     }
 
     ThemedButton {
+        visible: bar.showApply
         text: "Cancel"
         enabled: bar.source !== null && bar.source.dirty
         onClicked: bar.source.cancel()
     }
 
     ThemedButton {
+        visible: bar.showApply
         text: "Apply"
         enabled: bar.source !== null && bar.source.dirty
         onClicked: bar.source.apply()

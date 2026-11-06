@@ -9,6 +9,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import LenovoLegion.Ui 1.0
+import "CellLayout.js" as CellLayout
 
 Section {
     id: grid
@@ -204,7 +205,29 @@ Section {
         }
     }
 
+    // Shown threads in the order of the CPU numbers
+    readonly property var shownThreads: {
+        const result = []
+
+        for (let cpu = 0; cpu < cpuCount; ++cpu)
+            if (shown(cpu))
+                result.push(cpu)
+
+        return result
+    }
+
+    // Width of a thread cell (the whole title "P-Thread: 15, CoreId: 11, DieId: 0" fits)
+    readonly property int cellWidth: 290
+
+    // Shown cells column by column, the kinds of the threads in their own columns, columns by the width (up to 4)
     GridLayout {
+        id: cells
+
+        readonly property int cellColumns: Math.max(1, Math.min(4, Math.floor((width + columnSpacing) / (grid.cellWidth + columnSpacing))))
+
+        // P, E and disabled threads strictly in their own columns
+        readonly property var placement: CellLayout.place(["P", "E", "D"].map(kind => grid.shownThreads.filter(cpu => grid.kinds[cpu] === kind)), cellColumns)
+
         Layout.fillWidth: true
 
         rowSpacing: 6
@@ -226,9 +249,12 @@ Section {
                 // Fixed dark background of P/E-threads: light text in all themes, disabled threads use the theme
                 readonly property color textColor: grid.kinds[index] === "D" ? theme.text : "#e0e0e0"
 
-                Layout.row: index % 8
-                Layout.column: Math.floor(index / 8)
+                readonly property var position: cells.placement.positions[index] !== undefined ? cells.placement.positions[index] : [0, 0]
+
+                Layout.row: position[0]
+                Layout.column: position[1]
                 Layout.fillWidth: true
+                Layout.preferredWidth: grid.cellWidth
 
                 visible: grid.shown(index)
 
@@ -238,19 +264,45 @@ Section {
                 titleColor: grid.titleColors[index]
                 backgroundColor: grid.kindBackground[grid.kinds[index]]
 
-                ThemedCheckBox {
-                    text: "Enabled"
-                    checked: thread.onlineField !== null && thread.onlineField.value === true
-                    enabled: thread.index !== 0
-                    onToggled: thread.onlineField.value = checked
-                    textColor: thread.onlineField !== null && thread.onlineField.modified ? theme.modified
-                             : enabled ? thread.textColor : theme.disabledText
-                }
+                // Enabled and the governor in one row
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 12
 
-                Label {
-                    visible: thread.governorField !== null && thread.governorField.visible
-                    text: "Governor: " + (thread.governorField !== null ? thread.governorField.value : "")
-                    color: thread.governorField !== null && thread.governorField.modified ? theme.modified : thread.textColor
+                    // Marks of changed values in a space reserved always (the row does not move when a value is changed)
+                    Label {
+                        text: "●"
+                        color: theme.modified
+                        opacity: thread.onlineField !== null && thread.onlineField.modified ? 1 : 0
+                    }
+
+                    ThemedCheckBox {
+                        Layout.leftMargin: -10
+                        text: "Enabled"
+                        checked: thread.onlineField !== null && thread.onlineField.value === true
+                        enabled: thread.index !== 0
+                        onToggled: thread.onlineField.value = checked
+                        textColor: thread.onlineField !== null && thread.onlineField.modified ? theme.modified
+                                 : enabled ? thread.textColor : theme.disabledText
+                    }
+
+                    Item {
+                        Layout.fillWidth: true
+                    }
+
+                    Label {
+                        visible: thread.governorField !== null && thread.governorField.visible
+                        text: "●"
+                        color: theme.modified
+                        opacity: thread.governorField !== null && thread.governorField.modified ? 1 : 0
+                    }
+
+                    Label {
+                        Layout.leftMargin: -8
+                        visible: thread.governorField !== null && thread.governorField.visible
+                        text: "Governor: " + (thread.governorField !== null ? thread.governorField.value : "")
+                        color: thread.governorField !== null && thread.governorField.modified ? theme.modified : thread.textColor
+                    }
                 }
             }
         }

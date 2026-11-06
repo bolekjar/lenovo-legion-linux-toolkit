@@ -133,6 +133,9 @@ DetailWindow {
                     Layout.preferredHeight: window.chartHeight
                     Layout.fillWidth: true
                     title: "Temperature [%1 °C]"
+                    // Slowdown threshold of NVML: critical, 10 °C under it warning
+                    warning: (window.nvmlSource.revision, window.hm("temperature.slowdown")) > 0 ? window.hm("temperature.slowdown") - 10 : NaN
+                    critical: (window.nvmlSource.revision, window.hm("temperature.slowdown")) > 0 ? window.hm("temperature.slowdown") : NaN
                     maximum: (window.nvmlSource.revision, window.hm("temperature.shutdown"))
                     tooltip: "Temperature: " + Math.round(value) + " °C\nTemperature min: 0 °C\nTemperature max: " + maximum + " °C"
                 }

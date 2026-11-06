@@ -6,7 +6,16 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 Rectangle {
+    id: preview
+
     color: theme.window
+
+    // Errors of the groups as notifications (Section.notificationHost)
+    readonly property bool isNotificationHost: true
+
+    function notify(title, message) {
+        notifications.notify(title, message)
+    }
 
     ColumnLayout {
         anchors.fill: parent
@@ -74,6 +83,7 @@ Rectangle {
                             reason: modelData.reason
                             hint: modelData.description
                             iconSource: modelData.platform === "lenovo" ? "qrc:/images/icons/LenovoLegionIco.png" : ""
+                            functionIcon: modelData.tabIcon !== undefined ? "qrc:/ui/icons/" + modelData.tabIcon + ".svg" : ""
                             groupStart: index > 0 && modelData.platform !== pages.children[index - 1].platform
                         }
                     }
@@ -105,16 +115,29 @@ Rectangle {
                         currentIndex: tabs.currentIndex
 
                         // The tab names the page, no title (the first section is aligned with the power profiles)
-                        CpuControlPage   { title: ""; transparent: true; readonly property string tabText: "CPU Control" }
-                        CpuFrequencyPage { title: ""; transparent: true; readonly property string tabText: "CPU Freq Control" }
-                        CpuPowerPage     { title: ""; transparent: true; readonly property string tabText: "CPU Power" }
-                        GpuPage    { title: ""; transparent: true; readonly property string tabText: "GPU" }
-                        PowerPage  { title: ""; transparent: true; readonly property string tabText: "Power" }
-                        FanCurvePage { title: ""; transparent: true; readonly property string tabText: "Fan Curve" }
-                        DevicePage { title: ""; transparent: true; readonly property string tabText: "Device" }
+                        CpuControlPage   { title: ""; transparent: true; readonly property string tabText: "CPU Control"; readonly property string tabIcon: "cpu" }
+                        CpuFrequencyPage { title: ""; transparent: true; readonly property string tabText: "CPU Freq Control"; readonly property string tabIcon: "frequency" }
+                        CpuPowerPage     { title: ""; transparent: true; readonly property string tabText: "CPU Power"; readonly property string tabIcon: "power" }
+                        GpuPage    { title: ""; transparent: true; readonly property string tabText: "GPU"; readonly property string tabIcon: "gpu" }
+                        PowerPage  { title: ""; transparent: true; readonly property string tabText: "Power"; readonly property string tabIcon: "limits" }
+                        FanCurvePage { title: ""; transparent: true; readonly property string tabText: "Fan Curve"; readonly property string tabIcon: "fan" }
+                        DevicePage { title: ""; transparent: true; readonly property string tabText: "Device"; readonly property string tabIcon: "device" }
                     }
                 }
             }
         }
+    }
+
+    // Bottom right over the pages, above the change bar of the page
+    Notifications {
+        id: notifications
+
+        z: 100
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.rightMargin: 24
+        anchors.bottomMargin: 80
+        width: 420
+        height: parent.height / 2
     }
 }

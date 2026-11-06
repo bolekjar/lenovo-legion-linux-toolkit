@@ -9,6 +9,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import LenovoLegion.Ui 1.0
+import "CellLayout.js" as CellLayout
 
 Section {
     id: grid
@@ -48,6 +49,9 @@ Section {
     property int globalMax: 0
 
     readonly property var presets: [2500, 3000, 3500, 4000, 4500, 5000]
+
+    // Width of a thread cell (the whole title "P-Thread: 15, CoreId: 11, DieId: 0" fits)
+    readonly property int cellWidth: 290
 
     function ranges(field) {
         const cpus = []
@@ -194,6 +198,14 @@ Section {
         }
     }
 
+    // Width of the longest global value ("5400 MHz")
+    TextMetrics {
+        id: valueWidth
+
+        font.pixelSize: theme.fontPixelSize
+        text: grid.rangeMax + " MHz"
+    }
+
     GridLayout {
         Layout.fillWidth: true
 
@@ -212,7 +224,7 @@ Section {
         }
 
         Label {
-            Layout.preferredWidth: 60
+            Layout.preferredWidth: valueWidth.advanceWidth + 8   // the longest value, the text does not run into the slider
             text: grid.globalMin + " MHz"
             horizontalAlignment: Text.AlignRight
         }
@@ -240,7 +252,7 @@ Section {
         }
 
         Label {
-            Layout.preferredWidth: 60
+            Layout.preferredWidth: valueWidth.advanceWidth + 8   // the longest value, the text does not run into the slider
             text: grid.globalMax + " MHz"
             horizontalAlignment: Text.AlignRight
         }
@@ -277,7 +289,15 @@ Section {
         }
     }
 
+    // Cells column by column, P and E threads in their own columns, columns by the width (up to 4)
     GridLayout {
+        id: cells
+
+        readonly property int cellColumns: Math.max(1, Math.min(4, Math.floor((width + columnSpacing) / (grid.cellWidth + columnSpacing))))
+
+        // P and E threads strictly in their own columns
+        readonly property var placement: CellLayout.place([grid.performance, grid.efficient], cellColumns)
+
         Layout.fillWidth: true
 
         rowSpacing: 6
@@ -296,43 +316,78 @@ Section {
                 readonly property FieldModel minModel: (frequency.revision, grid.minField(cpu))
                 readonly property FieldModel maxModel: (frequency.revision, grid.maxField(cpu))
 
-                Layout.row: cpu % 8
-                Layout.column: Math.floor(cpu / 8)
-                Layout.fillWidth: true
+                readonly property var position: cells.placement.positions[cpu] !== undefined ? cells.placement.positions[cpu] : [0, 0]
 
-                implicitWidth: 260
+                Layout.row: position[0]
+                Layout.column: position[1]
+                Layout.fillWidth: true
+                Layout.preferredWidth: grid.cellWidth
 
                 title: grid.kindName[grid.kind(cpu)] + ": " + cpu
                        + ", CoreId: " + (frequency.revision, frequency.daemonValue("cpus[" + cpu + "].core_id"))
                        + ", DieId: " + frequency.daemonValue("cpus[" + cpu + "].die_id")
                 backgroundColor: grid.kindBackground[grid.kind(cpu)]
 
-                Repeater {
-                    model: [{ name: "Min", model: thread.minModel, set: grid.setThreadMin }, { name: "Max", model: thread.maxModel, set: grid.setThreadMax }]
+                // Min and Max of the thread in one range slider (Min raises Max, Max lowers Min: setThreadMin/Max)
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 12
 
-                    delegate: RowLayout {
+                    ThemedRangeSlider {
+                        id: range
+
                         Layout.fillWidth: true
+                        enabled: thread.minModel !== null && thread.maxModel !== null
+                        from: thread.minModel !== null ? thread.minModel.min : 0
+                        to: thread.maxModel !== null ? thread.maxModel.max : 1
+                        stepSize: 1
+                        snapMode: RangeSlider.SnapAlways
+                        first.value: thread.minModel !== null ? thread.minModel.value : 0
+                        second.value: thread.maxModel !== null ? thread.maxModel.value : 1
 
-                        Label {
-                            Layout.preferredWidth: 30
-                            text: modelData.name
-                            color: modelData.model !== null && modelData.model.modified ? theme.modified : "#e0e0e0"
+                        // The model values are shown again after the limits and the coupling (the binding is restored)
+                        first.onMoved: {
+                            grid.setThreadMin(thread.cpu, Math.round(first.value))
+                            first.value = Qt.binding(() => thread.minModel !== null ? thread.minModel.value : 0)
+                        }
+                        second.onMoved: {
+                            grid.setThreadMax(thread.cpu, Math.round(second.value))
+                            second.value = Qt.binding(() => thread.maxModel !== null ? thread.maxModel.value : 1)
+                        }
+                    }
+
+                    // "Min – Max MHz", a changed value not applied yet in the change color; the width of the longest
+                    // text and the mark reserved always: the slider does not change its width with the values
+                    Row {
+                        Layout.preferredWidth: rangeText.advanceWidth
+
+                        TextMetrics {
+                            id: rangeText
+
+                            font.pixelSize: theme.fontPixelSize
+                            text: "● " + grid.rangeMax + " – " + grid.rangeMax + " MHz"
                         }
 
-                        ThemedSlider {
-                            Layout.fillWidth: true
-                            from: modelData.model !== null ? modelData.model.min : 0
-                            to: modelData.model !== null ? modelData.model.max : 1
-                            stepSize: 1
-                            value: modelData.model !== null ? modelData.model.value : 0
-                            onMoved: modelData.set(thread.cpu, Math.round(value))
+                        // Mark of a changed value (besides the color)
+                        Label {
+                            text: "● "
+                            color: theme.modified
+                            opacity: (thread.minModel !== null && thread.minModel.modified) || (thread.maxModel !== null && thread.maxModel.modified) ? 1 : 0
                         }
 
                         Label {
-                            Layout.preferredWidth: 40
-                            text: modelData.model !== null ? modelData.model.value : ""
+                            text: thread.minModel !== null ? thread.minModel.value : ""
+                            color: thread.minModel !== null && thread.minModel.modified ? theme.modified : "#e0e0e0"
+                        }
+
+                        Label {
+                            text: " – "
                             color: "#e0e0e0"
-                            horizontalAlignment: Text.AlignRight
+                        }
+
+                        Label {
+                            text: thread.maxModel !== null ? thread.maxModel.value + " MHz" : ""
+                            color: thread.maxModel !== null && thread.maxModel.modified ? theme.modified : "#e0e0e0"
                         }
                     }
                 }

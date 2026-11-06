@@ -54,6 +54,9 @@ Section {
         visible: panel.names.length > 0
         model: panel.names
 
+        // The list can come after the combo box was created: the first profile is selected
+        onCountChanged: if (currentIndex < 0 && count > 0) currentIndex = 0
+
         // The list can be changed in the profile management: read it again when the list is opened
         onPressedChanged: if (pressed) profiles.reload()
 

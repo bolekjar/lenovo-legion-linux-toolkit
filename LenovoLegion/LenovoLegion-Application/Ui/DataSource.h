@@ -42,6 +42,11 @@ class DataSource : public QObject
      */
     Q_PROPERTY(int     interval  READ interval  WRITE setInterval  NOTIFY intervalChanged)
     Q_PROPERTY(bool    dirty     READ dirty                        NOTIFY messageChanged)
+
+    /*
+     * Number of the changed fields not applied yet (the change bar of the page: "3 changes")
+     */
+    Q_PROPERTY(int     changeCount READ changeCount                NOTIFY messageChanged)
     Q_PROPERTY(bool    valid     READ valid                        NOTIFY messageChanged)
 
     /*
@@ -91,6 +96,7 @@ public:
 
     bool    dirty() const;
     bool    valid() const;
+    int     changeCount() const;
     bool    available() const;
     QString platform() const;
     QString lastError() const;
@@ -188,6 +194,8 @@ signals:
     void intervalChanged();
     void messageChanged();
     void lastErrorChanged();
+    // Every error (also the same text again): apply, command or reload failed. Section shows it for a while.
+    void failed(const QString& message);
 
 private:
 

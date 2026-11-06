@@ -38,6 +38,11 @@ class PageSources : public QObject
      */
     Q_PROPERTY(QString  description READ description           NOTIFY stateChanged)
 
+    /*
+     * Changed fields not applied yet in all data sources of the page (the change bar of the page)
+     */
+    Q_PROPERTY(int      changeCount READ changeCount           NOTIFY stateChanged)
+
 public:
 
     explicit PageSources(QObject* parent = nullptr);
@@ -49,6 +54,13 @@ public:
     QString  platform() const;
     QString  reason() const;
     QString  description() const;
+    int      changeCount() const;
+
+    /*
+     * Apply / cancel the changes of all data sources of the page
+     */
+    Q_INVOKABLE void apply();
+    Q_INVOKABLE void cancel();
 
 signals:
 

@@ -2,6 +2,7 @@
     <qresource prefix="/ui">
         <file alias="ApplyBar.qml">qml/ApplyBar.qml</file>
         <file alias="AutoSection.qml">qml/AutoSection.qml</file>
+        <file alias="CellLayout.js">qml/CellLayout.js</file>
         <file alias="CpuGrid.qml">qml/CpuGrid.qml</file>
         <file alias="CpuControlPage.qml">qml/CpuControlPage.qml</file>
         <file alias="CpuFrequencyPage.qml">qml/CpuFrequencyPage.qml</file>
@@ -18,6 +19,7 @@
         <file alias="HistoryChart.qml">qml/HistoryChart.qml</file>
         <file alias="HwMonitorPage.qml">qml/HwMonitorPage.qml</file>
         <file alias="LimitField.qml">qml/LimitField.qml</file>
+        <file alias="Notifications.qml">qml/Notifications.qml</file>
         <file alias="PowerPage.qml">qml/PowerPage.qml</file>
         <file alias="PowerProfilesPanel.qml">qml/PowerProfilesPanel.qml</file>
         <file alias="PreviewPage.qml">qml/PreviewPage.qml</file>
@@ -32,11 +34,20 @@
         <file alias="ThemedListBackground.qml">qml/ThemedListBackground.qml</file>
         <file alias="ThemedListDelegate.qml">qml/ThemedListDelegate.qml</file>
         <file alias="ThemedRadioButton.qml">qml/ThemedRadioButton.qml</file>
+        <file alias="ThemedRangeSlider.qml">qml/ThemedRangeSlider.qml</file>
         <file alias="ThemedScrollBar.qml">qml/ThemedScrollBar.qml</file>
         <file alias="ThemedSlider.qml">qml/ThemedSlider.qml</file>
+        <file alias="TintedIcon.qml">qml/TintedIcon.qml</file>
         <file alias="ThemedTabBar.qml">qml/ThemedTabBar.qml</file>
         <file alias="ThemedTabButton.qml">qml/ThemedTabButton.qml</file>
         <file alias="ThemedTextField.qml">qml/ThemedTextField.qml</file>
         <file alias="ThemedToolTip.qml">qml/ThemedToolTip.qml</file>
+        <file alias="icons/cpu.svg">icons/cpu.svg</file>
+        <file alias="icons/frequency.svg">icons/frequency.svg</file>
+        <file alias="icons/power.svg">icons/power.svg</file>
+        <file alias="icons/limits.svg">icons/limits.svg</file>
+        <file alias="icons/gpu.svg">icons/gpu.svg</file>
+        <file alias="icons/fan.svg">icons/fan.svg</file>
+        <file alias="icons/device.svg">icons/device.svg</file>
     </qresource>
 </RCC>

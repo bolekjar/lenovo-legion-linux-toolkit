@@ -7,6 +7,9 @@ import LenovoLegion.Ui 1.0
 SettingsPage {
     title: "CPU Power (QML preview)"
 
+    // Groups next to each other on a wide page
+    columnWidth: 540
+
     // All fields of the message by the annotations in CPUOptions.proto
     AutoSection {
         title: "CPU Power State Control"

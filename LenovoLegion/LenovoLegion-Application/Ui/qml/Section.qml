@@ -23,7 +23,83 @@ GroupBox {
 
     default property alias content: fields.data
 
+    // SettingsPage with the change bar (Cancel/Apply of the whole page): the group shows only its presets
+    property Item       settingsPage: null
+    readonly property bool pageApply: settingsPage !== null && settingsPage.changeBar
+
+    // A group of a page in columns has the height of its row (the bottom edges of the groups next to each other match)
+    // and the same width as the other columns (not by the width of its content)
+    readonly property bool inPageColumns: settingsPage !== null && settingsPage.columns > 1 && parent === settingsPage.grid
+
+    Layout.fillHeight: inPageColumns
+    Layout.preferredWidth: inPageColumns ? 1 : -1
+    Layout.horizontalStretchFactor: inPageColumns ? 1 : -1
+
+    // The content uses the whole height of a stretched group (power profiles panel, fan curve), otherwise it stays at the top
+    property bool       stretchContent: false
+
+    // Host of the notifications (PreviewPage): errors are shown there, otherwise in the group
+    property Item       notificationHost: null
+
+    Component.onCompleted: {
+        for (let item = parent; item !== null; item = item.parent) {
+            if (settingsPage === null && item.isSettingsPage === true)
+                settingsPage = item
+
+            if (item.isNotificationHost === true) {
+                notificationHost = item
+                break
+            }
+        }
+    }
+
+    // Error of the data source shown for errorTimeout ms (every failure shows it again, also the same text)
+    property int    errorTimeout: 10000
+    property string shownError: ""
+
+    Connections {
+        target: section.source
+        ignoreUnknownSignals: true
+
+        function onFailed(message) {
+            if (section.notificationHost !== null) {
+                section.notificationHost.notify(section.title, message)
+                return
+            }
+
+            section.shownError = message
+            errorTimer.restart()
+        }
+    }
+
+    Timer {
+        id: errorTimer
+
+        interval: section.errorTimeout
+        onTriggered: section.shownError = ""
+    }
+
     Layout.fillWidth: true
+
+    // Palette of the theme also for groups outside of a SettingsPage (panels next to the tabs): the controls
+    // (combo box text, ...) do not take the default palette of the system (white text on a white theme)
+    palette.window:            theme.window
+    palette.windowText:        theme.text
+    palette.text:              theme.text
+    palette.base:              theme.base
+    palette.alternateBase:     theme.groupBackground
+    // Fusion paints switches, combo boxes and spin buttons with the button color, push buttons are ThemedButton
+    palette.button:            theme.base
+    palette.buttonText:        theme.text
+    palette.highlight:         theme.accent
+    palette.highlightedText:   theme.accentText
+    palette.mid:               theme.groupBorder
+    palette.dark:              theme.groupBorder
+    palette.disabled.text:       theme.disabledText
+    palette.disabled.windowText: theme.disabledText
+    palette.disabled.buttonText: theme.disabledText
+    palette.disabled.button:     theme.disabledBackground
+
 
     // QGroupBox { margin-top: 18px; padding: 8px }: the frame starts 18 px under the top, the title tab over it
     readonly property bool hasTitle: title.length > 0
@@ -139,15 +215,22 @@ GroupBox {
             id: fields
 
             Layout.fillWidth: true
-            Layout.fillHeight: true
+            Layout.fillHeight: section.stretchContent
         }
 
+        // Extra height of a group higher than its content (next to a higher group): under the content, the presets
+        // and the error at the bottom
+        Item {
+            Layout.fillHeight: !section.stretchContent
+        }
+
+        // Error of the last request, shown for a while (errorTimeout), then hidden.
+        // A disabled page without data shows the reason once (SettingsPage), not the error of every section.
         Label {
             Layout.fillWidth: true
 
-            // A disabled page without data shows the reason once (SettingsPage), not the error of every section
-            visible: section.source !== null && section.source.lastError.length > 0 && (section.enabled || section.source.available)
-            text: section.source !== null ? section.source.lastError : ""
+            visible: section.shownError.length > 0 && section.source !== null && (section.enabled || section.source.available)
+            text: section.shownError
             color: "red"
             wrapMode: Text.Wrap
         }
@@ -155,10 +238,11 @@ GroupBox {
         ApplyBar {
             Layout.fillWidth: true
 
-            visible: section.applyBar
+            visible: section.applyBar && (!section.pageApply || section.presets.length > 0)
             source: section.source
             presets: section.presets
             presetLabel: section.presetLabel
+            showApply: !section.pageApply
         }
     }
 }

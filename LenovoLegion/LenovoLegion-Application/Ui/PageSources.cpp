@@ -96,6 +96,50 @@ QString PageSources::description() const
                                   : "Standard Linux interfaces: works on any notebook";
 }
 
+int PageSources::changeCount() const
+{
+    int count = 0;
+
+    for(const auto& source : m_sources)
+    {
+        if(source != nullptr)
+        {
+            count += source->changeCount();
+        }
+    }
+
+    return count;
+}
+
+void PageSources::apply()
+{
+    /*
+     * Copy: apply reloads the sources, the list must not change during the loop
+     */
+    const auto sources = m_sources;
+
+    for(const auto& source : sources)
+    {
+        if(source != nullptr && source->dirty())
+        {
+            source->apply();
+        }
+    }
+}
+
+void PageSources::cancel()
+{
+    const auto sources = m_sources;
+
+    for(const auto& source : sources)
+    {
+        if(source != nullptr && source->dirty())
+        {
+            source->cancel();
+        }
+    }
+}
+
 void PageSources::scan()
 {
     for(const auto& source : std::as_const(m_sources))

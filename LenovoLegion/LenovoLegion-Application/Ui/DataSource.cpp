@@ -175,6 +175,47 @@ bool DataSource::dirty() const
     return m_changes != nullptr && m_changes->ByteSizeLong() > 0;
 }
 
+namespace {
+
+/*
+ * Set leaf fields of a message (a repeated scalar field is one field)
+ */
+int changedFields(const Message& message)
+{
+    std::vector<const FieldDescriptor*> fields;
+    message.GetReflection()->ListFields(message,&fields);
+
+    int count = 0;
+
+    for(const FieldDescriptor* field : fields)
+    {
+        if(field->cpp_type() != FieldDescriptor::CPPTYPE_MESSAGE || field->is_map())
+        {
+            ++count;
+        }
+        else if(field->is_repeated())
+        {
+            for(int i = 0; i < message.GetReflection()->FieldSize(message,field); ++i)
+            {
+                count += changedFields(message.GetReflection()->GetRepeatedMessage(message,field,i));
+            }
+        }
+        else
+        {
+            count += changedFields(message.GetReflection()->GetMessage(message,field));
+        }
+    }
+
+    return count;
+}
+
+}
+
+int DataSource::changeCount() const
+{
+    return m_changes != nullptr ? changedFields(*m_changes) : 0;
+}
+
 bool DataSource::valid() const
 {
     return m_message != nullptr;
@@ -741,6 +782,11 @@ void DataSource::setLastError(const QString &error)
     {
         m_lastError = error;
         emit lastErrorChanged();
+    }
+
+    if(!error.isEmpty())
+    {
+        emit failed(error);
     }
 }
 

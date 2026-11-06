@@ -117,6 +117,7 @@ ColumnLayout {
         title: "Fan curve"
         applyBar: true
         source: curve
+        stretchContent: true
 
         // Default curve: levels 1..10 (the curve FanControl shows outside the custom mode), sent at once (whole curve)
         presets: [{ text: "Default", values: (function () {
@@ -187,9 +188,12 @@ ColumnLayout {
 
                     readonly property Item track: slider
 
-                    // Points over the whole width: without a stretched child the layout would keep its width
+                    // Points over the whole width in columns of the same width, independent of the content
+                    // (a changed label must not move the other points)
                     Layout.fillWidth: true
                     Layout.maximumWidth: Number.POSITIVE_INFINITY
+                    Layout.preferredWidth: 1
+                    Layout.horizontalStretchFactor: 1
                     Layout.fillHeight: true
 
                     ThemedSlider {
@@ -225,11 +229,23 @@ ColumnLayout {
                     }
 
                     Label {
+                        id: pointLabel
+
                         Layout.alignment: Qt.AlignHCenter
 
                         text: point.pointField !== null ? point.pointField.label : ""
                         color: !editor.editable ? theme.disabledText
                              : point.pointField !== null && point.pointField.modified ? theme.modified : theme.text
+
+                        // Mark of a changed point left of the label, outside of the layout (the label keeps its width)
+                        Label {
+                            anchors.right: parent.left
+                            anchors.rightMargin: 2
+                            anchors.verticalCenter: parent.verticalCenter
+                            visible: point.pointField !== null && point.pointField.modified
+                            text: "●"
+                            color: pointLabel.color
+                        }
                     }
                 }
             }

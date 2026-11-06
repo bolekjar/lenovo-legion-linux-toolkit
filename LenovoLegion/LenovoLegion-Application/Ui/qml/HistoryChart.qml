@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
 // Rolling bar chart of the last 100 values the same as HWMonitor of the widget pages:
-// gray background, white bars, grid with axis labels (values, time), title with the current value ("%1" in the title), tool tip
+// gray background, white bars (orange / red above the warning / critical thresholds), grid with axis labels (values, time),
+// title with the current value ("%1" in the title), tool tip
 import QtQuick
 import QtQuick.Controls
 
@@ -14,6 +15,26 @@ Rectangle {
     property int    fieldWidth: 0   // value padded with zeros to the width (frequencies: 4)
     property bool   twoLines: false // name and value ("[%1 ...]") on two lines, narrow charts in one row
     property int    sampleInterval: 500 // ms between the samples (time axis: samples * interval)
+
+    // Thresholds of the values (NaN = none): bars and the value above warning orange, above critical red
+    property real   warning: NaN
+    property real   critical: NaN
+
+    // Colors of the levels: bars (on the gray background) and the value text (darker, readable on the gray)
+    readonly property var barColors:  ({ "normal": "white", "warning": "#ffb347", "critical": "#ff5c5c" })
+    readonly property var textColors: ({ "normal": "black", "warning": "#7a3e00", "critical": "#9a0000" })
+
+    function level(value) {
+        if (!isNaN(critical) && value >= critical)
+            return "critical"
+
+        if (!isNaN(warning) && value >= warning)
+            return "warning"
+
+        return "normal"
+    }
+
+    readonly property string valueText: chart.fieldWidth > 0 ? String(Math.round(chart.value)).padStart(chart.fieldWidth,"0") : String(Math.round(chart.value))
 
     readonly property int samples: 100
     property var          history: []
@@ -31,7 +52,10 @@ Rectangle {
 
     // Narrow charts in one row of the HW monitor, a too long title is elided (the tool tip has the whole text)
     implicitWidth: 80
-    implicitHeight: twoLines ? 126 : 110
+    implicitHeight: twoLines ? 130 : 110
+
+    onWarningChanged: canvas.requestPaint()
+    onCriticalChanged: canvas.requestPaint()
 
     onMinimumChanged: canvas.requestPaint()
     onMaximumChanged: canvas.requestPaint()
@@ -40,7 +64,9 @@ Rectangle {
     color: "#999999"
     radius: 4
 
-    Text {
+    // Title: one line ("Core Clock [1565 MHz]"), or in narrow charts the name and below it the current value
+    // in a larger bold font ("Avg" / "2326 MHz"), the value in the color of its level
+    Column {
         id: titleText
 
         anchors.top: parent.top
@@ -48,12 +74,43 @@ Rectangle {
         anchors.right: parent.right
         anchors.margins: 4
 
-        horizontalAlignment: Text.AlignHCenter
-        elide: Text.ElideRight
+        Text {
+            width: parent.width
+            visible: !chart.twoLines
 
-        text: (chart.twoLines ? chart.title.replace(" [", "\n[") : chart.title).arg(chart.fieldWidth > 0 ? String(Math.round(chart.value)).padStart(chart.fieldWidth,"0") : Math.round(chart.value))
-        font.pixelSize: theme.fontPixelSize
-        color: "black"
+            horizontalAlignment: Text.AlignHCenter
+            elide: Text.ElideRight
+
+            text: chart.title.arg(chart.valueText)
+            font.pixelSize: theme.fontPixelSize
+            color: chart.textColors[chart.level(chart.value)]
+        }
+
+        Text {
+            width: parent.width
+            visible: chart.twoLines
+
+            horizontalAlignment: Text.AlignHCenter
+            elide: Text.ElideRight
+
+            text: chart.title.split(" [")[0]
+            font.pixelSize: theme.fontPixelSize
+            color: "black"
+        }
+
+        Text {
+            width: parent.width
+            visible: chart.twoLines
+
+            horizontalAlignment: Text.AlignHCenter
+            elide: Text.ElideRight
+
+            // "[%1 MHz]" -> "2326 MHz"
+            text: chart.title.indexOf(" [") >= 0 ? chart.title.substring(chart.title.indexOf(" [") + 2).replace("]", "").arg(chart.valueText) : ""
+            font.pixelSize: theme.fontPixelSize + 3
+            font.bold: true
+            color: chart.textColors[chart.level(chart.value)]
+        }
     }
 
     Canvas {
@@ -133,11 +190,12 @@ Rectangle {
             const barWidth = plotWidth / chart.samples
             const offset = chart.samples - chart.history.length
 
-            context.fillStyle = "white"
-
+            // Bar of every sample in the color of its level (warning / critical history is visible)
             for (let i = 0; i < chart.history.length; ++i) {
                 const level = Math.max(0, Math.min(1, (chart.history[i] - chart.minimum) / range))
                 const barHeight = level * plotHeight
+
+                context.fillStyle = chart.barColors[chart.level(chart.history[i])]
                 context.fillRect(left + (offset + i) * barWidth, top + plotHeight - barHeight, Math.max(barWidth, 1), barHeight)
             }
         }

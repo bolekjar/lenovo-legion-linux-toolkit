@@ -10,6 +10,17 @@ ScrollView {
 
     property string title
     property bool   transparent: false   // inside a pane (tab widget of PreviewPage), the pane paints the background
+
+    // Change bar at the bottom of the page: "N changes not applied · Cancel · Apply" of all data sources of the page,
+    // shown only with changes, stays visible while scrolling. The groups (Section) show only their presets.
+    property bool   changeBar: true
+
+    // Minimum width of a column of the groups: a wide page shows the groups next to each other (0 = one column)
+    property int    columnWidth: 0
+    readonly property int  columns: column.columns
+    readonly property Item grid: column
+    readonly property bool isSettingsPage: true
+    readonly property int  changeCount: sources.changeCount
     property bool   fillHeight: false    // content at least as high as the page, items with Layout.fillHeight are stretched
 
     default property alias content: column.data
@@ -58,6 +69,61 @@ ScrollView {
     // Space for the scroll bar when the content is longer than the page, the content is not covered
     rightPadding: verticalBar.size < 1.0 ? verticalBar.width + 4 : 0
 
+    // Space for the change bar, the end of the content is not covered. Reserved always: the content does not shrink
+    // (stretched pages) or the scroll range change (smaller window) and jump when the bar appears.
+    bottomPadding: page.changeBar || changes.visible ? changes.height + 12 : 0
+
+    Rectangle {
+        id: changes
+
+        parent: page
+        z: 10
+        visible: page.changeBar && page.changeCount > 0
+
+        x: 8
+        y: page.height - height - 8
+        width: page.width - 16 - (verticalBar.size < 1.0 ? verticalBar.width + 4 : 0)
+        height: changesRow.implicitHeight + 16
+
+        radius: theme.radius
+        color: theme.groupBackground
+        border.width: theme.styled ? 2 : 1
+        border.color: theme.accent
+
+        RowLayout {
+            id: changesRow
+
+            anchors.fill: parent
+            anchors.margins: 8
+            spacing: 8
+
+            // Not applied changes: the change color of the widget pages
+            Rectangle {
+                width: 10
+                height: 10
+                radius: 5
+                color: theme.modified
+            }
+
+            Label {
+                Layout.fillWidth: true
+                text: page.changeCount === 1 ? "1 change not applied" : page.changeCount + " changes not applied"
+                color: theme.modified
+                font.bold: true
+            }
+
+            ThemedButton {
+                text: "Cancel"
+                onClicked: sources.cancel()
+            }
+
+            ThemedButton {
+                text: "Apply"
+                onClicked: sources.apply()
+            }
+        }
+    }
+
     ScrollBar.vertical: ThemedScrollBar {
         id: verticalBar
 
@@ -89,12 +155,15 @@ ScrollView {
             wrapMode: Text.Wrap
         }
 
-        ColumnLayout {
+        // Groups below each other, on a wide page in columns (columnWidth: minimum width of a column, 0 = one column)
+        GridLayout {
             id: column
 
             Layout.fillWidth: true
             Layout.fillHeight: page.fillHeight
-            spacing: 12
+            columns: page.columnWidth > 0 ? Math.max(1, Math.floor((width + columnSpacing) / (page.columnWidth + columnSpacing))) : 1
+            rowSpacing: 12
+            columnSpacing: 12
             enabled: page.available
         }
     }
