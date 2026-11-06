@@ -1,7 +1,7 @@
 TEMPLATE = app
 TARGET = $${APPLICATION_NAME}
 
-QT       += core gui widgets network charts qml quick quickwidgets quickcontrols2 concurrent
+QT       += core gui widgets network qml quick quickwidgets quickcontrols2 concurrent
 
 CONFIG += c++20 link_pkgconfig
 PKGCONFIG += protobuf
@@ -12,20 +12,9 @@ SOURCES +=               \
         AboutWindow.cpp \
         Application.cpp  \
         BateryStatus.cpp \
-        CPUControl.cpp \
-        CPUFrequency.cpp \
-        CPUFrequencyControl.cpp \
         DataProvider.cpp \
         DataProviderManager.cpp \
-        FanControl.cpp \
-        GPUDetails.cpp \
-        HWMonitor.cpp \
-        HWMonitoring.cpp \
         MainWindow.cpp   \
-        OffsetsControl.cpp \
-        OtherControl.cpp \
-        PowerControl.cpp \
-        PowerProfileControl.cpp \
         ProtocolProcessor.cpp \
         ProtocolProcessorBase.cpp \
         ProtocolProcessorNotifier.cpp \
@@ -33,10 +22,6 @@ SOURCES +=               \
         RGBKeyboardDevice.cpp \
         Settings.cpp \
         TaskList.cpp \
-        ThreadControl.cpp \
-        ThreadFrequency.cpp \
-        ThreadFrequencyControl.cpp \
-        ToolBarHomeWidget.cpp \
         ToolBarHelpWidget.cpp \
         ToolBarInformationWidget.cpp \
         ToolBarKeyboardWidget.cpp \
@@ -55,20 +40,9 @@ HEADERS +=          \
         AboutWindow.h \
         Application.h \
         BateryStatus.h \
-        CPUControl.h \
-        CPUFrequency.h \
-        CPUFrequencyControl.h \
         DataProvider.h \
         DataProviderManager.h \
-        FanControl.h \
-        GPUDetails.h \
-        HWMonitor.h \
-        HWMonitoring.h \
         MainWindow.h  \
-        OffsetsControl.h \
-        OtherControl.h \
-        PowerControl.h \
-        PowerProfileControl.h \
         ProtocolProcessor.h \
         ProtocolProcessorBase.h \
         ProtocolProcessorNotifier.h \
@@ -76,10 +50,6 @@ HEADERS +=          \
         RGBKeyboardDevice.h \
         Settings.h \
         TaskList.h \
-        ThreadControl.h \
-        ThreadFrequency.h \
-        ThreadFrequencyControl.h \
-        ToolBarHomeWidget.h \
         ToolBarHelpWidget.h \
         ToolBarInformationWidget.h \
         ToolBarKeyboardWidget.h \
@@ -106,23 +76,8 @@ include(../LenovoLegion-Messages/LenovoLegion-Messages.pri)
 FORMS +=           \
     AboutWindow.ui \
     BateryStatus.ui \
-    CPUControl.ui \
-    CPUFrequency.ui \
-    CPUFrequencyControl.ui \
-    FanControl.ui \
-    GPUDetails.ui \
-    HWMonitor.ui \
-    HWMonitoring.ui \
     MainWindow.ui \
-    OffsetsControl.ui \
-    OtherControl.ui \
-    PowerControl.ui \
-    PowerProfileControl.ui \
     RGBKeyboardDevice.ui \
-    ThreadControl.ui \
-    ThreadFrequency.ui \
-    ThreadFrequencyControl.ui \
-    ToolBarHomeWidget.ui \
     ToolBarHelpWidget.ui \
     ToolBarInformationWidget.ui \
     ToolBarKeyboardWidget.ui \

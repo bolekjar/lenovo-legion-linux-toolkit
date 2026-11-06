@@ -7,6 +7,7 @@
  */
 #pragma once
 
+#include <QFuture>
 #include <QObject>
 #include <QSet>
 #include <QStringList>
@@ -221,6 +222,7 @@ private:
     bool                                         m_autoApply;
     QTimer*                                      m_timer;
     bool                                         m_reloading = false;    // periodic request is running
+    QFuture<std::pair<bool,QByteArray>>          m_request;              // the request in the worker thread (waited for in the destructor)
     QString                                      m_lastError;
     bool                                         m_available = false;
     int                                          m_batchDepth = 0;       // beginChanges() without endChanges()

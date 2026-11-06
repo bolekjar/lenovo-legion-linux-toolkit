@@ -107,7 +107,7 @@ public:
     QColor listText() const { return m_listText; }
     QColor listSelectedText() const { return m_listSelectedText; }
     /*
-     * The same color as MainWindow::VALUE_CHANGE_COLOR of the widget pages, for all themes
+     * The change color of the former widget pages (#995e5e), for all themes
      */
     QColor modified() const           { return QColor("#995e5e"); }
     int    radius() const             { return m_radius; }

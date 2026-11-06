@@ -81,6 +81,14 @@ DataSource::DataSource(QObject *parent) :
 DataSource::~DataSource()
 {
     s_dataSources.remove(this);
+
+    /*
+     * A periodic request still running in the worker thread uses the DataProvider and the communication thread:
+     * it is finished before the data source (and then the DataProviderManager, Application::~Application) is gone.
+     * Only the request is waited for, not its continuation (GUI thread, not called for a deleted data source).
+     */
+    m_timer->stop();
+    m_request.waitForFinished();
 }
 
 void DataSource::setDataProvider(DataProvider *dataProvider)
@@ -276,7 +284,7 @@ void DataSource::reloadAsync()
     /*
      * Context object: the continuation is not called when the data source is deleted
      */
-    QtConcurrent::run([dataType]() -> std::pair<bool,QByteArray> {
+    m_request = QtConcurrent::run([dataType]() -> std::pair<bool,QByteArray> {
         try {
             return { true, s_dataProvider->getData(dataType) };
         }
@@ -284,7 +292,9 @@ void DataSource::reloadAsync()
         {
             return { false, QByteArray(ex.what()) };
         }
-    }).then(this,[this](const std::pair<bool,QByteArray>& result) {
+    });
+
+    m_request.then(this,[this](const std::pair<bool,QByteArray>& result) {
         m_reloading = false;
 
         if(result.first)

@@ -110,9 +110,9 @@ void Application::appStopImpl() noexcept
     m_trayIcon->setContextMenu(nullptr);
 
     /*
-     * Destroy windows before DataProviderManager cleanup. Widgets (e.g. HWMonitoring) wait
-     * in destructor for their pending async requests, which use DataProvider and
-     * the communication thread.
+     * Destroy windows before DataProviderManager cleanup. Data sources of the QML pages
+     * (DataSource, e.g. the HW monitor) wait in the destructor for their pending async
+     * requests, which use DataProvider and the communication thread.
      */
     m_aboutWindow.reset();
     m_mainWindow.reset();

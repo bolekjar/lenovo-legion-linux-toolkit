@@ -37,10 +37,6 @@ class MainWindow : public QMainWindow
 
 public:
 
-    /*
-     * Colors
-     */
-    static constexpr std::string_view VALUE_CHANGE_COLOR                       =    "#995e5e";
     static constexpr int TIMER_EVENT_IN_MS                                     =    500;
 
 

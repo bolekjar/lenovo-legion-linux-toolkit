@@ -11,7 +11,6 @@
 #include "Settings.h"
 #include "Utils.h"
 #include "BateryStatus.h"
-#include "ToolBarHomeWidget.h"
 #include "ToolBarHelpWidget.h"
 #include "ToolBarInformationWidget.h"
 #include "ToolBarProfilesWidget.h"
@@ -82,29 +81,19 @@ MainWindow::MainWindow(DataProviderManager &dataProviderManager, QWidget *parent
         });
     };
 
-
-    ui->toolBar->addSeparator();
+    /*
+     * Home page of the generic GUI (UiDesign.md)
+     */
     toolbarActionInitializer(ui->toolBar->addAction("Home"),QIcon(":/images/icons/toolbar-home.png"),[this](){
-
         if(ui->label_DaemonStatus->text() != DAEMON_CONNECTION_STATUS_CONNECTED.data())
             return;
-
-        ui->toolBar_HBoxLayout->addWidget((new ToolBarHomeWidget(m_dataProviderManager.dataProvider(),this))->initialize());
-    },true);
+        ui->toolBar_HBoxLayout->addWidget((new ToolBarQmlPageWidget(m_dataProviderManager.dataProvider(),QUrl("qrc:/ui/PreviewPage.qml"),this))->initialize());
+    }, true);
 
     toolbarActionInitializer(ui->toolBar->addAction("Profiles"),QIcon(":/images/icons/toolbar-user.png"),[this](){
         if(ui->label_DaemonStatus->text() != DAEMON_CONNECTION_STATUS_CONNECTED.data())
             return;
         ui->toolBar_HBoxLayout->addWidget((new ToolBarProfilesWidget(m_dataProviderManager.dataProvider(),this))->initialize());
-    });
-
-    /*
-     * Pilot page of the generic GUI (UiDesign.md)
-     */
-    toolbarActionInitializer(ui->toolBar->addAction("Preview"),QIcon(":/images/icons/toolbar-home.png"),[this](){
-        if(ui->label_DaemonStatus->text() != DAEMON_CONNECTION_STATUS_CONNECTED.data())
-            return;
-        ui->toolBar_HBoxLayout->addWidget((new ToolBarQmlPageWidget(m_dataProviderManager.dataProvider(),QUrl("qrc:/ui/PreviewPage.qml"),this))->initialize());
     });
 
     toolbarActionInitializer(ui->toolBar->addAction("Keyboard"),QIcon(":/images/icons/keyboard.png"),[this](){
