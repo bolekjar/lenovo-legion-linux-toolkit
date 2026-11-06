@@ -19,7 +19,6 @@
 #include "legion-wmi-ftable.h"
 #include "legion-wmi-fm.h"
 #include "legion-rapl-mmio.h"
-#include "legion-intel-msr-sysfs.h"
 #include "legion-rapl.h"
 
 #include <linux/module.h>
@@ -290,14 +289,8 @@ static int legion_probe(struct platform_device *pdev)
 	dev_info(&pdev->dev,"\tRAPL MMIO driver was initialized \n");
 
     /*
-     * Intel MSF SysFS
+     * Intel MSR is the separate module legion_intel_msr (not tied to the notebook)
      */
-    err = legion_intel_msr_sysfs_init(&pdev->dev);
-	if (err) {
-		dev_err(&pdev->dev, "\tFailed to create Intel MSR driver: %d\n", err);
-		goto err_intel_msr;
-	}
-	dev_info(&pdev->dev,"\tIntel MSR driver was initialized \n");
 
 
 	/*
@@ -360,7 +353,6 @@ static int legion_probe(struct platform_device *pdev)
 	dev_info(&pdev->dev,"Legion platform driver was loaded\n");
 	return 0;
 post_init_err:
-err_intel_msr:
 	legion_rapl_mmio_exit(&pdev->dev);
 err_rapl_mmio:
 	legion_rapl_sysfs_exit(&pdev->dev);
@@ -399,9 +391,6 @@ static void legion_remove(struct platform_device *pdev)
 	struct legion_data* data = platform_get_drvdata(pdev);
 
     dev_info(&pdev->dev, "Lenovo Legion platform driver removing:\n");
-
-    legion_intel_msr_sysfs_exit(&pdev->dev);
-    dev_info(&pdev->dev, "\tIntel MSR driver was unregistered \n");
 
     legion_rapl_mmio_exit(&pdev->dev);
     dev_info(&pdev->dev, "\tRAPL MMIO driver was unregistered \n");

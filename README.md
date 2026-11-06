@@ -32,6 +32,7 @@ It allows you to control features like the fan curve, power mode, power limits, 
 
 📣 Overview
 - it comes with a driver lenovo_legion (kernel module) that implements the Linux standard interfaces (sysfs, hwmon)
+- it comes with a driver legion_intel_msr (separate kernel module) for the Intel CPU voltage offsets, it does not depend on the notebook (any Intel CPU with the OC mailbox)
 - it comes with a LenovoLegion-Daemon (daemon under root privileges) the provide for LenovoLegion (gui part) data
 - it comes with a LenovoLegion (GUI) the provide UI for the user
 
@@ -67,8 +68,8 @@ For all distribution
 1) Download https://github.com/bolekjar/lenovo-legion-linux-toolkit/archive/refs/tags/release/1.0.0.tar.gz
 3) Go to LenovoLegion-release-1.0.0/LenovoLegion-dkms
 4) run make
-5) Kernel module is lenovo_legion.ko
-6) If you want to install lenovo_legion.ko:
+5) Kernel modules are lenovo_legion.ko (Lenovo Legion notebook) and legion_intel_msr.ko (Intel CPU voltage offsets, any notebook, loaded by /etc/modules-load.d/lenovo-legion.conf)
+6) If you want to install the kernel modules:
    - for current kernel: run "make install"
    - dkms: run "make dkms" you should see in dmesg for sucessfully installed and detected supported laptop this:
 
@@ -114,7 +115,6 @@ For all distribution
                     [    3.881469] lenovo-legion VPC2004:00:        HwMon driver was initialized
                     [    3.881477] lenovo-legion VPC2004:00:        RAPL driver was initialized
                     [    3.881487] lenovo-legion VPC2004:00:        RAPL MMIO driver was initialized
-                    [    3.882145] lenovo-legion VPC2004:00:        Intel MSR driver was initialized
                     [    3.882153] lenovo-legion VPC2004:00:        RAPL MMIO synchronization only
                     [    3.882155] lenovo-legion VPC2004:00: Legion platform driver was loaded
 

@@ -13,8 +13,6 @@
 #include "legion-wmi-ftable.h"
 #include "legion-machine-information.h"
 #include "legion-machine-information-sysfs.h"
-#include "legion-intel-msr-sysfs.h"
-#include "legion-intel-msr.h"
 #include "legion-rapl.h"
 
 #include <linux/device.h>
@@ -47,11 +45,6 @@ struct legion_data {
      */
     struct legion_rapl_private				   rapl_private;
 
-    /*
-	 * Intel MSR
-	 */
-    struct legion_intel_msr_sysfs_private      intel_msr_sysfs_private;
-    struct legion_intel_msr_private            intel_msr_private;
 
 
     /*
@@ -99,11 +92,6 @@ struct legion_data {
      */
     struct notifier_block 					   nb;
 
-	/*
-	 * Intel MSR
-	 */
-    struct legion_intel_msr_sysfs_private      intel_msr_sysfs_private;
-    struct legion_intel_msr_private            intel_msr_private;
 
     /*
      * HWMon device
@@ -155,16 +143,11 @@ enum legion_events_type {
 	/*
 	 * Reserve 2000 - 2999 for WMI FAN Events
 	 */
-	LENOVO_WMI_FAN_CURVE				= 2000,
+	LENOVO_WMI_FAN_CURVE				= 2000
 
 	/*
-	 * Reserve 3000 - 3999 for INTEL MSR Events
+	 * 2001 - 2005: Intel MSR events of the separate module legion_intel_msr (legion-intel-msr-sysfs.h)
 	 */
-	LENOVO_INTEL_MSR_PLANE_CPU			= 2001,
-	LENOVO_INTEL_MSR_PLANE_CACHE		= 2002,
-	LENOVO_INTEL_MSR_PLANE_GPU			= 2003,
-	LENOVO_INTEL_MSR_PLANE_UNCORE		= 2004,
-	LENOVO_INTEL_MSR_PLANE_ANALOGIO		= 2005
 };
 
 int legion_data_init(struct legion_data* data);

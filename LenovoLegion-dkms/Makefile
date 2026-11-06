@@ -11,8 +11,12 @@ BUILD_DIR := $(CURDIR)/build
 obj-m := lenovo_legion.o
 lenovo_legion-objs := legion-dkms.o legion-common.o legion-firmware-attributes-class.o legion-compatibility.o legion-machine-information.o legion-machine-information-sysfs.o \
 					  legion-wmi-helpers.o legion-wmi-events.o legion-wmi-gamezone.o legion-wmi-gamezone-sysfs.o legion-wmi-capdata01.o legion-wmi-ddata.o legion-wmi-other.o \
-					  legion-wmi-other-sysfs.o legion-hwmon.o legion-wmi-ftable.o legion-wmi-fm.o legion-wmi-fm-sysfs.o legion-rapl-mmio.o legion-intel-msr.o legion-intel-msr-sysfs.o \
+					  legion-wmi-other-sysfs.o legion-hwmon.o legion-wmi-ftable.o legion-wmi-fm.o legion-wmi-fm-sysfs.o legion-rapl-mmio.o \
 					  legion-rapl.o legion-wmi-capdata00.o
+
+# Intel CPU voltage offsets, independent of the notebook
+obj-m += legion_intel_msr.o
+legion_intel_msr-objs := legion-intel-msr.o legion-intel-msr-sysfs.o
 all:
 	$(MAKE) -C $(KSRC) M=$(CURDIR) MO=$(BUILD_DIR) modules
 
@@ -23,14 +27,15 @@ clean:
 	rm --force --recursive $(BUILD_DIR)
 
 install: all
-	@rm --force --verbose $(INSTALL_DIR)/lenovo_legion.ko
+	@rm --force --verbose $(INSTALL_DIR)/lenovo_legion.ko $(INSTALL_DIR)/legion_intel_msr.ko
 	@mkdir --parent --verbose $(MOD_DEST_DIR)
 	@install --preserve-timestamps -D --mode=644 $(BUILD_DIR)/lenovo_legion.ko $(INSTALL_DIR)
+	@install --preserve-timestamps -D --mode=644 $(BUILD_DIR)/legion_intel_msr.ko $(INSTALL_DIR)
 	@depmod --all $(KERNEL_VERSION)
 	@printf "%s\n" "Installion finished."
 
 uninstall:
-	@rm -f $(INSTALL_DIR)/lenovo_legion.ko
+	@rm -f $(INSTALL_DIR)/lenovo_legion.ko $(INSTALL_DIR)/legion_intel_msr.ko
 	@depmod --all
 	@printf "%s\n" "Uninstall finished."
 
@@ -47,8 +52,9 @@ dkms: clean
 	dkms build LenovoLegion -v $(VERSION) --force
 	dkms install LenovoLegion -v $(VERSION) --force
 	printf "%s\n" "Loading module"
-	modprobe lenovo_legion 
-	dmesg --ctime | grep lenovo_legion
+	modprobe lenovo_legion
+	modprobe legion_intel_msr
+	dmesg --ctime | grep "lenovo_legion\|legion-intel-msr"
 
 uninstall-dkms:
 	dkms remove -m LenovoLegion -v ${VERSION}
