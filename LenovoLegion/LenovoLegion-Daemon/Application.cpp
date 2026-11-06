@@ -34,6 +34,8 @@
 #include <vector>
 
 #include <signal.h>
+#include <sys/stat.h>
+#include <sys/un.h>
 #include <unistd.h>
 #include <grp.h>
 #include <pwd.h>
@@ -45,7 +47,7 @@ namespace LenovoLegionDaemon {
 
 Application::Application(int &argc, char *argv[]) :
     QCoreApplication(argc,argv),
-    m_socketsPath(QCoreApplication::applicationDirPath().append(QDir::separator()).append(bj::framework::Application::run_dir).append(QDir::separator())),
+    m_socketsPath(SOCKET_DIR),
     m_serverSocket(new QLocalServer(this)),
     m_serverSocketNotification(new QLocalServer(this)),
     m_sysFsDriverManager(new SysFsDriverManager(this)),
@@ -317,6 +319,20 @@ bool Application::prepareSocketDir() const
 {
     struct stat st {};
 
+    /*
+     * Started without systemd (RuntimeDirectory): the directory is created, owned by root, writable only by root
+     */
+    if(lstat(m_socketsPath.toStdString().c_str(),&st) != 0 && errno == ENOENT)
+    {
+        if(mkdir(m_socketsPath.toStdString().c_str(),0755) != 0 && errno != EEXIST)
+        {
+            LOG_E(QString("Unable to create socket directory ").append(m_socketsPath).append(" : ").append(strerror(errno)));
+            return false;
+        }
+
+        chmod(m_socketsPath.toStdString().c_str(),0755);   // not changed by the umask
+    }
+
     if(lstat(m_socketsPath.toStdString().c_str(),&st) != 0)
     {
         LOG_E(QString("Unable to stat socket directory ").append(m_socketsPath).append(" : ").append(strerror(errno)));
@@ -340,6 +356,14 @@ void Application::startServer(QLocalServer *server, const char *name)
      */
     server->setSocketOptions(QLocalServer::UserAccessOption | QLocalServer::GroupAccessOption);
     server->setMaxPendingConnections(1);
+
+    /*
+     * The path must fit sun_path of sockaddr_un, a longer path fails with an unclear error
+     */
+    if(strlen(name) >= sizeof(sockaddr_un::sun_path))
+    {
+        THROW_EXCEPTION(exception_T,ERROR_CODES::SOCKET_LISTEN_ERROR,QString("Socket path ").append(name).append(" is too long (max ").append(QString::number(sizeof(sockaddr_un::sun_path) - 1)).append(" bytes)").toStdString().c_str());
+    }
 
     /*
      * Remove stale socket after crash, SOCKET_DIR is writable only by root

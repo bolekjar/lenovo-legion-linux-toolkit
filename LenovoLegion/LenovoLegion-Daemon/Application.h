@@ -41,6 +41,12 @@ public:
 
 public:
 
+    /*
+     * Directory of the sockets (daemon and GUI): short fixed path, a socket path must fit sun_path (107 bytes),
+     * a path in the directory of the application can be too long. Created by systemd (RuntimeDirectory of the
+     * service) or by the daemon, removed on reboot.
+     */
+    static constexpr const char* const  SOCKET_DIR                   = "/run/lenovo-legion/";
     static constexpr const char* const  SOCKET_NAME                  = "lenovo_legion_daemon.socket";
     static constexpr const char* const  SOCKET_NAME_NOTIFICATION     = "lenovo_legion_daemon_notification.socket";
     static constexpr const char* const  SOCKET_GROUP                 = "legion";
