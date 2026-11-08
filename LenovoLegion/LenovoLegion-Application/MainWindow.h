@@ -6,8 +6,6 @@
  *   Jaroslav Bolek <jaroslav.bolek@gmail.com>
  */
 #pragma once
-#include "TaskList.h"
-
 
 #include <Core/ExceptionBuilder.h>
 #include <Core/ApplicationModulesHandler.h>
@@ -19,40 +17,30 @@
 #include <QString>
 
 
-
-
-namespace Ui {
-class MainWindow;
-}
-
+class QQuickWidget;
 
 namespace  LenovoLegionGui {
 
 
-
+class AppState;
 class DataProviderManager;
+
+/*
+ * Main window: the window of the generic GUI (Ui/qml/Shell.qml: navigation, pages, status bar with the daemon and the
+ * battery, About) in a QQuickWidget. The window itself stays a widget for the system tray (hide on close).
+ * Daemon notifications reload all data sources, the connection state is given to QML (AppState).
+ */
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
 
 public:
 
-    static constexpr int TIMER_EVENT_IN_MS                                     =    500;
-
-
     DEFINE_EXCEPTION(MainWindow);
 
     enum ERROR_CODES : int {
         REQUEST_TIMEOUTED = 0
     };
-
-private:
-
-    /*
-     * Daemon Connection Status
-     */
-    static constexpr std::string_view DAEMON_CONNECTION_STATUS_CONNECTED       =    "Daemon: Connected";
-    static constexpr std::string_view DAEMON_CONNECTION_STATUS_DISCONNECTED    =    "Daemon: Disconnected";
 
 public:
 
@@ -62,12 +50,13 @@ public:
 
     void addModules(std::unique_ptr<bj::framework::ApplicationModulesHandler>);
 
+    /*
+     * Shows the window with the About dialog (tray menu)
+     */
+    void showAbout();
 
-signals:
-    
 protected:
 
-    void timerEvent(QTimerEvent *) override;
     void closeEvent(QCloseEvent *event) override;
 
 public slots:
@@ -77,29 +66,20 @@ public slots:
 
 private:
 
-    void clientDisconnected();
-    void clientConnected();
-    void initializeUI();
-    void clearUI();
+    /*
+     * QML types of the generic GUI
+     */
+    static void registerTypes();
 
 private:
-
-    Ui::MainWindow *ui;
 
     /*
      * Data Provider Manager
      */
     DataProviderManager&  m_dataProviderManager;
 
-    /*
-     * Timer ID
-     */
-    int m_timerId;
-
-    /*
-     * Async tasks list
-     */
-    TaskList m_asyncTasks;
+    QQuickWidget*         m_view;
+    AppState*             m_appState;
 };
 
 

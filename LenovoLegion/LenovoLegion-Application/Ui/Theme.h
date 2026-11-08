@@ -15,9 +15,9 @@
 namespace LenovoLegionGui {
 
 /*
- * Colors of the application theme for QML pages (UiDesign.md). QML does not use the Qt Widgets stylesheets
- * (ToolBarSettingsWidget::getStylesheetTheme), so the main colors of every stylesheet are here.
- * NoTheme takes the colors from the system palette, the same as the widgets without a stylesheet.
+ * Colors of the application theme for the generic GUI (UiDesign.md, the only place of the themes; the colors come from
+ * the former Qt Widgets stylesheets of the themes).
+ * NoTheme takes the colors from the system palette.
  */
 class Theme : public QObject
 {

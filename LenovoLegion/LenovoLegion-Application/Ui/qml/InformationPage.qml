@@ -283,42 +283,10 @@ SettingsPage {
             anchors.leftMargin: 28
             spacing: 20
 
-            // Logo cut to its circle (the image has a white square background), ring in the accent color
-            Canvas {
-                id: logo
-
-                readonly property url image: "qrc:/images/icons/LenovoLegionIco.png"
-
+            LegionLogo {
                 Layout.alignment: Qt.AlignTop
                 Layout.preferredWidth: 64
                 Layout.preferredHeight: 64
-
-                readonly property color ring: theme.accentHover
-                onRingChanged: requestPaint()
-                onImageLoaded: requestPaint()
-                Component.onCompleted: loadImage(image)
-
-                onPaint: {
-                    const ctx = getContext("2d")
-                    const r = width / 2
-                    ctx.reset()
-
-                    if (isImageLoaded(image)) {
-                        ctx.save()
-                        ctx.beginPath()
-                        ctx.arc(r, r, r - 3.5, 0, 2 * Math.PI)
-                        ctx.closePath()
-                        ctx.clip()
-                        ctx.drawImage(image, 2, 2, width - 4, height - 4)
-                        ctx.restore()
-                    }
-
-                    ctx.beginPath()
-                    ctx.arc(r, r, r - 2, 0, 2 * Math.PI)
-                    ctx.lineWidth = 3
-                    ctx.strokeStyle = ring
-                    ctx.stroke()
-                }
             }
 
             ColumnLayout {

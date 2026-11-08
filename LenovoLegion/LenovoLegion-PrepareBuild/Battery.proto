@@ -11,7 +11,23 @@ message Battery
         POWER_CHARGE_MODE_BATTERY    = 2;
     }
 
-    PowerChargeMode current_charge_mode_value = 1;
-    string          baterry_status            = 2;
-    bool            supported                 = 3;
+    PowerChargeMode current_charge_mode_value = 1;     // Lenovo Legion driver (charge_mode_supported)
+    string          baterry_status            = 2;     // power_supply status: Charging, Discharging, Not charging, Full, ...
+    bool            supported                 = 3;     // battery found (power_supply BAT0)
+
+    // Values of power_supply BAT0, not set when the battery does not report them
+    uint32          capacity                  = 4;     // %
+    uint64          energy_now                = 5;     // uWh (from charge_* * voltage_min_design for batteries reporting the charge)
+    uint64          energy_full               = 6;     // uWh
+    uint64          energy_full_design        = 7;     // uWh
+    uint32          power_now                 = 8;     // uW, without the sign (charging / discharging by the status)
+    uint32          voltage_now               = 9;     // uV
+    uint32          cycle_count               = 10;
+    string          capacity_level            = 11;    // Full, High, Normal, Low, Critical
+    string          technology                = 12;
+    string          manufacturer              = 13;
+    string          model_name                = 14;
+
+    bool            ac_online                 = 15;    // AC adapter connected (power_supply of type Mains)
+    bool            charge_mode_supported     = 16;    // current_charge_mode_value is valid
 }

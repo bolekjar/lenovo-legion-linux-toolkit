@@ -27,7 +27,7 @@
    - remove unused SysFsStructure forward declaration, SAVE_ERROR, ApplicationModulesLoader.h include, add missing QLocalSocket include.
 12) Optional idle timeout for the client which sends incomplete message - it does not block the daemon anymore, but holds the only allowed connection.
 13) Files from old installations in log, data (mode 0644/0777) are not fixed by tmpfiles, only directories.
-14) Not reviewed yet: GUI widgets UI logic (ToolBarSettingsWidget.cpp), Rust CLI.
+14) Not reviewed yet: Rust CLI. (GUI widget pages are replaced by the QML pages, ToolBarSettingsWidget is deleted.)
 15) DONE (needs test in an iGPU session) - NVML module does not query a suspended GPU (power/runtime_status of the PCI device),
    it reports gpu_suspended with static data and the last known offsets. GUI HWMonitoring polls NVML every refresh, every NVML query would wake the GPU.
    Fine-grained RTD3 (DynamicPowerManagement 3) allows suspend with idle NVML clients according to the NVIDIA README.

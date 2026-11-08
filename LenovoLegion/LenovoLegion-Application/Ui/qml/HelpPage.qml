@@ -94,8 +94,10 @@ The toolbar at the top opens the pages:
 - **Information** – the machine, processor, graphics and BIOS
 - **Help** – this page
 
-The status bar at the bottom shows the connection to the daemon. Most pages need the connection, they are not shown \
-without it.
+The status bar at the bottom shows the connection to the daemon (with **Reconnect**), the power profile and the \
+battery: the charge, charging or the time left; hover it for the details (energy, health, power, cycles). Most pages \
+need the daemon, without it they show what to check; Settings and Help work also without it. The logo at the top left \
+opens **About**.
 
 ### Applying changes
 
@@ -163,20 +165,24 @@ In **Settings** you can let the daemon apply the saved settings when it starts a
         { title: "Settings", icon: "power", text:
 "## Settings
 
+All changes are saved at once. The page opens also without the daemon (settings of the application, Reconnect).
+
+**Appearance** – the theme: No Theme (colors of the system), White, Gray, Dark; the cards show a preview and the \
+theme is applied at once to all pages.
+
 **Application**
 
 - Start minimized to the system tray, minimize to the tray on close
-- Theme: No Theme (system), White, Gray, Dark – applied at once to all pages
 - Debug and trace logging of the GUI
 
 **Daemon**
 
-- Apply the saved settings when the daemon starts, save all settings when it exits
+- Apply the saved settings when the daemon starts, save the settings when it exits
 - Debug and trace logging of the daemon
 - **Save Current Configuration** saves the current hardware settings to the configuration of the daemon
-- **Reconnect to Daemon** connects again (e.g. after a restart of the service)
+- **Reconnect** connects to the daemon again (e.g. after a restart of the service)
 
-**Reset to Defaults** resets the settings of the application." },
+**Reset to Defaults** resets the settings of the application, the configuration of the daemon is not changed." },
 
         { title: "Information", icon: "gpu", text:
 "## Information
@@ -210,7 +216,7 @@ The GUI never touches the hardware directly: every value is read from and writte
 
 - Check the service: `systemctl status lenovo-legion-daemon.service`
 - Your user must be in the group `legion`: `groups` – after adding the group log in again
-- Settings → **Reconnect to Daemon**
+- Settings → **Reconnect**
 
 **Tabs are grayed: Requires the Lenovo Legion kernel driver**
 

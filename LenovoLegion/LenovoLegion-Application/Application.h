@@ -21,7 +21,6 @@ namespace LenovoLegionGui {
 
 class DataProviderManager;
 class MainWindow;
-class AboutWindow;
 
 
 class Application : public QApplication,
@@ -56,7 +55,6 @@ private slots:
     void onExitActionTriggered();
 
     void onSettingChanged(LenovoLegionGui::ApplicationSettings::SettingType setting, bool value);
-    void onThemeChanged(LenovoLegionGui::ApplicationSettings::ThemeType theme);
 
 private:
 
@@ -65,12 +63,10 @@ private:
     void applyDebugLogging(bool enable);
     void applyTraceLogging(bool enable);
     void applyLogging(bool enableDebug, bool enableTrace);
-    void applyTheme(ApplicationSettings::ThemeType theme);
 
     DataProviderManager    *m_dataProviderManager;
 
     std::unique_ptr<MainWindow>          m_mainWindow;
-    std::unique_ptr<AboutWindow>         m_aboutWindow;
 
     QSystemTrayIcon        *m_trayIcon;
 };

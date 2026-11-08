@@ -22,7 +22,7 @@ Theme::Theme(ApplicationSettings::ThemeType theme, QObject *parent) :
 void Theme::setTheme(ApplicationSettings::ThemeType theme)
 {
     /*
-     * Colors of the stylesheets in ToolBarSettingsWidget (QWidget, QGroupBox, QGroupBox::title, QPushButton, QSpinBox, ...)
+     * Colors of the former stylesheets of the themes (QWidget, QGroupBox, QGroupBox::title, QPushButton, QSpinBox, ...)
      */
     m_styled        = theme != ApplicationSettings::ThemeType::NoTheme;
     m_radius        = 12;

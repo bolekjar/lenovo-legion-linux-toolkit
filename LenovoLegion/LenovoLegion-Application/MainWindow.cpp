@@ -6,167 +6,112 @@
  *   Jaroslav Bolek <jaroslav.bolek@gmail.com>
  */
 #include "MainWindow.h"
-#include "ui_MainWindow.h"
 
 #include "Settings.h"
-#include "Utils.h"
-#include "BateryStatus.h"
-#include "ToolBarQmlPageWidget.h"
-#include "ToolBarSettingsWidget.h"
-
-
 #include "DataProviderManager.h"
 
+#include "Ui/AppSettings.h"
+#include "Ui/AppState.h"
+#include "Ui/DataSource.h"
+#include "Ui/FieldModel.h"
+#include "Ui/KeyboardLayout.h"
+#include "Ui/PageSources.h"
+#include "Ui/Theme.h"
 
+#include <Core/Application.h>
 #include <Core/LoggerHolder.h>
 
+#include <QApplication>
 #include <QCloseEvent>
-
-#include <functional>
-
+#include <QIcon>
+#include <QQmlContext>
+#include <QQmlEngine>
+#include <QQuickStyle>
+#include <QQuickWidget>
 
 
 namespace  LenovoLegionGui {
 
 MainWindow::MainWindow(DataProviderManager &dataProviderManager, QWidget *parent) :
     QMainWindow(parent),
-    ui(new Ui::MainWindow),
     m_dataProviderManager(dataProviderManager),
-    m_timerId(-1)
+    m_view(nullptr),
+    m_appState(nullptr)
 {
-    ui->setupUi(this);
+    setWindowTitle("Lenovo Legion Linux Toolkit");
+    setWindowIcon(QIcon(":/images/icons/LenovoLegionIco.png"));
+    resize(1483,961);
+
+    registerTypes();
+    DataSource::setDataProvider(m_dataProviderManager.dataProvider());
 
     /*
-     * Init toolbar
+     * Reconnection to the daemon from the QML pages (Settings, status bar)
      */
-    auto toolbarActionInitializer = [this](QAction * action,const QIcon& icon,const std::function< void ()>& syncActions,bool checked = false)
-    {
-        action->setCheckable(true);
-        action->setIcon(icon);
-        action->setChecked(checked);
+    AppSettings::setReconnect([this]() {
+        m_dataProviderManager.reconnectToDaemon();
+    });
 
-        connect(action, &QAction::triggered,[this,syncActions,action](bool)
+    m_view = new QQuickWidget(this);
+    m_view->setResizeMode(QQuickWidget::SizeRootObjectToView);
+
+    /*
+     * Theme of the application, follows the theme selected in Settings
+     */
+    ApplicationSettings::ThemeType themeType = ApplicationSettings::ThemeType::NoTheme;
+    ApplicationSettings::instance()->loadStylesheetTheme(themeType);
+    auto* theme = new Theme(themeType,m_view);
+    connect(ApplicationSettings::instance(),&ApplicationSettings::themeChanged,theme,&Theme::setTheme);
+
+    m_appState = new AppState(QString::fromUtf8(bj::framework::Application::app_version),
+                              [this]() { m_dataProviderManager.reconnectToDaemon(); },
+                              []() { qApp->quit(); },
+                              m_view);
+
+    m_view->rootContext()->setContextProperty("theme",theme);
+    m_view->rootContext()->setContextProperty("appSettings",new AppSettings(m_view));
+    m_view->rootContext()->setContextProperty("appState",m_appState);
+
+    connect(m_view,&QQuickWidget::statusChanged,this,[this](QQuickWidget::Status status) {
+        if(status == QQuickWidget::Error)
         {
-
-            /*
-             * Cleanup existing widgets
-             */
-            Utils::Layout::forAllLayoutsDo(*ui->toolBar_HBoxLayout,[](QLayoutItem& layout)
+            for(const auto& error : m_view->errors())
             {
-                dynamic_cast<ToolBarWidget *>(layout.widget())->blockSignals(true);
-                dynamic_cast<ToolBarWidget *>(layout.widget())->cleanup();
-            });
-
-            /*
-             * Remove all widgets from toolBar HBoxLayout
-             */
-            Utils::Layout::removeAllLayoutWidgets(*ui->toolBar_HBoxLayout);
-
-            /*
-             * Set action checked state
-             */
-            for (auto cur : ui->toolBar->actions())
-            {
-                if(cur->text() == action->text())
-                    cur->setChecked(true);
-                else
-                    cur->setChecked(false);
+                LOG_E(QString("QML window: ").append(error.toString()));
             }
-
-            syncActions();
-        });
-    };
-
-    /*
-     * Home page of the generic GUI (UiDesign.md)
-     */
-    toolbarActionInitializer(ui->toolBar->addAction("Home"),QIcon(":/images/icons/toolbar-home.png"),[this](){
-        if(ui->label_DaemonStatus->text() != DAEMON_CONNECTION_STATUS_CONNECTED.data())
-            return;
-        ui->toolBar_HBoxLayout->addWidget((new ToolBarQmlPageWidget(m_dataProviderManager.dataProvider(),QUrl("qrc:/ui/HomePage.qml"),this))->initialize());
-    }, true);
-
-    toolbarActionInitializer(ui->toolBar->addAction("Profiles"),QIcon(":/images/icons/toolbar-user.png"),[this](){
-        if(ui->label_DaemonStatus->text() != DAEMON_CONNECTION_STATUS_CONNECTED.data())
-            return;
-        ui->toolBar_HBoxLayout->addWidget((new ToolBarQmlPageWidget(m_dataProviderManager.dataProvider(),QUrl("qrc:/ui/ProfilesPage.qml"),this))->initialize());
+        }
     });
 
-    /*
-     * RGB keyboard of the generic GUI
-     */
-    toolbarActionInitializer(ui->toolBar->addAction("Keyboard"),QIcon(":/images/icons/keyboard.png"),[this](){
-        if(ui->label_DaemonStatus->text() != DAEMON_CONNECTION_STATUS_CONNECTED.data())
-            return;
-        ui->toolBar_HBoxLayout->addWidget((new ToolBarQmlPageWidget(m_dataProviderManager.dataProvider(),QUrl("qrc:/ui/KeyboardPage.qml"),this))->initialize());
-    });
-
-    ui->toolBar->addWidget([](){QWidget * spacer = new QWidget(); spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding); return spacer;}());
-
-    toolbarActionInitializer(ui->toolBar->addAction("Settings"),QIcon(":/images/icons/toolbar-settings.png"),[this](){
-        if(ui->label_DaemonStatus->text() != DAEMON_CONNECTION_STATUS_CONNECTED.data())
-            return;
-        ui->toolBar_HBoxLayout->addWidget((new ToolBarSettingsWidget(m_dataProviderManager.dataProvider(),this))->initialize());
-    });
-    toolbarActionInitializer(ui->toolBar->addAction("Information"),QIcon(":/images/icons/toolbar-information.png"),[this](){
-
-        if(ui->label_DaemonStatus->text() != DAEMON_CONNECTION_STATUS_CONNECTED.data())
-            return;
-
-        ui->toolBar_HBoxLayout->addWidget((new ToolBarQmlPageWidget(m_dataProviderManager.dataProvider(),QUrl("qrc:/ui/InformationPage.qml"),this))->initialize());
-    });
-
-    toolbarActionInitializer(ui->toolBar->addAction("Help"),QIcon(":/images/icons/toolbar-question.png"),[this](){
-
-        ui->toolBar_HBoxLayout->addWidget((new ToolBarQmlPageWidget(m_dataProviderManager.dataProvider(),QUrl("qrc:/ui/HelpPage.qml"),this))->initialize());
-    });
-
-    toolbarActionInitializer(ui->toolBar->addAction("Exit"),QIcon(":/images/icons/toolbar-door.png"),[](){
-        qApp->quit();
-    });
-
-    ui->toolBar->addSeparator();
-
-
-
-    /*
-     * Initial daemon status
-     */
-
-    ui->label_DaemonStatus->setText(DAEMON_CONNECTION_STATUS_DISCONNECTED.data());
+    m_view->setSource(QUrl("qrc:/ui/Shell.qml"));
+    setCentralWidget(m_view);
 
     /*
      * Connect data provider manager events
      */
     connect(&m_dataProviderManager,&DataProviderManager::daemonNotification,this,&MainWindow::daemonNotification);
     connect(&m_dataProviderManager,&DataProviderManager::dameonConnectionStatus,this,&MainWindow::dameonConnectionStatus);
-
-    /*
-     * Start timer
-     */
-    m_timerId = startTimer(TIMER_EVENT_IN_MS);
-
 }
 
 MainWindow::~MainWindow()
 {
-    delete ui;
+    AppSettings::setReconnect({});
+
+    /*
+     * Data sources of the pages are deleted with the view (they wait for their pending requests)
+     */
+    delete m_view;
+    m_view = nullptr;
 }
 
 void MainWindow::addModules(std::unique_ptr<bj::framework::ApplicationModulesHandler>)
 {}
 
-void MainWindow::timerEvent(QTimerEvent *event)
+void MainWindow::showAbout()
 {
-    m_asyncTasks.runAll();
-
-    /*
-     * Delegate timer event to toolbar widgets
-     */
-    Utils::Layout::forAllLayoutsDo(*ui->toolBar_HBoxLayout,[event](QLayoutItem& layout)
-    {
-        dynamic_cast<ToolBarWidget *>(layout.widget())->mainWindowTimerEvent(event);
-    });
+    show();
+    raise();
+    activateWindow();
+    emit m_appState->aboutRequested();
 }
 
 void MainWindow::closeEvent(QCloseEvent *event)
@@ -177,7 +122,7 @@ void MainWindow::closeEvent(QCloseEvent *event)
     // Check MinimizeToTray setting
     bool minimizeToTray = false;
     ApplicationSettings::instance()->loadMinimizeToTray(minimizeToTray);
-    
+
     if (minimizeToTray) {
         hide();
         event->ignore();
@@ -190,137 +135,37 @@ void MainWindow::closeEvent(QCloseEvent *event)
 
 void MainWindow::dameonConnectionStatus(bool isConnected)
 {
-    if(isConnected)
-    {
-        clientConnected();
-    }
-    else
-    {
-        clientDisconnected();
-    }
+    LOG_D(QString("MainWindow: daemon ").append(isConnected ? "connected" : "disconnected"));
+
+    /*
+     * The pages are created again when connected (Shell.qml), the other data sources read the data again
+     */
+    m_appState->setConnected(isConnected);
+    DataSource::reloadAll();
 }
 
-void MainWindow::daemonNotification(const legion::messages::Notification &msg)
+void MainWindow::daemonNotification(const legion::messages::Notification &)
 {
-    switch (msg.action()) {
-    case legion::messages::Notification::POWER_SUPPLY_BATTERY0_CHANGE:
-    {
-        if(ui->horizontalLayout_BateryStatus->itemAt(0) != nullptr)
-        {
-            dynamic_cast<BateryStatus*>(ui->horizontalLayout_BateryStatus->itemAt(0)->widget())->refresh();
-        }
-    }
-    break;
-    default:
-        break;
-    }
-
-
-    Utils::Layout::forAllLayoutsDo(*ui->toolBar_HBoxLayout,[&msg](QLayoutItem& layout)
-                                      {
-                                          dynamic_cast<ToolBarWidget *>(layout.widget())->dataProviderEvent(msg);
-                                      });
+    DataSource::reloadAll();
 }
 
-void MainWindow::clientDisconnected()
+void MainWindow::registerTypes()
 {
-    LOG_D("MainWindow: Client disconnected from daemon");
+    static bool registered = false;
 
-    if(m_timerId != -1)
+    if(registered)
     {
-        killTimer(m_timerId);
-        m_timerId = -1;
+        return;
     }
 
-    /*
-     * Set status
-     */
-    ui->label_DaemonStatus->setText(DAEMON_CONNECTION_STATUS_DISCONNECTED.data());
+    registered = true;
 
-    /*
-     *
-     * Clear UI
-     */
-    clearUI();
-}
+    QQuickStyle::setStyle("Fusion");
 
-void MainWindow::clientConnected()
-{
-    LOG_D("MainWindow: Client connected to daemon");
-
-    if(m_timerId == -1)
-    {
-       m_timerId = startTimer(TIMER_EVENT_IN_MS);
-    }
-
-    /*
-     * Set status
-     */
-    ui->label_DaemonStatus->setText(DAEMON_CONNECTION_STATUS_CONNECTED.data());
-
-    /*
-     * Initialize UI
-     */
-    initializeUI();
-}
-
-void MainWindow::initializeUI()
-{
-    /*
-     * Add battery status widget
-     */
-    ui->horizontalLayout_BateryStatus->addWidget(new BateryStatus(m_dataProviderManager.dataProvider(),this));
-
-
-    /*
-     * Triger toolBar action to initialize proper widget
-     */
-    for (auto action : ui->toolBar->actions())
-    {
-        if(action->isChecked())
-        {
-            action->trigger();
-            break;
-        }
-    }
-}
-
-
-
-void MainWindow::clearUI()
-{
-
-    /*
-     * Cleanup existing widgets
-     */
-    Utils::Layout::forAllLayoutsDo(*ui->toolBar_HBoxLayout,[](QLayoutItem& layout)
-                                   {
-                                       dynamic_cast<ToolBarWidget *>(layout.widget())->blockSignals(true);
-                                       dynamic_cast<ToolBarWidget *>(layout.widget())->cleanup();
-                                   });
-
-    /*
-     * Remove all widgets from toolBar HBoxLayout
-     */
-    Utils::Layout::removeAllLayoutWidgets(*ui->toolBar_HBoxLayout);
-
-
-    /*
-     * Remove battery status widget
-     */
-    Utils::Layout::removeAllLayoutWidgets(*ui->horizontalLayout_BateryStatus);
-
-    /*
-     * Triger toolBar action to initialize proper widget
-     */
-    for (auto action : ui->toolBar->actions())
-    {
-        if(action->isChecked())
-        {
-            action->trigger();
-            break;
-        }
-    }
+    qmlRegisterType<DataSource>("LenovoLegion.Ui",1,0,"DataSource");
+    qmlRegisterType<PageSources>("LenovoLegion.Ui",1,0,"PageSources");
+    qmlRegisterType<KeyboardLayout>("LenovoLegion.Ui",1,0,"KeyboardLayout");
+    qmlRegisterUncreatableType<FieldModel>("LenovoLegion.Ui",1,0,"FieldModel","FieldModel is created by DataSource.field()");
 }
 
 }

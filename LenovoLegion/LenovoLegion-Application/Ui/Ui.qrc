@@ -1,7 +1,9 @@
 <RCC>
     <qresource prefix="/ui">
         <file alias="ApplyBar.qml">qml/ApplyBar.qml</file>
+        <file alias="AboutDialog.qml">qml/AboutDialog.qml</file>
         <file alias="AutoSection.qml">qml/AutoSection.qml</file>
+        <file alias="BatteryIndicator.qml">qml/BatteryIndicator.qml</file>
         <file alias="CellLayout.js">qml/CellLayout.js</file>
         <file alias="ConfirmDialog.qml">qml/ConfirmDialog.qml</file>
         <file alias="CpuGrid.qml">qml/CpuGrid.qml</file>
@@ -24,16 +26,19 @@
         <file alias="InformationPage.qml">qml/InformationPage.qml</file>
         <file alias="KeyboardPage.qml">qml/KeyboardPage.qml</file>
         <file alias="KeyboardView.qml">qml/KeyboardView.qml</file>
+        <file alias="LegionLogo.qml">qml/LegionLogo.qml</file>
         <file alias="ColorPicker.qml">qml/ColorPicker.qml</file>
         <file alias="LimitField.qml">qml/LimitField.qml</file>
         <file alias="Notifications.qml">qml/Notifications.qml</file>
         <file alias="PowerPage.qml">qml/PowerPage.qml</file>
         <file alias="PowerProfilesPanel.qml">qml/PowerProfilesPanel.qml</file>
+        <file alias="PreferencesPage.qml">qml/PreferencesPage.qml</file>
         <file alias="ProfilesPage.qml">qml/ProfilesPage.qml</file>
         <file alias="HomePage.qml">qml/HomePage.qml</file>
         <file alias="SavedProfilesPanel.qml">qml/SavedProfilesPanel.qml</file>
         <file alias="Section.qml">qml/Section.qml</file>
         <file alias="SettingsPage.qml">qml/SettingsPage.qml</file>
+        <file alias="Shell.qml">qml/Shell.qml</file>
         <file alias="ThemedButton.qml">qml/ThemedButton.qml</file>
         <file alias="ThemedComboBox.qml">qml/ThemedComboBox.qml</file>
         <file alias="ThemedSpinBox.qml">qml/ThemedSpinBox.qml</file>
@@ -57,5 +62,13 @@
         <file alias="icons/gpu.svg">icons/gpu.svg</file>
         <file alias="icons/fan.svg">icons/fan.svg</file>
         <file alias="icons/device.svg">icons/device.svg</file>
+        <file alias="icons/home.svg">icons/home.svg</file>
+        <file alias="icons/profiles.svg">icons/profiles.svg</file>
+        <file alias="icons/keyboard.svg">icons/keyboard.svg</file>
+        <file alias="icons/settings.svg">icons/settings.svg</file>
+        <file alias="icons/information.svg">icons/information.svg</file>
+        <file alias="icons/help.svg">icons/help.svg</file>
+        <file alias="icons/exit.svg">icons/exit.svg</file>
+        <file alias="icons/plug.svg">icons/plug.svg</file>
     </qresource>
 </RCC>

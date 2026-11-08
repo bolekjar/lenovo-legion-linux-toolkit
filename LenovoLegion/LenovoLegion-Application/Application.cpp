@@ -6,12 +6,10 @@
  *   Jaroslav Bolek <jaroslav.bolek@gmail.com>
  */
 #include "Application.h"
-#include "AboutWindow.h"
 #include "DataProviderManager.h"
 #include "MainWindow.h"
 #include "ProtocolProcessor.h"
 #include "ProtocolProcessorNotifier.h"
-#include "ToolBarSettingsWidget.h"
 
 #include <Core/LoggerHolder.h>
 #include <Core/Application.h>
@@ -29,7 +27,6 @@ namespace LenovoLegionGui {
 Application::Application(int &argc, char *argv[]) : QApplication(argc,argv),
     m_dataProviderManager(new DataProviderManager(this)),
     m_mainWindow(nullptr),
-    m_aboutWindow(nullptr),
     m_trayIcon(new QSystemTrayIcon(this))
 {
     LoggerHolder::getInstance().init(QApplication::applicationDirPath().append(QDir::separator()).append(bj::framework::Application::log_dir).append(QDir::separator()).append(bj::framework::Application::apps_names[0]).append(".log").toStdString());
@@ -57,7 +54,6 @@ void Application::appInitImpl(std::unique_ptr<ApplicationModulesHandler_T>)
      * Init Gui
      */
     m_mainWindow  = std::make_unique<MainWindow>(*m_dataProviderManager);
-    m_aboutWindow = std::make_unique<AboutWindow>();
 
 
     /*
@@ -68,7 +64,7 @@ void Application::appInitImpl(std::unique_ptr<ApplicationModulesHandler_T>)
     m_trayIcon->setContextMenu(new QMenu(m_mainWindow.get()));
     m_trayIcon->contextMenu()->addAction("Lenovo Legion", m_mainWindow.get(), &MainWindow::show);
     m_trayIcon->contextMenu()->addSeparator();
-    m_trayIcon->contextMenu()->addAction("About", m_aboutWindow.get(), &AboutWindow::show);
+    m_trayIcon->contextMenu()->addAction("About", m_mainWindow.get(), &MainWindow::showAbout);
     m_trayIcon->contextMenu()->addAction("Quit", this, &Application::onExitActionTriggered);
 
 
@@ -79,8 +75,6 @@ void Application::appInitImpl(std::unique_ptr<ApplicationModulesHandler_T>)
      */
     connect(ApplicationSettings::instance(), &ApplicationSettings::settingChanged,
             this, &Application::onSettingChanged);
-    connect(ApplicationSettings::instance(), &ApplicationSettings::themeChanged,
-            this, &Application::onThemeChanged);
 
 
     
@@ -98,8 +92,6 @@ void Application::appStopImpl() noexcept
      */
     disconnect(ApplicationSettings::instance(), &ApplicationSettings::settingChanged,
                this, &Application::onSettingChanged);
-    disconnect(ApplicationSettings::instance(), &ApplicationSettings::themeChanged,
-               this, &Application::onThemeChanged);
     
     m_trayIcon->setVisible(false);
     m_trayIcon->contextMenu()->clear();
@@ -114,7 +106,6 @@ void Application::appStopImpl() noexcept
      * (DataSource, e.g. the HW monitor) wait in the destructor for their pending async
      * requests, which use DataProvider and the communication thread.
      */
-    m_aboutWindow.reset();
     m_mainWindow.reset();
 
     m_dataProviderManager->cleanup();
@@ -155,7 +146,6 @@ void Application::trayIconActivated(QSystemTrayIcon::ActivationReason reason)
 
 void Application::onExitActionTriggered()
 {
-    m_aboutWindow->close();
     m_mainWindow->close();
     m_trayIcon->setVisible(false);
     QApplication::exit(0);
@@ -177,12 +167,6 @@ void Application::applyStartupSettings()
     ApplicationSettings::instance()->loadAppTraceLogging(appTraceLogging);
     
     applyLogging(appDebugLogging, appTraceLogging);
-    
-    // Apply theme setting
-    ApplicationSettings::ThemeType theme = ApplicationSettings::ThemeType::NoTheme;
-    ApplicationSettings::instance()->loadStylesheetTheme(theme);
-    applyTheme(theme);
-    LOG_T(QString("Applied theme: ").append(QString::number(static_cast<int>(theme))));
     
     // Apply start minimized setting
     bool startMinimized = false;
@@ -232,11 +216,6 @@ void Application::applyLogging(bool enableDebug, bool enableTrace)
           .append(", Trace: ").append(enableTrace ? "enabled" : "disabled"));
 }
 
-void Application::applyTheme(ApplicationSettings::ThemeType theme)
-{
-    setStyleSheet(ToolBarSettingsWidget::getStylesheetTheme(theme));
-}
-
 void Application::onSettingChanged(LenovoLegionGui::ApplicationSettings::SettingType setting, bool value)
 {
     using SettingType = ApplicationSettings::SettingType;
@@ -264,16 +243,11 @@ void Application::onSettingChanged(LenovoLegionGui::ApplicationSettings::Setting
             
         case SettingType::StylesheetTheme:
             LOG_T(QString("Setting changed: StylesheetTheme = ").append(value ? "true" : "false"));
-            // This is handled in ToolBarSettingsWidget::onStylesheetThemeChanged
+            // The window of the generic GUI follows ApplicationSettings::themeChanged (Ui/Theme)
             break;
         default:
             break;
     }
-}
-
-void Application::onThemeChanged(LenovoLegionGui::ApplicationSettings::ThemeType theme)
-{
-    applyTheme(theme);
 }
 
 bool Application::notify(QObject* receiver, QEvent* event) noexcept {

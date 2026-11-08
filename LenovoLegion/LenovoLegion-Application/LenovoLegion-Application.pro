@@ -9,9 +9,7 @@ PKGCONFIG += protobuf
 DESTDIR = $${DESTINATION_BIN_PATH}
 
 SOURCES +=               \
-        AboutWindow.cpp \
         Application.cpp  \
-        BateryStatus.cpp \
         DataProvider.cpp \
         DataProviderManager.cpp \
         MainWindow.cpp   \
@@ -19,30 +17,17 @@ SOURCES +=               \
         ProtocolProcessorBase.cpp \
         ProtocolProcessorNotifier.cpp \
         Settings.cpp \
-        TaskList.cpp \
-        ToolBarQmlPageWidget.cpp \
-        ToolBarSettingsWidget.cpp \
-        ToolBarWidget.cpp \
-        Utils.cpp \
         main.cpp
 
 HEADERS +=          \
-        AboutWindow.h \
         Application.h \
-        BateryStatus.h \
         DataProvider.h \
         DataProviderManager.h \
         MainWindow.h  \
         ProtocolProcessor.h \
         ProtocolProcessorBase.h \
         ProtocolProcessorNotifier.h \
-        Settings.h \
-        TaskList.h \
-        ToolBarQmlPageWidget.h \
-        ToolBarSettingsWidget.h \
-        ToolBarWidget.h \
-        Utils.h \
-        WidgetMessage.h
+        Settings.h
 
 HEADERS += \
         ../LenovoLegion-Daemon/ProtocolParser.h
@@ -52,12 +37,6 @@ SOURCES += \
 
 # Protocol messages, shared library (the same as the daemon uses, see LenovoLegion-Messages.pro)
 include(../LenovoLegion-Messages/LenovoLegion-Messages.pri)
-
-FORMS +=           \
-    AboutWindow.ui \
-    BateryStatus.ui \
-    MainWindow.ui \
-    ToolBarSettingsWidget.ui
 
 INCLUDEPATH += $${CUDA_PATH}/include
 LIBS += -l$${PROJECT_LIBS_NAME}
@@ -70,8 +49,10 @@ OTHER_FILES += \
 
 QMAKE_POST_LINK += $$quote($${SYSTEM_CP} $${PROJECT_ROOT_PATH}/LenovoLegion-Application/LenovoLegionIco.png $${DESTINATION_PATH}$$escape_expand(\\n\\t))
 
-# Generic GUI (UiDesign.md): generic data model for QML pages
+# Generic GUI (UiDesign.md): window, generic data model and state for QML
 SOURCES += \
+        Ui/AppSettings.cpp \
+        Ui/AppState.cpp \
         Ui/DataSource.cpp \
         Ui/FieldModel.cpp \
         Ui/KeyboardLayout.cpp \
@@ -80,6 +61,8 @@ SOURCES += \
         Ui/Theme.cpp
 
 HEADERS += \
+        Ui/AppSettings.h \
+        Ui/AppState.h \
         Ui/DataSource.h \
         Ui/FieldModel.h \
         Ui/KeyboardLayout.h \
