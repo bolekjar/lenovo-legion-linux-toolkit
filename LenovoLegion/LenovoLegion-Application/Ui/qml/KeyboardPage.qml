@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0
-// Page of the generic GUI (Lenovo driver): RGB keyboard (toolbar page Keyboard), the same data as RGBKeyboardDevice
-// of the widget pages. GET sends RGBControllerRequest (DataSource.request), SET sends RGBControllerSetRequest
+// Page of the generic GUI (Lenovo driver): RGB keyboard (toolbar page Keyboard). GET sends RGBControllerRequest (DataSource.request), SET sends RGBControllerSetRequest
 // (sendCommand, the daemon answers empty, the data are read again).
 import QtQuick
 import QtQuick.Controls
@@ -70,7 +69,7 @@ SettingsPage {
 
     /*
      * Effects (LedGroupEffect): the daemon gets always the whole list (SET_REQUEST_LED_GROUP_EFFECTS), the same as
-     * RGBController::AddEffect of the widget pages: a new effect with LEDs takes them from the older effects (effects
+     * RGBController::AddEffect of the daemon module: a new effect with LEDs takes them from the older effects (effects
      * without LEDs left are removed), a new effect without LEDs (whole device) replaces all.
      */
     readonly property var modes:   rgb.data("modes", rgb.revision) ?? []
@@ -78,7 +77,7 @@ SettingsPage {
     readonly property var leds:    rgb.data("leds", rgb.revision) ?? []
     readonly property int maxEffects: rgb.value("max_effects", rgb.revision) ?? 0
 
-    // Flags of RGBController::Mode (RGBControllerInterface.h MODE_FLAG_*)
+    // Flags of the modes (RGBController.proto, MODE_FLAG_* of the RGBController daemon module)
     readonly property int flagSpeed:          1 << 0
     readonly property int flagDirectionLR:    1 << 1
     readonly property int flagDirectionUD:    1 << 2
@@ -205,7 +204,7 @@ SettingsPage {
         }
     }
 
-    // New effect for the selected LEDs (groupBox of the effect of RGBKeyboardDevice)
+    // New effect for the selected LEDs
     Section {
         id: editorSection
 
@@ -669,7 +668,7 @@ SettingsPage {
         }
     }
 
-    // Brightness, device profile and logo (groupBox_Control of RGBKeyboardDevice), written immediately
+    // Brightness, device profile and logo, written immediately
     Section {
         title: "Control"
         source: rgb

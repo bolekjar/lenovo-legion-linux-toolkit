@@ -24,7 +24,7 @@ namespace LenovoLegionGui {
  * Lenovo Legion keyboards (enough LED codes of the template found): the keys at their physical positions by the key
  * codes, the light bars of the chassis (rear around the vents, front along the bottom edge) and the logo on the lid
  * in three views of the notebook: from above (open lid, keys, front bar), from the front, from the back (lid with the logo).
- * Other devices: the same as DeviceView of the widget pages (OpenRGB): matrix zones by their matrix map, large keys
+ * Other devices: the same as the former DeviceView widget (OpenRGB): matrix zones by their matrix map, large keys
  * (Tab, Shift, Enter, Space, ...) expanded over the empty cells, single/linear zones in rows of 20 LEDs.
  */
 class KeyboardLayout : public QObject

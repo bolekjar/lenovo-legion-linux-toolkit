@@ -18,22 +18,15 @@ SOURCES +=               \
         ProtocolProcessor.cpp \
         ProtocolProcessorBase.cpp \
         ProtocolProcessorNotifier.cpp \
-        RGBController.cpp \
-        RGBKeyboardDevice.cpp \
         Settings.cpp \
         TaskList.cpp \
         ToolBarHelpWidget.cpp \
         ToolBarInformationWidget.cpp \
-        ToolBarKeyboardWidget.cpp \
         ToolBarProfilesWidget.cpp \
         ToolBarQmlPageWidget.cpp \
         ToolBarSettingsWidget.cpp \
         ToolBarWidget.cpp \
         Utils.cpp \
-        QTooltipedSlider.cpp \
-        ColorWheel.cpp \
-        DeviceView.cpp \
-        Swatches.cpp \
         main.cpp
 
 HEADERS +=          \
@@ -46,23 +39,16 @@ HEADERS +=          \
         ProtocolProcessor.h \
         ProtocolProcessorBase.h \
         ProtocolProcessorNotifier.h \
-        RGBController.h \
-        RGBKeyboardDevice.h \
         Settings.h \
         TaskList.h \
         ToolBarHelpWidget.h \
         ToolBarInformationWidget.h \
-        ToolBarKeyboardWidget.h \
         ToolBarProfilesWidget.h \
         ToolBarQmlPageWidget.h \
         ToolBarSettingsWidget.h \
         ToolBarWidget.h \
         Utils.h \
-        QTooltipedSlider.h \
-        ColorWheel.h \
-        DeviceView.h \
-        WidgetMessage.h \
-        Swatches.h
+        WidgetMessage.h
 
 HEADERS += \
         ../LenovoLegion-Daemon/ProtocolParser.h
@@ -77,10 +63,8 @@ FORMS +=           \
     AboutWindow.ui \
     BateryStatus.ui \
     MainWindow.ui \
-    RGBKeyboardDevice.ui \
     ToolBarHelpWidget.ui \
     ToolBarInformationWidget.ui \
-    ToolBarKeyboardWidget.ui \
     ToolBarProfilesWidget.ui \
     ToolBarSettingsWidget.ui
 

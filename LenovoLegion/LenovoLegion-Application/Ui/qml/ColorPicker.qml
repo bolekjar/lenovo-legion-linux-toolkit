@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0
-// Color picker (ColorWheel, Swatches, RGB/HSV/hex of RGBKeyboardDevice, simplified): wheel with the hue around and the
+// Color picker of the RGB keyboard page: wheel with the hue around and the
 // saturation from the middle, value slider, preview, hex field, swatches. color is the picked color; colorPicked is
 // emitted for changes by the user (not for setting color).
 import QtQuick
@@ -181,7 +181,7 @@ RowLayout {
             }
         }
 
-        // Swatches (Swatches of RGBKeyboardDevice)
+        // Swatches of the basic colors
         Flow {
             Layout.fillWidth: true
             spacing: 6

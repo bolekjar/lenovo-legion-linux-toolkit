@@ -465,7 +465,7 @@ void KeyboardLayout::update()
                     }
 
                     /*
-                     * The same corrections of the map as DeviceView (right arrow, tab)
+                     * The same corrections of the map as the former DeviceView widget (right arrow, tab)
                      */
                     if((mapIdx + 1) < map.size() && name(map[mapIdx + 1]) == LenovoLegionDaemon::KEY_EN_RIGHT_ARROW && map[mapIdx] == NO_LED)
                     {
@@ -536,7 +536,7 @@ void KeyboardLayout::update()
 
                     if(key == LenovoLegionDaemon::KEY_EN_SPACE || unknownCode)
                     {
-                        // Space: not into the first cell of the row (the same as DeviceView)
+                        // Space: not into the first cell of the row (the same as the former DeviceView widget)
                         const unsigned int rowStart = ledY * width + (key == LenovoLegionDaemon::KEY_EN_SPACE && !unknownCode ? 1 : 0);
 
                         for(unsigned int idx = mapIdx; idx > rowStart && mapName(idx - 1) == key; --idx)

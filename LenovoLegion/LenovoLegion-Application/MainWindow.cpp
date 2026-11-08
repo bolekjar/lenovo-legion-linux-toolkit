@@ -16,7 +16,6 @@
 #include "ToolBarProfilesWidget.h"
 #include "ToolBarQmlPageWidget.h"
 #include "ToolBarSettingsWidget.h"
-#include "ToolBarKeyboardWidget.h"
 
 
 #include "DataProviderManager.h"
@@ -97,20 +96,13 @@ MainWindow::MainWindow(DataProviderManager &dataProviderManager, QWidget *parent
     });
 
     /*
-     * RGB keyboard of the generic GUI (in progress, replaces the page Keyboard when it is complete)
+     * RGB keyboard of the generic GUI
      */
-    toolbarActionInitializer(ui->toolBar->addAction("Keyboard QML"),QIcon(":/images/icons/keyboard.png"),[this](){
+    toolbarActionInitializer(ui->toolBar->addAction("Keyboard"),QIcon(":/images/icons/keyboard.png"),[this](){
         if(ui->label_DaemonStatus->text() != DAEMON_CONNECTION_STATUS_CONNECTED.data())
             return;
         ui->toolBar_HBoxLayout->addWidget((new ToolBarQmlPageWidget(m_dataProviderManager.dataProvider(),QUrl("qrc:/ui/KeyboardPage.qml"),this))->initialize());
     });
-
-    toolbarActionInitializer(ui->toolBar->addAction("Keyboard"),QIcon(":/images/icons/keyboard.png"),[this](){
-        if(ui->label_DaemonStatus->text() != DAEMON_CONNECTION_STATUS_CONNECTED.data())
-            return;
-        ui->toolBar_HBoxLayout->addWidget((new ToolBarKeyboardWidget(m_dataProviderManager.dataProvider(),this))->initialize());
-    });
-
 
     ui->toolBar->addWidget([](){QWidget * spacer = new QWidget(); spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding); return spacer;}());
 

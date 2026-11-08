@@ -60,9 +60,8 @@ HEADERS +=  \
         Modules/ModuleLoader.h \
         Modules/ModuleSettingsStorage.h
 
-# RGB data model shared with the GUI (the RGB module has its own copy)
+# RGB key names shared with the GUI (Ui/KeyboardLayout.cpp), the RGB module has its own copy
 HEADERS += \
-        RGBControllerInterface.h \
         RGBControllerKeyNames.h
 
 # Daemon module API (SDK) and messages used by modules,

@@ -458,7 +458,7 @@ Odchylky od původní tabulky (podle pravidla „notifikaci posílá ten, kdo at
 - `LenovoLegion-Daemon.pro` bez `hidapi`, CUDA a `libnvidia-ml` – daemon závisí jen na `libLenovoLegionMessages.so` a `libudev` (binárka ~12 MB místo ~43 MB),
 - GUI používá `legion::messages::DataType::*` místo `LenovoLegionDaemon::*::dataType`.
 
-Zůstává v `LenovoLegion-Daemon`: `RGBControllerInterface.h` a `RGBControllerKeyNames.h` – datový model RGB sdílený s GUI (modul RGBController má vlastní kopii v `Kit`). Kandidát na přesun do společného místa (např. vedle zpráv).
+Zůstává v `LenovoLegion-Daemon`: `RGBControllerKeyNames.h` – názvy kláves sdílené s GUI (`Ui/KeyboardLayout.cpp`, modul RGBController má vlastní kopii v `Kit`). `RGBControllerInterface.h` GUI po odstranění starých widgetů klávesnice nepotřebuje, je jen v modulu. Kandidát na přesun do společného místa (např. vedle zpráv).
 
 Ověřeno: celý build bez chyb a varování, všech 19 modulů se načte a vrací data (test s novými objekty daemona), GUI startuje.
 

@@ -36,7 +36,7 @@
    NVML module does not poll the GPU by a timer, it is queried only by GUI requests. Test: session on the iGPU (hybrid mode, compositor on the iGPU),
    stop the daemon -> runtime_status suspended?, start the daemon -> still suspended? If not, initialize NVML lazily (first request) and shut it down after idle time.
 16) DONE (2026-10-27) - old implementation deleted, daemon hardware code is only in LenovoLegion-DaemonModules (ModulesDesign.md 7.3).
-   Left: RGBControllerInterface.h, RGBControllerKeyNames.h in LenovoLegion-Daemon are the RGB data model shared with the GUI, move them to a common place.
+   Left: RGBControllerKeyNames.h in LenovoLegion-Daemon is shared with the GUI (Ui/KeyboardLayout.cpp), move it to a common place.
    Deleted:
    - LenovoLegion-Daemon: SysFsDrivers/*, SysFsDataProviders/*, DataProviders/DataProviderNvidiaNvml.*, DataProviders/DataProviderRGBController.*, RGBController.*, RGBControlers/*, RGBController*.h, StringUtils.*, SysFsDataProvider.*,
    - per provider DaemonSettingsManager::load*/save* and SettingsLoader*/SettingsSaver* in Settings.h/.cpp (keep PowerProfiles loader and DaemonSettings),
