@@ -41,6 +41,26 @@ GroupBox {
     // Host of the notifications (HomePage): errors are shown there, otherwise in the group
     property Item       notificationHost: null
 
+    // Data source not available (daemon not connected, kernel driver / module not loaded): the fields and the
+    // presets are hidden, the group shows why (showUnavailable: false keeps the content, the group handles it itself)
+    property bool       showUnavailable: true
+    readonly property bool unavailable: showUnavailable && source !== null && source.dataType.length > 0 && !source.available
+
+    readonly property string unavailableReason: {
+        if (source === null)
+            return ""
+
+        if (typeof appState !== "undefined" && appState !== null && !appState.connected)
+            return "Not connected to the daemon"
+
+        if (source.platform === "lenovo")
+            return "Requires the Lenovo Legion kernel driver (lenovo_legion)"
+
+        // Error of the daemon without the name of the module ("IntelMSR: kernel module ... is not loaded")
+        const error = source.lastError.replace(/^[A-Za-z]+:\s*/, "")
+        return error.length > 0 ? error.charAt(0).toUpperCase() + error.slice(1) : "The daemon provides no data for this group"
+    }
+
     Component.onCompleted: {
         for (let item = parent; item !== null; item = item.parent) {
             if (settingsPage === null && item.isSettingsPage === true)
@@ -216,6 +236,53 @@ GroupBox {
 
             Layout.fillWidth: true
             Layout.fillHeight: section.stretchContent
+            visible: !section.unavailable
+        }
+
+        // Not available: icon, "Not available" and the reason
+        RowLayout {
+            Layout.fillWidth: true
+            Layout.topMargin: 4
+            Layout.bottomMargin: 4
+            visible: section.unavailable
+            spacing: 12
+
+            Rectangle {
+                Layout.alignment: Qt.AlignTop
+                implicitWidth: 32
+                implicitHeight: 32
+                radius: 16
+                color: "transparent"
+                border.width: 1.5
+                border.color: theme.disabledText
+
+                TintedIcon {
+                    anchors.centerIn: parent
+                    width: 16
+                    height: 16
+                    source: "qrc:/ui/icons/plug.svg"
+                    color: theme.disabledText
+                }
+            }
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 2
+
+                Label {
+                    Layout.fillWidth: true
+                    text: "Not available"
+                    font.bold: true
+                    color: theme.text
+                }
+
+                Label {
+                    Layout.fillWidth: true
+                    text: section.unavailableReason
+                    color: theme.disabledText
+                    wrapMode: Text.Wrap
+                }
+            }
         }
 
         // Extra height of a group higher than its content (next to a higher group): under the content, the presets
@@ -229,7 +296,7 @@ GroupBox {
         Label {
             Layout.fillWidth: true
 
-            visible: section.shownError.length > 0 && section.source !== null && (section.enabled || section.source.available)
+            visible: section.shownError.length > 0 && section.source !== null && !section.unavailable && (section.enabled || section.source.available)
             text: section.shownError
             color: "red"
             wrapMode: Text.Wrap
@@ -238,7 +305,7 @@ GroupBox {
         ApplyBar {
             Layout.fillWidth: true
 
-            visible: section.applyBar && (!section.pageApply || section.presets.length > 0)
+            visible: section.applyBar && !section.unavailable && (!section.pageApply || section.presets.length > 0)
             source: section.source
             presets: section.presets
             presetLabel: section.presetLabel

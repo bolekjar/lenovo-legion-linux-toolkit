@@ -427,6 +427,8 @@ SettingsPage {
         Layout.alignment: Qt.AlignTop
         title: "Daemon"
         source: daemon
+        // Reconnect stays usable without the connection, the switches are disabled
+        showUnavailable: false
 
         SwitchRow {
             enabled: daemon.available

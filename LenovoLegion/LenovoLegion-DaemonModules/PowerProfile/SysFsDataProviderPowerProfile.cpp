@@ -50,15 +50,16 @@ QByteArray SysFsDataProviderPowerProfile::serializeAndGetData()
 
     } catch(SysFsDriver::exception_T& ex)
     {
+        /*
+         * Lenovo Legion kernel driver not loaded: an error, not an empty message. The GUI shows the data type as
+         * not available (pages grayed, Help system check) and no empty settings are saved over the saved ones.
+         */
         if(ex.errcodeInfo().value() == SysFsDriver::ERROR_CODES::DRIVER_NOT_AVAILABLE)
         {
             LOG_D(QString(__PRETTY_FUNCTION__) + "- Driver not available");
-            powerProfile.Clear();
         }
-        else
-        {
-            throw;
-        }
+
+        throw;
     }
 
     byteArray.resize(powerProfile.ByteSizeLong());
