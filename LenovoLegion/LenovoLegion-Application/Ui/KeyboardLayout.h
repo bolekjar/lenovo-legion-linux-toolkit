@@ -43,6 +43,8 @@ class KeyboardLayout : public QObject
     // [{name, title, hint, heightRatio, lid, body, deck, vents}] views of the device ("top", "front", "back"), the keys
     // have the name of their view, positions relative to the width of the view; lid, body, deck {x, y, w, h} (if drawn)
     Q_PROPERTY(QVariantList views       READ views       NOTIFY layoutChanged)
+    // Indexes of the LEDs of the keys (not the light bars, not the logo): effects of the whole keyboard
+    Q_PROPERTY(QVariantList keyLeds     READ keyLeds     NOTIFY layoutChanged)
 
 public:
 
@@ -55,6 +57,7 @@ public:
     QVariantList zones() const;
     qreal        heightRatio() const;
     QVariantList views() const;
+    QVariantList keyLeds() const;
 
 signals:
 
@@ -72,6 +75,7 @@ private:
     QVariantList         m_zones;
     qreal                m_heightRatio = 0;
     QVariantList         m_views;
+    QVariantList         m_keyLeds;
 };
 
 }

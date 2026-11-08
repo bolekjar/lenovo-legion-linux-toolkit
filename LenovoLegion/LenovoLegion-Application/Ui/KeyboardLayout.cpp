@@ -361,6 +361,11 @@ QVariantList KeyboardLayout::views() const
     return m_views;
 }
 
+QVariantList KeyboardLayout::keyLeds() const
+{
+    return m_keyLeds;
+}
+
 void KeyboardLayout::update()
 {
     legion::messages::RGBControllerResponse data;
@@ -796,6 +801,16 @@ void KeyboardLayout::update()
     }
 
     m_heightRatio = (maxY - minY) * atom;
+    m_keyLeds.clear();
+
+    for(int led = 0; led < leds.size(); ++led)
+    {
+        if(LenovoLegionDaemon::KeyCodesToName.contains(static_cast<int>(leds.at(led).value())))
+        {
+            m_keyLeds.append(led);
+        }
+    }
+
     m_views       = { QVariantMap{ {"name", "top"}, {"title", "Keyboard"}, {"hint", QString()}, {"heightRatio", m_heightRatio},
                                    {"deck", QVariantMap{ {"x", 0.0}, {"y", 0.0}, {"w", 1.0}, {"h", m_heightRatio} }} } };
 
@@ -1265,6 +1280,16 @@ bool KeyboardLayout::updateByTemplate(const legion::messages::RGBControllerRespo
     back.insert("lid",   relative({ CHASSIS_X + 0.6f, 0, CHASSIS_W - 1.2f, BACK_LID_H },0));
     back.insert("body",  relative({ CHASSIS_X, BACK_BODY_Y, CHASSIS_W, BACK_BODY_H },0));
     back.insert("vents", vents);
+
+    m_keyLeds.clear();
+
+    for(const auto& slot : slotLeds)
+    {
+        for(int led : slot)
+        {
+            m_keyLeds.append(led);
+        }
+    }
 
     m_views = { top };
 

@@ -727,6 +727,24 @@ bool DataSource::modified(const QString &path) const
     return !fields.empty() && Reflection::has(*m_changes,fields);
 }
 
+QVariant DataSource::data(const QString &field) const
+{
+    if(m_message == nullptr)
+    {
+        return {};
+    }
+
+    const FieldDescriptor* descriptor = m_message->GetDescriptor()->FindFieldByName(field.toStdString());
+
+    if(descriptor == nullptr)
+    {
+        LOG_W(QString("DataSource ").append(m_dataType).append(": message has unknown field ").append(field));
+        return {};
+    }
+
+    return Reflection::toVariant(*m_message,descriptor);
+}
+
 QVariantList DataSource::repeatedValues(const QString &path) const
 {
     if(m_message == nullptr)
@@ -786,6 +804,24 @@ std::unique_ptr<Message> DataSource::buildMessage(const Descriptor *descriptor, 
 
     for(auto it = values.cbegin(); it != values.cend(); ++it)
     {
+        QVariant value = it.value();
+
+        /*
+         * Whole message / repeated field (RGB_CONTROLLER led_group_effects): object or array of the values
+         */
+        if(value.typeId() == QMetaType::QVariantList || value.typeId() == QMetaType::QVariantMap)
+        {
+            QStringList unknown;
+            Reflection::fromVariant(*message,QVariantMap{ { it.key(), value } },&unknown);
+
+            for(const auto& name : unknown)
+            {
+                LOG_W(QString("DataSource ").append(m_dataType).append(": message has unknown field ").append(name));
+            }
+
+            continue;
+        }
+
         const auto fields = Reflection::resolve(descriptor,it.key());
 
         if(fields.empty())
@@ -793,8 +829,6 @@ std::unique_ptr<Message> DataSource::buildMessage(const Descriptor *descriptor, 
             LOG_W(QString("DataSource ").append(m_dataType).append(": message has unknown field ").append(it.key()));
             continue;
         }
-
-        QVariant value = it.value();
 
         /*
          * Enum value by name ("LOAD")

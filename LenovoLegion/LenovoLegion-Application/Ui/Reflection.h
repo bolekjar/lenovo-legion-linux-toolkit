@@ -82,4 +82,17 @@ QVariantList repeatedValues(const google::protobuf::Message& message,const Field
  */
 int count(const google::protobuf::Message& message,const FieldPath& path);
 
+/*
+ * Value of a field as QVariant for QML: a message is a map of its fields (by name), a repeated field a list,
+ * an enum its number
+ */
+QVariant toVariant(const google::protobuf::Message& message,const google::protobuf::FieldDescriptor* field);
+QVariantMap toVariant(const google::protobuf::Message& message);
+
+/*
+ * Fields of a message from a map by the field names: a map for a message field, a list for a repeated field (maps
+ * for messages, values for scalars), enum by number or name. Unknown fields are returned in unknown.
+ */
+void fromVariant(google::protobuf::Message& message,const QVariantMap& values,QStringList* unknown = nullptr);
+
 }

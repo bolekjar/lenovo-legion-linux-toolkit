@@ -463,4 +463,139 @@ int count(const Message &message, const FieldPath &path)
     return parent == nullptr ? 0 : parent->GetReflection()->FieldSize(*parent,path.back().field);
 }
 
+
+QVariant toVariant(const Message &message, const FieldDescriptor *field)
+{
+    const auto* reflection = message.GetReflection();
+
+    auto scalar = [&](int index) -> QVariant {
+        const bool repeated = field->is_repeated();
+
+        switch(field->cpp_type())
+        {
+        case FieldDescriptor::CPPTYPE_BOOL:    return repeated ? reflection->GetRepeatedBool(message,field,index)   : reflection->GetBool(message,field);
+        case FieldDescriptor::CPPTYPE_INT32:   return static_cast<qlonglong>(repeated ? reflection->GetRepeatedInt32(message,field,index)   : reflection->GetInt32(message,field));
+        case FieldDescriptor::CPPTYPE_INT64:   return static_cast<qlonglong>(repeated ? reflection->GetRepeatedInt64(message,field,index)   : reflection->GetInt64(message,field));
+        case FieldDescriptor::CPPTYPE_UINT32:  return static_cast<qulonglong>(repeated ? reflection->GetRepeatedUInt32(message,field,index) : reflection->GetUInt32(message,field));
+        case FieldDescriptor::CPPTYPE_UINT64:  return static_cast<qulonglong>(repeated ? reflection->GetRepeatedUInt64(message,field,index) : reflection->GetUInt64(message,field));
+        case FieldDescriptor::CPPTYPE_FLOAT:   return static_cast<double>(repeated ? reflection->GetRepeatedFloat(message,field,index) : reflection->GetFloat(message,field));
+        case FieldDescriptor::CPPTYPE_DOUBLE:  return repeated ? reflection->GetRepeatedDouble(message,field,index) : reflection->GetDouble(message,field);
+        case FieldDescriptor::CPPTYPE_STRING:  return QString::fromStdString(repeated ? reflection->GetRepeatedString(message,field,index) : reflection->GetString(message,field));
+        case FieldDescriptor::CPPTYPE_ENUM:    return repeated ? reflection->GetRepeatedEnumValue(message,field,index) : reflection->GetEnumValue(message,field);
+        case FieldDescriptor::CPPTYPE_MESSAGE: return toVariant(repeated ? reflection->GetRepeatedMessage(message,field,index) : reflection->GetMessage(message,field));
+        }
+
+        return {};
+    };
+
+    if(field->is_map())
+    {
+        return {};
+    }
+
+    if(field->is_repeated())
+    {
+        QVariantList values;
+
+        for(int i = 0; i < reflection->FieldSize(message,field); ++i)
+        {
+            values.append(scalar(i));
+        }
+
+        return values;
+    }
+
+    return scalar(0);
+}
+
+QVariantMap toVariant(const Message &message)
+{
+    QVariantMap values;
+    const Descriptor* descriptor = message.GetDescriptor();
+
+    for(int i = 0; i < descriptor->field_count(); ++i)
+    {
+        const FieldDescriptor* field = descriptor->field(i);
+
+        if(!field->is_map())
+        {
+            values.insert(QString::fromStdString(std::string(field->name())),toVariant(message,field));
+        }
+    }
+
+    return values;
+}
+
+void fromVariant(Message &message, const QVariantMap &values, QStringList *unknown)
+{
+    const Descriptor* descriptor = message.GetDescriptor();
+    const auto*       reflection = message.GetReflection();
+
+    // Enum by number or by its name
+    auto enumNumber = [](const FieldDescriptor* field,const QVariant& value) {
+        if(value.typeId() == QMetaType::QString)
+        {
+            const EnumValueDescriptor* enumValue = field->enum_type()->FindValueByName(value.toString().toStdString());
+            return enumValue != nullptr ? enumValue->number() : 0;
+        }
+
+        return value.toInt();
+    };
+
+    for(auto it = values.cbegin(); it != values.cend(); ++it)
+    {
+        const FieldDescriptor* field = descriptor->FindFieldByName(it.key().toStdString());
+
+        if(field == nullptr || field->is_map())
+        {
+            if(unknown != nullptr)
+            {
+                unknown->append(it.key());
+            }
+
+            continue;
+        }
+
+        const QVariant& value = it.value();
+
+        if(field->is_repeated())
+        {
+            reflection->ClearField(&message,field);
+
+            for(const QVariant& element : value.toList())
+            {
+                switch(field->cpp_type())
+                {
+                case FieldDescriptor::CPPTYPE_BOOL:    reflection->AddBool(&message,field,element.toBool());                       break;
+                case FieldDescriptor::CPPTYPE_INT32:   reflection->AddInt32(&message,field,element.toInt());                       break;
+                case FieldDescriptor::CPPTYPE_INT64:   reflection->AddInt64(&message,field,element.toLongLong());                  break;
+                case FieldDescriptor::CPPTYPE_UINT32:  reflection->AddUInt32(&message,field,static_cast<quint32>(element.toLongLong())); break;
+                case FieldDescriptor::CPPTYPE_UINT64:  reflection->AddUInt64(&message,field,element.toULongLong());                break;
+                case FieldDescriptor::CPPTYPE_FLOAT:   reflection->AddFloat(&message,field,element.toFloat());                     break;
+                case FieldDescriptor::CPPTYPE_DOUBLE:  reflection->AddDouble(&message,field,element.toDouble());                   break;
+                case FieldDescriptor::CPPTYPE_STRING:  reflection->AddString(&message,field,element.toString().toStdString());     break;
+                case FieldDescriptor::CPPTYPE_ENUM:    reflection->AddEnumValue(&message,field,enumNumber(field,element));         break;
+                case FieldDescriptor::CPPTYPE_MESSAGE: fromVariant(*reflection->AddMessage(&message,field),element.toMap(),unknown); break;
+                }
+            }
+
+            continue;
+        }
+
+        switch(field->cpp_type())
+        {
+        case FieldDescriptor::CPPTYPE_BOOL:    reflection->SetBool(&message,field,value.toBool());                         break;
+        case FieldDescriptor::CPPTYPE_INT32:   reflection->SetInt32(&message,field,value.toInt());                         break;
+        case FieldDescriptor::CPPTYPE_INT64:   reflection->SetInt64(&message,field,value.toLongLong());                    break;
+        case FieldDescriptor::CPPTYPE_UINT32:  reflection->SetUInt32(&message,field,static_cast<quint32>(value.toLongLong())); break;
+        case FieldDescriptor::CPPTYPE_UINT64:  reflection->SetUInt64(&message,field,value.toULongLong());                  break;
+        case FieldDescriptor::CPPTYPE_FLOAT:   reflection->SetFloat(&message,field,value.toFloat());                       break;
+        case FieldDescriptor::CPPTYPE_DOUBLE:  reflection->SetDouble(&message,field,value.toDouble());                     break;
+        case FieldDescriptor::CPPTYPE_STRING:  reflection->SetString(&message,field,value.toString().toStdString());       break;
+        case FieldDescriptor::CPPTYPE_ENUM:    reflection->SetEnumValue(&message,field,enumNumber(field,value));           break;
+        case FieldDescriptor::CPPTYPE_MESSAGE: fromVariant(*reflection->MutableMessage(&message,field),value.toMap(),unknown); break;
+        }
+    }
+}
+
 }

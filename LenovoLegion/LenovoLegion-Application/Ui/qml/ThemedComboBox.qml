@@ -26,14 +26,51 @@ ComboBox {
             text: typeof modelData === "object" && modelData !== null && modelData.tooltip !== undefined ? modelData.tooltip : ""
         }
 
-        contentItem: Text {
-            text: item.text
-            font.bold: item.highlighted && theme.styled
-            font.pixelSize: theme.fontPixelSize
-            color: item.highlighted ? theme.accentText
-                 : item.hovered ? theme.itemHoverText : theme.text
-            verticalAlignment: Text.AlignVCenter
-            elide: Text.ElideRight
+        // Badge of the value (objects with badge, e.g. "Not on Linux"): muted text and the badge on the right
+        readonly property string badge: typeof modelData === "object" && modelData !== null && modelData.badge !== undefined ? modelData.badge : ""
+
+        contentItem: Item {
+            implicitHeight: label.implicitHeight
+
+            Text {
+                id: label
+
+                anchors.left: parent.left
+                anchors.right: badgeItem.visible ? badgeItem.left : parent.right
+                anchors.rightMargin: badgeItem.visible ? 8 : 0
+                anchors.verticalCenter: parent.verticalCenter
+                text: item.text
+                font.bold: item.highlighted && theme.styled
+                font.pixelSize: theme.fontPixelSize
+                color: item.highlighted ? theme.accentText
+                     : item.hovered ? theme.itemHoverText : theme.text
+                opacity: item.badge.length > 0 && !item.highlighted ? 0.6 : 1
+                verticalAlignment: Text.AlignVCenter
+                elide: Text.ElideRight
+            }
+
+            Rectangle {
+                id: badgeItem
+
+                visible: item.badge.length > 0
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                implicitWidth: badgeText.implicitWidth + 12
+                implicitHeight: badgeText.implicitHeight + 4
+                radius: height / 2
+                color: "transparent"
+                border.width: 1
+                border.color: item.highlighted ? theme.accentText : "#ffb347"
+
+                Text {
+                    id: badgeText
+
+                    anchors.centerIn: parent
+                    text: item.badge
+                    font.pixelSize: theme.fontPixelSize - 2
+                    color: item.highlighted ? theme.accentText : "#ffb347"
+                }
+            }
         }
 
         background: Rectangle {

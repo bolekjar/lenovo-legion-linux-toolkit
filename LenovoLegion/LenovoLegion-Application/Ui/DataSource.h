@@ -157,6 +157,7 @@ public:
     Q_INVOKABLE QVariant     daemonValue(const QString& path,int revision) const    { Q_UNUSED(revision) return daemonValue(path); }
     Q_INVOKABLE QVariantList repeatedValues(const QString& path,int revision) const { Q_UNUSED(revision) return repeatedValues(path); }
     Q_INVOKABLE int          count(const QString& path,int revision) const          { Q_UNUSED(revision) return count(path); }
+    Q_INVOKABLE QVariant     data(const QString& field,int revision) const          { Q_UNUSED(revision) return data(field); }
 
     /*
      * Model of the field, created once per path (owned by the data source)
@@ -204,6 +205,12 @@ public:
      * Number of elements of a repeated field in the data from the daemon (CPUs, ranges of the CPU topology)
      */
     Q_INVOKABLE int count(const QString& path) const;
+
+    /*
+     * Whole field of the data from the daemon as QML values (Reflection::toVariant): a message is an object of its
+     * fields, a repeated field an array (RGB_CONTROLLER modes, led_group_effects with their LEDs and colors)
+     */
+    Q_INVOKABLE QVariant data(const QString& field) const;
 
     const google::protobuf::Descriptor* descriptor() const;
 

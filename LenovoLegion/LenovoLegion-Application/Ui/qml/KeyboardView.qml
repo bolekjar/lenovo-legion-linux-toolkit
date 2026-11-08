@@ -20,6 +20,10 @@ Item {
     required property DataSource stateSource    // RGB_CONTROLLER: colors of all LEDs (0x00BBGGRR)
 
     property var selected: []                   // indexes of the selected LEDs
+    property var marked: []                     // indexes of highlighted LEDs (LEDs of the effect under the mouse)
+
+    // Indexes of the LEDs of the keys (effects of the whole keyboard)
+    readonly property var keyLeds: layout.keyLeds
 
     readonly property var colors: stateSource.repeatedValues("colors", stateSource.revision)
 
@@ -55,13 +59,14 @@ Item {
         return viewKeys(layout.keys, name).filter(key => isSelected(key.indexes, selection)).length
     }
 
-    function selectView(name) {
+    // All LEDs of all views (keys, light bars, logo)
+    function selectAll() {
         let indexes = []
 
-        for (const key of viewKeys(layout.keys, name))
-            indexes = indexes.concat(key.indexes.filter(index => indexes.indexOf(index) < 0))
+        for (const key of layout.keys)
+            indexes = union(indexes, key.indexes)
 
-        selected = selected.concat(indexes.filter(index => selected.indexOf(index) < 0))
+        selected = indexes
     }
 
     function union(first, second) {
@@ -152,6 +157,82 @@ Item {
                                                Window.height > 0 && maxHeightRatio > 0 ? Window.height * maxHeightPart / maxHeightRatio : view.width)
 
     implicitHeight: content.implicitHeight
+
+    // Selection on the dark notebook in all themes: the accent of the theme brightened to a luminance of at least
+    // minSelectionLuma (a dark accent of the gray / white theme is not visible on the dark chassis), the other LEDs
+    // dimmed while something is selected or highlighted
+    readonly property real  minSelectionLuma: 0.6
+    readonly property color selectionColor: {
+        const accent = theme.accentHover
+        const luma = 0.2126 * accent.r + 0.7152 * accent.g + 0.0722 * accent.b
+        return luma >= minSelectionLuma ? accent : Qt.tint(accent, Qt.rgba(1, 1, 1, (minSelectionLuma - luma) / (1 - luma)))
+    }
+    readonly property real  dimmedOpacity: 0.45     // brightness of the color of the dimmed LEDs
+
+    // Housing of every LED (rim of the keys, rail of the light bars, outline of the logo): a dark / switched off LED
+    // is still visible on the dark notebook in all themes
+    readonly property color ledRimColor: "#8a8a94"
+    readonly property bool  dimOthers: selected.length > 0 || marked.length > 0
+
+    // Active area of the mouse selection outside of the view (padding of the group around it)
+    property real selectionMargin: 0
+
+    // Selection by the mouse over the whole widget (the view, the free space around the drawing and selectionMargin
+    // around it, the switcher and the buttons are over it): click selects the key / segment under the cursor (outside
+    // of the LEDs: nothing), dragging with the left button selects all in the rectangle, Ctrl adds to the selection
+    MouseArea {
+        id: selection
+
+        anchors.fill: parent
+        anchors.margins: -view.selectionMargin
+        z: -1
+
+        // The page scrolls (Flickable): dragging here selects, it does not scroll the page
+        preventStealing: true
+
+        property point start
+        property bool  dragging: false
+        property var   base: []
+
+        function toArea(mouse) {
+            return mapToItem(area, mouse.x, mouse.y)
+        }
+
+        onPressed: mouse => {
+            start = toArea(mouse)
+            dragging = false
+            base = (mouse.modifiers & Qt.ControlModifier) !== 0 ? view.selected.slice() : []
+        }
+
+        onPositionChanged: mouse => {
+            const point = toArea(mouse)
+
+            if (!dragging && Math.abs(point.x - start.x) + Math.abs(point.y - start.y) < 6)
+                return
+
+            dragging = true
+            band.update(start, point)
+            view.selected = view.union(base, view.keysInRect(band.x, band.y, band.width, band.height))
+        }
+
+        onReleased: mouse => {
+            if (dragging) {
+                dragging = false
+                return
+            }
+
+            const key = view.keyAt(toArea(mouse))
+            if (key === null) {
+                if ((mouse.modifiers & Qt.ControlModifier) === 0)
+                    view.selected = []
+                return
+            }
+
+            view.select(key.indexes, (mouse.modifiers & Qt.ControlModifier) !== 0)
+        }
+
+        onCanceled: dragging = false
+    }
 
     ColumnLayout {
         id: content
@@ -336,7 +417,7 @@ Item {
 
             ThemedButton {
                 text: "Select all"
-                onClicked: view.selectView(view.currentName)
+                onClicked: view.selectAll()
             }
 
             ThemedButton {
@@ -355,68 +436,11 @@ Item {
 
             readonly property real padding: Math.max(10, width / 70)
 
-            // Pane of the theme like the tab pane of the home page (QTabWidget::pane: gradient, border, radius)
+            // Background of the theme like the tab pane of the home page (QTabWidget::pane: gradient, radius), no border
             radius: theme.styled ? 12 : 2
-            border.width: theme.styled ? 2 : 1
-            border.color: theme.paneBorder
             gradient: Gradient {
                 GradientStop { position: 0.0; color: theme.groupBackground }
                 GradientStop { position: 1.0; color: theme.window }
-            }
-
-            // Selection by the mouse over the whole view: click selects the key / segment under the cursor (outside of the
-            // LEDs: nothing), dragging with the left button selects all in the rectangle, Ctrl adds to the selection
-            MouseArea {
-                id: selection
-
-                anchors.fill: parent
-                z: 1
-
-                // The page scrolls (Flickable): dragging here selects, it does not scroll the page
-                preventStealing: true
-
-                property point start
-                property bool  dragging: false
-                property var   base: []
-
-                function toArea(mouse) {
-                    return Qt.point(mouse.x - area.x, mouse.y - area.y)
-                }
-
-                onPressed: mouse => {
-                    start = toArea(mouse)
-                    dragging = false
-                    base = (mouse.modifiers & Qt.ControlModifier) !== 0 ? view.selected.slice() : []
-                }
-
-                onPositionChanged: mouse => {
-                    const point = toArea(mouse)
-
-                    if (!dragging && Math.abs(point.x - start.x) + Math.abs(point.y - start.y) < 6)
-                        return
-
-                    dragging = true
-                    band.update(start, point)
-                    view.selected = view.union(base, view.keysInRect(band.x, band.y, band.width, band.height))
-                }
-
-                onReleased: mouse => {
-                    if (dragging) {
-                        dragging = false
-                        return
-                    }
-
-                    const key = view.keyAt(toArea(mouse))
-                    if (key === null) {
-                        if ((mouse.modifiers & Qt.ControlModifier) === 0)
-                            view.selected = []
-                        return
-                    }
-
-                    view.select(key.indexes, (mouse.modifiers & Qt.ControlModifier) !== 0)
-                }
-
-                onCanceled: dragging = false
             }
 
             Item {
@@ -573,8 +597,17 @@ Item {
 
                         required property var modelData
 
-                        readonly property color ledColor: view.ledColor(modelData.index)
+                        // Color of the LED, darker while other LEDs are selected / highlighted (the housing stays visible)
+                        readonly property bool  dimmed: view.dimOthers && !isSelected && !isMarked
+                        readonly property color rawColor: view.ledColor(modelData.index)
+                        readonly property color ledColor: dimmed ? Qt.rgba(rawColor.r * view.dimmedOpacity, rawColor.g * view.dimmedOpacity, rawColor.b * view.dimmedOpacity, 1)
+                                                                 : rawColor
                         readonly property bool  isSelected: view.isSelected(modelData.indexes, view.selected)
+                        readonly property bool  isMarked: view.isSelected(modelData.indexes, view.marked)
+                        // Outline: white for the highlighted LEDs (effect under the mouse), the selection color for the
+                        // selection, the same width for all kinds of LEDs
+                        readonly property color outlineColor: isMarked ? "white" : view.selectionColor
+                        readonly property real  outlineWidth: 3
 
                         x: modelData.x * area.width
                         y: modelData.y * area.width
@@ -623,8 +656,8 @@ Item {
                                         anchors.bottomMargin: Math.max(2, parent.height * 0.08)
                                         radius: keyItem.corner
                                         color: led.ledColor
-                                        border.width: led.isSelected ? 3 : 1
-                                        border.color: led.isSelected ? "white" : Qt.rgba(0, 0, 0, 0.45)
+                                        border.width: led.isSelected ? 2 : 1
+                                        border.color: led.isSelected ? "white" : view.ledRimColor
 
                                         Rectangle {
                                             anchors.fill: parent
@@ -651,15 +684,15 @@ Item {
                                         }
                                     }
 
-                                    // Selection: accent outline around the key
+                                    // Selection / highlight: outline around the key
                                     Rectangle {
                                         anchors.fill: parent
-                                        anchors.margins: -2
-                                        visible: led.isSelected
-                                        radius: keyItem.corner + 2
+                                        anchors.margins: -led.outlineWidth
+                                        visible: led.isSelected || led.isMarked
+                                        radius: keyItem.corner + led.outlineWidth
                                         color: "transparent"
-                                        border.width: 2
-                                        border.color: theme.accentHover
+                                        border.width: led.outlineWidth
+                                        border.color: led.outlineColor
                                     }
                                 }
                             }
@@ -691,18 +724,18 @@ Item {
                                     anchors.rightMargin: 1
                                     radius: segment.thickness / 2
                                     color: led.ledColor
-                                    border.width: led.isSelected ? 2 : 0
-                                    border.color: "white"
+                                    border.width: led.isSelected ? 2 : 1
+                                    border.color: led.isSelected ? "white" : view.ledRimColor
                                 }
 
                                 Rectangle {
                                     anchors.fill: parent
-                                    anchors.margins: -3
-                                    visible: led.isSelected
-                                    radius: segment.thickness / 2 + 3
+                                    anchors.margins: -led.outlineWidth
+                                    visible: led.isSelected || led.isMarked
+                                    radius: segment.thickness / 2 + led.outlineWidth
                                     color: "transparent"
-                                    border.width: 2
-                                    border.color: theme.accentHover
+                                    border.width: led.outlineWidth
+                                    border.color: led.outlineColor
                                 }
                             }
                         }
@@ -723,10 +756,14 @@ Item {
 
                                 readonly property color lineColor: led.ledColor
                                 readonly property bool  selectedLine: led.isSelected
+                                readonly property bool  markedLine: led.isMarked
+                                readonly property color outlineColor: led.outlineColor
                                 readonly property real  thickness: led.modelData.thickness * area.width
 
                                 onLineColorChanged: requestPaint()
                                 onSelectedLineChanged: requestPaint()
+                                onMarkedLineChanged: requestPaint()
+                                onOutlineColorChanged: requestPaint()
                                 onWidthChanged: requestPaint()
                                 onHeightChanged: requestPaint()
 
@@ -752,8 +789,11 @@ Item {
                                     ctx.lineCap = "butt"
                                     ctx.lineJoin = "round"
 
-                                    if (selectedLine)
-                                        stroke(ctx, thickness + 6, theme.accentHover)
+                                    if (selectedLine || markedLine)
+                                        stroke(ctx, thickness + 2 * led.outlineWidth, outlineColor)
+
+                                    else
+                                        stroke(ctx, thickness + 3, view.ledRimColor)
 
                                     stroke(ctx, thickness, lineColor)
 
@@ -777,8 +817,9 @@ Item {
                                     font.letterSpacing: parent.height * 0.12
                                     color: led.ledColor
                                     // Selected: white outline of the letters like the border of the selected keys
-                                    style: led.isSelected ? Text.Outline : Text.Normal
-                                    styleColor: "white"
+                                    // not selected: the rim of the LEDs (a dark logo is still visible)
+                                    style: Text.Outline
+                                    styleColor: led.isSelected ? "white" : view.ledRimColor
                                 }
 
                                 Rectangle {
@@ -793,12 +834,12 @@ Item {
 
                                 Rectangle {
                                     anchors.fill: parent
-                                    anchors.margins: -5
-                                    visible: led.isSelected
-                                    radius: 6
+                                    anchors.margins: -2 - led.outlineWidth
+                                    visible: led.isSelected || led.isMarked
+                                    radius: 4 + led.outlineWidth
                                     color: "transparent"
-                                    border.width: 2
-                                    border.color: theme.accentHover
+                                    border.width: led.outlineWidth
+                                    border.color: led.outlineColor
                                 }
                             }
                         }
