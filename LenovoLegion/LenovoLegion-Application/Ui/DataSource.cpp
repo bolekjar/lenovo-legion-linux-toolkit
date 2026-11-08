@@ -12,6 +12,7 @@
 #include "../DataProvider.h"
 
 #include "../LenovoLegion-PrepareBuild/MessageRegistry.pb.h"
+#include "../LenovoLegion-PrepareBuild/Notification.pb.h"
 #include "../LenovoLegion-PrepareBuild/UiOptions.pb.h"
 
 #include <Core/LoggerHolder.h>
@@ -100,7 +101,58 @@ void DataSource::reloadAll()
 {
     for(auto* source : std::as_const(s_dataSources))
     {
-        source->reload();
+        source->refresh();
+    }
+}
+
+void DataSource::reloadForNotification(int action)
+{
+    const EnumValueDescriptor* value = legion::messages::Notification::Action_descriptor()->FindValueByNumber(action);
+    const QString              types = value != nullptr ? QString::fromStdString(value->options().GetExtension(legion::ui::reload)) : QString();
+
+    if(types.isEmpty())
+    {
+        reloadAll();
+        return;
+    }
+
+    QSet<int> dataTypes;
+
+    for(const QString& name : types.split(',',Qt::SkipEmptyParts))
+    {
+        const EnumValueDescriptor* dataType = legion::messages::DataType_descriptor()->FindValueByName(name.trimmed().toStdString());
+
+        if(dataType == nullptr)
+        {
+            /*
+             * Wrong annotation: all data sources, nothing is missed
+             */
+            LOG_W(QString("Notification ").append(QString::fromUtf8(value->name().data(),static_cast<qsizetype>(value->name().size()))).append(": unknown data type ").append(name.trimmed()).append(" in (legion.ui.reload), all data are read again"));
+            reloadAll();
+            return;
+        }
+
+        dataTypes.insert(dataType->number());
+    }
+
+    for(auto* source : std::as_const(s_dataSources))
+    {
+        if(dataTypes.contains(source->m_dataTypeValue))
+        {
+            source->refresh();
+        }
+    }
+}
+
+void DataSource::refresh()
+{
+    if(interval() > 0)
+    {
+        reloadAsync();
+    }
+    else
+    {
+        reload();
     }
 }
 
@@ -163,6 +215,10 @@ void DataSource::setDataType(const QString &dataType)
 
     emit dataTypeChanged();
 
+    /*
+     * The first load at once (in the GUI thread): the bindings of the page (e.g. range and value of a slider) get the
+     * data together, a value is not clamped by an empty range
+     */
     reload();
 }
 

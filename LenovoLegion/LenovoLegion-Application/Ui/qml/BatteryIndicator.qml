@@ -60,14 +60,27 @@ Item {
     }
 
     readonly property string stateText: !supported ? "No battery"
-        : charging ? (hours >= 0 ? "Charging, " + duration(hours) + " to full" : "Charging")
-        : discharging ? (hours >= 0 ? duration(hours) + " left" : "On battery")
-        : status === "Full" ? "Fully charged"
-        : status === "Not charging" ? (acOnline ? "Plugged in, not charging" : "Not charging")
+        : iconState === "charging" ? (hours >= 0 ? "Charging, " + duration(hours) + " to full" : "Charging")
+        : iconState === "full" ? "Fully charged"
+        : iconState === "plugged" ? "Plugged in, not charging"
+        : iconState === "discharging" ? (critical ? "Battery low, " : "") + (hours >= 0 ? duration(hours) + " left" : "On battery")
         : status.length > 0 ? status : "Unknown"
 
-    // Colors of the level: low red, lower orange, charging green
-    readonly property color levelColor: charging ? "#3fb950"
+    // State of the icon: charging (bolt), full (check mark), plugged in without charging (plug, e.g. conservation
+    // mode), discharging (level, low orange / critical red, blinking), unknown (question mark)
+    readonly property string iconState: !supported ? "unknown"
+        : charging ? "charging"
+        : status === "Full" || (acOnline && capacity >= 100) ? "full"
+        : acOnline || status === "Not charging" ? "plugged"
+        : discharging ? "discharging" : "unknown"
+
+    // Plugged in without charging: blue (not the accent, the dark theme has an orange accent like a low battery)
+    readonly property color pluggedColor: "#58a6ff"
+
+    readonly property bool critical: iconState === "discharging" && capacity > 0 && capacity <= 10
+
+    readonly property color levelColor: iconState === "charging" || iconState === "full" ? "#3fb950"
+                                      : iconState === "plugged" ? indicator.pluggedColor
                                       : capacity > 0 && capacity <= 15 ? "#e5534b"
                                       : capacity > 0 && capacity <= 30 ? "#f0a020" : theme.text
 
@@ -79,31 +92,47 @@ Item {
         anchors.fill: parent
         spacing: 8
 
-        // Battery: body with the level, terminal, bolt when charging, plug on AC
+        // Battery: body with the level and the terminal, a sign of the state inside (bolt, check mark, question mark)
         Canvas {
             id: icon
 
             Layout.alignment: Qt.AlignVCenter
-            implicitWidth: 30
-            implicitHeight: 15
+            implicitWidth: 32
+            implicitHeight: 16
 
-            readonly property color outline: theme.text
-            readonly property color fill: indicator.levelColor
-            readonly property real  level: indicator.hasCapacity ? Math.max(0, Math.min(100, indicator.capacity)) / 100 : 0
+            readonly property color  outline: theme.text
+            readonly property color  fill: indicator.levelColor
+            readonly property color  back: theme.groupBackground
+            readonly property real   level: indicator.iconState === "full" ? 1
+                                          : indicator.hasCapacity ? Math.max(0, Math.min(100, indicator.capacity)) / 100 : 0
+            readonly property string sign: indicator.iconState
 
             onOutlineChanged: requestPaint()
             onFillChanged: requestPaint()
+            onBackChanged: requestPaint()
             onLevelChanged: requestPaint()
+            onSignChanged: requestPaint()
+
+            // Critical charge: blinking
+            SequentialAnimation on opacity {
+                running: indicator.critical
+                loops: Animation.Infinite
+                onStopped: icon.opacity = 1
+
+                NumberAnimation { to: 0.35; duration: 700; easing.type: Easing.InOutQuad }
+                NumberAnimation { to: 1.0;  duration: 700; easing.type: Easing.InOutQuad }
+            }
 
             onPaint: {
                 const ctx = getContext("2d")
+                const bodyWidth = width - 4.5
                 ctx.reset()
 
                 // Body and terminal
                 ctx.lineWidth = 1.5
                 ctx.strokeStyle = outline
                 ctx.beginPath()
-                ctx.roundedRect(0.75, 0.75, width - 4.5, height - 1.5, 3, 3)
+                ctx.roundedRect(0.75, 0.75, bodyWidth, height - 1.5, 3, 3)
                 ctx.stroke()
                 ctx.fillStyle = outline
                 ctx.fillRect(width - 3, height / 2 - 3, 2.5, 6)
@@ -112,19 +141,67 @@ Item {
                 if (level > 0) {
                     ctx.fillStyle = fill
                     ctx.beginPath()
-                    ctx.roundedRect(3, 3, Math.max(2, (width - 9) * level), height - 6, 1.5, 1.5)
+                    ctx.roundedRect(3, 3, Math.max(2, (bodyWidth - 4.5) * level), height - 6, 1.5, 1.5)
+                    ctx.fill()
+                }
+
+                // Sign of the state in the middle of the body, with an outline of the background (visible on the level)
+                const x = p => 0.75 + bodyWidth * p
+                const y = p => height * p
+
+                function strokeTwice(width) {
+                    ctx.lineWidth = width + 2.5
+                    ctx.strokeStyle = back
+                    ctx.stroke()
+                    ctx.lineWidth = width
+                    ctx.strokeStyle = sign === "unknown" ? outline : "white"
+                    ctx.stroke()
+                }
+
+                ctx.lineCap = "round"
+                ctx.lineJoin = "round"
+
+                if (sign === "charging") {
+                    ctx.beginPath()
+                    ctx.moveTo(x(0.56), y(0.12))
+                    ctx.lineTo(x(0.36), y(0.56))
+                    ctx.lineTo(x(0.52), y(0.56))
+                    ctx.lineTo(x(0.44), y(0.88))
+                    ctx.lineTo(x(0.66), y(0.42))
+                    ctx.lineTo(x(0.5), y(0.42))
+                    ctx.closePath()
+                    ctx.lineWidth = 2.5
+                    ctx.strokeStyle = back
+                    ctx.stroke()
+                    ctx.fillStyle = "white"
+                    ctx.fill()
+                } else if (sign === "full") {
+                    ctx.beginPath()
+                    ctx.moveTo(x(0.34), y(0.52))
+                    ctx.lineTo(x(0.46), y(0.72))
+                    ctx.lineTo(x(0.68), y(0.3))
+                    strokeTwice(1.8)
+                } else if (sign === "unknown") {
+                    ctx.beginPath()
+                    ctx.arc(x(0.5), y(0.38), height * 0.17, Math.PI, 2.2 * Math.PI)
+                    ctx.lineTo(x(0.5), y(0.62))
+                    strokeTwice(1.4)
+                    ctx.beginPath()
+                    ctx.arc(x(0.5), y(0.8), 0.9, 0, 2 * Math.PI)
+                    ctx.fillStyle = outline
                     ctx.fill()
                 }
             }
         }
 
+        // Plugged in without charging: plug
         TintedIcon {
             Layout.alignment: Qt.AlignVCenter
-            visible: indicator.supported && (indicator.charging || indicator.acOnline)
+            visible: indicator.iconState === "plugged"
             Layout.preferredWidth: 14
             Layout.preferredHeight: 14
-            source: indicator.charging ? "qrc:/ui/icons/power.svg" : "qrc:/ui/icons/plug.svg"
-            color: indicator.charging ? "#3fb950" : theme.text
+            source: "qrc:/ui/icons/plug.svg"
+            color: indicator.pluggedColor
         }
 
         Label {

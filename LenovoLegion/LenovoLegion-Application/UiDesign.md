@@ -203,4 +203,4 @@ Vlastní pohledy (jen obal generických komponent se stejným `DataSource`):
 
 - Témata: hotovo, jsou jen v `Ui/Theme` (stylesheety widgetů jsou odstraněné spolu s widgety).
 - Rust CLI: může použít stejná metadata (popisky, jednotky, výběry) pro generický výpis a nastavení.
-- Notifikace: dnes `reloadAll()` při každé notifikaci, později jen pro typ dat z notifikace (notifikace by nesla `dataType`).
+- Notifikace: hotovo. Akce v `Notification.proto` mají anotaci `(legion.ui.reload)` se seznamem typů dat, které GUI po notifikaci znovu načte (`DataSource::reloadForNotification`); akce bez anotace (ovladač přidán / odebrán) a chybná anotace načtou vše. Zdroje s intervalem (HW monitor, NVML, baterie, barvy klávesnice) se při notifikacích, `reloadAll` (spojení) a `reloadAllSources` načítají v pracovním vlákně; první načtení zůstává v GUI vlákně (vazby stránky dostanou data najednou, např. hodnota posuvníku se neořízne prázdným rozsahem).

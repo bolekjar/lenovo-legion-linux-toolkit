@@ -88,9 +88,16 @@ public:
     static void setDataProvider(DataProvider* dataProvider);
 
     /*
-     * Reload all data sources (daemon notification), changes of the user are kept
+     * Reload all data sources (connection to the daemon), changes of the user are kept.
+     * Sources with an interval are read in the worker thread (they are read again soon anyway).
      */
     static void reloadAll();
+
+    /*
+     * Reload the data sources of the data types of a notification of the daemon ((legion.ui.reload) of the
+     * Notification.Action value), all data sources for an action without the option
+     */
+    static void reloadForNotification(int action);
 
     QString dataType() const;
     void    setDataType(const QString& dataType);
@@ -238,6 +245,11 @@ private:
      * Periodic reload in a worker thread, the message is updated in the GUI thread
      */
     void reloadAsync();
+
+    /*
+     * Reload after a change outside of the page: sources with an interval in the worker thread
+     */
+    void refresh();
 
     /*
      * Data from the daemon -> message, changes of the user are kept

@@ -144,9 +144,12 @@ void MainWindow::dameonConnectionStatus(bool isConnected)
     DataSource::reloadAll();
 }
 
-void MainWindow::daemonNotification(const legion::messages::Notification &)
+void MainWindow::daemonNotification(const legion::messages::Notification &msg)
 {
-    DataSource::reloadAll();
+    /*
+     * Only the data types of the notification ((legion.ui.reload) in Notification.proto)
+     */
+    DataSource::reloadForNotification(msg.action());
 }
 
 void MainWindow::registerTypes()
