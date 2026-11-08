@@ -9,6 +9,7 @@
 
 #include "Ui/DataSource.h"
 #include "Ui/FieldModel.h"
+#include "Ui/KeyboardLayout.h"
 #include "Ui/PageSources.h"
 #include "Ui/Theme.h"
 
@@ -93,6 +94,7 @@ void ToolBarQmlPageWidget::registerTypes()
 
     qmlRegisterType<DataSource>("LenovoLegion.Ui",1,0,"DataSource");
     qmlRegisterType<PageSources>("LenovoLegion.Ui",1,0,"PageSources");
+    qmlRegisterType<KeyboardLayout>("LenovoLegion.Ui",1,0,"KeyboardLayout");
     qmlRegisterUncreatableType<FieldModel>("LenovoLegion.Ui",1,0,"FieldModel","FieldModel is created by DataSource.field()");
 }
 

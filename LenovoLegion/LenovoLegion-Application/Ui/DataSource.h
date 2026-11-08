@@ -42,6 +42,12 @@ class DataSource : public QObject
      * The request runs in a worker thread, the GUI is not blocked (the same as HWMonitoring of the widget pages).
      */
     Q_PROPERTY(int     interval  READ interval  WRITE setInterval  NOTIFY intervalChanged)
+
+    /*
+     * Values of the request message sent by GET ((legion.ui.request), e.g. RGB_CONTROLLER: {"request_flags": 4095}),
+     * enum values by name or number
+     */
+    Q_PROPERTY(QVariantMap request READ request WRITE setRequest NOTIFY requestChanged)
     Q_PROPERTY(bool    dirty     READ dirty                        NOTIFY messageChanged)
 
     /*
@@ -94,6 +100,8 @@ public:
 
     int     interval() const;
     void    setInterval(int interval);
+    QVariantMap request() const;
+    void    setRequest(const QVariantMap& request);
 
     bool    dirty() const;
     bool    valid() const;
@@ -199,11 +207,17 @@ public:
 
     const google::protobuf::Descriptor* descriptor() const;
 
+    /*
+     * Data from the daemon (C++ views reading the whole message, e.g. KeyboardLayout), nullptr without a data type
+     */
+    const google::protobuf::Message* message() const { return m_message.get(); }
+
 signals:
 
     void dataTypeChanged();
     void autoApplyChanged();
     void intervalChanged();
+    void requestChanged();
     void messageChanged();
     void lastErrorChanged();
     // Every error (also the same text again): apply, command or reload failed. Section shows it for a while.
@@ -233,7 +247,16 @@ private:
     bool                                         m_autoApply;
     QTimer*                                      m_timer;
     bool                                         m_reloading = false;    // periodic request is running
-    QFuture<std::pair<bool,QByteArray>>          m_request;              // the request in the worker thread (waited for in the destructor)
+    QFuture<std::pair<bool,QByteArray>>          m_request;
+    QVariantMap                                  m_requestValues;
+    QByteArray                                   m_requestData;          // serialized request message (GET)
+
+    /*
+     * Message of the descriptor with the values ({path: value}, enum values by name or number), nullptr on error
+     */
+    void updateRequestData();
+
+    std::unique_ptr<google::protobuf::Message> buildMessage(const google::protobuf::Descriptor* descriptor,const QVariantMap& values) const;              // the request in the worker thread (waited for in the destructor)
     QString                                      m_lastError;
     bool                                         m_available = false;
     int                                          m_batchDepth = 0;       // beginChanges() without endChanges()

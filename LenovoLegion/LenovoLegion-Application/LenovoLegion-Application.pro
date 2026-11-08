@@ -99,6 +99,7 @@ QMAKE_POST_LINK += $$quote($${SYSTEM_CP} $${PROJECT_ROOT_PATH}/LenovoLegion-Appl
 SOURCES += \
         Ui/DataSource.cpp \
         Ui/FieldModel.cpp \
+        Ui/KeyboardLayout.cpp \
         Ui/PageSources.cpp \
         Ui/Reflection.cpp \
         Ui/Theme.cpp
@@ -106,6 +107,7 @@ SOURCES += \
 HEADERS += \
         Ui/DataSource.h \
         Ui/FieldModel.h \
+        Ui/KeyboardLayout.h \
         Ui/PageSources.h \
         Ui/Reflection.h \
         Ui/Theme.h

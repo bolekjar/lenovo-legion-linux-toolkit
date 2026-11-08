@@ -159,6 +159,8 @@ void DataSource::setDataType(const QString &dataType)
         }
     }
 
+    updateRequestData();
+
     emit dataTypeChanged();
 
     reload();
@@ -257,7 +259,7 @@ void DataSource::reload()
     }
 
     try {
-        parse(s_dataProvider->getData(static_cast<quint8>(m_dataTypeValue)));
+        parse(s_dataProvider->getData(static_cast<quint8>(m_dataTypeValue),m_requestData));
     }
     catch(const std::exception& ex)
     {
@@ -279,14 +281,15 @@ void DataSource::reloadAsync()
 
     m_reloading = true;
 
-    const quint8 dataType = static_cast<quint8>(m_dataTypeValue);
+    const quint8     dataType = static_cast<quint8>(m_dataTypeValue);
+    const QByteArray request  = m_requestData;
 
     /*
      * Context object: the continuation is not called when the data source is deleted
      */
-    m_request = QtConcurrent::run([dataType]() -> std::pair<bool,QByteArray> {
+    m_request = QtConcurrent::run([dataType,request]() -> std::pair<bool,QByteArray> {
         try {
-            return { true, s_dataProvider->getData(dataType) };
+            return { true, s_dataProvider->getData(dataType,request) };
         }
         catch(const std::exception& ex)
         {
@@ -642,40 +645,7 @@ bool DataSource::sendCommand(const QVariantMap &values)
         return false;
     }
 
-    std::unique_ptr<Message> command(MessageFactory::generated_factory()->GetPrototype(descriptor)->New());
-
-    for(auto it = values.cbegin(); it != values.cend(); ++it)
-    {
-        const auto fields = Reflection::resolve(descriptor,it.key());
-
-        if(fields.empty())
-        {
-            LOG_W(QString("DataSource ").append(m_dataType).append(": command has unknown field ").append(it.key()));
-            continue;
-        }
-
-        QVariant value = it.value();
-
-        /*
-         * Enum value by name ("LOAD")
-         */
-        const FieldDescriptor* leaf = fields.back().field;
-
-        if(leaf->cpp_type() == FieldDescriptor::CPPTYPE_ENUM && value.typeId() == QMetaType::QString)
-        {
-            const EnumValueDescriptor* enumValue = leaf->enum_type()->FindValueByName(value.toString().toStdString());
-
-            if(enumValue == nullptr)
-            {
-                LOG_W(QString("DataSource ").append(m_dataType).append(": unknown enum value ").append(value.toString()));
-                continue;
-            }
-
-            value = enumValue->number();
-        }
-
-        Reflection::write(*command,fields,value);
-    }
+    const std::unique_ptr<Message> command = buildMessage(descriptor,values);
 
     std::string data;
 
@@ -688,6 +658,16 @@ bool DataSource::sendCommand(const QVariantMap &values)
     try {
         const QByteArray response = s_dataProvider->setData(static_cast<quint8>(m_dataTypeValue),QByteArray(data.data(),static_cast<qsizetype>(data.size())));
         setLastError({});
+
+        /*
+         * Empty response (RGB_CONTROLLER): the data are read again, a message is the new data (PROFILES)
+         */
+        if(response.isEmpty())
+        {
+            reload();
+            return true;
+        }
+
         parse(response);
     }
     catch(const std::exception& ex)
@@ -797,6 +777,95 @@ void DataSource::setLastError(const QString &error)
     if(!error.isEmpty())
     {
         emit failed(error);
+    }
+}
+
+std::unique_ptr<Message> DataSource::buildMessage(const Descriptor *descriptor, const QVariantMap &values) const
+{
+    std::unique_ptr<Message> message(MessageFactory::generated_factory()->GetPrototype(descriptor)->New());
+
+    for(auto it = values.cbegin(); it != values.cend(); ++it)
+    {
+        const auto fields = Reflection::resolve(descriptor,it.key());
+
+        if(fields.empty())
+        {
+            LOG_W(QString("DataSource ").append(m_dataType).append(": message has unknown field ").append(it.key()));
+            continue;
+        }
+
+        QVariant value = it.value();
+
+        /*
+         * Enum value by name ("LOAD")
+         */
+        const FieldDescriptor* leaf = fields.back().field;
+
+        if(leaf->cpp_type() == FieldDescriptor::CPPTYPE_ENUM && value.typeId() == QMetaType::QString)
+        {
+            const EnumValueDescriptor* enumValue = leaf->enum_type()->FindValueByName(value.toString().toStdString());
+
+            if(enumValue == nullptr)
+            {
+                LOG_W(QString("DataSource ").append(m_dataType).append(": unknown enum value ").append(value.toString()));
+                continue;
+            }
+
+            value = enumValue->number();
+        }
+
+        Reflection::write(*message,fields,value);
+    }
+
+    return message;
+}
+
+QVariantMap DataSource::request() const
+{
+    return m_requestValues;
+}
+
+void DataSource::setRequest(const QVariantMap &request)
+{
+    if(request == m_requestValues)
+    {
+        return;
+    }
+
+    m_requestValues = request;
+    updateRequestData();
+
+    emit requestChanged();
+
+    reload();
+}
+
+/*
+ * Request message of GET from the values (also when the data type is set after the request)
+ */
+void DataSource::updateRequestData()
+{
+    m_requestData.clear();
+
+    if(m_requestValues.isEmpty() || m_dataTypeValue < 0)
+    {
+        return;
+    }
+
+    const EnumValueDescriptor* type       = legion::messages::DataType_descriptor()->FindValueByNumber(m_dataTypeValue);
+    const Descriptor*          descriptor = type != nullptr ? DescriptorPool::generated_pool()->FindMessageTypeByName(type->options().GetExtension(legion::ui::request)) : nullptr;
+
+    if(descriptor == nullptr)
+    {
+        setLastError(QString("Data type ").append(m_dataType).append(" has no request (legion.ui.request)"));
+        return;
+    }
+
+    std::string data;
+
+    if(buildMessage(descriptor,m_requestValues)->SerializeToString(&data))
+    {
+        m_requestData = QByteArray(data.data(),static_cast<qsizetype>(data.size()));
     }
 }
 

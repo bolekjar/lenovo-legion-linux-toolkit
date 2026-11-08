@@ -18,6 +18,8 @@
         <file alias="GpuPage.qml">qml/GpuPage.qml</file>
         <file alias="HistoryChart.qml">qml/HistoryChart.qml</file>
         <file alias="HwMonitorPage.qml">qml/HwMonitorPage.qml</file>
+        <file alias="KeyboardPage.qml">qml/KeyboardPage.qml</file>
+        <file alias="KeyboardView.qml">qml/KeyboardView.qml</file>
         <file alias="LimitField.qml">qml/LimitField.qml</file>
         <file alias="Notifications.qml">qml/Notifications.qml</file>
         <file alias="PowerPage.qml">qml/PowerPage.qml</file>

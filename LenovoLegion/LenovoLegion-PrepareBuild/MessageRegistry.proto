@@ -21,7 +21,8 @@ enum DataType {
   NVIDIA_NWML         = 11 [(legion.ui.message) = "legion.messages.NvidiaNvml"];
   OTHER               = 12 [(legion.ui.message) = "legion.messages.OtherSettings", (legion.ui.platform) = PLATFORM_LENOVO];
   POWER_PROFILE       = 13 [(legion.ui.message) = "legion.messages.PowerProfile", (legion.ui.platform) = PLATFORM_LENOVO];
-  RGB_CONTROLLER      = 14 [(legion.ui.platform) = PLATFORM_LENOVO];
+  RGB_CONTROLLER      = 14 [(legion.ui.message) = "legion.messages.RGBControllerResponse", (legion.ui.request) = "legion.messages.RGBControllerRequest",
+                            (legion.ui.command) = "legion.messages.RGBControllerSetRequest", (legion.ui.platform) = PLATFORM_LENOVO];
   MACHINE_INFORMATION = 15 [(legion.ui.platform) = PLATFORM_LENOVO];
   CPU_SMT             = 16 [(legion.ui.message) = "legion.messages.CPUSMT"];
   FAN_OPTION          = 17 [(legion.ui.message) = "legion.messages.FanOption", (legion.ui.platform) = PLATFORM_LENOVO];

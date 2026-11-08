@@ -96,6 +96,15 @@ MainWindow::MainWindow(DataProviderManager &dataProviderManager, QWidget *parent
         ui->toolBar_HBoxLayout->addWidget((new ToolBarProfilesWidget(m_dataProviderManager.dataProvider(),this))->initialize());
     });
 
+    /*
+     * RGB keyboard of the generic GUI (in progress, replaces the page Keyboard when it is complete)
+     */
+    toolbarActionInitializer(ui->toolBar->addAction("Keyboard QML"),QIcon(":/images/icons/keyboard.png"),[this](){
+        if(ui->label_DaemonStatus->text() != DAEMON_CONNECTION_STATUS_CONNECTED.data())
+            return;
+        ui->toolBar_HBoxLayout->addWidget((new ToolBarQmlPageWidget(m_dataProviderManager.dataProvider(),QUrl("qrc:/ui/KeyboardPage.qml"),this))->initialize());
+    });
+
     toolbarActionInitializer(ui->toolBar->addAction("Keyboard"),QIcon(":/images/icons/keyboard.png"),[this](){
         if(ui->label_DaemonStatus->text() != DAEMON_CONNECTION_STATUS_CONNECTED.data())
             return;
