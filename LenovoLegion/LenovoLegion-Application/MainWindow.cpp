@@ -11,9 +11,6 @@
 #include "Settings.h"
 #include "Utils.h"
 #include "BateryStatus.h"
-#include "ToolBarHelpWidget.h"
-#include "ToolBarInformationWidget.h"
-#include "ToolBarProfilesWidget.h"
 #include "ToolBarQmlPageWidget.h"
 #include "ToolBarSettingsWidget.h"
 
@@ -92,7 +89,7 @@ MainWindow::MainWindow(DataProviderManager &dataProviderManager, QWidget *parent
     toolbarActionInitializer(ui->toolBar->addAction("Profiles"),QIcon(":/images/icons/toolbar-user.png"),[this](){
         if(ui->label_DaemonStatus->text() != DAEMON_CONNECTION_STATUS_CONNECTED.data())
             return;
-        ui->toolBar_HBoxLayout->addWidget((new ToolBarProfilesWidget(m_dataProviderManager.dataProvider(),this))->initialize());
+        ui->toolBar_HBoxLayout->addWidget((new ToolBarQmlPageWidget(m_dataProviderManager.dataProvider(),QUrl("qrc:/ui/ProfilesPage.qml"),this))->initialize());
     });
 
     /*
@@ -116,12 +113,12 @@ MainWindow::MainWindow(DataProviderManager &dataProviderManager, QWidget *parent
         if(ui->label_DaemonStatus->text() != DAEMON_CONNECTION_STATUS_CONNECTED.data())
             return;
 
-        ui->toolBar_HBoxLayout->addWidget((new ToolBarInformationWidget(m_dataProviderManager.dataProvider(),this))->initialize());
+        ui->toolBar_HBoxLayout->addWidget((new ToolBarQmlPageWidget(m_dataProviderManager.dataProvider(),QUrl("qrc:/ui/InformationPage.qml"),this))->initialize());
     });
 
     toolbarActionInitializer(ui->toolBar->addAction("Help"),QIcon(":/images/icons/toolbar-question.png"),[this](){
 
-        ui->toolBar_HBoxLayout->addWidget((new ToolBarHelpWidget(m_dataProviderManager.dataProvider(),this))->initialize());
+        ui->toolBar_HBoxLayout->addWidget((new ToolBarQmlPageWidget(m_dataProviderManager.dataProvider(),QUrl("qrc:/ui/HelpPage.qml"),this))->initialize());
     });
 
     toolbarActionInitializer(ui->toolBar->addAction("Exit"),QIcon(":/images/icons/toolbar-door.png"),[](){

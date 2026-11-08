@@ -23,7 +23,7 @@ enum DataType {
   POWER_PROFILE       = 13 [(legion.ui.message) = "legion.messages.PowerProfile", (legion.ui.platform) = PLATFORM_LENOVO];
   RGB_CONTROLLER      = 14 [(legion.ui.message) = "legion.messages.RGBControllerResponse", (legion.ui.request) = "legion.messages.RGBControllerRequest",
                             (legion.ui.command) = "legion.messages.RGBControllerSetRequest", (legion.ui.platform) = PLATFORM_LENOVO];
-  MACHINE_INFORMATION = 15 [(legion.ui.platform) = PLATFORM_LENOVO];
+  MACHINE_INFORMATION = 15 [(legion.ui.message) = "legion.messages.MachineInformation", (legion.ui.platform) = PLATFORM_LENOVO];
   CPU_SMT             = 16 [(legion.ui.message) = "legion.messages.CPUSMT"];
   FAN_OPTION          = 17 [(legion.ui.message) = "legion.messages.FanOption", (legion.ui.platform) = PLATFORM_LENOVO];
   OTHER_GPU_SWITCH    = 18 [(legion.ui.message) = "legion.messages.GpuSwitchValue", (legion.ui.platform) = PLATFORM_LENOVO];

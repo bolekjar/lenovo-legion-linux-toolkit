@@ -20,9 +20,6 @@ SOURCES +=               \
         ProtocolProcessorNotifier.cpp \
         Settings.cpp \
         TaskList.cpp \
-        ToolBarHelpWidget.cpp \
-        ToolBarInformationWidget.cpp \
-        ToolBarProfilesWidget.cpp \
         ToolBarQmlPageWidget.cpp \
         ToolBarSettingsWidget.cpp \
         ToolBarWidget.cpp \
@@ -41,9 +38,6 @@ HEADERS +=          \
         ProtocolProcessorNotifier.h \
         Settings.h \
         TaskList.h \
-        ToolBarHelpWidget.h \
-        ToolBarInformationWidget.h \
-        ToolBarProfilesWidget.h \
         ToolBarQmlPageWidget.h \
         ToolBarSettingsWidget.h \
         ToolBarWidget.h \
@@ -63,9 +57,6 @@ FORMS +=           \
     AboutWindow.ui \
     BateryStatus.ui \
     MainWindow.ui \
-    ToolBarHelpWidget.ui \
-    ToolBarInformationWidget.ui \
-    ToolBarProfilesWidget.ui \
     ToolBarSettingsWidget.ui
 
 INCLUDEPATH += $${CUDA_PATH}/include

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0
-// Quick switch of the profiles saved in the profile management (toolbar page "Profiles", ToolBarProfilesWidget):
+// Quick switch of the profiles saved in the profile management (toolbar page "Profiles", ProfilesPage):
 // the saved profiles of the daemon (PROFILES), Load applies the selected one at once (without the confirmation
 // of the management page) and all pages read the data again
 import QtQuick

@@ -3,6 +3,7 @@
         <file alias="ApplyBar.qml">qml/ApplyBar.qml</file>
         <file alias="AutoSection.qml">qml/AutoSection.qml</file>
         <file alias="CellLayout.js">qml/CellLayout.js</file>
+        <file alias="ConfirmDialog.qml">qml/ConfirmDialog.qml</file>
         <file alias="CpuGrid.qml">qml/CpuGrid.qml</file>
         <file alias="CpuControlPage.qml">qml/CpuControlPage.qml</file>
         <file alias="CpuFrequencyPage.qml">qml/CpuFrequencyPage.qml</file>
@@ -16,8 +17,11 @@
         <file alias="GpuDetailsWindow.qml">qml/GpuDetailsWindow.qml</file>
         <file alias="DevicePage.qml">qml/DevicePage.qml</file>
         <file alias="GpuPage.qml">qml/GpuPage.qml</file>
+        <file alias="HelpPage.qml">qml/HelpPage.qml</file>
         <file alias="HistoryChart.qml">qml/HistoryChart.qml</file>
         <file alias="HwMonitorPage.qml">qml/HwMonitorPage.qml</file>
+        <file alias="InfoSection.qml">qml/InfoSection.qml</file>
+        <file alias="InformationPage.qml">qml/InformationPage.qml</file>
         <file alias="KeyboardPage.qml">qml/KeyboardPage.qml</file>
         <file alias="KeyboardView.qml">qml/KeyboardView.qml</file>
         <file alias="ColorPicker.qml">qml/ColorPicker.qml</file>
@@ -25,6 +29,7 @@
         <file alias="Notifications.qml">qml/Notifications.qml</file>
         <file alias="PowerPage.qml">qml/PowerPage.qml</file>
         <file alias="PowerProfilesPanel.qml">qml/PowerProfilesPanel.qml</file>
+        <file alias="ProfilesPage.qml">qml/ProfilesPage.qml</file>
         <file alias="HomePage.qml">qml/HomePage.qml</file>
         <file alias="SavedProfilesPanel.qml">qml/SavedProfilesPanel.qml</file>
         <file alias="Section.qml">qml/Section.qml</file>
