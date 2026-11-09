@@ -2,6 +2,8 @@ TEMPLATE = app
 TARGET = $${APPLICATION_NAME2}
 
 QT       += core network
+# No Qt Gui: it links libGL and libGLX loads the GPU vendor library (NVIDIA GLX) at the start of the daemon
+QT       -= gui
 
 CONFIG += c++20 cmdline link_pkgconfig
 
