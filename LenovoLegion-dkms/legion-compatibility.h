@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-2.0
+/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Copyright Jaroslav Bolek 2025
  *
@@ -11,7 +11,6 @@
 
 #include "legion-machine-information.h"
 
-
-int is_compatible(struct dmi_machine_information* dmi_machine_info);
+int is_compatible(struct dmi_machine_information *dmi_machine_info);
 
 #endif /* LEGION_COMPATIBILITY_H_ */

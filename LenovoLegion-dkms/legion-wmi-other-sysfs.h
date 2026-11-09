@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-2.0
+/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Copyright Jaroslav Bolek 2025
  *
@@ -10,7 +10,7 @@
 
 struct legion_wmi_other_priv;
 
-int  legion_wmi_other_sysfs_init(struct legion_wmi_other_priv *priv);
+int legion_wmi_other_sysfs_init(struct legion_wmi_other_priv *priv);
 void legion_wmi_other_sysfs_exit(struct legion_wmi_other_priv *priv);
 
 #endif /* LEGION_WMI_OTHER_SYSFS_H_ */

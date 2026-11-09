@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-2.0
+/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Copyright Jaroslav Bolek 2025
  *
@@ -17,17 +17,19 @@ enum other_hwmon_events_type {
 };
 
 struct hwmon_capability {
-	enum CapabilityID 			capability_id;
-	void *	 					data;
+	enum CapabilityID capability_id;
+	void *data;
 };
 
 struct device;
 struct notifier_block;
 
-int  legion_hwmon_other_register_notifier(struct device *dev,struct notifier_block *nb);
-int  legion_hwmon_fm_register_notifier(struct device *dev,struct notifier_block *nb);
+int legion_hwmon_other_register_notifier(struct device *dev,
+					 struct notifier_block *nb);
+int legion_hwmon_fm_register_notifier(struct device *dev,
+				      struct notifier_block *nb);
 
-int  legion_hwmon_init(struct device *parent);
+int legion_hwmon_init(struct device *parent);
 void legion_hwmon_exit(const struct device *parent);
 
 #endif // LEGION_HWMON_H

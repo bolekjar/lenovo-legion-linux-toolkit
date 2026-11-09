@@ -1,9 +1,14 @@
-// SPDX-License-Identifier: GPL-2.0
+// SPDX-License-Identifier: GPL-2.0-or-later
 /*
  * Copyright Jaroslav Bolek 2025
  *
  * Author(s):
  *   Jaroslav Bolek <jaroslav.bolek@gmail.com>
+ *
+ * Based on the notifier chain of the lenovo-wmi-other driver of the Linux kernel
+ * (drivers/platform/x86/lenovo/wmi-other.c),
+ * modified and extended for the Lenovo Legion Linux Toolkit:
+ *   Copyright (C) 2025 Derek J. Clark <derekjohn.clark@gmail.com>
  */
 #include "legion-wmi-fm.h"
 #include "legion-wmi-ftable.h"
@@ -49,7 +54,6 @@ static int lenovo_wmi_fm_unregister_notifier(struct notifier_block *nb)
 	return blocking_notifier_chain_unregister(&legion_fm_chain_head, nb);
 }
 
-
 /**
  * devm_lenovo_wmi_fm_unregister_notifier() - Remove a notifier from the blocking
  * notifier chain.
@@ -67,23 +71,24 @@ static void devm_lenovo_wmi_fm_unregister_notifier(void *data)
 	lenovo_wmi_fm_unregister_notifier(nb);
 }
 
-
-static int legion_wmi_fm_call(struct notifier_block *nb, unsigned long cmd,void *data)
+static int legion_wmi_fm_call(struct notifier_block *nb, unsigned long cmd,
+			      void *data)
 {
-	struct legion_wmi_fm_priv *priv = container_of(nb, struct legion_wmi_fm_priv, hwmon_nb);
+	struct legion_wmi_fm_priv *priv =
+		container_of(nb, struct legion_wmi_fm_priv, hwmon_nb);
 	switch (cmd) {
 	case LEGION_WMI_FM_GET_CPU_FAN_MAX_SPEED: {
-		int  *fan_max_speed = data;
+		int *fan_max_speed = data;
 		*fan_max_speed = priv->fan_cpu_max_speed;
 	}
 		return NOTIFY_OK;
 	case LEGION_WMI_FM_GET_GPU_FAN_MAX_SPEED: {
-		int  *fan_max_speed = data;
+		int *fan_max_speed = data;
 		*fan_max_speed = priv->fan_gpu_max_speed;
 	}
 		return NOTIFY_OK;
 	case LEGION_WMI_FM_GET_SYS_FAN_MAX_SPEED: {
-		int  *fan_max_speed = data;
+		int *fan_max_speed = data;
 		*fan_max_speed = priv->fan_sys_max_speed;
 	}
 		return NOTIFY_OK;
@@ -106,19 +111,22 @@ static int legion_wmi_fm_call(struct notifier_block *nb, unsigned long cmd,void 
  * Return: 0 on success, or an error code.
  */
 int devm_lenovo_wmi_fm_register_notifier(struct device *dev,
-				   struct notifier_block *nb)
+					 struct notifier_block *nb)
 {
 	const int ret = lenovo_wmi_fm_register_notifier(nb);
+
 	if (ret < 0)
 		return ret;
 
-	return devm_add_action_or_reset(dev, devm_lenovo_wmi_fm_unregister_notifier,
-			nb);
+	return devm_add_action_or_reset(
+		dev, devm_lenovo_wmi_fm_unregister_notifier, nb);
 }
 
-int legion_wmi_fm_notifier_call(void *data,enum gamezone_events_type gamezone_events_type)
+int legion_wmi_fm_notifier_call(void *data,
+				enum gamezone_events_type gamezone_events_type)
 {
-	const int ret = blocking_notifier_call_chain(&legion_fm_chain_head,gamezone_events_type, &data);
+	const int ret = blocking_notifier_call_chain(
+		&legion_fm_chain_head, gamezone_events_type, &data);
 
 	if ((ret & ~NOTIFY_STOP_MASK) != NOTIFY_OK)
 		return -EINVAL;
@@ -130,13 +138,13 @@ static int legion_wmi_fm_master_bind(struct device *dev)
 {
 	struct legion_wmi_fm_priv *priv = dev_get_drvdata(dev);
 	int ret = component_bind_all(dev, &priv);
+
 	if (ret)
 		return ret;
 
 	ret = legion_wmi_fm_sysfs_init(priv);
-	if (ret) {
+	if (ret)
 		goto sysfs_err;
-	}
 
 	priv->hwmon_nb.notifier_call = legion_wmi_fm_call;
 	ret = legion_hwmon_fm_register_notifier(dev, &priv->hwmon_nb);
@@ -154,7 +162,6 @@ sysfs_err:
 	return ret;
 }
 
-
 static void legion_wmi_fm_master_unbind(struct device *dev)
 {
 	struct legion_wmi_fm_priv *priv = dev_get_drvdata(dev);
@@ -169,8 +176,6 @@ static const struct component_master_ops legion_wmi_fm_master_ops = {
 	.unbind = legion_wmi_fm_master_unbind,
 };
 
-
-
 static const struct wmi_device_id legion_fm_other_id_table[] = {
 	{ WMI_GUID_LENOVO_FAN_METHOD, NULL },
 	{}
@@ -178,8 +183,9 @@ static const struct wmi_device_id legion_fm_other_id_table[] = {
 
 static int legion_fm_other_probe(struct wmi_device *wdev, const void *context)
 {
-	struct component_match 		 *master_match 	= NULL;
-	struct legion_wmi_fm_priv 	 *priv = devm_kzalloc(&wdev->dev, sizeof(*priv), GFP_KERNEL);
+	struct component_match *master_match = NULL;
+	struct legion_wmi_fm_priv *priv =
+		devm_kzalloc(&wdev->dev, sizeof(*priv), GFP_KERNEL);
 	if (!priv)
 		return -ENOMEM;
 
@@ -190,19 +196,20 @@ static int legion_fm_other_probe(struct wmi_device *wdev, const void *context)
 
 	dev_set_drvdata(&wdev->dev, priv);
 
-	component_match_add(&wdev->dev, &master_match, legion_wmi_ftable_match, NULL);
+	component_match_add(&wdev->dev, &master_match, legion_wmi_ftable_match,
+			    NULL);
 	if (IS_ERR(master_match))
 		return (int)PTR_ERR(master_match);
 
-
 	/* Register as a component master (for cd01/dd components) */
-	const int ret = component_master_add_with_match(&wdev->dev, &legion_wmi_fm_master_ops,
-		       master_match);
+	const int ret = component_master_add_with_match(
+		&wdev->dev, &legion_wmi_fm_master_ops, master_match);
 	if (ret)
 		return ret;
 
 	/* Wait for binding to complete (with timeout) */
-	if (!wait_for_completion_timeout(&priv->bind_complete, msecs_to_jiffies(5000))) {
+	if (!wait_for_completion_timeout(&priv->bind_complete,
+					 msecs_to_jiffies(5000))) {
 		component_master_del(&wdev->dev, &legion_wmi_fm_master_ops);
 		return -ETIMEDOUT;
 	}
@@ -215,7 +222,6 @@ static void legion_fm_other_remove(struct wmi_device *wdev)
 	component_master_del(&wdev->dev, &legion_wmi_fm_master_ops);
 }
 
-
 static struct wmi_driver legion_fm_other_driver = {
 	.driver = {
 		.name = "legion_wmi_fan_method",
@@ -227,13 +233,13 @@ static struct wmi_driver legion_fm_other_driver = {
 	.no_singleton = true,
 };
 
-
-int  legion_wmi_fm_driver_init(struct device *parent) {
+int legion_wmi_fm_driver_init(struct device *parent)
+{
 	return wmi_driver_register(&legion_fm_other_driver);
 }
 
-
-void legion_wmi_fm_driver_exit(void) {
+void legion_wmi_fm_driver_exit(void)
+{
 	wmi_driver_unregister(&legion_fm_other_driver);
 }
 

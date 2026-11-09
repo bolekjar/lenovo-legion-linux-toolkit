@@ -1,9 +1,13 @@
-// SPDX-License-Identifier: GPL-2.0
+// SPDX-License-Identifier: GPL-2.0-or-later
 /*
  * Copyright Jaroslav Bolek 2025
  *
  * Author(s):
  *   Jaroslav Bolek <jaroslav.bolek@gmail.com>
+ *
+ * Based on the lenovo-wmi-helpers of the Linux kernel (drivers/platform/x86/lenovo/wmi-helpers.c),
+ * modified and extended for the Lenovo Legion Linux Toolkit:
+ *   Copyright (C) 2025 Derek J. Clark <derekjohn.clark@gmail.com>
  */
 #include "legion-wmi-helpers.h"
 
@@ -13,7 +17,6 @@
 #include <linux/export.h>
 #include <linux/module.h>
 #include <linux/wmi.h>
-
 
 /**
  * legion_wmi_dev_evaluate_int() - Helper function for calling WMI methods that
@@ -31,24 +34,23 @@
  *
  * Return: 0 on success, or an error code.
  */
-int legion_wmi_dev_evaluate_int(struct wmi_device *wdev,const u8 instance,const u32 method_id,
-			  unsigned char *buf,const size_t size, u32 *retval)
+int legion_wmi_dev_evaluate_int(struct wmi_device *wdev, const u8 instance,
+				const u32 method_id, unsigned char *buf,
+				const size_t size, u32 *retval)
 {
 	struct acpi_buffer output = { ACPI_ALLOCATE_BUFFER, NULL };
 	union acpi_object *ret_obj __free(kfree) = NULL;
 	const struct acpi_buffer input = { size, buf };
-	const acpi_status status = wmidev_evaluate_method(wdev, instance, method_id, &input,
-					&output);
-	if (ACPI_FAILURE(status)) {
+	const acpi_status status = wmidev_evaluate_method(
+		wdev, instance, method_id, &input, &output);
+	if (ACPI_FAILURE(status))
 		return -EIO;
-	}
 
 	ret_obj = output.pointer;
 
 	if (retval) {
-		if (!ret_obj) {
+		if (!ret_obj)
 			return -ENODATA;
-		}
 
 		if (ret_obj->type != ACPI_TYPE_INTEGER)
 			return -ENXIO;
@@ -76,14 +78,16 @@ int legion_wmi_dev_evaluate_int(struct wmi_device *wdev,const u8 instance,const 
  *
  * Return: 0 on success, or an error code.
  */
-int legion_wmi_dev_evaluate_string(struct wmi_device *wdev, const u8 instance,const u32 method_id,
-			  unsigned char *buf,const size_t size, char *retval,const size_t retval_size)
+int legion_wmi_dev_evaluate_string(struct wmi_device *wdev, const u8 instance,
+				   const u32 method_id, unsigned char *buf,
+				   const size_t size, char *retval,
+				   const size_t retval_size)
 {
 	struct acpi_buffer output = { ACPI_ALLOCATE_BUFFER, NULL };
 	union acpi_object *ret_obj __free(kfree) = NULL;
 	const struct acpi_buffer input = { size, buf };
-	const acpi_status status = wmidev_evaluate_method(wdev, instance, method_id, &input,
-					&output);
+	const acpi_status status = wmidev_evaluate_method(
+		wdev, instance, method_id, &input, &output);
 	if (ACPI_FAILURE(status))
 		return -EIO;
 
@@ -96,18 +100,18 @@ int legion_wmi_dev_evaluate_string(struct wmi_device *wdev, const u8 instance,co
 		if (ret_obj->type != ACPI_TYPE_STRING)
 			return -ENXIO;
 
-		if(ret_obj->string.length >= retval_size)
-		{
+		if (ret_obj->string.length >= retval_size)
 			return -EMSGSIZE;
-		}
 
-		strscpy(retval, ret_obj->string.pointer, ret_obj->string.length);
-		retval[ret_obj->string.length] = '\0';  // Explicit NULL termination
+		/*
+		 * The size of strscpy() includes the terminating NUL (length would drop the last character),
+		 * the string fits: length < retval_size
+		 */
+		strscpy(retval, ret_obj->string.pointer, retval_size);
 	}
 
 	return 0;
 };
-
 
 /**
  * legion_wmi_dev_evaluate_buffer() - Helper function for calling WMI methods that
@@ -125,12 +129,16 @@ int legion_wmi_dev_evaluate_string(struct wmi_device *wdev, const u8 instance,co
  *
  * Return: 0 on success, or an error code.
  */
-int legion_wmi_dev_evaluate_buffer(struct wmi_device *wdev,const u8 instance,const u32 method_id,unsigned char *buf,const size_t size, u8 *retval,const size_t max_retval_size){
+int legion_wmi_dev_evaluate_buffer(struct wmi_device *wdev, const u8 instance,
+				   const u32 method_id, unsigned char *buf,
+				   const size_t size, u8 *retval,
+				   const size_t max_retval_size)
+{
 	struct acpi_buffer output = { ACPI_ALLOCATE_BUFFER, NULL };
 	union acpi_object *ret_obj __free(kfree) = NULL;
 	const struct acpi_buffer input = { size, buf };
-	const acpi_status status = wmidev_evaluate_method(wdev, instance, method_id, &input,
-					&output);
+	const acpi_status status = wmidev_evaluate_method(
+		wdev, instance, method_id, &input, &output);
 	if (ACPI_FAILURE(status))
 		return -EIO;
 
@@ -143,12 +151,10 @@ int legion_wmi_dev_evaluate_buffer(struct wmi_device *wdev,const u8 instance,con
 		if (ret_obj->type != ACPI_TYPE_BUFFER)
 			return -ENXIO;
 
-		if(ret_obj->buffer.length > max_retval_size)
-		{
+		if (ret_obj->buffer.length > max_retval_size)
 			return -EMSGSIZE;
-		}
 
-		memcpy(retval,ret_obj->buffer.pointer,ret_obj->buffer.length);
+		memcpy(retval, ret_obj->buffer.pointer, ret_obj->buffer.length);
 	}
 
 	return 0;

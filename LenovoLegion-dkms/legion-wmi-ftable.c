@@ -1,9 +1,14 @@
-// SPDX-License-Identifier: GPL-2.0
+// SPDX-License-Identifier: GPL-2.0-or-later
 /*
  * Copyright Jaroslav Bolek 2025
  *
  * Author(s):
  *   Jaroslav Bolek <jaroslav.bolek@gmail.com>
+ *
+ * Based on the structure of the lenovo-wmi-capdata01 driver of the Linux kernel
+ * (now drivers/platform/x86/lenovo/wmi-capdata.c),
+ * modified and extended for the Lenovo Legion Linux Toolkit:
+ *   Copyright (C) 2025 Derek J. Clark <derekjohn.clark@gmail.com>
  */
 #include "legion-wmi-ftable.h"
 #include "legion-common.h"
@@ -23,7 +28,6 @@
 #include <linux/types.h>
 #include <linux/wmi.h>
 
-
 #define LEGION_CAPABILITY_FTABLE_GUID "87fb2a6d-d802-48e7-9208-4576c5f5c8d8"
 
 struct legion_wmi_ftable_priv {
@@ -36,7 +40,6 @@ struct legion_wmi_ftable_list {
 	u8 count;
 	struct legion_wmi_ftable data[];
 };
-
 
 /**
  * legion_wmi_ftable_component_bind() - Bind component to master device.
@@ -51,39 +54,57 @@ struct legion_wmi_ftable_list {
  * Return: 0
  */
 static int legion_wmi_ftable_component_bind(struct device *ftable_dev,
-				    struct device *om_dev, void *data)
+					    struct device *om_dev, void *data)
 {
-	struct legion_wmi_ftable_priv 	  *priv   = dev_get_drvdata(ftable_dev);
-	struct legion_wmi_fm_priv 		**fm_priv = data;
+	struct legion_wmi_ftable_priv *priv = dev_get_drvdata(ftable_dev);
+	struct legion_wmi_fm_priv **fm_priv = data;
 
 	if (!priv || !priv->list || !fm_priv || !(*fm_priv))
-	        return -ENODEV;
-
+		return -ENODEV;
 
 	/*
 	 * Initialize
 	 */
-	for (int i = 0; i < FAN_MAX;++i)
-	{
-		(*fm_priv)->fan_max_speeds[i].fan_id 	= -1;
-		(*fm_priv)->fan_max_speeds[i].max_speed =  0;
+	for (int i = 0; i < FAN_MAX; ++i) {
+		(*fm_priv)->fan_max_speeds[i].fan_id = -1;
+		(*fm_priv)->fan_max_speeds[i].max_speed = 0;
 		(*fm_priv)->fan_max_speeds[i].sensor_id = -1;
 	}
 
 	(*fm_priv)->ft_list = priv->list;
 	for (int idx = 0; idx < priv->list->count; idx++) {
-
-		for (int i = 0; i < FAN_MAX;++i)
-		{
-			if((*fm_priv)->fan_max_speeds[i].fan_id 	==  priv->list->data[idx].fanId && (*fm_priv)->fan_max_speeds[i].sensor_id  ==  priv->list->data[idx].sensorId)
-			{
-				(*fm_priv)->fan_max_speeds[i].max_speed = max((*fm_priv)->fan_max_speeds[i].max_speed,priv->list->data[idx].fanTableData[sizeof(priv->list->data[idx].fanTableData)/sizeof(priv->list->data[idx].fanTableData[0]) - 1]);
+		for (int i = 0; i < FAN_MAX; ++i) {
+			if ((*fm_priv)->fan_max_speeds[i].fan_id ==
+				    priv->list->data[idx].fanId &&
+			    (*fm_priv)->fan_max_speeds[i].sensor_id ==
+				    priv->list->data[idx].sensorId) {
+				(*fm_priv)->fan_max_speeds[i].max_speed = max(
+					(*fm_priv)->fan_max_speeds[i].max_speed,
+					priv->list->data[idx].fanTableData
+						[sizeof(priv->list->data[idx]
+								.fanTableData) /
+							 sizeof(priv->list
+									->data[idx]
+									.fanTableData
+										[0]) -
+						 1]);
 				break;
-			}  else if ((*fm_priv)->fan_max_speeds[i].fan_id  == -1 && (*fm_priv)->fan_max_speeds[i].sensor_id == -1)
-			{
-				(*fm_priv)->fan_max_speeds[i].fan_id    = priv->list->data[idx].fanId;
-				(*fm_priv)->fan_max_speeds[i].sensor_id = priv->list->data[idx].sensorId;
-				(*fm_priv)->fan_max_speeds[i].max_speed = priv->list->data[idx].fanTableData[sizeof(priv->list->data[idx].fanTableData)/sizeof(priv->list->data[idx].fanTableData[0]) - 1];
+			} else if ((*fm_priv)->fan_max_speeds[i].fan_id == -1 &&
+				   (*fm_priv)->fan_max_speeds[i].sensor_id ==
+					   -1) {
+				(*fm_priv)->fan_max_speeds[i].fan_id =
+					priv->list->data[idx].fanId;
+				(*fm_priv)->fan_max_speeds[i].sensor_id =
+					priv->list->data[idx].sensorId;
+				(*fm_priv)->fan_max_speeds[i].max_speed =
+					priv->list->data[idx].fanTableData
+						[sizeof(priv->list->data[idx]
+								.fanTableData) /
+							 sizeof(priv->list
+									->data[idx]
+									.fanTableData
+										[0]) -
+						 1];
 				break;
 			}
 		}
@@ -107,18 +128,22 @@ static const struct component_ops legion_wmi_ftable_component_ops = {
  *
  * Return: 0 on success, or -EINVAL.
  */
-int legion_wmi_ftable_get_data(struct legion_wmi_ftable_list *list,const u16 mode, const u16 fanId,const u16 sensorId, struct legion_wmi_ftable *output)
+int legion_wmi_ftable_get_data(struct legion_wmi_ftable_list *list,
+			       const u16 mode, const u16 fanId,
+			       const u16 sensorId,
+			       struct legion_wmi_ftable *output)
 {
 	if (!list)
-	    return -ENODEV;
+		return -ENODEV;
 
-	guard(mutex)(&list->list_mutex);
+	guard(mutex)
+		(&list->list_mutex);
 	for (u8 idx = 0; idx < list->count; idx++) {
-		if(list->data[idx].mode 	== mode 	&&
-		   list->data[idx].fanId 	== fanId	&&
-		   list->data[idx].sensorId == sensorId)
-		{
-			memcpy(output, &list->data[idx], sizeof(list->data[idx]));
+		if (list->data[idx].mode == mode &&
+		    list->data[idx].fanId == fanId &&
+		    list->data[idx].sensorId == sensorId) {
+			memcpy(output, &list->data[idx],
+			       sizeof(list->data[idx]));
 			return 0;
 		}
 	};
@@ -136,7 +161,8 @@ int legion_wmi_ftable_get_data(struct legion_wmi_ftable_list *list,const u16 mod
  */
 static int legion_wmi_ftable_cache(const struct legion_wmi_ftable_priv *priv)
 {
-	guard(mutex)(&priv->list->list_mutex);
+	guard(mutex)
+		(&priv->list->list_mutex);
 	for (int idx = 0; idx < priv->list->count; idx++) {
 		union acpi_object *ret_obj __free(kfree) = NULL;
 
@@ -149,7 +175,8 @@ static int legion_wmi_ftable_cache(const struct legion_wmi_ftable_priv *priv)
 			continue;
 
 		memcpy(&priv->list->data[idx], ret_obj->buffer.pointer,
-				min(ret_obj->buffer.length,sizeof(priv->list->data[idx])));
+		       min(ret_obj->buffer.length,
+			   sizeof(priv->list->data[idx])));
 	}
 
 	return 0;
@@ -176,6 +203,7 @@ static int legion_wmi_ftable_alloc(struct legion_wmi_ftable_priv *priv)
 		return -ENOMEM;
 
 	const int ret = devm_mutex_init(&priv->wdev->dev, &list->list_mutex);
+
 	if (ret)
 		return ret;
 
@@ -198,17 +226,18 @@ static int legion_wmi_ftable_alloc(struct legion_wmi_ftable_priv *priv)
 static int legion_wmi_ftable_setup(struct legion_wmi_ftable_priv *priv)
 {
 	const int ret = legion_wmi_ftable_alloc(priv);
+
 	if (ret)
 		return ret;
 
 	return legion_wmi_ftable_cache(priv);
 }
 
-
 static int legion_wmi_ftable_probe(struct wmi_device *wdev, const void *context)
 
 {
-	struct legion_wmi_ftable_priv *priv = devm_kzalloc(&wdev->dev, sizeof(*priv), GFP_KERNEL);
+	struct legion_wmi_ftable_priv *priv =
+		devm_kzalloc(&wdev->dev, sizeof(*priv), GFP_KERNEL);
 	if (!priv)
 		return -ENOMEM;
 
@@ -216,6 +245,7 @@ static int legion_wmi_ftable_probe(struct wmi_device *wdev, const void *context)
 	dev_set_drvdata(&wdev->dev, priv);
 
 	const int ret = legion_wmi_ftable_setup(priv);
+
 	if (ret)
 		return ret;
 
@@ -255,12 +285,13 @@ int legion_wmi_ftable_match(struct device *dev, void *data)
 	return dev->driver == &legion_wmi_ftable_driver.driver;
 }
 
-
-int  legion_wmi_ftable_driver_init(struct device *parent) {
+int legion_wmi_ftable_driver_init(struct device *parent)
+{
 	return wmi_driver_register(&legion_wmi_ftable_driver);
 }
 
-void legion_wmi_ftable_driver_exit(void) {
+void legion_wmi_ftable_driver_exit(void)
+{
 	wmi_driver_unregister(&legion_wmi_ftable_driver);
 }
 

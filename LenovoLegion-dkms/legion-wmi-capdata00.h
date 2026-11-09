@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-2.0
+/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Copyright Jaroslav Bolek 2025
  *
@@ -19,11 +19,12 @@ struct legion_wmi_capdata00 {
 	u32 default_value;
 };
 
-int legion_wmi_cd00_get_data(struct legion_wmi_cd00_list *list, u32 attribute_id, struct legion_wmi_capdata00 *output);
+int legion_wmi_cd00_get_data(struct legion_wmi_cd00_list *list,
+			     u32 attribute_id,
+			     struct legion_wmi_capdata00 *output);
 int legion_wmi_cd00_match(struct device *dev, void *data);
 
-
-int  legion_wmi_cd00_driver_init(struct device *parent);
+int legion_wmi_cd00_driver_init(struct device *parent);
 void legion_wmi_cd00_driver_exit(void);
 
 #endif /* LEGION_WMI_CAPDATA0_H_ */

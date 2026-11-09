@@ -1,9 +1,14 @@
-// SPDX-License-Identifier: GPL-2.0
+// SPDX-License-Identifier: GPL-2.0-or-later
 /*
  * Copyright Jaroslav Bolek 2025
  *
  * Author(s):
  *   Jaroslav Bolek <jaroslav.bolek@gmail.com>
+ *
+ * Based on the structure of the lenovo-wmi-capdata01 driver of the Linux kernel
+ * (now drivers/platform/x86/lenovo/wmi-capdata.c),
+ * modified and extended for the Lenovo Legion Linux Toolkit:
+ *   Copyright (C) 2025 Derek J. Clark <derekjohn.clark@gmail.com>
  */
 #include "legion-wmi-capdata00.h"
 #include "legion-wmi-other.h"
@@ -23,7 +28,6 @@
 #include <linux/types.h>
 #include <linux/wmi.h>
 
-
 #define LEGION_CAPABILITY_DATA_00_GUID "362A3AFE-3D96-4665-8530-96dAD5BB300E"
 
 struct legion_wmi_cd00_priv {
@@ -36,7 +40,6 @@ struct legion_wmi_cd00_list {
 	u8 count;
 	struct legion_wmi_capdata00 data[];
 };
-
 
 /**
  * legion_wmi_cd00_component_bind() - Bind component to master device.
@@ -51,14 +54,13 @@ struct legion_wmi_cd00_list {
  * Return: 0
  */
 static int legion_wmi_cd00_component_bind(struct device *cd00_dev,
-				    struct device *om_dev, void *data)
+					  struct device *om_dev, void *data)
 {
 	struct legion_wmi_cd00_priv *priv = dev_get_drvdata(cd00_dev);
 	struct legion_wmi_other_priv **other_priv = data;
 
-	if(!priv || !priv->list)
+	if (!priv || !priv->list)
 		return -ENODEV;
-
 
 	(*other_priv)->cd00_list = priv->list;
 
@@ -80,14 +82,17 @@ static const struct component_ops legion_wmi_cd00_component_ops = {
  *
  * Return: 0 on success, or -EINVAL.
  */
-int legion_wmi_cd00_get_data(struct legion_wmi_cd00_list *list,const  u32 attribute_id, struct legion_wmi_capdata00 *output)
+int legion_wmi_cd00_get_data(struct legion_wmi_cd00_list *list,
+			     const u32 attribute_id,
+			     struct legion_wmi_capdata00 *output)
 {
 	u8 idx = 0;
 
-    if (!list)
-        return -ENODEV;
+	if (!list)
+		return -ENODEV;
 
-    guard(mutex)(&list->list_mutex);
+	guard(mutex)
+		(&list->list_mutex);
 
 	for (idx = 0; idx < list->count; idx++) {
 		if (list->data[idx].id != attribute_id)
@@ -109,7 +114,8 @@ int legion_wmi_cd00_get_data(struct legion_wmi_cd00_list *list,const  u32 attrib
  */
 static int legion_wmi_cd00_cache(struct legion_wmi_cd00_priv *priv)
 {
-	guard(mutex)(&priv->list->list_mutex);
+	guard(mutex)
+		(&priv->list->list_mutex);
 	for (int idx = 0; idx < priv->list->count; idx++) {
 		union acpi_object *ret_obj __free(kfree) = NULL;
 
@@ -122,7 +128,8 @@ static int legion_wmi_cd00_cache(struct legion_wmi_cd00_priv *priv)
 			continue;
 
 		memcpy(&priv->list->data[idx], ret_obj->buffer.pointer,
-		       min(ret_obj->buffer.length,sizeof(priv->list->data[idx])));
+		       min(ret_obj->buffer.length,
+			   sizeof(priv->list->data[idx])));
 	}
 
 	return 0;
@@ -148,6 +155,7 @@ static int legion_wmi_cd00_alloc(struct legion_wmi_cd00_priv *priv)
 		return -ENOMEM;
 
 	const int ret = devm_mutex_init(&priv->wdev->dev, &list->list_mutex);
+
 	if (ret)
 		return ret;
 
@@ -170,17 +178,18 @@ static int legion_wmi_cd00_alloc(struct legion_wmi_cd00_priv *priv)
 static int legion_wmi_cd00_setup(struct legion_wmi_cd00_priv *priv)
 {
 	const int ret = legion_wmi_cd00_alloc(priv);
+
 	if (ret)
 		return ret;
 
 	return legion_wmi_cd00_cache(priv);
 }
 
-
 static int legion_wmi_cd00_probe(struct wmi_device *wdev, const void *context)
 
 {
-	struct legion_wmi_cd00_priv *priv = devm_kzalloc(&wdev->dev, sizeof(*priv), GFP_KERNEL);
+	struct legion_wmi_cd00_priv *priv =
+		devm_kzalloc(&wdev->dev, sizeof(*priv), GFP_KERNEL);
 	if (!priv)
 		return -ENOMEM;
 
@@ -190,6 +199,7 @@ static int legion_wmi_cd00_probe(struct wmi_device *wdev, const void *context)
 	dev_set_drvdata(&wdev->dev, priv);
 
 	const int ret = legion_wmi_cd00_setup(priv);
+
 	if (ret)
 		return ret;
 
@@ -229,14 +239,14 @@ int legion_wmi_cd00_match(struct device *dev, void *data)
 	return dev->driver == &legion_wmi_cd00_driver.driver;
 }
 
-
-int  legion_wmi_cd00_driver_init(struct device *parent) {
+int legion_wmi_cd00_driver_init(struct device *parent)
+{
 	return wmi_driver_register(&legion_wmi_cd00_driver);
 }
 
-void legion_wmi_cd00_driver_exit(void) {
+void legion_wmi_cd00_driver_exit(void)
+{
 	wmi_driver_unregister(&legion_wmi_cd00_driver);
 }
 
 MODULE_DEVICE_TABLE(acpi, legion_wmi_cd00_id_table);
-

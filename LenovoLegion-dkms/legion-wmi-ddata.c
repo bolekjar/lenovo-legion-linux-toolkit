@@ -1,9 +1,14 @@
-// SPDX-License-Identifier: GPL-2.0
+// SPDX-License-Identifier: GPL-2.0-or-later
 /*
  * Copyright Jaroslav Bolek 2025
  *
  * Author(s):
  *   Jaroslav Bolek <jaroslav.bolek@gmail.com>
+ *
+ * Based on the structure of the lenovo-wmi-capdata01 driver of the Linux kernel
+ * (now drivers/platform/x86/lenovo/wmi-capdata.c),
+ * modified and extended for the Lenovo Legion Linux Toolkit:
+ *   Copyright (C) 2025 Derek J. Clark <derekjohn.clark@gmail.com>
  */
 #include "legion-wmi-ddata.h"
 #include "legion-wmi-other.h"
@@ -23,7 +28,6 @@
 #include <linux/types.h>
 #include <linux/wmi.h>
 
-
 #define LEGION_CAPABILITY_DDATA_01_GUID "91433b17-b7b7-4640-bb40-34c67349fbec"
 
 struct lwmi_dd_priv {
@@ -36,7 +40,6 @@ struct legion_wmi_dd_list {
 	u8 count;
 	struct legion_wmi_ddata data[];
 };
-
 
 /**
  * legion_wmi_dd_component_bind() - Bind component to master device.
@@ -51,13 +54,13 @@ struct legion_wmi_dd_list {
  * Return: 0
  */
 static int legion_wmi_dd_component_bind(struct device *dd_dev,
-				    struct device *om_dev, void *data)
+					struct device *om_dev, void *data)
 {
 	struct lwmi_dd_priv *priv = dev_get_drvdata(dd_dev);
 	struct legion_wmi_other_priv **other_priv = data;
 
 	if (!priv || !priv->list || !other_priv || !(*other_priv))
-	        return -ENODEV;
+		return -ENODEV;
 
 	(*other_priv)->dd_list = priv->list;
 
@@ -79,26 +82,29 @@ static const struct component_ops legion_wmi_dd_component_ops = {
  *
  * Return: 0 on success, or -EINVAL.
  */
-int legion_wmi_dd_get_data(struct legion_wmi_dd_list *list, u32 attribute_id, struct legion_wmi_ddata *output,const size_t output_len)
+int legion_wmi_dd_get_data(struct legion_wmi_dd_list *list, u32 attribute_id,
+			   struct legion_wmi_ddata *output,
+			   const size_t output_len)
 {
 	u8 out_idx = 0;
 
 	if (!list)
-	    return -ENODEV;
+		return -ENODEV;
 
-	guard(mutex)(&list->list_mutex);
+	guard(mutex)
+		(&list->list_mutex);
 	for (u8 idx = 0; idx < list->count; idx++) {
-
 		if (list->data[idx].id != attribute_id)
 			continue;
 
-		memcpy(&output[out_idx++], &list->data[idx], sizeof(list->data[idx]));
+		memcpy(&output[out_idx++], &list->data[idx],
+		       sizeof(list->data[idx]));
 
-		if(out_idx >= output_len)
+		if (out_idx >= output_len)
 			return -E2BIG;
 	};
 
-	if(out_idx == 0)
+	if (out_idx == 0)
 		return -EINVAL;
 
 	return 0;
@@ -114,7 +120,8 @@ int legion_wmi_dd_get_data(struct legion_wmi_dd_list *list, u32 attribute_id, st
  */
 static int legion_wmi_dd_cache(const struct lwmi_dd_priv *priv)
 {
-	guard(mutex)(&priv->list->list_mutex);
+	guard(mutex)
+		(&priv->list->list_mutex);
 	for (int idx = 0; idx < priv->list->count; idx++) {
 		union acpi_object *ret_obj __free(kfree) = NULL;
 
@@ -127,7 +134,8 @@ static int legion_wmi_dd_cache(const struct lwmi_dd_priv *priv)
 			continue;
 
 		memcpy(&priv->list->data[idx], ret_obj->buffer.pointer,
-				min(ret_obj->buffer.length,sizeof(priv->list->data[idx])));
+		       min(ret_obj->buffer.length,
+			   sizeof(priv->list->data[idx])));
 	}
 
 	return 0;
@@ -154,6 +162,7 @@ static int legion_wmi_dd_alloc(struct lwmi_dd_priv *priv)
 		return -ENOMEM;
 
 	const int ret = devm_mutex_init(&priv->wdev->dev, &list->list_mutex);
+
 	if (ret)
 		return ret;
 
@@ -176,12 +185,12 @@ static int legion_wmi_dd_alloc(struct lwmi_dd_priv *priv)
 static int legion_wmi_dd_setup(struct lwmi_dd_priv *priv)
 {
 	const int ret = legion_wmi_dd_alloc(priv);
+
 	if (ret)
 		return ret;
 
 	return legion_wmi_dd_cache(priv);
 }
-
 
 static int legion_wmi_dd_probe(struct wmi_device *wdev, const void *context)
 
@@ -196,6 +205,7 @@ static int legion_wmi_dd_probe(struct wmi_device *wdev, const void *context)
 	dev_set_drvdata(&wdev->dev, priv);
 
 	const int ret = legion_wmi_dd_setup(priv);
+
 	if (ret)
 		return ret;
 
@@ -235,11 +245,12 @@ int legion_wmi_dd_match(struct device *dev, void *data)
 	return dev->driver == &legion_wmi_dd_driver.driver;
 }
 
-
-int  legion_wmi_dd_driver_init(struct device *parent) {
+int legion_wmi_dd_driver_init(struct device *parent)
+{
 	return wmi_driver_register(&legion_wmi_dd_driver);
 }
 
-void legion_wmi_dd_driver_exit(void) {
+void legion_wmi_dd_driver_exit(void)
+{
 	wmi_driver_unregister(&legion_wmi_dd_driver);
 }

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-2.0
+/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Copyright Jaroslav Bolek 2025
  *
@@ -10,7 +10,7 @@
 
 struct lenovo_wmi_gz_priv;
 
-int  legion_wmi_gamezone_sysfs_init(struct lenovo_wmi_gz_priv *priv);
+int legion_wmi_gamezone_sysfs_init(struct lenovo_wmi_gz_priv *priv);
 void legion_wmi_gamezone_sysfs_exit(struct lenovo_wmi_gz_priv *priv);
 
 #endif /* LEGION_WMI_GAMEZONE_SYSFS_H_ */
