@@ -306,7 +306,7 @@ LenovoRGBControllerC9xx::LenovoRGBControllerC9xx(LenovoUSBControllerC9xx *contro
                                   0 /* start_idx */,
                               }
                           },
-                          20 /* max effects */,
+                          20 /* max effects: not measured, the same as c197 (lights only the first 20) */,
                           false /* has logo */
                           )
 {

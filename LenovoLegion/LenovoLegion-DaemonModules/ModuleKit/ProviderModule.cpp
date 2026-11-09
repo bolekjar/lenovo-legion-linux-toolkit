@@ -76,12 +76,10 @@ QByteArray ProviderModule::set(const QByteArray &request)
 
 void ProviderModule::onKernelEvent(const Module::KernelEvent &event)
 {
+    /*
+     * Kernel modules: IModule::onKernelModule is called by the host when the drivers of all modules are ready
+     */
     m_drivers.handleKernelEvent(event);
-
-    if(event.m_subSystem == SysFsDriverManager::MODULE_SUBSYSTEM && (event.m_action == "add" || event.m_action == "remove"))
-    {
-        onKernelModule(event.m_sysName,event.m_action == "add");
-    }
 }
 
 void ProviderModule::loadSettings(const Module::ISettingsStorage &storage)

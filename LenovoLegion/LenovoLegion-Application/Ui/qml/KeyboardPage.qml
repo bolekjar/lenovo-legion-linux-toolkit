@@ -163,11 +163,10 @@ SettingsPage {
         send(setEffects, { "led_group_effects": list })
     }
 
-    function addEffect(effect) {
-        if (effect.leds.length === 0) {
-            sendEffects([effect])
-            return
-        }
+    // The effects with a new one: it takes its LEDs from the older effects, without LEDs it replaces all
+    function listWith(effect) {
+        if (effect.leds.length === 0)
+            return [effect]
 
         const values = effect.leds.map(led => led.value)
         const list = []
@@ -181,8 +180,38 @@ SettingsPage {
         }
 
         list.push(effect)
-        sendEffects(list)
+        return list
     }
+
+    function addEffect(effect) {
+        sendEffects(listWith(effect))
+    }
+
+    /*
+     * Memory of the keyboard (max_effects_bytes of the daemon, 0 = not known: no memory counter, only the number of
+     * effects is limited): header 7 bytes, an effect 16 bytes + 3 per color + 2 per LED code (every code once, large
+     * keys have more LEDs with one code). The keyboard silently drops what does not fit (c197: about 481 bytes); the
+     * daemon reads the effects back and reports a shortened list.
+     */
+    readonly property int  memorySize: rgb.value("max_effects_bytes", rgb.revision) ?? 0
+    readonly property bool memoryKnown: memorySize > 0
+    readonly property int memoryHeader: 7
+
+    function effectBytes(effect) {
+        const codes = []
+
+        for (const led of effect.leds)
+            if (codes.indexOf(led.value) < 0)
+                codes.push(led.value)
+
+        return 16 + 3 * effect.colors.length + 2 * codes.length
+    }
+
+    function listBytes(list) {
+        return memoryHeader + list.reduce((sum, effect) => sum + effectBytes(effect), 0)
+    }
+
+    readonly property int memoryUsed: listBytes(effects)
 
     function removeEffect(index) {
         sendEffects(effects.filter((item, i) => i !== index).map(item => effectCommand(item)))
@@ -260,7 +289,12 @@ SettingsPage {
             }
 
             readonly property bool full: page.effects.length >= page.maxEffects
-            readonly property bool canAdd: mode !== null && !full && (selection !== "selected" || ledIndexes.length > 0)
+            readonly property bool hasLeds: selection !== "selected" || ledIndexes.length > 0
+
+            // Size of the effects with the new one (it takes its LEDs from the older effects)
+            readonly property int  bytesWith: mode !== null && hasLeds ? page.listBytes(page.listWith(effect())) : 0
+            readonly property bool fits: !page.memoryKnown || bytesWith <= page.memorySize
+            readonly property bool canAdd: mode !== null && !full && hasLeds && fits
 
             function effect() {
                 return {
@@ -491,15 +525,17 @@ SettingsPage {
 
             Label {
                 Layout.fillWidth: true
-                visible: editor.full
-                text: "Maximum of " + page.maxEffects + " effects reached"
+                visible: editor.full || (editor.hasLeds && !editor.fits)
+                text: editor.full ? "Maximum of " + page.maxEffects + " effects reached"
+                                  : "Not enough keyboard memory for this effect (" + editor.bytesWith + " of " + page.memorySize
+                                    + " bytes): use fewer effects, LEDs or colors"
                 color: theme.modified
                 wrapMode: Text.Wrap
             }
 
             Item {
                 Layout.fillWidth: true
-                visible: !editor.full
+                visible: !editor.full && !(editor.hasLeds && !editor.fits)
             }
 
             ThemedButton {
@@ -649,10 +685,48 @@ SettingsPage {
             Layout.fillWidth: true
             Layout.topMargin: 6
 
-            Label {
+            // Effects and the memory of the keyboard (the real limit, usually before the number of effects)
+            ColumnLayout {
                 Layout.fillWidth: true
-                text: page.effects.length + " of " + page.maxEffects
-                color: theme.disabledText
+                spacing: 4
+
+                Label {
+                    Layout.fillWidth: true
+                    // Both limits: the number of effects (c197 lights only the first 20) and the memory when known
+                    text: page.effects.length + " of " + page.maxEffects + " effects"
+                          + (page.memoryKnown ? " · keyboard memory " + page.memoryUsed + " of " + page.memorySize + " bytes" : "")
+                    color: theme.disabledText
+                }
+
+                Rectangle {
+                    visible: page.memoryKnown
+                    Layout.preferredWidth: 240
+                    implicitHeight: 6
+                    radius: 3
+                    color: theme.window
+                    border.width: 1
+                    border.color: theme.groupBorder
+
+                    Rectangle {
+                        readonly property real used: page.memoryKnown ? Math.min(1, page.memoryUsed / page.memorySize) : 0
+
+                        width: Math.max(height, parent.width * used)
+                        height: parent.height
+                        radius: 3
+                        color: used > 0.9 ? "#e5534b" : used > 0.75 ? "#f0a020" : theme.accent
+                    }
+
+                    HoverHandler {
+                        id: memoryHover
+                    }
+
+                    ThemedToolTip {
+                        visible: memoryHover.hovered
+                        delay: 400
+                        text: "The keyboard keeps about " + page.memorySize + " bytes of effects:\n"
+                            + "an effect takes 16 bytes, 3 per color and 2 per LED"
+                    }
+                }
             }
 
             ThemedButton {
@@ -758,7 +832,8 @@ SettingsPage {
                   + "Vendor: " + rgb.value("device_info.vendor", rgb.revision) + "\n"
                   + "USB ID: " + Number(rgb.value("device_info.vendor_id", rgb.revision)).toString(16).padStart(4, "0")
                   + ":" + Number(rgb.value("device_info.product_id", rgb.revision)).toString(16).padStart(4, "0") + "\n"
-                  + "Effects: " + rgb.count("led_group_effects", rgb.revision) + " of " + rgb.value("max_effects", rgb.revision)
+                  + "Effects: " + rgb.count("led_group_effects", rgb.revision) + " of " + page.maxEffects
+                  + (page.memoryKnown ? " (keyboard memory " + page.memoryUsed + " of " + page.memorySize + " bytes)" : "")
         }
     }
 }

@@ -66,6 +66,7 @@ void completeAtomic(const Message& state,Message& changes)
 }
 
 DataProvider*     DataSource::s_dataProvider = nullptr;
+bool              DataSource::s_connected    = true;
 QSet<DataSource*> DataSource::s_dataSources;
 
 DataSource::DataSource(QObject *parent) :
@@ -307,9 +308,53 @@ int DataSource::revision() const
     return m_revision;
 }
 
+void DataSource::setConnected(bool connected)
+{
+    s_connected = connected;
+}
+
+bool DataSource::skipNotConnected()
+{
+    if(s_connected)
+    {
+        return false;
+    }
+
+    static const QString NOT_CONNECTED = "Not connected to the daemon";
+
+    /*
+     * Quietly (no failed signal, no log), changed only once
+     */
+    if(m_available || m_lastError != NOT_CONNECTED)
+    {
+        m_available = false;
+        m_lastError = NOT_CONNECTED;
+        emit lastErrorChanged();
+
+        ++m_revision;
+        emit messageChanged();
+    }
+
+    return true;
+}
+
+void DataSource::logFailure(const QString &what, const QString &error) const
+{
+    const QString text = QString("DataSource ").append(m_dataType).append(": ").append(what).append(" failed: ").append(error);
+
+    if(error == m_lastError)
+    {
+        LOG_D(text);
+    }
+    else
+    {
+        LOG_E(text);
+    }
+}
+
 void DataSource::reload()
 {
-    if(s_dataProvider == nullptr || m_message == nullptr)
+    if(s_dataProvider == nullptr || m_message == nullptr || skipNotConnected())
     {
         return;
     }
@@ -319,7 +364,7 @@ void DataSource::reload()
     }
     catch(const std::exception& ex)
     {
-        LOG_E(QString("DataSource ").append(m_dataType).append(": reload failed: ").append(ex.what()));
+        logFailure("reload",ex.what());
         setLastError(ex.what());
         m_available = false;
     }
@@ -330,7 +375,7 @@ void DataSource::reload()
 
 void DataSource::reloadAsync()
 {
-    if(s_dataProvider == nullptr || m_message == nullptr || m_reloading)
+    if(s_dataProvider == nullptr || m_message == nullptr || m_reloading || skipNotConnected())
     {
         return;
     }
@@ -362,7 +407,7 @@ void DataSource::reloadAsync()
         }
         else
         {
-            LOG_E(QString("DataSource ").append(m_dataType).append(": periodic reload failed: ").append(QString::fromUtf8(result.second)));
+            logFailure("periodic reload",QString::fromUtf8(result.second));
             setLastError(QString::fromUtf8(result.second));
             m_available = false;
         }

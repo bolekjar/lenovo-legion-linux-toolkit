@@ -369,7 +369,7 @@ LenovoRGBControllerC197::LenovoRGBControllerC197(LenovoUSBController *controller
                             }()
                            }
                         },
-                        20 /* max effects */,
+                        20 /* max effects: tested, the keyboard stores more (23 kept) but lights only the first 20 */,
                         controller_ptr->getKeyMap().m_additionalKeyCodes.size() > 0 /* has logo control */
                         )
 {

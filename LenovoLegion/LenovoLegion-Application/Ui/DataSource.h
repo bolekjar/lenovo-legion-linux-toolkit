@@ -88,6 +88,12 @@ public:
     static void setDataProvider(DataProvider* dataProvider);
 
     /*
+     * Connection to the daemon (MainWindow): without it no request is sent (no errors in the log every period),
+     * the data sources are not available with "Not connected to the daemon"
+     */
+    static void setConnected(bool connected);
+
+    /*
      * Reload all data sources (connection to the daemon), changes of the user are kept.
      * Sources with an interval are read in the worker thread (they are read again soon anyway).
      */
@@ -242,6 +248,16 @@ private:
     void setLastError(const QString& error);
 
     /*
+     * Not connected: not available without a request, true when not connected
+     */
+    bool skipNotConnected();
+
+    /*
+     * Failed request in the log: an error the first time, the same error again only as debug (periodic reloads)
+     */
+    void logFailure(const QString& what,const QString& error) const;
+
+    /*
      * Periodic reload in a worker thread, the message is updated in the GUI thread
      */
     void reloadAsync();
@@ -259,6 +275,7 @@ private:
 private:
 
     static DataProvider*      s_dataProvider;
+    static bool               s_connected;
     static QSet<DataSource*>  s_dataSources;
 
     QString                                      m_dataType;

@@ -39,6 +39,7 @@
         <file alias="Section.qml">qml/Section.qml</file>
         <file alias="SettingsPage.qml">qml/SettingsPage.qml</file>
         <file alias="Shell.qml">qml/Shell.qml</file>
+        <file alias="StatTile.qml">qml/StatTile.qml</file>
         <file alias="ThemedButton.qml">qml/ThemedButton.qml</file>
         <file alias="ThemedComboBox.qml">qml/ThemedComboBox.qml</file>
         <file alias="ThemedSpinBox.qml">qml/ThemedSpinBox.qml</file>

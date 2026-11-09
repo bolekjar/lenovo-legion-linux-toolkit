@@ -49,6 +49,83 @@ void SysFsDriverManager::addKernelEventListener(const QObject *owner, const Modu
 void SysFsDriverManager::removeKernelEventListeners(const QObject *owner)
 {
     std::erase_if(m_kernelEventListeners,[owner](const KernelEventListenerEntry& entry) { return entry.m_owner == owner; });
+    std::erase_if(m_kernelModuleListeners,[owner](const auto& entry) { return entry.first == owner; });
+
+    /*
+     * The owner does not wait any more. Announced later: the owner is being released, maybe the whole daemon
+     */
+    for(auto& [name,kernelModule] : m_kernelModules)
+    {
+        if(kernelModule.m_waiting.erase(owner) > 0 && kernelModule.m_waiting.empty())
+        {
+            QTimer::singleShot(0,this,[this,name] { checkKernelModuleLoaded(name); });
+        }
+    }
+}
+
+void SysFsDriverManager::addKernelModuleListener(const QObject *owner, KernelModuleListener listener)
+{
+    m_kernelModuleListeners.emplace_back(owner,std::move(listener));
+}
+
+void SysFsDriverManager::setKernelModuleWaiting(const QObject *owner, const QString &kernelModule, bool waiting)
+{
+    const auto it = m_kernelModules.find(kernelModule);
+
+    /*
+     * Waiting only while the "add" event is pending: loaded at the start of the daemon (no event)
+     * or already announced, nobody waits for the announcement
+     */
+    if(it == m_kernelModules.end())
+    {
+        return;
+    }
+
+    if(waiting)
+    {
+        if(it->second.m_state == KernelModuleState::PENDING)
+        {
+            it->second.m_waiting.insert(owner);
+        }
+
+        return;
+    }
+
+    if(it->second.m_waiting.erase(owner) > 0)
+    {
+        checkKernelModuleLoaded(kernelModule);
+    }
+}
+
+void SysFsDriverManager::checkKernelModuleLoaded(const QString &kernelModule)
+{
+    const auto it = m_kernelModules.find(kernelModule);
+
+    if(it == m_kernelModules.end() || kernelModule == m_dispatchedKernelModule)
+    {
+        return;
+    }
+
+    if(it->second.m_state == KernelModuleState::PENDING && it->second.m_waiting.empty())
+    {
+        it->second.m_state = KernelModuleState::LOADED;
+        announceKernelModule(kernelModule,true);
+    }
+}
+
+void SysFsDriverManager::announceKernelModule(const QString &kernelModule, bool loaded)
+{
+    LOG_D(QString(__PRETTY_FUNCTION__) + ": Kernel module " + kernelModule + (loaded ? " loaded, drivers of all daemon modules are ready" : " removed"));
+
+    /*
+     * Copy of the list, a listener may add or remove listeners
+     */
+    const auto listeners = m_kernelModuleListeners;
+
+    for (const auto& entry : listeners)
+    {
+        entry.second(kernelModule,loaded);
+    }
 }
 
 void SysFsDriverManager::processAllUdevEvents(int timeoutInMiliseconds)
@@ -137,6 +214,46 @@ void SysFsDriverManager::onDataReceived(int)
         const QString devPath   = udev_device_get_devpath(dev);
 
         LOG_D(QString(__PRETTY_FUNCTION__) + ": Kernel event received ACTION=" + action + ", DRIVER=" + driver + ", SYSNAME=" + sysName + ", SUBSYSTEM=" + subSystem + ", DEVPATH=" + devPath);
+
+        /*
+         * Kernel module added: listeners initialize their drivers and report waiting, loaded is announced
+         * after the dispatch when no listener waits, otherwise when the last one is done
+         */
+        const bool moduleAdded   = subSystem == MODULE_SUBSYSTEM && action == "add";
+        const bool moduleRemoved = subSystem == MODULE_SUBSYSTEM && action == "remove";
+
+        if(moduleAdded)
+        {
+            KernelModule& kernelModule = m_kernelModules[sysName];
+            kernelModule.m_state = KernelModuleState::PENDING;
+            kernelModule.m_waiting.clear();
+            m_dispatchedKernelModule = sysName;
+        }
+
+        const auto dispatched = qScopeGuard([this,&sysName,moduleAdded,moduleRemoved] {
+
+            if(moduleAdded)
+            {
+                m_dispatchedKernelModule.clear();
+                checkKernelModuleLoaded(sysName);
+            }
+
+            if(moduleRemoved)
+            {
+                /*
+                 * Not known yet: loaded at the start of the daemon
+                 */
+                const bool    known        = m_kernelModules.contains(sysName);
+                KernelModule& kernelModule = m_kernelModules[sysName];
+
+                if(!known || kernelModule.m_state != KernelModuleState::REMOVED)
+                {
+                    kernelModule.m_state = KernelModuleState::REMOVED;
+                    kernelModule.m_waiting.clear();
+                    announceKernelModule(sysName,false);
+                }
+            }
+        });
 
         /*
          * Daemon modules, copy of the list, a listener may add or remove listeners

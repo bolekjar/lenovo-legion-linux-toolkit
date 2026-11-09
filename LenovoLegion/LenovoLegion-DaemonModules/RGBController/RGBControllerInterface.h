@@ -290,6 +290,11 @@ public:
     virtual const
         std::vector<led_group_effect>&    GetEffects()              const                                        = 0;
     virtual unsigned int                  GetMaxEffects()           const                                        = 0;
+
+    /*
+     * Bytes of the effects the device keeps (see RGBControllerResponse.max_effects_bytes), 0 = not known
+     */
+    virtual unsigned int                  GetMaxEffectsBytes()      const                                        { return 0; }
     virtual const led_group_effect&       GetEffect(unsigned int effectIdx)    const                             = 0;
     virtual void                          SetEfects(const std::vector<led_group_effect>& effects)                = 0;
     virtual void                          AddEffect(const led_group_effect& effect)                              = 0;

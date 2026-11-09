@@ -15,6 +15,8 @@
 #include <QString>
 
 #include <functional>
+#include <map>
+#include <set>
 #include <vector>
 
 #include <libudev.h>
@@ -52,7 +54,23 @@ public:
     using KernelEventListener = std::function<void(const Module::KernelEvent& event)>;
 
     void addKernelEventListener(const QObject* owner,const Module::KernelEvent::Filter& filter,KernelEventListener listener);
+
+    /*
+     * Removes kernel event and kernel module listeners of the owner, the owner does not wait for kernel modules
+     */
     void removeKernelEventListeners(const QObject* owner);
+
+    /*
+     * Kernel modules (subsystem "module"): owners initializing the drivers of a kernel module report it as waiting,
+     * kernel module listeners get loaded=true once no owner waits (after the "add" event was delivered to all
+     * listeners), loaded=false at once after the "remove" event. Listener must not throw.
+     */
+    using KernelModuleListener = std::function<void(const QString& kernelModule,bool loaded)>;
+
+    static constexpr const char* MODULE_SUBSYSTEM = "module";
+
+    void addKernelModuleListener(const QObject* owner,KernelModuleListener listener);
+    void setKernelModuleWaiting(const QObject* owner,const QString& kernelModule,bool waiting);
 
     /*
      * Process already pending kernel events, wait at most timeout in total (blocks the event loop)
@@ -100,6 +118,27 @@ private:
     };
 
     std::vector<KernelEventListenerEntry> m_kernelEventListeners;
+
+    /*
+     * Kernel modules: loaded (announced to the listeners), pending (added, owners still waiting), removed
+     */
+    enum class KernelModuleState { REMOVED, PENDING, LOADED };
+
+    struct KernelModule
+    {
+        KernelModuleState          m_state = KernelModuleState::REMOVED;
+        std::set<const QObject*>   m_waiting;
+    };
+
+    /*
+     * Announce loaded when the module is pending and no owner waits (not while the "add" event is dispatched)
+     */
+    void checkKernelModuleLoaded(const QString& kernelModule);
+    void announceKernelModule(const QString& kernelModule,bool loaded);
+
+    std::vector<std::pair<const QObject*,KernelModuleListener>> m_kernelModuleListeners;
+    std::map<QString,KernelModule>                              m_kernelModules;
+    QString                                                     m_dispatchedKernelModule;
 };
 
 }

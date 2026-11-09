@@ -134,7 +134,8 @@ void LenovoUSBController::setProfileDescription(uint8_t profile_id,const  std::v
             }
         }
         return payload;
-    }(),0x00);
+    }());   // length byte 0xC0 as in the factory profiles and all other requests (the controller ignores it, it only
+            // echoes it on read); the only limit is the size of the report (960 bytes, checked in serializeToBuffer)
 
 
     sendFeatureReport(packet);
@@ -323,7 +324,9 @@ LenovoUSBController::ByteArray LenovoUSBController::serializeToBuffer(LENOVO_SPE
 
     if(payload.size() > PACKET_SIZE - i)
     {
-        THROW_EXCEPTION(exception_T,ERROR_CODES::DATA_PAYLOAD_TOO_LARGE,"Payload size exceeds maximum packet size");
+        THROW_EXCEPTION(exception_T,ERROR_CODES::DATA_PAYLOAD_TOO_LARGE,
+                        std::string("The effects do not fit into the keyboard report: ").append(std::to_string(i + payload.size()))
+                        .append(" bytes, at most ").append(std::to_string(PACKET_SIZE)).append(" (fewer effects, LEDs or colors)"));
     }
 
     std::copy(payload.begin(), payload.end(),packet.begin() + i);
@@ -545,8 +548,42 @@ void LenovoUSBController::sendFeatureReport(const ByteArray& packet) const
 
 LenovoUSBController::ByteArray LenovoUSBController::sendAndGetFeatureReport(const ByteArray &packet) const
 {
-    sendFeatureReport(packet);
-    return getFeatureReport();
+    /*
+     * The controller (c197) prepares the answer up to ~50 ms, a read before gives the previous answer (e.g. the effects
+     * before the last change) and drops the pending one: the answer must be of the request operation, otherwise the
+     * request is sent again after a while. After the last attempt the answer is returned as it is (old behaviour).
+     */
+    constexpr int ATTEMPTS = 6;
+
+    ByteArray response;
+
+    for(int attempt = 0; attempt < ATTEMPTS; ++attempt)
+    {
+        if(attempt > 0)
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(20 * attempt));
+        }
+
+        sendFeatureReport(packet);
+        response = getFeatureReport();
+
+        if(response.size() >= 2 && packet.size() >= 2 && response[1] == packet[1])
+        {
+            if(attempt > 0)
+            {
+                LOG_D(QString::asprintf("LenovoUSBController::sendAndGetFeatureReport: answer of operation %X after %d retries", packet[1], attempt));
+            }
+
+            return response;
+        }
+
+        LOG_T(QString::asprintf("LenovoUSBController::sendAndGetFeatureReport: answer of operation %X instead of %X, retrying (%d/%d)",
+                                response.size() >= 2 ? response[1] : 0, packet[1], attempt + 1, ATTEMPTS));
+    }
+
+    LOG_W(QString::asprintf("LenovoUSBController::sendAndGetFeatureReport: no answer of operation %X, the last answer is used", packet[1]));
+
+    return response;
 }
 
 

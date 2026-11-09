@@ -7,6 +7,8 @@
  */
 #include "SysFsDriverManager.h"
 
+#include <vector>
+
 namespace LenovoLegionDaemon::Kit {
 
 SysFsDriverManager::SysFsDriverManager(Module::IModuleHost &host) :
@@ -16,6 +18,143 @@ SysFsDriverManager::SysFsDriverManager(Module::IModuleHost &host) :
 SysFsDriverManager::~SysFsDriverManager()
 {
     cleanDrivers();
+}
+
+bool SysFsDriverManager::hasModule(const QString &module) const
+{
+    for(const auto& driver : m_drivers)
+    {
+        if(driver.second->m_module == module)
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool SysFsDriverManager::moduleLoaded(const QString &module) const
+{
+    for(const auto& driver : m_drivers)
+    {
+        if(driver.second->m_module == module && !driver.second->isLoaded())
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+bool SysFsDriverManager::retryModule(const QString &module)
+{
+    bool loadedNow = false;
+
+    for(auto& driver : m_drivers)
+    {
+        if(driver.second->m_module == module && !driver.second->isLoaded())
+        {
+            initDriver(*driver.second);
+            loadedNow = loadedNow || driver.second->isLoaded();
+        }
+    }
+
+    return loadedNow;
+}
+
+void SysFsDriverManager::startRetry(const QString &module)
+{
+    m_retries[module] = RETRY_COUNT;
+
+    if(m_retryTimer != Module::INVALID_TIMER_ID)
+    {
+        return;
+    }
+
+    m_retryTimer = m_host.addTimer(RETRY_INTERVAL,[this]() {
+
+        std::vector<QString> finished;
+
+        for(auto it = m_retries.begin(); it != m_retries.end();)
+        {
+            const QString module    = it->first;
+            const bool    loadedNow = retryModule(module);
+            const bool    loaded    = moduleLoaded(module);
+            const bool    done      = loaded || --it->second <= 0;
+
+            if(loadedNow || done)
+            {
+                LOG_D(QString("Kernel module ").append(module).append(": drivers initialized again").append(loadedNow ? ", a driver was loaded" : "")
+                      .append(done ? (loaded ? ", all drivers loaded" : ", not all drivers loaded (features the notebook does not have)") : ""));
+            }
+
+            if(done)
+            {
+                finished.push_back(module);
+                it = m_retries.erase(it);
+            }
+            else
+            {
+                ++it;
+            }
+        }
+
+        if(m_retries.empty() && m_retryTimer != Module::INVALID_TIMER_ID)
+        {
+            m_host.removeTimer(m_retryTimer);
+            m_retryTimer = Module::INVALID_TIMER_ID;
+        }
+
+        for(const auto& module : finished)
+        {
+            m_host.kernelModuleWaiting(module,false);
+        }
+    });
+}
+
+void SysFsDriverManager::stopRetry()
+{
+    for(const auto& retry : m_retries)
+    {
+        m_host.kernelModuleWaiting(retry.first,false);
+    }
+
+    m_retries.clear();
+
+    if(m_retryTimer != Module::INVALID_TIMER_ID)
+    {
+        m_host.removeTimer(m_retryTimer);
+        m_retryTimer = Module::INVALID_TIMER_ID;
+    }
+}
+
+void SysFsDriverManager::moduleAdded(const QString &module)
+{
+    if(!hasModule(module))
+    {
+        return;
+    }
+
+    retryModule(module);
+
+    if(!moduleLoaded(module))
+    {
+        m_host.kernelModuleWaiting(module,true);
+        startRetry(module);
+    }
+}
+
+void SysFsDriverManager::moduleRemoved(const QString &module)
+{
+    m_retries.erase(module);
+
+    for(auto& driver : m_drivers)
+    {
+        if(driver.second->m_module == module)
+        {
+            driver.second->clean();
+        }
+    }
 }
 
 void SysFsDriverManager::addDriver(std::unique_ptr<SysFsDriver> driver)
@@ -78,6 +217,8 @@ void SysFsDriverManager::initDrivers()
 
 void SysFsDriverManager::cleanDrivers()
 {
+    stopRetry();
+
     for(auto& driver : m_drivers)
     {
         driver.second->clean();
@@ -88,22 +229,14 @@ void SysFsDriverManager::handleKernelEvent(const Module::KernelEvent &event)
 {
     if(event.m_subSystem == MODULE_SUBSYSTEM)
     {
-        for(auto& driver : m_drivers)
+        if(event.m_action == "add")
         {
-            if(driver.second->m_module != event.m_sysName)
-            {
-                continue;
-            }
+            moduleAdded(event.m_sysName);
+        }
 
-            if(event.m_action == "add")
-            {
-                initDriver(*driver.second);
-            }
-
-            if(event.m_action == "remove")
-            {
-                driver.second->clean();
-            }
+        if(event.m_action == "remove")
+        {
+            moduleRemoved(event.m_sysName);
         }
 
         return;

@@ -143,6 +143,10 @@ message RGBControllerResponse
              uint32                           max_effects           = 9;
              RGBController.DeviceTypeInfo     device_info           = 10;
              RGBController.LogoStatus         logo_status           = 11;
+
+             // Bytes of the effects the keyboard keeps (with REQUEST_MAX_EFFECTS): header 7, an effect 16 + 3 per
+             // color + 2 per LED code; the keyboard silently drops the rest. 0 = not known (not measured for the model)
+             uint32                           max_effects_bytes     = 12;
 }
 
 message RGBControllerSetRequest

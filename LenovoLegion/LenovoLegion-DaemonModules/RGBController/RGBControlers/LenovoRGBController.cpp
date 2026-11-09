@@ -212,7 +212,53 @@ void LenovoRGBController::DeviceUpdateEfects()
         });
     }
 
-    controller->setProfileDescription(toControlerProfile(m_profiles.active), groups);
+    /*
+     * Not accepted (too large): the effects of the device are read again, the client gets the error
+     */
+    try {
+        controller->setProfileDescription(toControlerProfile(m_profiles.active), groups);
+    }
+    catch(...)
+    {
+        DeviceRefreshEffects();
+        throw;
+    }
+
+    /*
+     * A keyboard can keep only a part of the effects and silently drop the rest (c197: about 481 bytes, whole effects or
+     * LEDs at the end, found by tests): the effects are read back and compared, the client gets an error instead of
+     * a silently shortened list (all models). The effects read back stay (they are what the keyboard shows).
+     */
+    size_t sentEffects = groups.size(), sentLeds = 0;
+
+    for(const auto& group : groups)
+    {
+        sentLeds += group.m_leds.size();
+    }
+
+    DeviceRefreshEffects();
+
+    size_t keptEffects = m_effects.size(), keptLeds = 0;
+
+    for(const auto& effect : m_effects)
+    {
+        std::set<unsigned int> codes;
+
+        for(const auto& led : effect.m_leds)
+        {
+            codes.insert(led.value);
+        }
+
+        keptLeds += codes.size();
+    }
+
+    if(keptEffects != sentEffects || keptLeds != sentLeds)
+    {
+        THROW_EXCEPTION(exception_T,ERROR_CODES::EFFECTS_NOT_KEPT,
+                        std::string("The keyboard kept only ").append(std::to_string(keptEffects)).append(" of ").append(std::to_string(sentEffects))
+                        .append(" effects and ").append(std::to_string(keptLeds)).append(" of ").append(std::to_string(sentLeds))
+                        .append(" LEDs: the memory of the keyboard is full (fewer effects, LEDs or colors)"));
+    }
 }
 
 void LenovoRGBController::DeviceResetEffectsToDefault()

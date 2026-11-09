@@ -58,7 +58,8 @@ SettingsPage {
         return cpus
     }
 
-    readonly property var performance: (ranges("active_cpus_core"))
+    // Without the hybrid topology (no P- and E-cores) all active threads are P-threads
+    readonly property var performance: (topology.count("active_cpus_core", topology.revision) > 0 ? ranges("active_cpus_core") : ranges("active_cpus"))
     readonly property var efficient:   (ranges("active_cpus_atom"))
 
     // Range of the frequency charts (MHz): info min/max and scaling min/max of the threads
@@ -109,7 +110,8 @@ SettingsPage {
         const energy = hw.value("intel_power.power_cap_cpu_energy", hw.revision)
         const elapsed = (now - previousTime) * 1000
 
-        if (previousEnergy >= 0 && elapsed > refreshInterval * 800 && elapsed < refreshInterval * 1200)
+        // The energy counter wraps around (or is reset): no difference of that sample
+        if (previousEnergy >= 0 && energy >= previousEnergy && elapsed > refreshInterval * 800 && elapsed < refreshInterval * 1200)
             cpuPower = Math.floor((energy - previousEnergy) / elapsed)
 
         previousEnergy = energy
@@ -157,6 +159,7 @@ SettingsPage {
         performance: page.performance
         efficient: page.efficient
         range: page.allRange
+        cpuPower: page.cpuPower
     }
 
     GpuDetailsWindow {

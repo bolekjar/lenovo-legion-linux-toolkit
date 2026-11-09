@@ -22,6 +22,7 @@ ModuleHost::ModuleHost(const QString &moduleName, SysFsDriverManager *sysFsDrive
     m_module(nullptr),
     m_logger(moduleName),
     m_kernelEventsBlocked(false),
+    m_kernelModuleListener(false),
     m_nextTimerId(0)
 {}
 
@@ -50,7 +51,8 @@ void ModuleHost::release()
         m_sysFsDriverManager->removeKernelEventListeners(this);
     }
 
-    m_kernelEventsBlocked = false;
+    m_kernelEventsBlocked  = false;
+    m_kernelModuleListener = false;
 }
 
 bool ModuleHost::callModule(const QString &what, const std::function<void ()> &call) noexcept
@@ -101,6 +103,33 @@ void ModuleHost::addKernelEventFilter(const Module::KernelEvent::Filter &filter)
 
         callModule("kernel event",[this,&event] { m_module->onKernelEvent(event); });
     });
+
+    /*
+     * Module with a filter for kernel modules gets also IModule::onKernelModule (not blocked: the announcement
+     * does not come from the own write)
+     */
+    if(filter.m_subSystem == SysFsDriverManager::MODULE_SUBSYSTEM && !m_kernelModuleListener)
+    {
+        m_kernelModuleListener = true;
+
+        m_sysFsDriverManager->addKernelModuleListener(this,[this](const QString& kernelModule,bool loaded) {
+
+            if(m_module == nullptr)
+            {
+                return;
+            }
+
+            callModule("kernel module",[this,&kernelModule,loaded] { m_module->onKernelModule(kernelModule,loaded); });
+        });
+    }
+}
+
+void ModuleHost::kernelModuleWaiting(const QString &kernelModule, bool waiting)
+{
+    if(!m_sysFsDriverManager.isNull())
+    {
+        m_sysFsDriverManager->setKernelModuleWaiting(this,kernelModule,waiting);
+    }
 }
 
 void ModuleHost::blockKernelEvents(bool block)

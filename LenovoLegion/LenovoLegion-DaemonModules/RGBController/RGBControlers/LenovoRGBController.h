@@ -61,7 +61,8 @@ public:
 
     enum ERROR_CODES : int
     {
-        DIRECT_CONTROL_NOT_SUPPORTED = 1
+        DIRECT_CONTROL_NOT_SUPPORTED = 1,
+        EFFECTS_NOT_KEPT             = 2
     };
 
 public:

@@ -22,7 +22,7 @@ namespace LenovoLegionDaemon::Module {
 /*
  * Increase on every incompatible change of the SDK (headers in this directory)
  */
-constexpr uint32_t ABI_VERSION = 1;
+constexpr uint32_t ABI_VERSION = 2;
 
 /*
  * Legacy data type is not used, the framework assigns one (dynamic data types, LIST_MODULES)

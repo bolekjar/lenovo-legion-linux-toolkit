@@ -111,8 +111,16 @@ QByteArray SysFsDataProviderBattery::serializeAndGetData()
      */
     if(battery.supported())
     {
-        const SysFsDriverLegionGameZone::GameZone::Other other(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverLegionGameZone::DRIVER_NAME));
-        const std::optional<QString> chargeMode = other.get_power_charge_mode.empty() ? std::nullopt : getOptionalData(other.get_power_charge_mode);
+        /*
+         * Without the Lenovo driver the descriptor is not available (an exception): no charge mode
+         */
+        std::optional<QString> chargeMode;
+
+        if(m_sysFsDriverManager->isLoaded(SysFsDriverLegionGameZone::DRIVER_NAME))
+        {
+            const SysFsDriverLegionGameZone::GameZone::Other other(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverLegionGameZone::DRIVER_NAME));
+            chargeMode = other.get_power_charge_mode.empty() ? std::nullopt : getOptionalData(other.get_power_charge_mode);
+        }
 
         if(chargeMode.has_value())
         {

@@ -72,6 +72,14 @@ public:
      */
     virtual void onKernelEvent(const KernelEvent&) {}
 
+    /*
+     * Kernel module loaded / removed, called for every module with a filter for subsystem "module":
+     *  - loaded: once the drivers of the kernel module are ready in all modules (a module still initializing them
+     *    reports it by IModuleHost::kernelModuleWaiting, e.g. sysfs files are created a while after the event),
+     *  - removed: at once (after onKernelEvent of the remove event was delivered to all modules).
+     */
+    virtual void onKernelModule(const QString& /*name*/,bool /*loaded*/) {}
+
 
     /*
      * Settings

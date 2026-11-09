@@ -160,14 +160,16 @@ Item {
 
     // Selection on the dark notebook in all themes: the accent of the theme brightened to a luminance of at least
     // minSelectionLuma (a dark accent of the gray / white theme is not visible on the dark chassis), the other LEDs
-    // dimmed while something is selected or highlighted
+    // dimmed while something is selected or highlighted (light bars and the logo less: dimmed thin lights look
+    // switched off)
     readonly property real  minSelectionLuma: 0.6
     readonly property color selectionColor: {
         const accent = theme.accentHover
         const luma = 0.2126 * accent.r + 0.7152 * accent.g + 0.0722 * accent.b
         return luma >= minSelectionLuma ? accent : Qt.tint(accent, Qt.rgba(1, 1, 1, (minSelectionLuma - luma) / (1 - luma)))
     }
-    readonly property real  dimmedOpacity: 0.45     // brightness of the color of the dimmed LEDs
+    readonly property real  dimmedOpacity: 0.45       // brightness of the color of the dimmed keys
+    readonly property real  dimmedLightOpacity: 0.65  // brightness of the color of the dimmed light bars and the logo
 
     // Housing of every LED (rim of the keys, rail of the light bars, outline of the logo): a dark / switched off LED
     // is still visible on the dark notebook in all themes
@@ -597,10 +599,12 @@ Item {
 
                         required property var modelData
 
-                        // Color of the LED, darker while other LEDs are selected / highlighted (the housing stays visible)
+                        // Color of the LED, darker while other LEDs are selected / highlighted (the housing stays visible);
+                        // light bars and the logo less than the keys
                         readonly property bool  dimmed: view.dimOthers && !isSelected && !isMarked
+                        readonly property real  dimFactor: modelData.kind === "key" ? view.dimmedOpacity : view.dimmedLightOpacity
                         readonly property color rawColor: view.ledColor(modelData.index)
-                        readonly property color ledColor: dimmed ? Qt.rgba(rawColor.r * view.dimmedOpacity, rawColor.g * view.dimmedOpacity, rawColor.b * view.dimmedOpacity, 1)
+                        readonly property color ledColor: dimmed ? Qt.rgba(rawColor.r * dimFactor, rawColor.g * dimFactor, rawColor.b * dimFactor, 1)
                                                                  : rawColor
                         readonly property bool  isSelected: view.isSelected(modelData.indexes, view.selected)
                         readonly property bool  isMarked: view.isSelected(modelData.indexes, view.marked)
@@ -724,7 +728,8 @@ Item {
                                     anchors.rightMargin: 1
                                     radius: segment.thickness / 2
                                     color: led.ledColor
-                                    border.width: led.isSelected ? 2 : 1
+                                    // Thin white edge when selected (the color of the light stays visible)
+                                    border.width: 1
                                     border.color: led.isSelected ? "white" : view.ledRimColor
                                 }
 
@@ -789,16 +794,16 @@ Item {
                                     ctx.lineCap = "butt"
                                     ctx.lineJoin = "round"
 
-                                    if (selectedLine || markedLine)
-                                        stroke(ctx, thickness + 2 * led.outlineWidth, outlineColor)
-
-                                    else
+                                    // Selected / highlighted: outline, then a thin white edge (like the selected keys), the
+                                    // light in its color over it; otherwise the rail of the housing
+                                    if (selectedLine || markedLine) {
+                                        stroke(ctx, thickness + 2 + 2 * led.outlineWidth, outlineColor)
+                                        stroke(ctx, thickness + 2, "white")
+                                    } else {
                                         stroke(ctx, thickness + 3, view.ledRimColor)
+                                    }
 
                                     stroke(ctx, thickness, lineColor)
-
-                                    if (selectedLine)
-                                        stroke(ctx, Math.max(1, thickness / 3), "white")
                                 }
                             }
                             }

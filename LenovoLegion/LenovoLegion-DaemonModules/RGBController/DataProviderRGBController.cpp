@@ -91,6 +91,7 @@ namespace LenovoLegionDaemon::Kit {
             if(requestFlags & legion::messages::RGBControllerRequest::RequestFlags::RGBControllerRequest_RequestFlags_REQUEST_MAX_EFFECTS)
             {
                 rgbController.set_max_effects(m_rgbController->GetMaxEffects());
+                rgbController.set_max_effects_bytes(m_rgbController->GetMaxEffectsBytes());
             }
 
             // Serialize Effects
@@ -305,6 +306,17 @@ namespace LenovoLegionDaemon::Kit {
         if(rgbController.set_request_flags() & legion::messages::RGBControllerSetRequest::SetRequestFlags::RGBControllerSetRequest_SetRequestFlags_SET_REQUEST_LED_GROUP_EFFECTS)
         {
             LOG_D("Applying LED Group Effects");
+
+            /*
+             * More effects than the keyboard lights (c197 stores more, but lights only the first 20): an error,
+             * the effects of the keyboard stay unchanged
+             */
+            if(static_cast<unsigned int>(rgbController.led_group_effects_size()) > m_rgbController->GetMaxEffects())
+            {
+                THROW_EXCEPTION(exception_T, DataProvider::ERROR_CODES::INVALID_DATA,
+                                std::string("Too many effects: ").append(std::to_string(rgbController.led_group_effects_size()))
+                                .append(", the keyboard shows at most ").append(std::to_string(m_rgbController->GetMaxEffects())));
+            }
 
             m_rgbController->ClearEffects();
 

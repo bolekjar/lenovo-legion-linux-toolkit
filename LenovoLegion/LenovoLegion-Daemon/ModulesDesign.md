@@ -169,7 +169,7 @@ Zprávy modulů se překládají do knihovny modulu (`libModuleX.so`) a GUI. Ž�
 // LenovoLegionDaemonSDK/ModuleApi.h
 namespace LenovoLegionDaemon::Module {
 
-constexpr uint32_t ABI_VERSION = 1;          // zvýšit při každé nekompatibilní změně SDK
+constexpr uint32_t ABI_VERSION = 2;          // zvýšit při každé nekompatibilní změně SDK (2: onKernelModule, kernelModuleWaiting)
 
 struct Info {
     uint32_t            abiVersion;          // musí odpovídat ABI_VERSION frameworku
@@ -213,6 +213,9 @@ public:
     /* Kernel events – udev filtr si modul registruje přes host, framework mu předá jen jeho události */
     virtual void onKernelEvent(const KernelEvent& event) {}
 
+    /* Kernel modul načten (až mají všechny moduly připravené jeho drivery) / odebrán (hned), jen moduly s filtrem "module" */
+    virtual void onKernelModule(const QString& name, bool loaded) {}
+
     /* Settings */
     struct SettingsPolicy {
         int  order      = 100;    // pořadí aplikace při startu (PowerProfile = 0)
@@ -240,6 +243,7 @@ public:
     virtual void addKernelEventFilter(const KernelEvent::Filter& filter) = 0;
     virtual void blockKernelEvents(bool block) = 0;                     // jen události tohoto modulu
     virtual void processPendingKernelEvents(int timeoutInMiliseconds) = 0;
+    virtual void kernelModuleWaiting(const QString& kernelModule, bool waiting) = 0;  // modul ještě inicializuje drivery kernel modulu
 
     /* Notification to clients – payload je zpráva modulu */
     virtual void notify(const QByteArray& payload) = 0;
@@ -413,9 +417,9 @@ Rozhodnutí autora: sdílené drivery jako zdrojový kód bez sdílení za běhu
 
 **`LenovoLegion-DaemonModules/ModuleKit/`** (statická knihovna `libDaemonModuleKit.a`, přilinkovaná do každého modulu, za běhu nic sdíleného):
 - `SysFsDriver`, `SysFsDriverManager`, `DataProvider`, `SysFsDataProvider` – stejné rozhraní jako v daemonu (kód providerů a driverů se převádí mechanicky), bez `QObject` a BJLibs, napojené na `IModuleHost`: `emit kernelEvent/dataProviderEvent` jsou obyčejné metody, `startTimer/killTimer/timerEvent` přes časovače hostitele, `LOG_*` přes logger hostitele (`KitLog.h`), `THROW_EXCEPTION`/`DEFINE_EXCEPTION`/`errcodeInfo`/`descriptionInfo` v `KitException.h` (výjimky odvozené z `Module::Error`).
-- `SysFsDriverManager` (kit): jeden udev filtr na subsystém se sjednocenými vlastnostmi (starý `SysFsDriverManager` předával `EVENT_TYPE` driverům na `wmi` podle pořadí v mapě), filtr `module` – při načtení kernel modulu se drivery znovu inicializují, chyba driveru se zaloguje a driver vyčistí.
+- `SysFsDriverManager` (kit): jeden udev filtr na subsystém se sjednocenými vlastnostmi (starý `SysFsDriverManager` předával `EVENT_TYPE` driverům na `wmi` podle pořadí v mapě), filtr `module` – při načtení kernel modulu se drivery znovu inicializují, chyba driveru se zaloguje a driver vyčistí; drivery, které ještě nejsou načtené (kernel modul vytváří sysfs soubory až chvíli po události, `lenovo_legion` váže WMI části později), se zkouší znovu po 250 ms nejvýš 12× a modul mezitím hlásí `kernelModuleWaiting(modul, true)`; při odebrání se drivery vyčistí.
 - `SysFsDataProvider::setData` (kit): zápis bez bufferu, nepovedené otevření vyhodí výjimku (jako dřív), chyba zápisu se zaloguje (bod 3 `ToDoList.txt`).
-- `ProviderModule` – obecný `IModule` nad providerem a jeho drivery: háčky `notificationFor` (události driverů i provideru), `onKernelModule`, `readSettings`/`writeSettings` (převod zprávy na klíče), helpery `notification`, `eventType`, `arrayKey`/`arraySizeKey` (pole ve formátu `QSettings`), `serialize`/`parse`.
+- `ProviderModule` – obecný `IModule` nad providerem a jeho drivery: háčky `notificationFor` (události driverů i provideru), `readSettings`/`writeSettings` (převod zprávy na klíče), helpery `notification`, `eventType`, `arrayKey`/`arraySizeKey` (pole ve formátu `QSettings`), `serialize`/`parse`.
 - `ModuleEntry.h` – makro `LEGION_KIT_MODULE(třída, jméno, verze, dataType, skupina nastavení)` pro vstupní body.
 - `ModuleKit.pri` – společné nastavení `.pro` modulu (`plugin`, `hide_symbols`, `INCLUDEPATH` jen kit/SDK/zprávy, `libLenovoLegionMessages.so`, `rpath $ORIGIN/..`, `--no-undefined`, `--as-needed`).
 - `Drivers/` – 14 driverů přenesených z daemona (bez IntelMSR a nepoužívaného ACPIPlatformProfile), filtry `wmi` mají vlastnosti `EVENT_TYPE`/`EVENT_VALUE`.
@@ -657,6 +661,8 @@ classDiagram
         udev monitor
         +addKernelEventListener(owner, filter, listener)
         +removeKernelEventListeners(owner)
+        +addKernelModuleListener(owner, listener)
+        +setKernelModuleWaiting(owner, module, waiting)
         +processAllUdevEvents(timeout)
         -onDataReceived()
     }
@@ -705,6 +711,7 @@ classDiagram
         +get(request) QByteArray
         +set(request) QByteArray
         +onKernelEvent(event)
+        +onKernelModule(name, loaded)
         +settingsPolicy()
         +loadSettings(storage)
         +saveSettings(storage)
@@ -715,6 +722,7 @@ classDiagram
         +addKernelEventFilter(filter)
         +blockKernelEvents(block)
         +processPendingKernelEvents(timeout)
+        +kernelModuleWaiting(module, waiting)
         +notify(payload)
         +addTimer(interval, callback)
         +removeTimer(id)
@@ -734,7 +742,6 @@ classDiagram
         #setProvider(provider)
         #notificationFor(driverEvent)
         #notificationFor(providerEvent)
-        #onKernelModule(name, loaded)
         #readSettings(storage)
         #writeSettings(storage, message)
         #notify(notification)
@@ -894,7 +901,11 @@ sequenceDiagram
     H->>M: pokud m_kernelEventsBlocked == false: callModule("kernel event") → onKernelEvent(event)
     M->>D: handleKernelEvent(event)
     alt subsystem "module"
-        D->>M: onKernelModule(name, loaded)
+        D->>D: add: drivery kernel modulu znovu inicializovat, remove: vyčistit
+        opt add a některý driver ještě není načtený
+            D->>H: kernelModuleWaiting(name, true), opakování časovačem
+            Note over D,H: po načtení všech driverů / vyčerpání pokusů kernelModuleWaiting(name, false)
+        end
     else ovladač
         D->>Drv: handleKernelEvent(event)
         Drv->>M: kernelEvent sink(SubsystemEvent)
@@ -907,6 +918,13 @@ sequenceDiagram
     DPM-->>PN: signal providerNotification
     PN-->>GUI: NOTIFICATION (dataType 0)
 ```
+
+Kernel modul (subsystém `module`) koordinuje daemonový `SysFsDriverManager` pro všechny moduly (každý modul má vlastní kopii statického ModuleKitu, proto ne v kitu):
+
+- `add`: stav PENDING, událost se doručí všem posluchačům; kdo ještě inicializuje drivery, ohlásí `kernelModuleWaiting(name, true)`. Když po doručení nikdo nečeká (nebo až poslední ohlásí `false`), zavolá se `onKernelModule(name, true)` u všech modulů s filtrem `module` – např. MachineInformation pak pošle `LENOVO_DRIVER_ADDED` a GUI načítá data, až jsou drivery všech modulů připravené.
+- `remove`: po doručení události hned `onKernelModule(name, false)` (`LENOVO_DRIVER_REMOVED`), čekání se zruší.
+- Uvolněný modul (`removeKernelEventListeners`) už nečeká; ohlášení se pak vyhodnotí odloženě (`QTimer::singleShot(0)`), protože se může právě ukončovat daemon.
+- Jméno kernel modulu nikde v kitu ani v `ProviderModule` natvrdo není, `ModuleMachineInformation` jen filtruje `LEGION_MODULE_NAME` pro svou notifikaci.
 
 ### 9.7 Timer → notifikace
 

@@ -11,12 +11,27 @@ Window {
 
     default property alias content: page.content
 
+    // Copy of a value (copy buttons of the InfoSection rows)
+    function copy(value) {
+        clipboard.text = value
+        clipboard.selectAll()
+        clipboard.copy()
+        clipboard.text = ""
+    }
+
     // Not transient for the main window, the same as the widget windows (parent nullptr)
     transientParent: null
     color: theme.window
     visible: open
 
     onClosing: open = false
+
+    // Clipboard: a hidden text edit (QML has no clipboard API)
+    TextEdit {
+        id: clipboard
+
+        visible: false
+    }
 
     SettingsPage {
         id: page

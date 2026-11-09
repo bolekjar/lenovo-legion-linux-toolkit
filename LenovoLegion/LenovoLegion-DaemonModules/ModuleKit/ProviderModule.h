@@ -67,11 +67,6 @@ protected:
     virtual std::optional<legion::messages::Notification> notificationFor(const DataProvider::SubsystemEvent&)  { return {}; }
 
     /*
-     * Kernel module loaded/unloaded (subsystem "module")
-     */
-    virtual void onKernelModule(const QString& /*name*/,bool /*loaded*/)                                       {}
-
-    /*
      * Settings: build the provider message from the storage (empty = nothing saved),
      * store the provider message read from the hardware
      */

@@ -46,6 +46,11 @@ MainWindow::MainWindow(DataProviderManager &dataProviderManager, QWidget *parent
     DataSource::setDataProvider(m_dataProviderManager.dataProvider());
 
     /*
+     * Not connected until DataProviderManager reports the connection: no requests (no errors in the log)
+     */
+    DataSource::setConnected(false);
+
+    /*
      * Reconnection to the daemon from the QML pages (Settings, status bar)
      */
     AppSettings::setReconnect([this]() {
@@ -141,6 +146,7 @@ void MainWindow::dameonConnectionStatus(bool isConnected)
      * The pages are created again when connected (Shell.qml), the other data sources read the data again
      */
     m_appState->setConnected(isConnected);
+    DataSource::setConnected(isConnected);
     DataSource::reloadAll();
 }
 

@@ -20,6 +20,12 @@ class LenovoRGBControllerC197 : public LenovoRGBController
 public:
 
     LenovoRGBControllerC197(LenovoUSBController* controller_ptr);
+
+    /*
+     * The keyboard keeps about 481 bytes of the effects and silently drops the rest (measured on Legion Pro 7 16IAX10H:
+     * 481 bytes kept, larger lists shortened to 479-483 bytes)
+     */
+    unsigned int GetMaxEffectsBytes() const override { return 481; }
 };
 
 }

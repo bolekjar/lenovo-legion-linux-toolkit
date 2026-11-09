@@ -43,6 +43,13 @@ public:
     /* Process already pending kernel events, wait at most timeout in total (blocks the event loop) */
     virtual void processPendingKernelEvents(std::chrono::milliseconds timeout) = 0;
 
+    /*
+     * The module still initializes its drivers of the kernel module (true, reported while handling the "add" event
+     * of subsystem "module" or later) / is done (false). IModule::onKernelModule(name,true) is delivered to all
+     * modules once no module waits. Released module does not wait any more.
+     */
+    virtual void kernelModuleWaiting(const QString& kernelModule,bool waiting) = 0;
+
 
     /*
      * Notification to the connected client, payload is defined by the module.

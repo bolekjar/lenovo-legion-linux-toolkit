@@ -62,6 +62,7 @@ public:
     void addKernelEventFilter(const Module::KernelEvent::Filter& filter) override;
     void blockKernelEvents(bool block) override;
     void processPendingKernelEvents(std::chrono::milliseconds timeout) override;
+    void kernelModuleWaiting(const QString& kernelModule,bool waiting) override;
 
     void notify(const QByteArray& payload) override;
 
@@ -103,6 +104,7 @@ private:
     Logger                           m_logger;
 
     bool                             m_kernelEventsBlocked;
+    bool                             m_kernelModuleListener;     // registered with the first filter of subsystem "module"
 
     Module::TimerId                  m_nextTimerId;
     std::map<Module::TimerId,QTimer*> m_timers;
