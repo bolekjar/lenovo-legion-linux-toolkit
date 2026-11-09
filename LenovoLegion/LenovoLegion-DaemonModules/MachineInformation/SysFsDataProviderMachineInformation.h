@@ -20,8 +20,8 @@ public:
     SysFsDataProviderMachineInformation(SysFsDriverManager* sysFsDriverManager);
 
 
-    virtual QByteArray serializeAndGetData()                    ;
-    virtual QByteArray deserializeAndSetData(const QByteArray&) ;
+    virtual QByteArray serializeAndGetData()                    override;
+    virtual QByteArray deserializeAndSetData(const QByteArray&) override;
 
 public:
 

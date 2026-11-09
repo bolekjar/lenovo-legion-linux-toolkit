@@ -12,7 +12,6 @@
 #include <Core/LoggerHolder.h>
 
 #include <../LenovoLegion-Daemon/Application.h>
-#include "../LenovoLegion-PrepareBuild/MessageRegistry.pb.h"
 
 
 #include <../LenovoLegion-PrepareBuild/HWMonitoring.pb.h>
