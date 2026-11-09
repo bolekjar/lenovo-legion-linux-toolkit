@@ -32,17 +32,32 @@ Chyba nalezená při inventuře: `get_ir_temp` (gamezone other) volá metodu `Ge
    - `legion-rapl.c`, `legion-rapl-mmio.c` a synchronizace RAPL v `legion-dkms.c` → daemon na uevent změny tepelného režimu zapíše limity režimu do powercapu `intel-rapl` a `intel-rapl-mmio` (hodnoty režimu z capdata01/ddata, které už čte modul Other); custom režim podle aktuálních hodnot,
    - ověřit na hardwaru, že po změně režimu Fn+Q platí stejné limity jako dřív.
 
-   **Stav (2026-11-09): hotovo, čeká na test na hardwaru.**
+   **Stav (2026-11-09): hotovo, otestováno na hardwaru (Legion Pro 7 16IAX10H).**
    - jádro: odstraněné `legion-rapl.*`, `legion-rapl-mmio.*`, `legion-machine-information-sysfs.*`, `legion-dkms.h` (notifier synchronizace), nepoužívané položky `legion_data`; kontrola modelu podle DMI zůstává,
    - daemon: `SysFsDriverLegionMachineInformation` čte `/sys/class/dmi/id/` (bez vazby na kernel modul, `MACHINE_INFORMATION` už není `PLATFORM_LENOVO`),
    - daemon: `CPUPower/RaplPowerLimits` zapisuje limity režimu (stejná pravidla jako jádro: MMIO výchozí hodnoty režimu, v custom aktuální, zapne MMIO; MSR maxima režimu jen když je RAPL zapnutý a MMIO zápis prošel) při startu modulu, načtení kernel modulu, události změny tepelného režimu (`ProviderModule::onDriverEvent`) a v custom režimu hned po nastavení limitů (požadavek klienta, obnovení nastavení),
    - opraveno: provider CPUPower ořezával aktuální hodnoty limitů na 8 bitů (`static_cast<quint8>`),
    - udev pravidlo `99-rapl-readonly.rules` (`rapl-readonly.sh`) zůstává: soubory limitů jsou `0440 root:legion` a sysfs otevření pro zápis souboru bez bitu `w` odmítne i rootovi (ostatní nástroje, např. thermald, limity nezmění); daemon před zápisem přidá vlastníkovi `w` a hned vrátí původní práva.
 2. **Jedna cesta pro tepelný režim, hwmon, probe:**
-   - `platform_profile` (custom a extreme jako upstream) + uevent; `smart_fan/current_value` přechodně ponechat pro daemon, pak odstranit,
-   - hwmon přes `devm_hwmon_device_register_with_info` (stejná jména `tempX_*`, `fanX_*`),
-   - probe nic nenastavuje (žádný Balanced při načtení), jen čte stav.
-3. **Zúžit gamezone sysfs** na používané funkce, teploty a otáčky jen v hwmon; nepoužívané (fans, cpu, gpu, macro_key, other) odstranit nebo přesunout do debugfs podle rozhodnutí autora; opravit / odstranit `get_ir_temp`.
-4. **Nejnižší podporované jádro**: stanovit (návrh LTS 6.1 nebo 6.6), sjednotit `#if LINUX_VERSION_CODE`, ověřit překlad a načtení aspoň na tom jádře a na aktuálním.
+   - tepelný režim jde nastavit jen funkcí `legion_wmi_gz_thermal_mode_set()` (kontrola režimu vůči notebooku, extreme jen s podporou, WMI, uložení režimu zdroje napájení); používá ji `smart_fan/current_value` i `platform_profile`, `platform_profile` čte režim z firmwaru,
+   - `smart_fan/current_value` zůstává rozhraním daemonu (stejné na všech jádrech), `platform_profile` je pro ostatní nástroje (power-profiles-daemon),
+   - hwmon přes `hwmon_device_register_with_info` (stejná jména `tempX_*`, `fanX_*`),
+   - probe nic nenastavuje, jen čte stav.
+
+   **Stav (2026-11-09): hotovo, otestováno na hardwaru (Legion Pro 7 16IAX10H).**
+   - mapování profilů: quiet, balanced, performance stejně; extreme = `max-power` (jádro 6.19+), jinak skrytý `balanced-performance` (6.14+); custom = `custom` (6.14+, nově viditelná volba), na starších jádrech zobrazen jako `balanced-performance`,
+   - zrušeno: `platform_profile` dřív na baterii tiše měnil performance na balanced (daemon to nikdy nedělal), nešlo nastavit custom ani extreme; `smart_fan` přijímal i 0 a extreme bez podpory,
+   - hwmon: zrušeny globální měnitelné tabulky atributů, registrace bez devm (odstraní se před WMI ovladači, ze kterých čte).
+
+3. **Gamezone sysfs**: rozhodnutí autora (2026-11-09): funkce, které daemon nepoužívá, zůstávají (skupiny fans, cpu, gpu, macro_key, other, funkce capdata00); opraveno `get_ir_temp` (volalo metodu `GetPowerChargeMode` místo `GetIRTemp`).
+
+   **Stav (2026-11-09): hotovo.**
+
+4. **Nejnižší podporované jádro: 6.12 LTS** (rozhodnutí autora 2026-11-09).
+   - API: `platform_driver.remove` vrací `void` (6.11), `wmi_driver.no_singleton` (6.10), `guard()`/`scoped_guard()`/`__free` (6.5); novější API přes podmínky verze (`platform_profile` ops a custom 6.14, max-power 6.19, `rdmsrq_safe_on_cpu` 7.2),
+   - `legion-kernel-version.h`: `#error` pro jádro < 6.12, `dkms.conf`: `BUILD_EXCLUSIVE_KERNEL` (DKMS modul pro starší jádro nestaví), README: požadavek jádra 6.12+,
+   - ověřeno: překlad bez varování proti 6.12.116 a 6.18.62 (zdrojáky z kernel.org, `defconfig` + WMI, hwmon, platform_profile, `modules_prepare`), všechny použité symboly jsou v obou jádrech exportované; načtení otestováno na 7.2.
+
+   **Stav (2026-11-09): hotovo.** Načtení na 6.12 a 6.18 netestováno (vyžaduje nabootované jádro).
 
 Volitelné (samostatné rozhodnutí): spouštět modul bez vazby na ACPI zařízení `VPC2004` (WMI ovladače v `module_init`, kontrola modelu přes DMI), aby `ideapad_laptop` nemusel být na blacklistu (Fn-lock, conservation mode, kamera); předem ověřit, že se jeho `platform_profile` (DYTC) nepere s naším.

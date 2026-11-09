@@ -6,6 +6,7 @@
  *   Jaroslav Bolek <jaroslav.bolek@gmail.com>
  */
 
+#include "legion-kernel-version.h"
 #include "legion-intel-msr-sysfs.h"
 
 #include <linux/module.h>

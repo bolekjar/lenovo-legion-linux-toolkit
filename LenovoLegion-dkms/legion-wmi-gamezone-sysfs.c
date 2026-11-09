@@ -233,7 +233,7 @@ static int legion_wmi_validate_input(const u32 value,
 	};
 
 #define LEGION_WMI_RO_FEATURE_SET_GET_SUPPORTED_SMARTFAN(                                   \
-	_name, _attr, _attrget, _attrset, _dispname, _possible_inputs)                      \
+	_name, _attr, _attrget, _dispname)                                                  \
 	static ssize_t func_##_name##_show(                                                 \
 		struct kobject *kobj, struct kobj_attribute *kattr, char *buf)              \
 	{                                                                                   \
@@ -298,14 +298,8 @@ static int legion_wmi_validate_input(const u32 value,
 		if (ret)                                                                    \
 			return ret;                                                         \
 											    \
-		ret = legion_wmi_validate_input(                                            \
-			value, _possible_inputs,                                            \
-			sizeof(_possible_inputs) /                                          \
-				sizeof(_possible_inputs[0]));                               \
-		if (ret)                                                                    \
-			return ret;                                                         \
-											    \
-		ret = legion_wmi_gz_set(priv->wdev, _attrset, value);                       \
+		/* Checked and stored by the only way to change the thermal mode */         \
+		ret = legion_wmi_gz_thermal_mode_set(priv, value);                          \
 		if (ret)                                                                    \
 			return ret;                                                         \
 											    \
@@ -330,13 +324,6 @@ static int legion_wmi_validate_input(const u32 value,
 /*
  * Features: isSupported, Get, Set
  */
-static u32 SmartFanPossibleValues[] = { LEGION_WMI_GZ_THERMAL_MODE_END,
-					LEGION_WMI_GZ_THERMAL_MODE_QUIET,
-					LEGION_WMI_GZ_THERMAL_MODE_BALANCED,
-					LEGION_WMI_GZ_THERMAL_MODE_PERFORMANCE,
-					LEGION_WMI_GZ_THERMAL_MODE_EXTREME,
-					LEGION_WMI_GZ_THERMAL_MODE_CUSTOM };
-
 /*
  * IGPUModeStates
  */
@@ -356,9 +343,7 @@ static u32 StateONOFF[] = {
 
 LEGION_WMI_RO_FEATURE_SET_GET_SUPPORTED_SMARTFAN(smart_fan, IsSupportSmartFan,
 						 GetSmartFanMode,
-						 SetSmartFanMode,
-						 "Smart Fan feature",
-						 SmartFanPossibleValues);
+						 "Smart Fan feature");
 LEGION_WMI_RO_FEATURE_SET_GET_SUPPORTED(igpu_mode, IsSupportIGPUMode,
 					GetIGPUModeStatus, SetIGPUModeStatus,
 					"IGPU mode", IGPUModeStates);
@@ -485,7 +470,7 @@ static u32 StateOtherONOFF[] = {
 	1 //On
 };
 
-LEGION_WMI_KOBJ_ATTR_RO(get_ir_temp, GetPowerChargeMode, get_ir_temp);
+LEGION_WMI_KOBJ_ATTR_RO(get_ir_temp, GetIRTemp, get_ir_temp);
 LEGION_WMI_KOBJ_ATTR_RO(get_power_charge_mode, GetPowerChargeMode,
 			get_power_charge_mode);
 LEGION_WMI_KOBJ_ATTR_RO(get_product_info, GetProductInfo, get_product_info);

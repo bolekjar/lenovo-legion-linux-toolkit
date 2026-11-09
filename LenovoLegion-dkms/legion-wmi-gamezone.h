@@ -231,6 +231,10 @@ int legion_wmi_gz_get_string(struct wmi_device *wdev,
 			     enum LEGION_GAMEZONE_METHOD_ID method_id,
 			     char *retval, size_t retval_size);
 
+/* The only way to change the thermal mode, see legion-wmi-gamezone.c */
+int legion_wmi_gz_thermal_mode_set(struct lenovo_wmi_gz_priv *priv,
+				   enum thermal_mode mode);
+
 int legion_wmi_gamezone_driver_init(struct device *parent);
 void legion_wmi_gamezone_driver_exit(void);
 

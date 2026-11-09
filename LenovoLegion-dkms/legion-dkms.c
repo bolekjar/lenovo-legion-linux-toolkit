@@ -5,6 +5,7 @@
  * Author(s):
  *   Jaroslav Bolek <jaroslav.bolek@gmail.com>
  */
+#include "legion-kernel-version.h"
 #include "legion-common.h"
 #include "legion-compatibility.h"
 #include "legion-wmi-events.h"

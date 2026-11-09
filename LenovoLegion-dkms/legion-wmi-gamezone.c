@@ -228,17 +228,62 @@ static int legion_wmi_gz_charging_mode_get(struct wmi_device *wdev,
 }
 
 /**
- * legion_wmi_gz_thermal_mode_set() - Set the current thermal mode.
- * interface to determine the support level.
+ * legion_wmi_gz_thermal_mode_get() - Get the thermal mode (smart fan mode) from the firmware.
  * @wdev: The Gamezone WMI device.
- * @supported: Pointer to return the support level with.
+ * @mode: Pointer to return the thermal mode with.
  *
  * Return: 0 on success, or an error code.
  */
-static int legion_wmi_gz_thermal_mode_set(struct wmi_device *wdev,
-					  const enum thermal_mode mode)
+static int legion_wmi_gz_thermal_mode_get(struct wmi_device *wdev,
+					  enum thermal_mode *mode)
 {
-	return legion_wmi_gz_set(wdev, SetSmartFanMode, mode);
+	u32 value;
+	const int ret = legion_wmi_gz_get(wdev, GetSmartFanMode, &value);
+
+	if (ret)
+		return ret;
+
+	*mode = value;
+	return 0;
+}
+
+/**
+ * legion_wmi_gz_thermal_mode_set() - Set the thermal mode (smart fan mode).
+ * @priv: Driver data of the Gamezone interface.
+ * @mode: The thermal mode.
+ *
+ * The only way the driver changes the thermal mode (sysfs smart_fan/current_value and platform_profile): the
+ * mode is checked against the modes of the notebook (extreme only when supported), set by WMI and stored as the
+ * mode of the current power source. platform_profile is notified by the WMI event of the firmware that follows
+ * the change (not here: the profile store of platform_profile holds its lock while calling profile_set).
+ *
+ * Return: 0 on success, -EOPNOTSUPP for extreme without support, -EINVAL for an unknown mode, or an error code.
+ */
+int legion_wmi_gz_thermal_mode_set(struct lenovo_wmi_gz_priv *priv,
+				   const enum thermal_mode mode)
+{
+	int ret;
+
+	switch (mode) {
+	case LEGION_WMI_GZ_THERMAL_MODE_QUIET:
+	case LEGION_WMI_GZ_THERMAL_MODE_BALANCED:
+	case LEGION_WMI_GZ_THERMAL_MODE_PERFORMANCE:
+	case LEGION_WMI_GZ_THERMAL_MODE_CUSTOM:
+		break;
+	case LEGION_WMI_GZ_THERMAL_MODE_EXTREME:
+		if (priv->extreme_supported)
+			break;
+		return -EOPNOTSUPP;
+	default:
+		return -EINVAL;
+	}
+
+	ret = legion_wmi_gz_set(priv->wdev, SetSmartFanMode, mode);
+	if (ret)
+		return ret;
+
+	legion_modify_current_mode(priv, mode);
+	return 0;
 }
 
 /**
@@ -292,22 +337,16 @@ static int legion_wmi_gz_event_call(struct notifier_block *nb,
 	}
 }
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 14, 0)
-
-/**
- * legion_wmi_gz_profile_get() - Get the current platform profile.
- * @dev: the Gamezone interface parent device.
- * @profile: Pointer to provide the current platform profile with.
- *
- * Call lwmi_gz_thermal_mode_get and convert the thermal mode into a platform
- * profile based on the support level of the interface.
- *
- * Return: 0 on success, or an error code.
+/*
+ * Thermal modes and platform profiles:
+ *   quiet, balanced, performance  - the same profiles,
+ *   extreme                       - max-power (kernel 6.19+), otherwise balanced-performance (hidden choice 6.14+),
+ *   custom                        - custom (kernel 6.14+), otherwise balanced-performance (shown, not settable).
  */
-static int legion_wmi_gz_profile_get(struct device *dev,
-				     enum platform_profile_option *profile)
+static int legion_wmi_gz_mode_to_profile(const enum thermal_mode mode,
+					 enum platform_profile_option *profile)
 {
-	switch (legion_current_mode(dev_get_drvdata(dev))) {
+	switch (mode) {
 	case LEGION_WMI_GZ_THERMAL_MODE_QUIET:
 		*profile = PLATFORM_PROFILE_QUIET;
 		break;
@@ -318,10 +357,18 @@ static int legion_wmi_gz_profile_get(struct device *dev,
 		*profile = PLATFORM_PROFILE_PERFORMANCE;
 		break;
 	case LEGION_WMI_GZ_THERMAL_MODE_EXTREME:
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 19, 0)
+		*profile = PLATFORM_PROFILE_MAX_POWER;
+#else
 		*profile = PLATFORM_PROFILE_BALANCED_PERFORMANCE;
+#endif
 		break;
 	case LEGION_WMI_GZ_THERMAL_MODE_CUSTOM:
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 14, 0)
 		*profile = PLATFORM_PROFILE_CUSTOM;
+#else
+		*profile = PLATFORM_PROFILE_BALANCED_PERFORMANCE;
+#endif
 		break;
 	default:
 		return -EINVAL;
@@ -330,59 +377,91 @@ static int legion_wmi_gz_profile_get(struct device *dev,
 	return 0;
 }
 
-/**
- * legion_wmi_gz_profile_set() - Set the current platform profile.
- * @dev: The Gamezone interface parent device.
- * @profile: Pointer to the desired platform profile.
- *
- * Convert the given platform profile into a thermal mode based on the support
- * level of the interface, then call the WMI method to set the thermal mode.
- *
- * Return: 0 on success, or an error code.
- */
-static int legion_wmi_gz_profile_set(struct device *dev,
-				     enum platform_profile_option profile)
+static int
+legion_wmi_gz_profile_to_mode(const enum platform_profile_option profile,
+			      enum thermal_mode *mode)
 {
-	struct lenovo_wmi_gz_priv *priv = dev_get_drvdata(dev);
-	enum thermal_mode mode = LEGION_WMI_GZ_THERMAL_MODE_BALANCED;
-
 	switch (profile) {
 	case PLATFORM_PROFILE_QUIET:
-		mode = LEGION_WMI_GZ_THERMAL_MODE_QUIET;
+		*mode = LEGION_WMI_GZ_THERMAL_MODE_QUIET;
 		break;
 	case PLATFORM_PROFILE_BALANCED:
-		mode = LEGION_WMI_GZ_THERMAL_MODE_BALANCED;
+		*mode = LEGION_WMI_GZ_THERMAL_MODE_BALANCED;
 		break;
 	case PLATFORM_PROFILE_PERFORMANCE:
-		if (legion_is_ac_connected(priv->current_adapter_status))
-			mode = LEGION_WMI_GZ_THERMAL_MODE_PERFORMANCE;
-		else
-			mode = LEGION_WMI_GZ_THERMAL_MODE_BALANCED;
+		*mode = LEGION_WMI_GZ_THERMAL_MODE_PERFORMANCE;
 		break;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 19, 0)
+	case PLATFORM_PROFILE_MAX_POWER:
+#endif
+	case PLATFORM_PROFILE_BALANCED_PERFORMANCE:
+		*mode = LEGION_WMI_GZ_THERMAL_MODE_EXTREME;
+		break;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 14, 0)
+	case PLATFORM_PROFILE_CUSTOM:
+		*mode = LEGION_WMI_GZ_THERMAL_MODE_CUSTOM;
+		break;
+#endif
 	default:
 		return -EOPNOTSUPP;
 	}
 
-	const int ret = legion_wmi_gz_thermal_mode_set(priv->wdev, mode);
+	return 0;
+}
+
+/*
+ * Current profile: the thermal mode of the firmware (also stored as the mode of the current power source),
+ * the stored mode when the firmware can not be read
+ */
+static int legion_wmi_gz_current_profile(struct lenovo_wmi_gz_priv *priv,
+					 enum platform_profile_option *profile)
+{
+	enum thermal_mode mode;
+
+	if (legion_wmi_gz_thermal_mode_get(priv->wdev, &mode) == 0) {
+		legion_modify_current_mode(priv, mode);
+	} else {
+		scoped_guard(spinlock, &priv->gz_mode_lock)
+			mode = legion_current_mode(priv);
+	}
+
+	return legion_wmi_gz_mode_to_profile(mode, profile);
+}
+
+static int legion_wmi_gz_set_profile(struct lenovo_wmi_gz_priv *priv,
+				     const enum platform_profile_option profile)
+{
+	enum thermal_mode mode;
+	const int ret = legion_wmi_gz_profile_to_mode(profile, &mode);
 
 	if (ret)
 		return ret;
 
-	legion_modify_current_mode(priv, mode);
+	return legion_wmi_gz_thermal_mode_set(priv, mode);
+}
 
-	return 0;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 14, 0)
+
+static int legion_wmi_gz_profile_get(struct device *dev,
+				     enum platform_profile_option *profile)
+{
+	return legion_wmi_gz_current_profile(dev_get_drvdata(dev), profile);
+}
+
+static int legion_wmi_gz_profile_set(struct device *dev,
+				     enum platform_profile_option profile)
+{
+	return legion_wmi_gz_set_profile(dev_get_drvdata(dev), profile);
 }
 
 /**
- * legion_wmi_gz_platform_profile_probe - Enable and set up the platform profile
- * device.
+ * legion_wmi_gz_platform_profile_probe - Supported platform profiles
  * @drvdata: Driver data for the interface.
  * @choices: Container for enabled platform profiles.
  *
- * Determine if thermal mode is supported, and if so to what feature level.
- * Then enable all supported platform profiles.
+ * Quiet, balanced, performance and custom; extreme as max-power (kernel 6.19+, see legion_wmi_gz_mode_to_profile).
  *
- * Return: 0 on success, or an error code.
+ * Return: 0.
  */
 static int legion_wmi_gz_platform_profile_probe(void *drvdata,
 						unsigned long *choices)
@@ -390,29 +469,33 @@ static int legion_wmi_gz_platform_profile_probe(void *drvdata,
 	set_bit(PLATFORM_PROFILE_QUIET, choices);
 	set_bit(PLATFORM_PROFILE_BALANCED, choices);
 	set_bit(PLATFORM_PROFILE_PERFORMANCE, choices);
+	set_bit(PLATFORM_PROFILE_CUSTOM, choices);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 19, 0)
+	if (((const struct lenovo_wmi_gz_priv *)drvdata)->extreme_supported)
+		set_bit(PLATFORM_PROFILE_MAX_POWER, choices);
+#endif
 
 	return 0;
 }
 
 /**
- * legion_wmi_gz_platform_profile_hidden_choices - Enable and set up the platform profile
- * device.
+ * legion_wmi_gz_platform_profile_hidden_choices - Hidden platform profiles
  * @drvdata: Driver data for the interface.
- * @choices: Container for enabled platform profiles.
+ * @choices: Container for hidden platform profiles.
  *
- * Determine if thermal mode is supported, and if so to what feature level.
- * Then enable all supported platform profiles.
+ * Extreme as balanced-performance on kernels without max-power.
  *
- * Return: 0 on success, or an error code.
+ * Return: 0.
  */
 static int legion_wmi_gz_platform_profile_hidden_choices(void *drvdata,
 							 unsigned long *choices)
 {
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 19, 0)
 	const struct lenovo_wmi_gz_priv *priv = drvdata;
 
-	set_bit(PLATFORM_PROFILE_CUSTOM, choices);
 	if (priv->extreme_supported)
 		set_bit(PLATFORM_PROFILE_BALANCED_PERFORMANCE, choices);
+#endif
 
 	return 0;
 }
@@ -423,67 +506,25 @@ static const struct platform_profile_ops legion_wmi_gz_platform_profile_ops = {
 	.profile_get = legion_wmi_gz_profile_get,
 	.profile_set = legion_wmi_gz_profile_set
 };
+
 #else
 
 static int legion_wmi_gz_profile_get(struct platform_profile_handler *pprof,
 				     enum platform_profile_option *profile)
 {
-	switch (legion_current_mode(container_of(
-		pprof, struct lenovo_wmi_gz_priv, platform_profile_handler))) {
-	case LEGION_WMI_GZ_THERMAL_MODE_QUIET:
-		*profile = PLATFORM_PROFILE_QUIET;
-		break;
-	case LEGION_WMI_GZ_THERMAL_MODE_BALANCED:
-		*profile = PLATFORM_PROFILE_BALANCED;
-		break;
-	case LEGION_WMI_GZ_THERMAL_MODE_PERFORMANCE:
-		*profile = PLATFORM_PROFILE_PERFORMANCE;
-		break;
-	case LEGION_WMI_GZ_THERMAL_MODE_EXTREME:
-		*profile = PLATFORM_PROFILE_BALANCED_PERFORMANCE;
-		break;
-	case LEGION_WMI_GZ_THERMAL_MODE_CUSTOM:
-		*profile = PLATFORM_PROFILE_BALANCED_PERFORMANCE;
-		break;
-	default:
-		return -EINVAL;
-	}
-
-	return 0;
+	return legion_wmi_gz_current_profile(
+		container_of(pprof, struct lenovo_wmi_gz_priv,
+			     platform_profile_handler),
+		profile);
 }
 
 static int legion_wmi_gz_profile_set(struct platform_profile_handler *pprof,
 				     enum platform_profile_option profile)
 {
-	struct lenovo_wmi_gz_priv *priv = container_of(
-		pprof, struct lenovo_wmi_gz_priv, platform_profile_handler);
-	enum thermal_mode mode;
-	int ret;
-
-	switch (profile) {
-	case PLATFORM_PROFILE_QUIET:
-		mode = LEGION_WMI_GZ_THERMAL_MODE_QUIET;
-		break;
-	case PLATFORM_PROFILE_BALANCED:
-		mode = LEGION_WMI_GZ_THERMAL_MODE_BALANCED;
-		break;
-	case PLATFORM_PROFILE_PERFORMANCE:
-		if (legion_is_ac_connected(priv->current_adapter_status))
-			mode = LEGION_WMI_GZ_THERMAL_MODE_PERFORMANCE;
-		else
-			mode = LEGION_WMI_GZ_THERMAL_MODE_BALANCED;
-		break;
-	default:
-		return -EOPNOTSUPP;
-	}
-
-	ret = legion_wmi_gz_thermal_mode_set(priv->wdev, mode);
-	if (ret)
-		return ret;
-
-	legion_modify_current_mode(priv, mode);
-
-	return 0;
+	return legion_wmi_gz_set_profile(container_of(pprof,
+						      struct lenovo_wmi_gz_priv,
+						      platform_profile_handler),
+					 profile);
 }
 
 #endif
@@ -541,8 +582,6 @@ static int legion_wmi_gz_probe(struct wmi_device *wdev, const void *context)
 	priv->preloaded_values.GetFanCount = -1;
 	priv->preloaded_values.GetFanMaxSpeed = -1;
 
-	priv->current_mode_on_ac = DEFAULT_THERMAL_MODE;
-	priv->current_mode_on_battery = DEFAULT_THERMAL_MODE;
 	priv->wdev = wdev;
 
 	spin_lock_init(&priv->gz_mode_lock);
@@ -562,13 +601,19 @@ static int legion_wmi_gz_probe(struct wmi_device *wdev, const void *context)
 	if (ret)
 		return ret;
 
-	/* Set initial balanced mode - if this fails, device may not support it */
-	ret = legion_wmi_gz_thermal_mode_set(wdev, DEFAULT_THERMAL_MODE);
-	if (ret) {
-		dev_warn(&wdev->dev, "Failed to set initial thermal mode: %d\n",
+	/*
+	 * The thermal mode is not changed on load: the current mode of the firmware for both power sources
+	 * (the stored mode of the other source is updated by the next thermal mode event or read)
+	 */
+	enum thermal_mode mode = DEFAULT_THERMAL_MODE;
+
+	ret = legion_wmi_gz_thermal_mode_get(wdev, &mode);
+	if (ret)
+		dev_warn(&wdev->dev, "Failed to read the thermal mode: %d\n",
 			 ret);
-		/* Continue anyway as this is not fatal */
-	}
+
+	priv->current_mode_on_ac = mode;
+	priv->current_mode_on_battery = mode;
 
 	priv->extreme_supported = legion_wmi_gz_extreme_supported(
 		priv->preloaded_values.IsSupportSmartFan);
@@ -585,6 +630,7 @@ static int legion_wmi_gz_probe(struct wmi_device *wdev, const void *context)
 	priv->platform_profile_handler.profile_get = legion_wmi_gz_profile_get;
 	priv->platform_profile_handler.profile_set = legion_wmi_gz_profile_set;
 
+	/* Extreme and custom as balanced-performance (kernels before 6.14 have no custom) */
 	set_bit(PLATFORM_PROFILE_QUIET, priv->platform_profile_handler.choices);
 	set_bit(PLATFORM_PROFILE_BALANCED,
 		priv->platform_profile_handler.choices);

@@ -53,6 +53,8 @@ Please do the following:
 
 Requirements
 
+Linux kernel 6.12 or newer (the kernel modules are not built for older kernels).
+
 You will need to install the following to download and build it. If there is an error of any package, find the alternative name in your distribution and install them.
 
 "qt6-base" "qt6-5compat" "dkms" "make" "gcc" "qt6-charts" "protobuf" "cuda" "pkgconf"

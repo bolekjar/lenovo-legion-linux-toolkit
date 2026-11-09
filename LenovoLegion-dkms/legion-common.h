@@ -19,6 +19,8 @@
 struct legion_data {
 	struct machine_information machine_info; /* DMI, compatibility check */
 	struct device *hwmon_dev;
+	u8 hwmon_temperatures; /* supported temperature channels (bits) */
+	u8 hwmon_fans; /* supported fan channels (bits) */
 };
 
 enum legion_events_type {
