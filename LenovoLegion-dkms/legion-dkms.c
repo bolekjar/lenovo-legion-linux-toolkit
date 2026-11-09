@@ -5,7 +5,6 @@
  * Author(s):
  *   Jaroslav Bolek <jaroslav.bolek@gmail.com>
  */
-#include "legion-dkms.h"
 #include "legion-common.h"
 #include "legion-compatibility.h"
 #include "legion-wmi-events.h"
@@ -18,8 +17,6 @@
 #include "legion-hwmon.h"
 #include "legion-wmi-ftable.h"
 #include "legion-wmi-fm.h"
-#include "legion-rapl-mmio.h"
-#include "legion-rapl.h"
 
 #include <linux/module.h>
 #include <linux/platform_device.h>
@@ -27,95 +24,6 @@
 #include <linux/acpi.h>
 #include <linux/dmi.h>
 #include <linux/component.h>
-
-static BLOCKING_NOTIFIER_HEAD(legion_dkms_head);
-
-static int lenovo_dkms_register_notifier(struct notifier_block *nb)
-{
-	return blocking_notifier_chain_register(&legion_dkms_head, nb);
-}
-
-static int lenovo_dkms_unregister_notifier(struct notifier_block *nb)
-{
-	return blocking_notifier_chain_unregister(&legion_dkms_head, nb);
-}
-
-static void devm_lenovo_dkms_unregister_notifier(void *data)
-{
-	struct notifier_block *nb = data;
-
-	lenovo_dkms_unregister_notifier(nb);
-}
-
-int devm_lenovo_dkms_register_notifier(struct device *dev,
-				       struct notifier_block *nb)
-{
-	int ret;
-
-	ret = lenovo_dkms_register_notifier(nb);
-	if (ret < 0)
-		return ret;
-
-	return devm_add_action_or_reset(
-		dev, devm_lenovo_dkms_unregister_notifier, nb);
-}
-
-static int legion_dkms_notifier_call(void *data,
-				     enum other_events_type other_event)
-{
-	int ret;
-
-	ret = blocking_notifier_call_chain(&legion_dkms_head, other_event,
-					   data);
-	if ((ret & ~NOTIFY_STOP_MASK) != NOTIFY_OK)
-		return -EINVAL;
-
-	return 0;
-}
-
-static int legion_wmi_gz_event_call_for_rapl(struct notifier_block *nb,
-					     unsigned long cmd, void *data)
-{
-	if (cmd == LEGION_WMI_EVENT_THERMAL_MODE) {
-		struct legion_data *priv =
-			container_of(nb, struct legion_data, nb);
-
-		struct other_events_data event_data = {
-			(*(enum thermal_mode *)(data)),
-			&priv->rapl_mmio_private, &priv->rapl_private
-		};
-
-		legion_dkms_notifier_call(
-			&event_data,
-			LEGION_WMI_OTHER_SET_THERMAL_MODE_RAPL_AND_MMIO);
-
-		return NOTIFY_OK;
-	}
-
-	return NOTIFY_DONE;
-}
-
-static int legion_wmi_gz_event_call_for_rapl_mmio(struct notifier_block *nb,
-						  unsigned long cmd, void *data)
-{
-	if (cmd == LEGION_WMI_EVENT_THERMAL_MODE) {
-		struct legion_data *priv =
-			container_of(nb, struct legion_data, nb);
-
-		struct other_events_data event_data = {
-			(*(enum thermal_mode *)(data)),
-			&priv->rapl_mmio_private, &priv->rapl_private
-		};
-
-		legion_dkms_notifier_call(
-			&event_data,
-			LEGION_WMI_OTHER_SET_THERMAL_MODE_RAPL_MMIO_ONLY);
-
-		return NOTIFY_OK;
-	}
-
-	return NOTIFY_DONE;
-}
 
 static int legion_pm_resume(struct device *dev)
 {
@@ -166,18 +74,6 @@ static int legion_probe(struct platform_device *pdev)
 	}
 
 	print_machine_information(&pdev->dev, &data->machine_info);
-
-	/*
-	 * Sysfs Machine information
-	 */
-	err = machine_information_sysfs_init(data);
-	if (err) {
-		dev_err(&pdev->dev,
-			"\tFailed to create Sysfs Machine information: %d\n",
-			err);
-		goto err_machine_information_sysfs;
-	}
-	dev_info(&pdev->dev, "\tSysfs Machine information was initialized\n");
 
 	/*
 	 * WMI gamezone
@@ -284,118 +180,12 @@ static int legion_probe(struct platform_device *pdev)
 	dev_info(&pdev->dev, "\tHwMon driver was initialized\n");
 
 	/*
-	 * RAPL
+	 * Intel MSR is the separate module legion_intel_msr (not tied to the notebook).
+	 * RAPL power limits of the thermal modes are written by the daemon (powercap intel-rapl, intel-rapl-mmio).
 	 */
-	err = legion_rapl_sysfs_init(&pdev->dev);
-	if (err) {
-		dev_err(&pdev->dev, "\tFailed to create RAPL driver: %d\n",
-			err);
-		goto err_rapl;
-	}
-	dev_info(&pdev->dev, "\tRAPL driver was initialized\n");
-
-	/*
-	 * RAPL MMIO
-	 */
-	err = legion_rapl_mmio_init(&pdev->dev);
-	if (err) {
-		dev_err(&pdev->dev, "\tFailed to create RAPL MMIO driver: %d\n",
-			err);
-		goto err_rapl_mmio;
-	}
-	dev_info(&pdev->dev, "\tRAPL MMIO driver was initialized\n");
-
-	/*
-	 * Intel MSR is the separate module legion_intel_msr (not tied to the notebook)
-	 */
-
-	/*
-	 * Post initialization
-	 */
-	bool is_rapl_enabled = false;
-
-	err = legion_rapl_sysfs_is_enabled(&data->rapl_private,
-					   &is_rapl_enabled);
-	if (err) {
-		dev_warn(
-			&pdev->dev,
-			"\tIntel RAPL post initialization error, probably Intel RAPL is not loaded : %d\n",
-			err);
-	}
-
-	bool is_rapl_mmio_locked = false;
-
-	err = legion_is_locked_power_read(&data->rapl_mmio_private,
-					  &is_rapl_mmio_locked);
-	if (err) {
-		dev_err(&pdev->dev,
-			"\tIntel RAPL MMIO post initialization error ! : %d\n",
-			err);
-		goto post_init_err;
-	}
-
-	/*
-	 * Lock the RAPL MMIO = > using RAPL
-	 */
-	if (is_rapl_enabled) {
-		if (!is_rapl_mmio_locked) {
-			dev_info(&pdev->dev,
-				 "\tRAPL and RAPL MMIO synchronization\n");
-
-			data->nb.notifier_call =
-				legion_wmi_gz_event_call_for_rapl;
-
-			struct other_events_data event_data = {
-				DEFAULT_THERMAL_MODE, &data->rapl_mmio_private,
-				&data->rapl_private
-			};
-
-			legion_dkms_notifier_call(
-				&event_data,
-				LEGION_WMI_OTHER_SET_THERMAL_MODE_RAPL_AND_MMIO);
-		}
-	} else {
-		dev_info(&pdev->dev, "\tRAPL MMIO synchronization only\n");
-
-		data->nb.notifier_call = legion_wmi_gz_event_call_for_rapl_mmio;
-
-		struct other_events_data event_data = {
-			DEFAULT_THERMAL_MODE, &data->rapl_mmio_private,
-			&data->rapl_private
-		};
-
-		legion_dkms_notifier_call(
-			&event_data,
-			LEGION_WMI_OTHER_SET_THERMAL_MODE_RAPL_MMIO_ONLY);
-	}
-
-	/*
-	 * RAPL enabled and RAPL MMIO locked by the BIOS: both actions write the MMIO limits, nothing to synchronize.
-	 * The notifier must not be registered without a callback (NULL dereference on the first thermal mode event).
-	 */
-	if (data->nb.notifier_call) {
-		err = devm_legion_wmi_events_register_notifier(&pdev->dev,
-							       &data->nb);
-		if (err) {
-			dev_err(&pdev->dev,
-				"\tLegion platform post initialization error ! : %d\n",
-				err);
-			goto post_init_err;
-		}
-	} else {
-		dev_info(
-			&pdev->dev,
-			"\tRAPL MMIO is locked, power limits are not synchronized\n");
-	}
 
 	dev_info(&pdev->dev, "Legion platform driver was loaded\n");
 	return 0;
-post_init_err:
-	legion_rapl_mmio_exit(&pdev->dev);
-err_rapl_mmio:
-	legion_rapl_sysfs_exit(&pdev->dev);
-err_rapl:
-	legion_hwmon_exit(&pdev->dev);
 err_hwmon:
 	legion_wmi_fm_driver_exit();
 err_fm:
@@ -413,8 +203,6 @@ err_wmi_cd00:
 err_wmi_events:
 	legion_wmi_gamezone_driver_exit();
 err_wmi_gamezone:
-	machine_information_sysfs_exit(data);
-err_machine_information_sysfs:
 err_model_mismatach:
 	legion_data_exit(data);
 err_legion_init:
@@ -429,12 +217,6 @@ static void legion_remove(struct platform_device *pdev)
 	struct legion_data *data = platform_get_drvdata(pdev);
 
 	dev_info(&pdev->dev, "Lenovo Legion platform driver removing:\n");
-
-	legion_rapl_mmio_exit(&pdev->dev);
-	dev_info(&pdev->dev, "\tRAPL MMIO driver was unregistered\n");
-
-	legion_rapl_sysfs_exit(&pdev->dev);
-	dev_info(&pdev->dev, "\tRAPL driver was unregistered\n");
 
 	legion_hwmon_exit(&pdev->dev);
 	dev_info(&pdev->dev, "\tHwMon driver was unregistered\n");
@@ -464,9 +246,6 @@ static void legion_remove(struct platform_device *pdev)
 
 	legion_wmi_events_driver_exit();
 	dev_info(&pdev->dev, "\tWMI events driver was unregistered\n");
-
-	machine_information_sysfs_exit(data);
-	dev_info(&pdev->dev, "\tSysfs Machine information was unregistered\n");
 
 	legion_data_exit(data);
 	dev_info(&pdev->dev, "\tLegion data structure was unregistered\n");

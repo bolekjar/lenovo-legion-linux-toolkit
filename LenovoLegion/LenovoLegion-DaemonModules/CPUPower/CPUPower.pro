@@ -10,8 +10,10 @@ TARGET          = DaemonModuleCPUPower
 include(../ModuleKit/ModuleKit.pri)
 
 HEADERS += \
+    RaplPowerLimits.h \
     SysFsDataProviderCPUPower.h
 
 SOURCES += \
     ModuleCPUPower.cpp \
+    RaplPowerLimits.cpp \
     SysFsDataProviderCPUPower.cpp

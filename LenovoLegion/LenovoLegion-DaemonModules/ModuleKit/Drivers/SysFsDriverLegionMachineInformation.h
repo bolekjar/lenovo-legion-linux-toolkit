@@ -9,10 +9,12 @@
 
 
 #include "../SysFsDriver.h"
-#include "SysFsDriverLegion.h"
 
 namespace LenovoLegionDaemon::Kit {
 
+/*
+ * Machine information of the DMI (SMBIOS) tables of the kernel (/sys/class/dmi/id), any notebook
+ */
 class SysFsDriverLegionMachineInformation : public SysFsDriver
 {
 public:
@@ -71,7 +73,6 @@ public:
      * Driver name, system driver __ prefix is used to mark  system driver no modprobe loadable
      */
     static constexpr const char* DRIVER_NAME =  "legion_dmi";
-    static constexpr const char* MODULE_NAME =  LEGION_MODULE_NAME;
 
 
 };

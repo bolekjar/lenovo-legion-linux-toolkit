@@ -35,7 +35,7 @@ QByteArray SysFsDataProviderCPUPower::serializeAndGetData()
         /*
          * STP power limit
          */
-        cpuPower.mutable_cpu_stp_limit()->set_current_value(static_cast<quint8>(getData(cpuControl.m_cpu_stp_limit.m_current_value).toUShort()));
+        cpuPower.mutable_cpu_stp_limit()->set_current_value(getData(cpuControl.m_cpu_stp_limit.m_current_value).toUInt());
         setValue(cpuControl.m_cpu_stp_limit.m_default_value,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
             descriptor.set_default_value(value);
         },cpuPower.mutable_cpu_stp_limit()->mutable_mode_descriptor_map());
@@ -60,7 +60,7 @@ QByteArray SysFsDataProviderCPUPower::serializeAndGetData()
         /*
          * LTP power limit
          */
-        cpuPower.mutable_cpu_ltp_limit()->set_current_value(static_cast<quint8>(getData(cpuControl.m_cpu_ltp_limit.m_current_value).toUShort()));
+        cpuPower.mutable_cpu_ltp_limit()->set_current_value(getData(cpuControl.m_cpu_ltp_limit.m_current_value).toUInt());
         setValue(cpuControl.m_cpu_ltp_limit.m_default_value,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
             descriptor.set_default_value(value);
         },cpuPower.mutable_cpu_ltp_limit()->mutable_mode_descriptor_map());
@@ -82,7 +82,7 @@ QByteArray SysFsDataProviderCPUPower::serializeAndGetData()
         /*
          * CLP power limit
          */
-        cpuPower.mutable_cpu_clp_limit()->set_current_value(static_cast<quint8>(getData(cpuControl.m_cpu_clp_limit.m_current_value).toUShort()));
+        cpuPower.mutable_cpu_clp_limit()->set_current_value(getData(cpuControl.m_cpu_clp_limit.m_current_value).toUInt());
         setValue(cpuControl.m_cpu_clp_limit.m_default_value,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
             descriptor.set_default_value(value);
         },cpuPower.mutable_cpu_clp_limit()->mutable_mode_descriptor_map());
@@ -104,7 +104,7 @@ QByteArray SysFsDataProviderCPUPower::serializeAndGetData()
         /*
          * TMP power limit
          */
-        cpuPower.mutable_cpu_tmp_limit()->set_current_value(static_cast<quint8>(getData(cpuControl.m_cpu_tmp_limit.m_current_value).toUShort()));
+        cpuPower.mutable_cpu_tmp_limit()->set_current_value(getData(cpuControl.m_cpu_tmp_limit.m_current_value).toUInt());
         setValue(cpuControl.m_cpu_tmp_limit.m_default_value,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
             descriptor.set_default_value(value);
         },cpuPower.mutable_cpu_tmp_limit()->mutable_mode_descriptor_map());
@@ -125,7 +125,7 @@ QByteArray SysFsDataProviderCPUPower::serializeAndGetData()
         /*
          * PL1 tau
          */
-        cpuPower.mutable_cpu_pl1_tau()->set_current_value(static_cast<quint8>(getData(cpuControl.m_cpu_pl1_tau.m_current_value).toUShort()));
+        cpuPower.mutable_cpu_pl1_tau()->set_current_value(getData(cpuControl.m_cpu_pl1_tau.m_current_value).toUInt());
         setValue(cpuControl.m_cpu_pl1_tau.m_default_value,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
             descriptor.set_default_value(value);
         },cpuPower.mutable_cpu_pl1_tau()->mutable_mode_descriptor_map());
@@ -142,7 +142,7 @@ QByteArray SysFsDataProviderCPUPower::serializeAndGetData()
         /*
          * GPU total on ac
          */
-        cpuPower.mutable_gpu_total_onac()->set_current_value(static_cast<quint8>(getData(gpuControl.m_gpu_total_onac.m_current_value).toUShort()));
+        cpuPower.mutable_gpu_total_onac()->set_current_value(getData(gpuControl.m_gpu_total_onac.m_current_value).toUInt());
         setValue(gpuControl.m_gpu_total_onac.m_default_value,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
             descriptor.set_default_value(value);
         },cpuPower.mutable_gpu_total_onac()->mutable_mode_descriptor_map());
@@ -163,7 +163,7 @@ QByteArray SysFsDataProviderCPUPower::serializeAndGetData()
         /*
          * GPU to CPU dynamic boost
          */
-        cpuPower.mutable_gpu_to_cpu_dynamic_boost()->set_current_value(static_cast<quint8>(getData(gpuControl.m_gpu_to_cpu_dynamic_boost.m_current_value).toUShort()));
+        cpuPower.mutable_gpu_to_cpu_dynamic_boost()->set_current_value(getData(gpuControl.m_gpu_to_cpu_dynamic_boost.m_current_value).toUInt());
         setValue(gpuControl.m_gpu_to_cpu_dynamic_boost.m_default_value,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
             descriptor.set_default_value(value);
         },cpuPower.mutable_gpu_to_cpu_dynamic_boost()->mutable_mode_descriptor_map());

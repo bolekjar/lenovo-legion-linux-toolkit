@@ -1,4 +1,5 @@
-# Make Intel RAPL files read-only, readable only by root and group legion (see rapl-readonly.sh)
+# Make Intel RAPL files read-only, readable only by root and group legion (see rapl-readonly.sh),
+# the power limits are written only by LenovoLegion-Daemon (adds the write bit for the write, see rapl-readonly.sh)
 SUBSYSTEM=="powercap", KERNEL=="intel-rapl*", RUN+="/opt/LenovoLegion/rapl-readonly.sh $sys$devpath/constraint_0_power_limit_uw"
 SUBSYSTEM=="powercap", KERNEL=="intel-rapl*", RUN+="/opt/LenovoLegion/rapl-readonly.sh $sys$devpath/constraint_0_time_window_us"
 SUBSYSTEM=="powercap", KERNEL=="intel-rapl*", RUN+="/opt/LenovoLegion/rapl-readonly.sh $sys$devpath/constraint_1_power_limit_uw"

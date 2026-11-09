@@ -16,7 +16,7 @@
 namespace LenovoLegionDaemon::Kit {
 
 /*
- * Machine information (DMI) of the Legion kernel module.
+ * Machine information (DMI tables of the kernel, any notebook).
  * Owns notifications LENOVO_DRIVER_ADDED/REMOVED (kernel module lenovo_legion loaded/unloaded).
  */
 class ModuleMachineInformation : public ProviderModule

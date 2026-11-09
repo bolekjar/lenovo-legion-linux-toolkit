@@ -32,27 +32,35 @@ QByteArray SysFsDataProviderMachineInformation::serializeAndGetData()
     try {
         SysFsDriverLegionMachineInformation::MachineInformation info(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverLegionMachineInformation::DRIVER_NAME));
 
-        machineInfo.set_bios_date(getData(info.m_bios_date).toStdString());
-        machineInfo.set_bios_release(getData(info.m_bios_release).toStdString());
-        machineInfo.set_bios_vendor(getData(info.m_bios_vendor).toStdString());
-        machineInfo.set_bios_version(getData(info.m_bios_version).toStdString());
-        machineInfo.set_board_name(getData(info.m_board_name).toStdString());
-        machineInfo.set_board_vendor(getData(info.m_board_vendor).toStdString());
-        machineInfo.set_board_version(getData(info.m_board_version).toStdString());
-        machineInfo.set_chassis_type(getData(info.m_chassis_type).toStdString());
-        machineInfo.set_chassis_vendor(getData(info.m_chassis_vendor).toStdString());
-        machineInfo.set_chassis_version(getData(info.m_chassis_version).toStdString());
-        machineInfo.set_product_family(getData(info.m_product_family).toStdString());
-        machineInfo.set_product_name(getData(info.m_product_name).toStdString());
-        machineInfo.set_product_sku(getData(info.m_product_sku).toStdString());
-        machineInfo.set_product_version(getData(info.m_product_version).toStdString());
-        machineInfo.set_sys_vendor(getData(info.m_sys_vendor).toStdString());
+        /*
+         * A field is missing when the BIOS does not fill it or the kernel is older (/sys/class/dmi/id: 2.6.23,
+         * product_family 4.12, product_sku 4.18, bios_release and ec_firmware_release 5.8): empty value
+         */
+        const auto text = [](const std::filesystem::path& path) {
+            return getOptionalData(path).value_or(QString()).toStdString();
+        };
+
+        machineInfo.set_bios_date(text(info.m_bios_date));
+        machineInfo.set_bios_release(text(info.m_bios_release));
+        machineInfo.set_bios_vendor(text(info.m_bios_vendor));
+        machineInfo.set_bios_version(text(info.m_bios_version));
+        machineInfo.set_board_name(text(info.m_board_name));
+        machineInfo.set_board_vendor(text(info.m_board_vendor));
+        machineInfo.set_board_version(text(info.m_board_version));
+        machineInfo.set_chassis_type(text(info.m_chassis_type));
+        machineInfo.set_chassis_vendor(text(info.m_chassis_vendor));
+        machineInfo.set_chassis_version(text(info.m_chassis_version));
+        machineInfo.set_product_family(text(info.m_product_family));
+        machineInfo.set_product_name(text(info.m_product_name));
+        machineInfo.set_product_sku(text(info.m_product_sku));
+        machineInfo.set_product_version(text(info.m_product_version));
+        machineInfo.set_sys_vendor(text(info.m_sys_vendor));
 
     } catch(SysFsDriver::exception_T& ex)
     {
         /*
-         * Lenovo Legion kernel driver not loaded: an error, not an empty message. The GUI shows the data type as
-         * not available (pages grayed, Help system check) and no empty settings are saved over the saved ones.
+         * DMI not available (no /sys/class/dmi/id): an error, not an empty message. The GUI shows the data type as
+         * not available (pages grayed, Help system check).
          */
         if(ex.errcodeInfo().value() == SysFsDriver::ERROR_CODES::DRIVER_NOT_AVAILABLE)
         {

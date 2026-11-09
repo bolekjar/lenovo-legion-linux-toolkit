@@ -12,6 +12,7 @@
  */
 
 #include "legion-common.h"
+#include "legion-wmi-ddata.h"
 #include "legion-wmi-other-sysfs.h"
 #include "legion-wmi-other.h"
 #include "legion-wmi-helpers.h"

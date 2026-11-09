@@ -99,7 +99,6 @@ For all distribution
                     [    3.864425] lenovo-legion VPC2004:00:                 sys_vendor:LENOVO
                     [    3.864425] lenovo-legion VPC2004:00:                 ec_firmware_release:1.44
                     [    3.864426] lenovo-legion VPC2004:00:        DMI Machine Information end
-                    [    3.864948] lenovo-legion VPC2004:00:        Sysfs Machine information was initialized
                     [    3.870986] lenovo-legion VPC2004:00:        WMI game zone driver was initialized
                     [    3.871068] lenovo-legion VPC2004:00:        WMI events driver was initialized
                     [    3.872664] lenovo-legion VPC2004:00:        WMI capability data 00 driver was initialized
@@ -113,9 +112,6 @@ For all distribution
                     [    3.881325] legion_wmi_fan_method 92549549-4BDE-4F06-AC04-CE8BF898DBAA-3: bound 87FB2A6D-D802-48E7-9208-4576C5F5C8D8-10 (ops legion_wmi_ftable_component_ops [lenovo_legion])
                     [    3.881427] lenovo-legion VPC2004:00:        WMI Fan method driver was initialized
                     [    3.881469] lenovo-legion VPC2004:00:        HwMon driver was initialized
-                    [    3.881477] lenovo-legion VPC2004:00:        RAPL driver was initialized
-                    [    3.881487] lenovo-legion VPC2004:00:        RAPL MMIO driver was initialized
-                    [    3.882153] lenovo-legion VPC2004:00:        RAPL MMIO synchronization only
                     [    3.882155] lenovo-legion VPC2004:00: Legion platform driver was loaded
 
 7) Go to LenovoLegion-release-1.0.0/LenovoLegion

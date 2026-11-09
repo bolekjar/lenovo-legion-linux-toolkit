@@ -107,7 +107,6 @@ struct legion_wmi_other_priv {
 	struct wmi_device *wdev;
 
 	struct notifier_block hwmon_nb; /* hwmon*/
-	struct notifier_block dkms_nb; /* dkms*/
 
 	//SysFs
 	struct device *fw_attr_dev;

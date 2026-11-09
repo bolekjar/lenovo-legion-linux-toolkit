@@ -31,6 +31,13 @@ Chyba nalezená při inventuře: `get_ir_temp` (gamezone other) volá metodu `Ge
    - machine-information a třída `legion-dmi` → daemon čte `/sys/class/dmi/id/` (`SysFsDriverLegionMachineInformation`),
    - `legion-rapl.c`, `legion-rapl-mmio.c` a synchronizace RAPL v `legion-dkms.c` → daemon na uevent změny tepelného režimu zapíše limity režimu do powercapu `intel-rapl` a `intel-rapl-mmio` (hodnoty režimu z capdata01/ddata, které už čte modul Other); custom režim podle aktuálních hodnot,
    - ověřit na hardwaru, že po změně režimu Fn+Q platí stejné limity jako dřív.
+
+   **Stav (2026-11-09): hotovo, čeká na test na hardwaru.**
+   - jádro: odstraněné `legion-rapl.*`, `legion-rapl-mmio.*`, `legion-machine-information-sysfs.*`, `legion-dkms.h` (notifier synchronizace), nepoužívané položky `legion_data`; kontrola modelu podle DMI zůstává,
+   - daemon: `SysFsDriverLegionMachineInformation` čte `/sys/class/dmi/id/` (bez vazby na kernel modul, `MACHINE_INFORMATION` už není `PLATFORM_LENOVO`),
+   - daemon: `CPUPower/RaplPowerLimits` zapisuje limity režimu (stejná pravidla jako jádro: MMIO výchozí hodnoty režimu, v custom aktuální, zapne MMIO; MSR maxima režimu jen když je RAPL zapnutý a MMIO zápis prošel) při startu modulu, načtení kernel modulu, události změny tepelného režimu (`ProviderModule::onDriverEvent`) a v custom režimu hned po nastavení limitů (požadavek klienta, obnovení nastavení),
+   - opraveno: provider CPUPower ořezával aktuální hodnoty limitů na 8 bitů (`static_cast<quint8>`),
+   - udev pravidlo `99-rapl-readonly.rules` (`rapl-readonly.sh`) zůstává: soubory limitů jsou `0440 root:legion` a sysfs otevření pro zápis souboru bez bitu `w` odmítne i rootovi (ostatní nástroje, např. thermald, limity nezmění); daemon před zápisem přidá vlastníkovi `w` a hned vrátí původní práva.
 2. **Jedna cesta pro tepelný režim, hwmon, probe:**
    - `platform_profile` (custom a extreme jako upstream) + uevent; `smart_fan/current_value` přechodně ponechat pro daemon, pak odstranit,
    - hwmon přes `devm_hwmon_device_register_with_info` (stejná jména `tempX_*`, `fanX_*`),

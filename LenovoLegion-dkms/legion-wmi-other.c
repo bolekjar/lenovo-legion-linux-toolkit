@@ -17,9 +17,6 @@
 #include "legion-wmi-gamezone.h"
 #include "legion-hwmon.h"
 #include "legion-wmi-helpers.h"
-#include "legion-dkms.h"
-#include "legion-rapl-mmio.h"
-#include "legion-rapl.h"
 
 #include <linux/module.h>
 #include <linux/device.h>
@@ -159,151 +156,6 @@ static int legion_wmi_other_call(struct notifier_block *nb,
 	return NOTIFY_DONE;
 }
 
-static int legion_wmi_other_dkms_call(struct notifier_block *nb,
-				      const unsigned long action, void *data)
-{
-	const struct legion_wmi_other_priv *priv =
-		container_of(nb, struct legion_wmi_other_priv, dkms_nb);
-	struct other_events_data *event_data = data;
-
-	unsigned int pl1_w = 0, pl1_time_s = 0, pl2_w = 0;
-
-	if (action == LEGION_WMI_OTHER_SET_THERMAL_MODE_RAPL_AND_MMIO) {
-		struct legion_wmi_capdata01 capdata;
-		struct legion_wmi_ddata lddata[48] = { { 0, 0 } };
-
-		if (legion_wmi_cd01_get_data(
-			    priv->cd01_list,
-			    (CPULongTermPowerLimit &
-			     (~LEGION_WMI_MODE_ID_MASK)) |
-				    FIELD_PREP(LEGION_WMI_MODE_ID_MASK,
-					       event_data->mode),
-			    &capdata)) {
-			return NOTIFY_BAD;
-		}
-		pl1_w = capdata.max_value;
-
-		if (legion_wmi_cd01_get_data(
-			    priv->cd01_list,
-			    (CPUShortTermPowerLimit &
-			     (~LEGION_WMI_MODE_ID_MASK)) |
-				    FIELD_PREP(LEGION_WMI_MODE_ID_MASK,
-					       event_data->mode),
-			    &capdata)) {
-			return NOTIFY_BAD;
-		}
-		pl2_w = capdata.max_value;
-
-		if (legion_wmi_dd_get_data(
-			    priv->dd_list,
-			    (CPUPL1Tau & (~LEGION_WMI_MODE_ID_MASK)) |
-				    FIELD_PREP(LEGION_WMI_MODE_ID_MASK,
-					       event_data->mode),
-			    lddata, ARRAY_SIZE(lddata) - 1)) {
-			if (legion_wmi_cd01_get_data(
-				    priv->cd01_list,
-				    (CPUPL1Tau & (~LEGION_WMI_MODE_ID_MASK)) |
-					    FIELD_PREP(LEGION_WMI_MODE_ID_MASK,
-						       event_data->mode),
-				    &capdata)) {
-				return NOTIFY_BAD;
-			}
-
-			pl1_time_s = capdata.default_value;
-		} else {
-			pl1_time_s = 0;
-			for (int i = 0;
-			     i < ARRAY_SIZE(lddata) && lddata[i].id != 0; ++i) {
-				pl1_time_s = max(pl1_time_s, lddata[i].value);
-			}
-		}
-
-		if (legion_set_power_and_time_sysfs(
-			    event_data->rapl_private, pl1_w * 1000000,
-			    pl1_time_s * 1000000, pl2_w * 1000000)) {
-			return NOTIFY_BAD;
-		}
-	}
-
-	if (action == LEGION_WMI_OTHER_SET_THERMAL_MODE_RAPL_AND_MMIO ||
-	    action == LEGION_WMI_OTHER_SET_THERMAL_MODE_RAPL_MMIO_ONLY) {
-		if (event_data->mode == LEGION_WMI_GZ_THERMAL_MODE_CUSTOM) {
-			struct wmi_method_args_32 args;
-
-			args.arg0 = CPULongTermPowerLimit &
-				    (~LEGION_WMI_MODE_ID_MASK);
-			if (legion_wmi_dev_evaluate_int(
-				    priv->wdev, 0x0,
-				    LEGION_WMI_OTHER_FEATURE_VALUE_GET,
-				    (unsigned char *)&args, sizeof(args),
-				    &pl1_w)) {
-				return NOTIFY_BAD;
-			}
-
-			args.arg0 = CPUShortTermPowerLimit &
-				    (~LEGION_WMI_MODE_ID_MASK);
-			if (legion_wmi_dev_evaluate_int(
-				    priv->wdev, 0x0,
-				    LEGION_WMI_OTHER_FEATURE_VALUE_GET,
-				    (unsigned char *)&args, sizeof(args),
-				    &pl2_w)) {
-				return NOTIFY_BAD;
-			}
-
-			args.arg0 = CPUPL1Tau & (~LEGION_WMI_MODE_ID_MASK);
-			if (legion_wmi_dev_evaluate_int(
-				    priv->wdev, 0x0,
-				    LEGION_WMI_OTHER_FEATURE_VALUE_GET,
-				    (unsigned char *)&args, sizeof(args),
-				    &pl1_time_s)) {
-				return NOTIFY_BAD;
-			}
-		} else {
-			struct legion_wmi_capdata01 capdata;
-
-			if (legion_wmi_cd01_get_data(
-				    priv->cd01_list,
-				    (CPULongTermPowerLimit &
-				     (~LEGION_WMI_MODE_ID_MASK)) |
-					    FIELD_PREP(LEGION_WMI_MODE_ID_MASK,
-						       event_data->mode),
-				    &capdata)) {
-				return NOTIFY_BAD;
-			}
-			pl1_w = capdata.default_value;
-
-			if (legion_wmi_cd01_get_data(
-				    priv->cd01_list,
-				    (CPUShortTermPowerLimit &
-				     (~LEGION_WMI_MODE_ID_MASK)) |
-					    FIELD_PREP(LEGION_WMI_MODE_ID_MASK,
-						       event_data->mode),
-				    &capdata)) {
-				return NOTIFY_BAD;
-			}
-			pl2_w = capdata.default_value;
-
-			if (legion_wmi_cd01_get_data(
-				    priv->cd01_list,
-				    (CPUPL1Tau & (~LEGION_WMI_MODE_ID_MASK)) |
-					    FIELD_PREP(LEGION_WMI_MODE_ID_MASK,
-						       event_data->mode),
-				    &capdata)) {
-				return NOTIFY_BAD;
-			}
-			pl1_time_s = capdata.default_value;
-		}
-
-		if (legion_set_power_and_time(
-			    event_data->rapl_mmio_private, pl1_w * 1000,
-			    pl1_time_s * 1000000, pl2_w * 1000)) {
-			return NOTIFY_BAD;
-		}
-	}
-
-	return NOTIFY_OK;
-}
-
 /**
  * legion_wmi_om_master_bind() - Bind all components of the other mode driver
  * @dev: The lenovo-wmi-other driver basic device.
@@ -333,17 +185,11 @@ static int legion_wmi_om_master_bind(struct device *dev)
 	if (ret)
 		goto hwmon_err;
 
-	priv->dkms_nb.notifier_call = legion_wmi_other_dkms_call;
-	ret = devm_lenovo_dkms_register_notifier(dev, &priv->dkms_nb);
-	if (ret)
-		goto dkms_err;
-
 	/* Signal that binding is complete */
 	complete(&priv->bind_complete);
 
 	return 0;
 
-dkms_err:
 hwmon_err:
 	legion_wmi_other_sysfs_exit(priv);
 sysfs_err:

@@ -20,7 +20,7 @@ namespace LenovoLegionDaemon::Kit {
 
 
 
-SysFsDriverLegionMachineInformation::SysFsDriverLegionMachineInformation() : SysFsDriver(DRIVER_NAME,"/sys/class/legion-dmi/machine-information-0/",{},MODULE_NAME)
+SysFsDriverLegionMachineInformation::SysFsDriverLegionMachineInformation() : SysFsDriver(DRIVER_NAME,"/sys/class/dmi/id/")
 {
 
 }
@@ -33,7 +33,7 @@ void SysFsDriverLegionMachineInformation::init()
 
     if(std::filesystem::exists(m_path))
     {
-        LOG_D(QString("Found Legion DMI Machine Information driver in path: ") + m_path.c_str());
+        LOG_D(QString("Found DMI machine information in path: ") + m_path.c_str());
 
         m_descriptor["bios_date"] = std::filesystem::path(m_path).append("bios_date");
         m_descriptor["bios_release"] = std::filesystem::path(m_path).append("bios_release");

@@ -18,6 +18,8 @@ ProviderModule::ProviderModule(Module::IModuleHost &host) :
 
     m_drivers.setEventSink([this](const SysFsDriver::SubsystemEvent& event) {
 
+        onDriverEvent(event);
+
         if(m_provider != nullptr)
         {
             m_provider->kernelEventHandler(event);

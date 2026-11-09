@@ -67,6 +67,11 @@ protected:
     virtual std::optional<legion::messages::Notification> notificationFor(const DataProvider::SubsystemEvent&)  { return {}; }
 
     /*
+     * Driver event, called before the provider handles it (e.g. an action of the module on a Legion WMI event)
+     */
+    virtual void onDriverEvent(const SysFsDriver::SubsystemEvent&)                                             {}
+
+    /*
      * Settings: build the provider message from the storage (empty = nothing saved),
      * store the provider message read from the hardware
      */
