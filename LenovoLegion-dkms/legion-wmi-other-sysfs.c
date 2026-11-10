@@ -92,7 +92,7 @@ static ssize_t legion_wmi_other_cap01_attr_show_no_steps_val(
 			return -EINVAL;
 		}
 
-		len += sysfs_emit_at(buf, len, "%d", value);
+		len += sysfs_emit_at(buf, len, "%u", value);
 
 		if (modes[i + 1] != LEGION_WMI_GZ_THERMAL_MODE_END)
 			len += sysfs_emit_at(buf, len, ",");
@@ -114,7 +114,7 @@ static ssize_t legion_wmi_other_cap00_show(
 		legion_wmi_cd00_get_data(cd00_list, attribute_id_raw, &capdata);
 	if (ret) {
 		if (ret == -EINVAL) {
-			len += sysfs_emit_at(buf, len, "%d", value);
+			len += sysfs_emit_at(buf, len, "%u", value);
 			(*buf_len) += len;
 			return 0;
 		} else {
@@ -133,7 +133,7 @@ static ssize_t legion_wmi_other_cap00_show(
 		return -EINVAL;
 	}
 
-	len += sysfs_emit_at(buf, len, "%d", value);
+	len += sysfs_emit_at(buf, len, "%u", value);
 	(*buf_len) += len;
 	return 0;
 }
@@ -163,11 +163,11 @@ static ssize_t legion_wmi_other_cap01_attr_show_steps_val(
 			continue;
 		}
 
-		for (int i = 0; i < ARRAY_SIZE(lddata) && lddata[i].id != 0;
-		     ++i) {
-			len += sysfs_emit_at(buf, len, "%d", lddata[i].value);
+		for (int j = 0; j < ARRAY_SIZE(lddata) && lddata[j].id != 0;
+		     ++j) {
+			len += sysfs_emit_at(buf, len, "%u", lddata[j].value);
 
-			if (lddata[i + 1].id != 0)
+			if (lddata[j + 1].id != 0)
 				len += sysfs_emit_at(buf, len, "|");
 		}
 
@@ -289,7 +289,7 @@ static ssize_t legion_wmi_attr_current_value_store(
 		dev_get_drvdata(kobj_to_dev(kobj->parent));
 	const u32 attribute_id_raw = attribute_id & (~LEGION_WMI_MODE_ID_MASK);
 
-	struct wmi_method_args_32 args;
+	struct wmi_method_args_32 args = {};
 	struct legion_wmi_capdata01 capdata;
 	enum thermal_mode mode;
 	char event_type[64] = { 0 };
@@ -343,6 +343,10 @@ static ssize_t legion_wmi_attr_current_value_store(
 				break;
 			}
 		}
+
+		/* Discrete values (steps of the discrete data): only one of them */
+		if (!contains_value)
+			return -EINVAL;
 	} else {
 		if (value < capdata.min_value || value > capdata.max_value)
 			return -EINVAL;
@@ -358,8 +362,9 @@ static ssize_t legion_wmi_attr_current_value_store(
 	if (ret)
 		return ret;
 
-	sprintf(event_type, "EVENT_TYPE=%u", (unsigned int)event_type_name);
-	sprintf(event_value, "EVENT_VALUE=%u", value);
+	snprintf(event_type, sizeof(event_type), "EVENT_TYPE=%u",
+		 (unsigned int)event_type_name);
+	snprintf(event_value, sizeof(event_value), "EVENT_VALUE=%u", value);
 
 	if (kobject_uevent_env(&priv->wdev->dev.kobj, KOBJ_CHANGE, envp)) {
 		dev_err(&priv->wdev->dev,
@@ -381,7 +386,7 @@ static ssize_t legion_wmi_attr_current_value_store_min_max(
 	char event_value[64] = { 0 };
 	char *envp[] = { event_type, event_value, NULL };
 
-	struct wmi_method_args_32 args;
+	struct wmi_method_args_32 args = {};
 	struct legion_wmi_capdata00 capdata = { 0, 0, 0 };
 	u32 value = 0;
 
@@ -410,8 +415,9 @@ static ssize_t legion_wmi_attr_current_value_store_min_max(
 	if (ret)
 		return ret;
 
-	sprintf(event_type, "EVENT_TYPE=%u", (unsigned int)event_type_name);
-	sprintf(event_value, "EVENT_VALUE=%u", value);
+	snprintf(event_type, sizeof(event_type), "EVENT_TYPE=%u",
+		 (unsigned int)event_type_name);
+	snprintf(event_value, sizeof(event_value), "EVENT_VALUE=%u", value);
 
 	if (kobject_uevent_env(&priv->wdev->dev.kobj, KOBJ_CHANGE, envp)) {
 		dev_err(&priv->wdev->dev,
@@ -445,7 +451,7 @@ static ssize_t legion_wmi_attr_current_value_show(struct kobject *kobj,
 	const struct legion_wmi_other_priv *priv =
 		dev_get_drvdata(kobj_to_dev(kobj->parent));
 	const u32 attribute_id_raw = attribute_id & (~LEGION_WMI_MODE_ID_MASK);
-	struct wmi_method_args_32 args;
+	struct wmi_method_args_32 args = {};
 	u32 retval;
 
 	args.arg0 = attribute_id_raw;
@@ -456,7 +462,7 @@ static ssize_t legion_wmi_attr_current_value_show(struct kobject *kobj,
 	if (ret)
 		return ret;
 
-	return sysfs_emit(buf, "%d\n", retval);
+	return sysfs_emit(buf, "%u\n", retval);
 }
 
 /* Attribute property read only */
@@ -580,9 +586,9 @@ static ssize_t legion_wmi_attr_current_value_show(struct kobject *kobj,
 		struct legion_wmi_other_priv *priv =                           \
 			dev_get_drvdata(kobj_to_dev(kobj->parent));            \
 									       \
-		struct wmi_method_args_32 args;                                \
+		struct wmi_method_args_32 args = {};                           \
 		int ret;                                                       \
-		int retval;                                                    \
+		u32 retval;                                                    \
 									       \
 		args.arg0 = _attr_id;                                          \
 									       \
@@ -593,7 +599,7 @@ static ssize_t legion_wmi_attr_current_value_show(struct kobject *kobj,
 			return ret;                                            \
 		}                                                              \
 									       \
-		return sysfs_emit(buf, "%d\n", retval);                        \
+		return sysfs_emit(buf, "%u\n", retval);                        \
 	}                                                                      \
 	static struct kobj_attribute kobj_attr_##_func##_prop =                \
 		LEGION_WMI_ATTR_RO(_attrname, _func)
@@ -754,7 +760,7 @@ static const struct attribute_group legion_sysfs_other_group[] = {
 };
 
 /**
- * lwmi_om_fw_attr_add() - Register all firmware_attributes_class members
+ * legion_wmi_other_fw_attr_add() - Register all firmware attributes of the other mode
  * @priv: The Other Mode driver data.
  *
  * Return: Either 0, or an error code.
@@ -805,7 +811,7 @@ err_free_ida:
 }
 
 /**
- * legion_wmi_gz_fw_attr_remove() - Unregister all capability data attribute groups
+ * legion_wmi_other_fw_attr_remove() - Unregister all firmware attributes of the other mode
  * @priv: the lenovo-wmi-other driver data.
  */
 static void legion_wmi_other_fw_attr_remove(struct legion_wmi_other_priv *priv)

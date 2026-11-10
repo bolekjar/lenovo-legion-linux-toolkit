@@ -20,6 +20,7 @@
 #include <linux/device.h>
 #include <linux/gfp_types.h>
 #include <linux/idr.h>
+#include <linux/build_bug.h>
 #include <linux/kernel.h>
 #include <linux/string.h>
 #include <linux/wmi.h>
@@ -59,36 +60,31 @@ static const int fan_sensor_id_v2[] = { 1, 0, 5, 4 };
 
 static DEFINE_IDA(legion_wmi_fm_ida);
 
-struct WMIFanTableWrite {
-	u8 FSTM; //FSMD
-	u8 FSID;
-	u32 FSTL; //FSST
-	u16 FSS0;
-	u16 FSS1;
-	u16 FSS2;
-	u16 FSS3;
-	u16 FSS4;
-	u16 FSS5;
-	u16 FSS6;
-	u16 FSS7;
-	u16 FSS8;
-	u16 FSS9;
+/*
+ * Fan table of the custom mode written by WMI_METHOD_ID_FAN_SET_TABLE (packed, little endian),
+ * the firmware gets a buffer of 0x20 bytes
+ */
+struct legion_wmi_fan_table_write {
+	u8 fstm; /* FSMD: 1 = fan table of the custom mode */
+	u8 fsid;
+	__le32 fstl; /* FSST */
+	__le16 fss[MAX_FANCURVE_SIZE]; /* FSS0..FSS9: levels 0..MAX_FANCURVE_LEVEL */
+	u8 reserved[6];
 } __packed;
+static_assert(sizeof(struct legion_wmi_fan_table_write) == 0x20);
 
-struct WMIFanTableRead {
-	u32 FSFL;
-	u32 FSS0;
-	u32 FSS1;
-	u32 FSS2;
-	u32 FSS3;
-	u32 FSS4;
-	u32 FSS5;
-	u32 FSS6;
-	u32 FSS7;
-	u32 FSS8;
-	u32 FSS9;
-	u32 FSSA;
+/*
+ * Fan table of the custom mode read by WMI_METHOD_ID_FAN_GET_TABLE (packed, little endian)
+ */
+struct legion_wmi_fan_table_read {
+	__le32 fsfl;
+	__le32 fss[MAX_FANCURVE_SIZE]; /* FSS0..FSS9: levels 0..MAX_FANCURVE_LEVEL */
+	__le32 fssa;
 } __packed;
+static_assert(sizeof(struct legion_wmi_fan_table_read) == 0x30);
+
+/* Maximal size of the returned buffer accepted from the firmware */
+#define LEGION_WMI_FAN_TABLE_READ_MAX 176
 
 static ssize_t func_fan_curve_current_value_get(struct kobject *kobj,
 						struct kobj_attribute *kattr,
@@ -96,26 +92,29 @@ static ssize_t func_fan_curve_current_value_get(struct kobject *kobj,
 {
 	struct legion_wmi_fm_priv *priv =
 		dev_get_drvdata(kobj_to_dev(kobj->parent));
-	u8 buffer[88 * 2] = { 0 };
-	const struct WMIFanTableRead *fantable =
-		(struct WMIFanTableRead *)buffer;
+	u8 buffer[LEGION_WMI_FAN_TABLE_READ_MAX] = {};
+	struct legion_wmi_fan_table_read table;
+	size_t len = 0;
+	int ret;
 
-	/* Critical: Prevent NULL pointer dereference and system freeze */
-	if (!priv)
-		return -ENODEV;
-
-	const int ret = legion_wmi_dev_evaluate_buffer(
-		priv->wdev, 0, WMI_METHOD_ID_FAN_GET_TABLE, NULL, 0, buffer,
-		sizeof(buffer));
+	ret = legion_wmi_dev_evaluate_buffer(priv->wdev, 0,
+					     WMI_METHOD_ID_FAN_GET_TABLE, NULL,
+					     0, buffer, sizeof(buffer), &len);
 	if (ret)
 		return ret;
 
-	return sysfs_emit(buf,
-			  "%hhu,%hhu,%hhu,%hhu,%hhu,%hhu,%hhu,%hhu,%hhu,%hhu\n",
-			  fantable->FSS0, fantable->FSS1, fantable->FSS2,
-			  fantable->FSS3, fantable->FSS4, fantable->FSS5,
-			  fantable->FSS6, fantable->FSS7, fantable->FSS8,
-			  fantable->FSS9);
+	/* Fewer bytes than the fan table: not a fan table */
+	if (len < sizeof(table))
+		return -EIO;
+
+	memcpy(&table, buffer, sizeof(table));
+
+	return sysfs_emit(buf, "%u,%u,%u,%u,%u,%u,%u,%u,%u,%u\n",
+			  le32_to_cpu(table.fss[0]), le32_to_cpu(table.fss[1]),
+			  le32_to_cpu(table.fss[2]), le32_to_cpu(table.fss[3]),
+			  le32_to_cpu(table.fss[4]), le32_to_cpu(table.fss[5]),
+			  le32_to_cpu(table.fss[6]), le32_to_cpu(table.fss[7]),
+			  le32_to_cpu(table.fss[8]), le32_to_cpu(table.fss[9]));
 }
 
 /*
@@ -164,7 +163,7 @@ static ssize_t func_fan_curve_current_value_set(struct kobject *kobj,
 	const struct legion_wmi_fm_priv *priv =
 		dev_get_drvdata(kobj_to_dev(kobj->parent));
 	u8 points[MAX_FANCURVE_SIZE] = { 0 };
-	u8 buffer[0x20] = { 0 };
+	struct legion_wmi_fan_table_write table = { .fstm = 1 };
 	char event_value[64] = { 0 };
 	char event_type[64] = { 0 };
 
@@ -183,29 +182,20 @@ static ssize_t func_fan_curve_current_value_set(struct kobject *kobj,
 	if (ret)
 		return ret;
 
-	buffer[0x00] = 1;
-	buffer[0x01] = 0;
-	buffer[0x02] = 0;
-	buffer[0x06] = points[0];
-	buffer[0x08] = points[1];
-	buffer[0x0A] = points[2];
-	buffer[0x0C] = points[3];
-	buffer[0x0E] = points[4];
-	buffer[0x10] = points[5];
-	buffer[0x12] = points[6];
-	buffer[0x14] = points[7];
-	buffer[0x16] = points[8];
-	buffer[0x18] = points[9];
+	for (int i = 0; i < MAX_FANCURVE_SIZE; i++)
+		table.fss[i] = cpu_to_le16(points[i]);
 
 	ret = legion_wmi_dev_evaluate_buffer(priv->wdev, 0,
 					     WMI_METHOD_ID_FAN_SET_TABLE,
-					     buffer, sizeof(buffer), NULL, 0);
+					     (u8 *)&table, sizeof(table), NULL,
+					     0, NULL);
 	if (ret)
 		return ret;
 
-	sprintf(event_type, "EVENT_TYPE=%u",
-		(unsigned int)LENOVO_WMI_FAN_CURVE);
-	sprintf(event_value,
+	snprintf(event_type, sizeof(event_type), "EVENT_TYPE=%u",
+		 (unsigned int)LENOVO_WMI_FAN_CURVE);
+	snprintf(
+		event_value, sizeof(event_value),
 		"EVENT_VALUE=%hhu,%hhu,%hhu,%hhu,%hhu,%hhu,%hhu,%hhu,%hhu,%hhu",
 		points[0], points[1], points[2], points[3], points[4],
 		points[5], points[6], points[7], points[8], points[9]);
@@ -250,7 +240,7 @@ static ssize_t func_fan_curve_current_value_set(struct kobject *kobj,
 			u16 *table = NULL;                                         \
 			int table_len = 0;                                         \
 										   \
-			len += sysfs_emit_at(buf, len, "%d=", modes[i]);           \
+			len += sysfs_emit_at(buf, len, "%u=", modes[i]);           \
 										   \
 			ret = legion_wmi_ftable_get_data(priv->ft_list,            \
 							 modes[i], _fan_id,        \
@@ -270,10 +260,10 @@ static ssize_t func_fan_curve_current_value_set(struct kobject *kobj,
 			} else                                                     \
 				return -EINVAL;                                    \
 										   \
-			for (int i = 0; i < table_len; i++) {                      \
-				len += sysfs_emit_at(buf, len, "%d",               \
-						     table[i]);                    \
-				if ((i + 1) != table_len)                          \
+			for (int j = 0; j < table_len; j++) {                      \
+				len += sysfs_emit_at(buf, len, "%u",               \
+						     table[j]);                    \
+				if ((j + 1) != table_len)                          \
 					len += sysfs_emit_at(buf, len, "|");       \
 			}                                                          \
 										   \

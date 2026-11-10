@@ -8,40 +8,27 @@
 
 #include "legion-intel-msr.h"
 
-#include <linux/version.h>
-#include <linux/kernel.h>
-#include <asm/msr.h>
-#include <linux/smp.h>
-#include <linux/sysfs.h>
-#include <linux/delay.h>
-#include <linux/cpu.h>
 #include <asm/cpu_device_id.h>
+#include <asm/intel-family.h>
+#include <asm/msr.h>
+#include <linux/bitops.h>
+#include <linux/delay.h>
+#include <linux/kernel.h>
+#include <linux/version.h>
 
-#define MSR_VOLTAGE_OFFSET 0x150
+/*
+ * OC mailbox (MSR 0x150), common for the package: every command is done on CPU 0 from the process context (an IPI
+ * per MSR access, no busy wait with the interrupts disabled), serialized by intel_msr_private->lock.
+ * [63] busy (set to start a command, cleared when done), [47:40] plane, [39:32] command,
+ * [31:21] voltage offset (11-bit signed, 1/1024 V)
+ */
 #define MSR_OC_MAILBOX 0x150
-#define MSR_OC_MAILBOX_CMD_READ_VOLTAGE_LIMIT 0x1A
+#define MSR_OC_MAILBOX_BUSY BIT_ULL(63)
+#define MSR_OC_MAILBOX_CMD_READ_OFFSET 0x10
+#define MSR_OC_MAILBOX_CMD_WRITE_OFFSET 0x11
+#define MSR_OC_MAILBOX_POLLS 100 /* 10..20 us each */
 
-#define MSR_OC_MAILBOX_BUSY ((u64)1 << 63)
-#define MSR_OC_MAILBOX_TIMEOUT_US 1000
-
-/*
- * Read voltage offset from specific plane on current CPU
- */
-struct read_msr_data {
-	int plane;
-	u64 result;
-	int error;
-};
-
-/*
- * Write voltage offset to specific plane
- */
-struct write_msr_data {
-	int plane;
-	int offset_uv;
-	int error;
-	u32 read_back; // offset read after the write (11-bit MSR format)
-};
+#define MSR_OC_MAILBOX_CPU 0
 
 /*
  * Convert microvolts offset to MSR format
@@ -62,21 +49,9 @@ static u32 uv_to_msr(int uv)
  */
 static int msr_to_uv(const u32 msr_value)
 {
-	s32 offset_units = 0;
+	const s32 offset_units = sign_extend32((msr_value >> 21) & 0x7FF, 10);
 
-	// Extract 11-bit value from bits [31:21]
-	const u32 raw_value = (msr_value >> 21) & 0x7FF;
-
-	// Sign extend from 11 bits to 32 bits
-	if (raw_value & 0x400) { // Check bit 10 (sign bit)
-		// Negative value - sign extend
-		offset_units = (s32)(raw_value | 0xFFFFF800);
-	} else {
-		// Positive value
-		offset_units = (s32)raw_value;
-	}
-
-	// Convert from 1/1024V units to uV
+	/* 1/1024 V units to uV */
 	return (offset_units * 1000000) / 1024;
 }
 
@@ -100,145 +75,86 @@ validate_offset(const struct legion_intel_msr_private *intel_msr_private,
 	return 0;
 }
 
-/*
- * Wait until the mailbox clears the busy bit, the last read value is returned in value.
- * Runs in IPI context (smp_call_function_single), busy wait only.
- */
-static int wait_mailbox_ready(u64 *value)
+static int mailbox_read(u64 *value)
 {
-	u32 low = 0, high = 0;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 16, 0)
+	return rdmsrq_safe_on_cpu(MSR_OC_MAILBOX_CPU, MSR_OC_MAILBOX, value);
+#else
+	return rdmsrl_safe_on_cpu(MSR_OC_MAILBOX_CPU, MSR_OC_MAILBOX, value);
+#endif
+}
 
-	for (int us = 0; us <= MSR_OC_MAILBOX_TIMEOUT_US; us++) {
-		const int err = rdmsr_safe(MSR_OC_MAILBOX, &low, &high);
+static int mailbox_write(const u64 value)
+{
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 16, 0)
+	return wrmsrq_safe_on_cpu(MSR_OC_MAILBOX_CPU, MSR_OC_MAILBOX, value);
+#else
+	return wrmsrl_safe_on_cpu(MSR_OC_MAILBOX_CPU, MSR_OC_MAILBOX, value);
+#endif
+}
+
+/*
+ * Wait until the mailbox clears the busy bit, the last read value is returned in value
+ */
+static int mailbox_wait_ready(u64 *value)
+{
+	for (int poll = 0; poll < MSR_OC_MAILBOX_POLLS; poll++) {
+		const int err = mailbox_read(value);
 
 		if (err)
 			return err;
 
-		*value = ((u64)high << 32) | low;
-
 		if (!(*value & MSR_OC_MAILBOX_BUSY))
 			return 0;
 
-		udelay(1);
+		usleep_range(10, 20);
 	}
 
 	return -ETIMEDOUT;
 }
 
 /*
- * Read the voltage offset of a plane through the mailbox (command 0x10), the offset is in bits [31:21] of value.
- * Runs in IPI context.
+ * One command: the previous command must be finished (one command at a time), the result is valid when the
+ * mailbox clears the busy bit
  */
-static int read_voltage_offset_raw(const int plane, u64 *value)
+static int mailbox_command(const int plane, const u8 command,
+			   const u32 offset_encoded, u64 *value)
 {
-	const u64 msr_val = MSR_OC_MAILBOX_BUSY | // Busy bit
-			    ((u64)(plane & 0xFF) << 40) | // Domain
-			    ((u64)0x10 << 32); // Read command
-
-	// Previous command (e.g. write of the offset) must be finished
-	int err = wait_mailbox_ready(value);
+	const u64 msr_val = MSR_OC_MAILBOX_BUSY | ((u64)(plane & 0xFF) << 40) |
+			    ((u64)command << 32) |
+			    ((u64)(offset_encoded & 0x7FF) << 21);
+	int err = mailbox_wait_ready(value);
 
 	if (err)
 		return err;
 
-	err = wrmsr_safe(MSR_OC_MAILBOX, (u32)msr_val, (u32)(msr_val >> 32));
+	err = mailbox_write(msr_val);
 	if (err)
 		return err;
 
-	// Result is valid when the mailbox clears the busy bit
-	return wait_mailbox_ready(value);
+	return mailbox_wait_ready(value);
 }
 
 /*
- * Write voltage offset to specific plane on a CPU
+ * Core Ultra CPUs (Meteor Lake, Arrow Lake) accept but silently ignore the writes of the uncore and analog I/O
+ * offsets (the planes can be read), Raptor Lake supports the writes of all planes
  */
-static void write_voltage_offset_on_cpu(void *info)
-{
-	struct write_msr_data *data = info;
-	u64 value = 0;
-	int err;
+static const struct x86_cpu_id legion_intel_msr_no_uncore_write[] = {
+	X86_MATCH_VFM(INTEL_METEORLAKE, NULL),
+	X86_MATCH_VFM(INTEL_METEORLAKE_L, NULL),
+	X86_MATCH_VFM(INTEL_ARROWLAKE_H, NULL),
+	X86_MATCH_VFM(INTEL_ARROWLAKE, NULL),
+	X86_MATCH_VFM(INTEL_ARROWLAKE_U, NULL),
+	{}
+};
 
-	const u32 offset_encoded = uv_to_msr(data->offset_uv);
-
-	// MSR 0x150 format for voltage offset (OC Mailbox):
-	// Based on VoltageShift and intel-undervolt implementations:
-	// [63]    = Busy bit (set to 1 to initiate command)
-	// [47:40] = Domain/Plane ID
-	// [39:32] = Command (0x11 = write voltage offset)
-	// [31:21] = Voltage offset (11-bit signed, two's complement, in 1/1024V units)
-	// [20:0]  = Other fields (ratio, etc - set to 0 for voltage offset)
-	const u64 msr_val =
-		MSR_OC_MAILBOX_BUSY | // Busy bit
-		((u64)(data->plane & 0xFF) << 40) | // Domain at bits [47:40]
-		((u64)0x11 << 32) | // Command at bits [39:32]
-		((u64)(offset_encoded & 0x7FF)
-		 << 21); // Voltage offset at bits [31:21]
-
-	// Previous command must be finished, the mailbox is processing one command at a time
-	err = wait_mailbox_ready(&value);
-	if (err) {
-		data->error = err;
-		return;
-	}
-
-	err = wrmsr_safe(MSR_VOLTAGE_OFFSET, (const u32)msr_val,
-			 (const u32)(msr_val >> 32));
-	if (err) {
-		data->error = err;
-		return;
-	}
-
-	// Offset is applied when the mailbox clears the busy bit
-	err = wait_mailbox_ready(&value);
-	if (err) {
-		data->error = err;
-		return;
-	}
-
-	// The mailbox accepts the command also when the offset is locked (BIOS undervolt protection, OC lock):
-	// the write is ignored silently. The offset is read back, a different value is an error.
-	err = read_voltage_offset_raw(data->plane, &value);
-	if (err) {
-		data->error = err;
-		return;
-	}
-
-	data->read_back = (u32)(value >> 21) & 0x7FF;
-	data->error = data->read_back == (offset_encoded & 0x7FF) ? 0 : -EIO;
-}
-
-static void read_voltage_offset_on_cpu(void *info)
-{
-	struct read_msr_data *data = info;
-	u64 value = 0;
-
-	data->error = read_voltage_offset_raw(data->plane, &value);
-
-	if (!data->error)
-		data->result = value;
-}
-
-/*
- * Read voltage limits for all planes
- * Must be called with intel_msr_private->lock held or during initialization
- */
 static void
 read_voltage_limits(struct legion_intel_msr_private *intel_msr_private)
 {
-	for (int i = 0; i < NUM_VOLTAGE_PLANES; i++) {
-		// Mark all planes as write-supported by default
+	for (int i = 0; i < NUM_VOLTAGE_PLANES; i++)
 		intel_msr_private->plane_limits[i].write_supported = 1;
-	}
 
-	// Core Ultra CPUs (Arrow Lake: 0xC5, 0xC6, 0xB5 and Meteor Lake: 0xAA, 0xAC) don't support
-	// uncore and analogio voltage offset writes. These planes can be read but writes are
-	// silently ignored by hardware.
-	// Raptor Lake (0xB7, 0xBA, 0xBF) still supports all plane writes.
-	if (boot_cpu_data.x86_model == 0xAA ||
-	    boot_cpu_data.x86_model == 0xAC || // Meteor Lake
-	    boot_cpu_data.x86_model == 0xC5 ||
-	    boot_cpu_data.x86_model == 0xC6 || // Arrow Lake
-	    boot_cpu_data.x86_model == 0xB5) { // Arrow Lake U
+	if (x86_match_cpu(legion_intel_msr_no_uncore_write)) {
 		intel_msr_private->plane_limits[PLANE_UNCORE].write_supported =
 			0;
 		intel_msr_private->plane_limits[PLANE_ANALOGIO].write_supported =
@@ -247,33 +163,19 @@ read_voltage_limits(struct legion_intel_msr_private *intel_msr_private)
 }
 
 /*
- * Check if MSR 0x150 (OC Mailbox) is available on this CPU
+ * The OC mailbox (MSR 0x150) is available on Intel CPUs only, it does not exist when its read faults
  */
 static int legion_intel_msr_check_msr_availability(
 	struct legion_intel_msr_private *intel_msr_private)
 {
-	// Check if we're on an Intel CPU
-	if (boot_cpu_data.x86_vendor != X86_VENDOR_INTEL)
+	u64 value = 0;
+
+	if (boot_cpu_data.x86_vendor != X86_VENDOR_INTEL ||
+	    boot_cpu_data.x86 < 6)
 		return -ENODEV;
 
-	// Check minimum CPU family (should be 6 for Core series)
-	if (boot_cpu_data.x86 < 6)
+	if (mailbox_read(&value))
 		return -ENODEV;
-
-	// Try to read MSR 0x150 to verify it exists
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(7, 2, 0)
-	u64 val = 0;
-	int err = rdmsrq_safe_on_cpu(0, MSR_OC_MAILBOX, &val);
-
-	if (err)
-		return -ENODEV;
-#else
-	u32 low = 0, high = 0;
-	int err = rdmsr_safe_on_cpu(0, MSR_OC_MAILBOX, &low, &high);
-
-	if (err)
-		return -ENODEV;
-#endif
 
 	read_voltage_limits(intel_msr_private);
 
@@ -284,61 +186,67 @@ ssize_t legion_intel_msr_offset_read_show(
 	struct legion_intel_msr_private *intel_msr_private, const int plane,
 	int *offset_uv)
 {
-	struct read_msr_data data;
+	u64 value = 0;
+	int err;
 
-	data.plane = plane;
-	data.error = -1;
+	if (plane < 0 || plane >= NUM_VOLTAGE_PLANES)
+		return -EINVAL;
 
 	guard(mutex)
 		(&intel_msr_private->lock);
 
-	smp_call_function_single(0, read_voltage_offset_on_cpu, &data, 1);
+	err = mailbox_command(plane, MSR_OC_MAILBOX_CMD_READ_OFFSET, 0, &value);
+	if (err)
+		return err;
 
-	if (data.error)
-		return data.error;
-
-	*offset_uv = msr_to_uv((u32)data.result);
+	*offset_uv = msr_to_uv((u32)value);
 
 	return 0;
 }
 
 /*
- * Apply voltage offset to all CPUs for a given plane
+ * Offset of the plane is common for the whole package (the same as intel-undervolt): one command on CPU 0.
+ * The mailbox accepts the command also when the offset is locked (BIOS undervolt protection, OC lock) and
+ * ignores it silently: the offset is read back, a different value is an error (-EIO).
  */
 ssize_t legion_intel_msr_apply_voltage_offset(
 	struct legion_intel_msr_private *intel_msr_private, const int plane,
 	const int offset_uv)
 {
-	struct write_msr_data data = {
-		.plane = plane,
-		.offset_uv = offset_uv,
-		.error = 0,
-	};
+	const u32 offset_encoded = uv_to_msr(offset_uv);
+	u64 value = 0;
+	u32 read_back;
+	int err;
 
 	guard(mutex)
 		(&intel_msr_private->lock);
 
-	// Validate plane first, it is used as index below
-	const ssize_t ret =
-		validate_offset(intel_msr_private, data.plane, data.offset_uv);
-	if (ret < 0)
-		return ret;
+	/* Validate plane first, it is used as index below */
+	err = validate_offset(intel_msr_private, plane, offset_uv);
+	if (err)
+		return err;
 
-	// Check if this plane supports writes
 	if (!intel_msr_private->plane_limits[plane].write_supported)
-		return -EOPNOTSUPP; // Operation not supported
+		return -EOPNOTSUPP;
 
-	// Offset of the plane is common for the whole package (the same as intel-undervolt), one command on CPU 0.
-	// Parallel commands from all CPUs could overwrite each other in the mailbox.
-	smp_call_function_single(0, write_voltage_offset_on_cpu, &data, 1);
+	err = mailbox_command(plane, MSR_OC_MAILBOX_CMD_WRITE_OFFSET,
+			      offset_encoded, &value);
+	if (err)
+		return err;
 
-	if (data.error == -EIO) {
+	err = mailbox_command(plane, MSR_OC_MAILBOX_CMD_READ_OFFSET, 0, &value);
+	if (err)
+		return err;
+
+	read_back = (u32)(value >> 21) & 0x7FF;
+	if (read_back != (offset_encoded & 0x7FF)) {
 		pr_warn_ratelimited(
 			"legion-intel-msr: offset %d uV of plane %d was not applied (read back %d uV), undervolting is probably locked in the BIOS\n",
-			offset_uv, plane, msr_to_uv(data.read_back << 21));
+			offset_uv, plane, msr_to_uv(read_back << 21));
+		return -EIO;
 	}
 
-	return data.error;
+	return 0;
 }
 
 int legion_intel_msr_init(struct legion_intel_msr_private *intel_msr_private)

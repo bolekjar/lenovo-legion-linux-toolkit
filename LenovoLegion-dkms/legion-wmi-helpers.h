@@ -29,7 +29,7 @@ struct wmi_method_args_32 {
 
 #define LEGION_WMI_ATTR_WO(_name, _func)                              \
 	{                                                             \
-		.attr = { .name = __stringify(_name), .mode = 0220 }, \
+		.attr = { .name = __stringify(_name), .mode = 0200 }, \
 		.store = func_##_func##_store,                        \
 	}
 
@@ -51,7 +51,7 @@ int legion_wmi_dev_evaluate_int(struct wmi_device *wdev, u8 instance,
 int legion_wmi_dev_evaluate_buffer(struct wmi_device *wdev, u8 instance,
 				   u32 method_id, unsigned char *buf,
 				   size_t size, u8 *retval,
-				   size_t max_retval_size);
+				   size_t max_retval_size, size_t *retval_len);
 int legion_wmi_dev_evaluate_string(struct wmi_device *wdev, u8 instance,
 				   u32 method_id, unsigned char *buf,
 				   size_t size, char *retval,

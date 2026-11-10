@@ -9,476 +9,128 @@
 #include "legion-kernel-version.h"
 #include "legion-intel-msr-sysfs.h"
 
-#include <linux/module.h>
-
 #include <linux/device.h>
-#include <linux/gfp_types.h>
-#include <linux/idr.h>
+#include <linux/module.h>
+#include <linux/sysfs.h>
 
-#define LEGION_INTEL_MSR_BASE_PATH "intel-msr"
-
-static DEFINE_IDA(legion_intel_msr_sysfs_ida);
+/*
+ * The device /sys/class/legion-intel-msr/intel-msr-0 (one instance, independent of the notebook)
+ */
+#define LEGION_INTEL_MSR_DEVICE_NAME "intel-msr-0"
 
 static struct legion_intel_msr_data legion_intel_msr_data;
 
-static int legion_intel_msr_dev_uevent(const struct device *dev,
-				       struct kobj_uevent_env *env)
+/*
+ * Notify user space about an applied offset (EVENT_TYPE: plane, EVENT_VALUE: offset in uV)
+ */
+static void send_event(struct device *dev,
+		       const enum legion_intel_msr_events_type type,
+		       const int value)
 {
-	return add_uevent_var(env, "DRIVER=legion-intel-msr");
-}
-
-static const struct class legion_intel_msr_class = {
-	.name = "legion-intel-msr",
-	.dev_uevent = legion_intel_msr_dev_uevent,
-};
-
-static ssize_t send_event(struct device *dev,
-			  const enum legion_intel_msr_events_type type,
-			  const int value)
-{
-	char event_type[64] = { 0 };
-	char event_value[64] = { 0 };
-
-	sprintf(event_type, "EVENT_TYPE=%u", (unsigned int)type);
-	sprintf(event_value, "EVENT_VALUE=%d", value);
-
+	char event_type[32];
+	char event_value[32];
 	char *envp[] = { event_type, event_value, NULL };
+
+	snprintf(event_type, sizeof(event_type), "EVENT_TYPE=%u",
+		 (unsigned int)type);
+	snprintf(event_value, sizeof(event_value), "EVENT_VALUE=%d", value);
 
 	if (kobject_uevent_env(&dev->kobj, KOBJ_CHANGE, envp))
 		dev_err(dev, "Failed to send uevent for attribute change\n");
-
-	return 0;
 }
 
-/*
- * Common store of voltage offset for given plane
- */
+static ssize_t offset_show(struct device *dev, char *buf, const int plane)
+{
+	struct legion_intel_msr_data *priv = dev_get_drvdata(dev);
+	int offset_uv = 0;
+	const ssize_t ret = legion_intel_msr_offset_read_show(
+		&priv->intel_msr_private, plane, &offset_uv);
+
+	if (ret)
+		return ret;
+
+	return sysfs_emit(buf, "%d\n", offset_uv);
+}
+
 static ssize_t offset_store(struct device *dev, const char *buf,
 			    const size_t count, const int plane,
 			    const enum legion_intel_msr_events_type event_type)
 {
-	int offset = 0;
 	struct legion_intel_msr_data *priv = dev_get_drvdata(dev);
+	int offset_uv = 0;
+	ssize_t ret = kstrtoint(buf, 10, &offset_uv);
 
-	/* Critical: Prevent NULL pointer dereference and system freeze */
-	if (!priv)
-		return -ENODEV;
-
-	ssize_t ret = kstrtoint(buf, 10, &offset);
-
-	if (ret < 0)
+	if (ret)
 		return ret;
 
 	ret = legion_intel_msr_apply_voltage_offset(&priv->intel_msr_private,
-						    plane, offset);
-	if (ret < 0)
+						    plane, offset_uv);
+	if (ret)
 		return ret;
 
 	/* Notify only about really applied value */
-	send_event(dev, event_type, offset);
+	send_event(dev, event_type, offset_uv);
 
-	return (ssize_t)count;
+	return count;
+}
+
+static const struct legion_intel_voltage_limits *
+plane_limits(struct device *dev, const int plane)
+{
+	const struct legion_intel_msr_data *priv = dev_get_drvdata(dev);
+
+	return &priv->intel_msr_private.plane_limits[plane];
 }
 
 /*
- * Sysfs attribute show/store functions
+ * Attributes of a plane: <plane>_offset (uV, read/write), <plane>_max_undervolt, <plane>_max_overvolt (uV),
+ * <plane>_offset_ctrl_supported (0/1)
  */
-static ssize_t cpu_offset_show(struct device *dev,
-			       struct device_attribute *attr, char *buf)
-{
-	int mv_offset = 0;
-	struct legion_intel_msr_data *priv = dev_get_drvdata(dev);
-
-	/* Critical: Prevent NULL pointer dereference and system freeze */
-	if (!priv)
-		return -ENODEV;
-
-	const ssize_t ret = legion_intel_msr_offset_read_show(
-		&priv->intel_msr_private, PLANE_CPU, &mv_offset);
-	if (ret)
-		return ret;
-
-	return sprintf(buf, "%d\n", mv_offset);
-}
-
-static ssize_t cpu_offset_store(struct device *dev,
-				struct device_attribute *attr, const char *buf,
-				const size_t count)
-{
-	return offset_store(dev, buf, count, PLANE_CPU,
-			    LENOVO_INTEL_MSR_PLANE_CPU);
-}
-
-static ssize_t cache_offset_show(struct device *dev,
-				 struct device_attribute *attr, char *buf)
-{
-	int mv_offset = 0;
-	struct legion_intel_msr_data *priv = dev_get_drvdata(dev);
-
-	/* Critical: Prevent NULL pointer dereference and system freeze */
-	if (!priv)
-		return -ENODEV;
-
-	const ssize_t ret = legion_intel_msr_offset_read_show(
-		&priv->intel_msr_private, PLANE_CACHE, &mv_offset);
-	if (ret)
-		return ret;
-
-	return sprintf(buf, "%d\n", mv_offset);
-}
-
-static ssize_t cache_offset_store(struct device *dev,
-				  struct device_attribute *attr,
-				  const char *buf, size_t count)
-{
-	return offset_store(dev, buf, count, PLANE_CACHE,
-			    LENOVO_INTEL_MSR_PLANE_CACHE);
-}
-
-static ssize_t gpu_offset_show(struct device *dev,
-			       struct device_attribute *attr, char *buf)
-{
-	int mv_offset = 0;
-	struct legion_intel_msr_data *priv = dev_get_drvdata(dev);
-
-	/* Critical: Prevent NULL pointer dereference and system freeze */
-	if (!priv)
-		return -ENODEV;
-
-	const ssize_t ret = legion_intel_msr_offset_read_show(
-		&priv->intel_msr_private, PLANE_GPU, &mv_offset);
-	if (ret)
-		return ret;
-
-	return sprintf(buf, "%d\n", mv_offset);
-}
-
-static ssize_t gpu_offset_store(struct device *dev,
-				struct device_attribute *attr, const char *buf,
-				size_t count)
-{
-	return offset_store(dev, buf, count, PLANE_GPU,
-			    LENOVO_INTEL_MSR_PLANE_GPU);
-}
-
-static ssize_t uncore_offset_show(struct device *dev,
-				  struct device_attribute *attr, char *buf)
-{
-	int mv_offset = 0;
-	struct legion_intel_msr_data *priv = dev_get_drvdata(dev);
-
-	/* Critical: Prevent NULL pointer dereference and system freeze */
-	if (!priv)
-		return -ENODEV;
-
-	const ssize_t ret = legion_intel_msr_offset_read_show(
-		&priv->intel_msr_private, PLANE_UNCORE, &mv_offset);
-	if (ret)
-		return ret;
-
-	return sprintf(buf, "%d\n", mv_offset);
-}
-
-static ssize_t uncore_offset_store(struct device *dev,
-				   struct device_attribute *attr,
-				   const char *buf, size_t count)
-{
-	return offset_store(dev, buf, count, PLANE_UNCORE,
-			    LENOVO_INTEL_MSR_PLANE_UNCORE);
-}
-
-static ssize_t analogio_offset_show(struct device *dev,
-				    struct device_attribute *attr, char *buf)
-{
-	int mv_offset = 0;
-	struct legion_intel_msr_data *priv = dev_get_drvdata(dev);
-
-	/* Critical: Prevent NULL pointer dereference and system freeze */
-	if (!priv)
-		return -ENODEV;
-
-	const ssize_t ret = legion_intel_msr_offset_read_show(
-		&priv->intel_msr_private, PLANE_ANALOGIO, &mv_offset);
-	if (ret)
-		return ret;
-
-	return sprintf(buf, "%d\n", mv_offset);
-}
-
-static ssize_t analogio_offset_store(struct device *dev,
-				     struct device_attribute *attr,
-				     const char *buf, size_t count)
-{
-	return offset_store(dev, buf, count, PLANE_ANALOGIO,
-			    LENOVO_INTEL_MSR_PLANE_ANALOGIO);
-}
-
-static ssize_t cpu_max_undervolt_show(struct device *dev,
-				      struct device_attribute *attr, char *buf)
-{
-	struct legion_intel_msr_data *priv = dev_get_drvdata(dev);
-
-	/* Critical: Prevent NULL pointer dereference and system freeze */
-	if (!priv)
-		return -ENODEV;
-
-	return sprintf(buf, "%d\n",
-		       priv->intel_msr_private.plane_limits[PLANE_CPU]
-			       .max_undervolt_uv);
-}
-
-static ssize_t cpu_max_overvolt_show(struct device *dev,
-				     struct device_attribute *attr, char *buf)
-{
-	struct legion_intel_msr_data *priv = dev_get_drvdata(dev);
-
-	/* Critical: Prevent NULL pointer dereference and system freeze */
-	if (!priv)
-		return -ENODEV;
-
-	return sprintf(
-		buf, "%d\n",
-		priv->intel_msr_private.plane_limits[PLANE_CPU].max_overvolt_uv);
-	;
-}
-
-static ssize_t cache_max_undervolt_show(struct device *dev,
-					struct device_attribute *attr,
-					char *buf)
-{
-	struct legion_intel_msr_data *priv = dev_get_drvdata(dev);
-
-	/* Critical: Prevent NULL pointer dereference and system freeze */
-	if (!priv)
-		return -ENODEV;
-
-	return sprintf(buf, "%d\n",
-		       priv->intel_msr_private.plane_limits[PLANE_CACHE]
-			       .max_undervolt_uv);
-	;
-}
-
-/*
- * Show voltage offset limits for all planes
- */
-static ssize_t cache_max_overvolt_show(struct device *dev,
-				       struct device_attribute *attr, char *buf)
-{
-	struct legion_intel_msr_data *priv = dev_get_drvdata(dev);
-
-	/* Critical: Prevent NULL pointer dereference and system freeze */
-	if (!priv)
-		return -ENODEV;
-
-	return sprintf(buf, "%d\n",
-		       priv->intel_msr_private.plane_limits[PLANE_CACHE]
-			       .max_undervolt_uv);
-	;
-}
-
-static ssize_t gpu_max_undervolt_show(struct device *dev,
-				      struct device_attribute *attr, char *buf)
-{
-	struct legion_intel_msr_data *priv = dev_get_drvdata(dev);
-
-	/* Critical: Prevent NULL pointer dereference and system freeze */
-	if (!priv)
-		return -ENODEV;
-
-	return sprintf(buf, "%d\n",
-		       priv->intel_msr_private.plane_limits[PLANE_GPU]
-			       .max_undervolt_uv);
-	;
-}
-
-/*
- * Show voltage offset limits for all planes
- */
-static ssize_t gpu_max_overvolt_show(struct device *dev,
-				     struct device_attribute *attr, char *buf)
-{
-	struct legion_intel_msr_data *priv = dev_get_drvdata(dev);
-
-	/* Critical: Prevent NULL pointer dereference and system freeze */
-	if (!priv)
-		return -ENODEV;
-
-	return sprintf(buf, "%d\n",
-		       priv->intel_msr_private.plane_limits[PLANE_GPU]
-			       .max_undervolt_uv);
-	;
-}
-
-static ssize_t uncore_max_undervolt_show(struct device *dev,
-					 struct device_attribute *attr,
-					 char *buf)
-{
-	struct legion_intel_msr_data *priv = dev_get_drvdata(dev);
-
-	/* Critical: Prevent NULL pointer dereference and system freeze */
-	if (!priv)
-		return -ENODEV;
-
-	return sprintf(buf, "%d\n",
-		       priv->intel_msr_private.plane_limits[PLANE_UNCORE]
-			       .max_undervolt_uv);
-	;
-}
-
-/*
- * Show voltage offset limits for all planes
- */
-static ssize_t uncore_max_overvolt_show(struct device *dev,
-					struct device_attribute *attr,
-					char *buf)
-{
-	struct legion_intel_msr_data *priv = dev_get_drvdata(dev);
-
-	/* Critical: Prevent NULL pointer dereference and system freeze */
-	if (!priv)
-		return -ENODEV;
-
-	return sprintf(buf, "%d\n",
-		       priv->intel_msr_private.plane_limits[PLANE_UNCORE]
-			       .max_undervolt_uv);
-	;
-}
-
-/*
- * Show which voltage planes support write operations
- */
-static ssize_t cpu_offset_ctrl_supported_show(struct device *dev,
-					      struct device_attribute *attr,
-					      char *buf)
-{
-	struct legion_intel_msr_data *priv = dev_get_drvdata(dev);
-
-	if (!priv)
-		return -ENODEV;
-
-	return sprintf(
-		buf, "%d\n",
-		priv->intel_msr_private.plane_limits[PLANE_CPU].write_supported);
-}
-
-static ssize_t cache_offset_ctrl_supported_show(struct device *dev,
-						struct device_attribute *attr,
-						char *buf)
-{
-	struct legion_intel_msr_data *priv = dev_get_drvdata(dev);
-
-	if (!priv)
-		return -ENODEV;
-
-	return sprintf(buf, "%d\n",
-		       priv->intel_msr_private.plane_limits[PLANE_CACHE]
-			       .write_supported);
-}
-
-static ssize_t gpu_offset_ctrl_supported_show(struct device *dev,
-					      struct device_attribute *attr,
-					      char *buf)
-{
-	struct legion_intel_msr_data *priv = dev_get_drvdata(dev);
-
-	if (!priv)
-		return -ENODEV;
-
-	return sprintf(
-		buf, "%d\n",
-		priv->intel_msr_private.plane_limits[PLANE_GPU].write_supported);
-}
-
-static ssize_t uncore_offset_ctrl_supported_show(struct device *dev,
-						 struct device_attribute *attr,
-						 char *buf)
-{
-	struct legion_intel_msr_data *priv = dev_get_drvdata(dev);
-
-	if (!priv)
-		return -ENODEV;
-
-	return sprintf(buf, "%d\n",
-		       priv->intel_msr_private.plane_limits[PLANE_UNCORE]
-			       .write_supported);
-}
-
-static ssize_t
-analogio_offset_ctrl_supported_show(struct device *dev,
-				    struct device_attribute *attr, char *buf)
-{
-	struct legion_intel_msr_data *priv = dev_get_drvdata(dev);
-
-	if (!priv)
-		return -ENODEV;
-
-	return sprintf(buf, "%d\n",
-		       priv->intel_msr_private.plane_limits[PLANE_ANALOGIO]
-			       .write_supported);
-}
-
-static ssize_t analogio_max_undervolt_show(struct device *dev,
-					   struct device_attribute *attr,
-					   char *buf)
-{
-	struct legion_intel_msr_data *priv = dev_get_drvdata(dev);
-
-	/* Critical: Prevent NULL pointer dereference and system freeze */
-	if (!priv)
-		return -ENODEV;
-
-	return sprintf(buf, "%d\n",
-		       priv->intel_msr_private.plane_limits[PLANE_ANALOGIO]
-			       .max_undervolt_uv);
-	;
-}
-
-/*
- * Show voltage offset limits for all planes
- */
-static ssize_t analogio_max_overvolt_show(struct device *dev,
-					  struct device_attribute *attr,
-					  char *buf)
-{
-	struct legion_intel_msr_data *priv = dev_get_drvdata(dev);
-
-	/* Critical: Prevent NULL pointer dereference and system freeze */
-	if (!priv)
-		return -ENODEV;
-
-	return sprintf(buf, "%d\n",
-		       priv->intel_msr_private.plane_limits[PLANE_ANALOGIO]
-			       .max_overvolt_uv);
-}
-
-static DEVICE_ATTR_RW(cpu_offset);
-static DEVICE_ATTR_RW(cache_offset);
-static DEVICE_ATTR_RW(gpu_offset);
-static DEVICE_ATTR_RW(uncore_offset);
-static DEVICE_ATTR_RW(analogio_offset);
-
-static DEVICE_ATTR_RO(cpu_max_undervolt);
-static DEVICE_ATTR_RO(cpu_max_overvolt);
-
-static DEVICE_ATTR_RO(cache_max_undervolt);
-static DEVICE_ATTR_RO(cache_max_overvolt);
-
-static DEVICE_ATTR_RO(gpu_max_undervolt);
-static DEVICE_ATTR_RO(gpu_max_overvolt);
-
-static DEVICE_ATTR_RO(uncore_max_undervolt);
-static DEVICE_ATTR_RO(uncore_max_overvolt);
-
-static DEVICE_ATTR_RO(analogio_max_undervolt);
-static DEVICE_ATTR_RO(analogio_max_overvolt);
-
-static DEVICE_ATTR_RO(cpu_offset_ctrl_supported);
-static DEVICE_ATTR_RO(cache_offset_ctrl_supported);
-static DEVICE_ATTR_RO(gpu_offset_ctrl_supported);
-static DEVICE_ATTR_RO(uncore_offset_ctrl_supported);
-static DEVICE_ATTR_RO(analogio_offset_ctrl_supported);
-
-static struct attribute *legion_intel_msr_sysfs_attributes[] = {
+#define LEGION_INTEL_MSR_PLANE_ATTRS(_name, _plane, _event)                    \
+	static ssize_t _name##_offset_show(                                    \
+		struct device *dev, struct device_attribute *attr, char *buf)  \
+	{                                                                      \
+		return offset_show(dev, buf, _plane);                          \
+	}                                                                      \
+	static ssize_t _name##_offset_store(struct device *dev,                \
+					    struct device_attribute *attr,     \
+					    const char *buf, size_t count)     \
+	{                                                                      \
+		return offset_store(dev, buf, count, _plane, _event);          \
+	}                                                                      \
+	static DEVICE_ATTR_RW(_name##_offset);                                 \
+	static ssize_t _name##_max_undervolt_show(                             \
+		struct device *dev, struct device_attribute *attr, char *buf)  \
+	{                                                                      \
+		return sysfs_emit(                                             \
+			buf, "%d\n",                                           \
+			plane_limits(dev, _plane)->max_undervolt_uv);          \
+	}                                                                      \
+	static DEVICE_ATTR_RO(_name##_max_undervolt);                          \
+	static ssize_t _name##_max_overvolt_show(                              \
+		struct device *dev, struct device_attribute *attr, char *buf)  \
+	{                                                                      \
+		return sysfs_emit(buf, "%d\n",                                 \
+				  plane_limits(dev, _plane)->max_overvolt_uv); \
+	}                                                                      \
+	static DEVICE_ATTR_RO(_name##_max_overvolt);                           \
+	static ssize_t _name##_offset_ctrl_supported_show(                     \
+		struct device *dev, struct device_attribute *attr, char *buf)  \
+	{                                                                      \
+		return sysfs_emit(buf, "%d\n",                                 \
+				  plane_limits(dev, _plane)->write_supported); \
+	}                                                                      \
+	static DEVICE_ATTR_RO(_name##_offset_ctrl_supported)
+
+LEGION_INTEL_MSR_PLANE_ATTRS(cpu, PLANE_CPU, LENOVO_INTEL_MSR_PLANE_CPU);
+LEGION_INTEL_MSR_PLANE_ATTRS(cache, PLANE_CACHE, LENOVO_INTEL_MSR_PLANE_CACHE);
+LEGION_INTEL_MSR_PLANE_ATTRS(gpu, PLANE_GPU, LENOVO_INTEL_MSR_PLANE_GPU);
+LEGION_INTEL_MSR_PLANE_ATTRS(uncore, PLANE_UNCORE,
+			     LENOVO_INTEL_MSR_PLANE_UNCORE);
+LEGION_INTEL_MSR_PLANE_ATTRS(analogio, PLANE_ANALOGIO,
+			     LENOVO_INTEL_MSR_PLANE_ANALOGIO);
+
+static struct attribute *legion_intel_msr_attrs[] = {
 	&dev_attr_cpu_offset.attr,
 	&dev_attr_cache_offset.attr,
 	&dev_attr_gpu_offset.attr,
@@ -504,60 +156,45 @@ static struct attribute *legion_intel_msr_sysfs_attributes[] = {
 
 	NULL
 };
+ATTRIBUTE_GROUPS(legion_intel_msr);
 
-static const struct attribute_group legion_intel_msr_attributes_group = {
-	.attrs = legion_intel_msr_sysfs_attributes
+/*
+ * The attributes are created with the device, before its uevent
+ */
+static const struct class legion_intel_msr_class = {
+	.name = "legion-intel-msr",
+	.dev_groups = legion_intel_msr_groups,
 };
 
 /*
- * Module: the device /sys/class/legion-intel-msr/intel-msr-0 without a parent device, independent of the notebook
- * (loaded by /etc/modules-load.d/lenovo-legion.conf), refused on a CPU without the OC mailbox (MSR 0x150)
+ * Module: the device without a parent device, independent of the notebook (loaded by
+ * /etc/modules-load.d/lenovo-legion.conf), refused on a CPU without the OC mailbox (MSR 0x150)
  */
 static int __init legion_intel_msr_module_init(void)
 {
 	struct legion_intel_msr_data *data = &legion_intel_msr_data;
-	int ret = 0;
+	int ret;
 
 	ret = legion_intel_msr_init(&data->intel_msr_private);
 	if (ret) {
 		pr_info("legion-intel-msr: Intel OC mailbox (MSR 0x150) not available: %d\n",
 			ret);
-		return ret;
+		goto err_msr_exit;
 	}
 
 	ret = class_register(&legion_intel_msr_class);
 	if (ret)
 		goto err_msr_exit;
 
-	data->intel_msr_sysfs_private.ida_id =
-		ida_alloc(&legion_intel_msr_sysfs_ida, GFP_KERNEL);
-	if (data->intel_msr_sysfs_private.ida_id < 0) {
-		ret = data->intel_msr_sysfs_private.ida_id;
+	data->dev = device_create(&legion_intel_msr_class, NULL, MKDEV(0, 0),
+				  data, LEGION_INTEL_MSR_DEVICE_NAME);
+	if (IS_ERR(data->dev)) {
+		ret = PTR_ERR(data->dev);
 		goto err_unregister_class;
 	}
 
-	data->intel_msr_sysfs_private.dev =
-		device_create(&legion_intel_msr_class, NULL, MKDEV(0, 0), data,
-			      "%s-%u", LEGION_INTEL_MSR_BASE_PATH,
-			      data->intel_msr_sysfs_private.ida_id);
-	if (IS_ERR(data->intel_msr_sysfs_private.dev)) {
-		ret = (int)PTR_ERR(data->intel_msr_sysfs_private.dev);
-		goto err_free_ida;
-	}
-
-	ret = device_add_group(data->intel_msr_sysfs_private.dev,
-			       &legion_intel_msr_attributes_group);
-	if (ret)
-		goto err_unregister_dev;
-
-	pr_info("legion-intel-msr: Intel MSR driver was loaded\n");
 	return 0;
 
-err_unregister_dev:
-	device_unregister(data->intel_msr_sysfs_private.dev);
-err_free_ida:
-	ida_free(&legion_intel_msr_sysfs_ida,
-		 data->intel_msr_sysfs_private.ida_id);
 err_unregister_class:
 	class_unregister(&legion_intel_msr_class);
 err_msr_exit:
@@ -569,25 +206,10 @@ static void __exit legion_intel_msr_module_exit(void)
 {
 	struct legion_intel_msr_data *data = &legion_intel_msr_data;
 
-	/* Remove sysfs group first */
-	device_remove_group(data->intel_msr_sysfs_private.dev,
-			    &legion_intel_msr_attributes_group);
-
-	/*
-	 * Device unregister will clean up remaining kobject hierarchy
-	 * and wait for all outstanding sysfs operations to complete
-	 */
-	device_unregister(data->intel_msr_sysfs_private.dev);
-
-	/* Now safe to destroy mutex - all callbacks have completed */
-	legion_intel_msr_exit(&data->intel_msr_private);
-
-	ida_free(&legion_intel_msr_sysfs_ida,
-		 data->intel_msr_sysfs_private.ida_id);
-
+	/* Waits for the running sysfs operations, the mutex is not used afterwards */
+	device_unregister(data->dev);
 	class_unregister(&legion_intel_msr_class);
-
-	pr_info("legion-intel-msr: Intel MSR driver was unloaded\n");
+	legion_intel_msr_exit(&data->intel_msr_private);
 }
 
 module_init(legion_intel_msr_module_init);

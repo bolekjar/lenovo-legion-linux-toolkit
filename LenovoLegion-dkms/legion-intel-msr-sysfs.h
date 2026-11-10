@@ -25,17 +25,12 @@ enum legion_intel_msr_events_type {
 	LENOVO_INTEL_MSR_PLANE_ANALOGIO = 2005
 };
 
-struct legion_intel_msr_sysfs_private {
-	int ida_id;
-	struct device *dev;
-};
-
 /*
  * Data of the module (one instance, independent of the notebook)
  */
 struct legion_intel_msr_data {
 	struct legion_intel_msr_private intel_msr_private;
-	struct legion_intel_msr_sysfs_private intel_msr_sysfs_private;
+	struct device *dev;
 };
 
 #endif /* LEGION_INTEL_MSR_SYSFS_H_ */

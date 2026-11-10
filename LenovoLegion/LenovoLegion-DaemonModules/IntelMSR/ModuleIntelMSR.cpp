@@ -27,7 +27,6 @@ namespace {
  */
 constexpr const char* SYSFS_PATH        = "/sys/class/legion-intel-msr/intel-msr-0/";
 constexpr const char* SUBSYSTEM         = "legion-intel-msr";
-constexpr const char* DRIVER            = "legion-intel-msr";
 constexpr const char* KERNEL_MODULE     = "legion_intel_msr";   // separate module, independent of the Lenovo driver
 
 constexpr const char* MODULE_SUBSYSTEM  = "module";
@@ -184,7 +183,7 @@ public:
             return;
         }
 
-        if(event.m_subSystem == SUBSYSTEM && event.m_driver == DRIVER && event.m_action == "change")
+        if(event.m_subSystem == SUBSYSTEM && event.m_action == "change")
         {
             legion::messages::Notification notification;
 

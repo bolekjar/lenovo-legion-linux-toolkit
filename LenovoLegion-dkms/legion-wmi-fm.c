@@ -167,6 +167,9 @@ static void legion_wmi_fm_master_unbind(struct device *dev)
 	legion_wmi_fm_sysfs_exit(priv);
 
 	component_unbind_all(dev, NULL);
+
+	/* The fan table belongs to its component (device managed), not valid after the unbind */
+	priv->ft_list = NULL;
 }
 
 static const struct component_master_ops legion_wmi_fm_master_ops = {

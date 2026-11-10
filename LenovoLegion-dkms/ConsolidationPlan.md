@@ -70,4 +70,19 @@ Chyba nalezená při inventuře: `get_ir_temp` (gamezone other) volá metodu `Ge
 
    **Stav (2026-11-10): hotovo, otestováno na hardwaru (Legion Pro 7 16IAX10H):** modul se po restartu načte sám podle WMI aliasů, všech 13 WMI GUID drží jeho ovladače, hwmon `legion` jako dřív (sensors: `legion-virtual-0`, WMI sběrnice); `lenovo_wmi_hotkey_utilities` se naváže, LED mute tento model nemá (firmware hlásí bez podpory).
 
+6. **Audit podle standardů jádra** (2026-11-10).
+   - chyby:
+     - build s `MO=` (kbuild až od 6.13): na 6.12 DKMS a `make install` selhaly → build ve zdrojovém adresáři (`dkms.conf` bez `BUILT_MODULE_LOCATION`, `CLEAN`, `.gitignore`),
+     - other mode: atributy s diskrétními hodnotami (steps) přijímaly libovolnou hodnotu, kontrola `contains_value` chyběla,
+     - MSR: `cache_`, `gpu_`, `uncore_max_overvolt` vracely `max_undervolt_uv`,
+     - other mode: `args.arg1` WMI metod nebyl nastaven (hodnota ze zásobníku),
+     - MSR: Meteor/Arrow Lake podle čísel modelu → `x86_match_cpu` (`INTEL_*`); mailbox z kontextu procesu (`*msr*_safe_on_cpu`, `usleep_range`) místo až ~3 ms čekání v IPI se zakázanými přerušeními,
+     - po odpojení komponent zůstávaly ukazatele na jejich seznamy (`cd00/cd01/dd/ft_list`),
+     - discrete data: `-E2BIG` i při přesně zaplněném výstupu,
+     - fan křivka: zápis i čtení přes zabalené little endian struktury (`cpu_to_le16`/`le32_to_cpu`, `static_assert` velikosti) místo ručních offsetů; čtení selže, když firmware vrátí méně bajtů než tabulka (`legion_wmi_dev_evaluate_buffer` vrací délku),
+   - standardy: MSR atributy přes `.dev_groups` třídy (vzniknou před uevent), `sysfs_emit`, bez vlastní uevent proměnné `DRIVER` (daemon filtruje podle subsystému), atributy pouze pro zápis `0200`, `snprintf`, typy `kstrtouint`/formáty, kernel-doc jména, `-y` v Makefile, odstraněné nepoužité kódy,
+   - ověřeno: build jako DKMS (ve zdrojovém adresáři) proti 6.12.116 a 6.18.62 bez varování, všechny symboly exportované; checkpatch 0 chyb.
+
+   **Stav (2026-11-10): hotovo, čeká na test na hardwaru.**
+
 Další možný krok: funkce `ideapad_laptop`, o které uživatel kvůli blacklistu přichází (limit nabíjení / conservation mode, rapid charge, usb_charging, fn_lock, camera_power), doplnit do vlastního stacku.

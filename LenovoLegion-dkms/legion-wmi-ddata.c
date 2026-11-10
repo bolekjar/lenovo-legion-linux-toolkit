@@ -97,12 +97,13 @@ int legion_wmi_dd_get_data(struct legion_wmi_dd_list *list, u32 attribute_id,
 		if (list->data[idx].id != attribute_id)
 			continue;
 
-		memcpy(&output[out_idx++], &list->data[idx],
-		       sizeof(list->data[idx]));
-
+		/* More values than the output can hold */
 		if (out_idx >= output_len)
 			return -E2BIG;
-	};
+
+		memcpy(&output[out_idx++], &list->data[idx],
+		       sizeof(list->data[idx]));
+	}
 
 	if (out_idx == 0)
 		return -EINVAL;
@@ -234,7 +235,7 @@ static struct wmi_driver legion_wmi_dd_driver = {
 };
 
 /**
- * lwmi_dd_match() - Match rule for the master driver.
+ * legion_wmi_dd_match() - Match rule for the master driver.
  * @dev: Pointer to the capability data 01 parent device.
  * @data: Unused void pointer for passing match criteria.
  *

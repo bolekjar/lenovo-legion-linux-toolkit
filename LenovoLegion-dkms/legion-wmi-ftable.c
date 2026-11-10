@@ -274,7 +274,7 @@ static struct wmi_driver legion_wmi_ftable_driver = {
 };
 
 /**
- * lwmi_ftable_match() - Match rule for the master driver.
+ * legion_wmi_ftable_match() - Match rule for the master driver.
  * @dev: Pointer to the capability data 01 parent device.
  * @data: Unused void pointer for passing match criteria.
  *

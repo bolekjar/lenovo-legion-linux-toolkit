@@ -115,24 +115,26 @@ int legion_wmi_dev_evaluate_string(struct wmi_device *wdev, const u8 instance,
 
 /**
  * legion_wmi_dev_evaluate_buffer() - Helper function for calling WMI methods that
- * return an buffer.
+ * return a buffer.
  * @wdev: Pointer to the WMI device to be called.
  * @instance: Instance of the called method.
  * @method_id: WMI Method ID for the method to be called.
  * @buf: Buffer of all arguments for the given method_id.
  * @size: Length of the buffer.
- * @retval: Pointer for the return value to be assigned.
+ * @retval: Buffer for the returned data (NULL: the result is not used).
+ * @max_retval_size: Size of the retval buffer.
+ * @retval_len: Number of the returned bytes (may be NULL).
  *
  * Calls wmidev_evaluate_method for Lenovo WMI devices that return an ACPI
- * integer. Validates the return value type and assigns the value to the
- * retval pointer.
+ * buffer. Validates the return value type and copies the data to retval.
  *
  * Return: 0 on success, or an error code.
  */
 int legion_wmi_dev_evaluate_buffer(struct wmi_device *wdev, const u8 instance,
 				   const u32 method_id, unsigned char *buf,
 				   const size_t size, u8 *retval,
-				   const size_t max_retval_size)
+				   const size_t max_retval_size,
+				   size_t *retval_len)
 {
 	struct acpi_buffer output = { ACPI_ALLOCATE_BUFFER, NULL };
 	union acpi_object *ret_obj __free(kfree) = NULL;
@@ -155,6 +157,9 @@ int legion_wmi_dev_evaluate_buffer(struct wmi_device *wdev, const u8 instance,
 			return -EMSGSIZE;
 
 		memcpy(retval, ret_obj->buffer.pointer, ret_obj->buffer.length);
+
+		if (retval_len)
+			*retval_len = ret_obj->buffer.length;
 	}
 
 	return 0;

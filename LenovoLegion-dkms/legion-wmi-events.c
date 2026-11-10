@@ -41,7 +41,7 @@ struct legion_wmi_events_priv {
 };
 
 /**
- * lwmi_events_register_notifier() - Add a notifier to the notifier chain.
+ * legion_wmi_events_register_notifier() - Add a notifier to the notifier chain.
  * @nb: The notifier_block struct to register
  *
  * Call blocking_notifier_chain_register to register the notifier block to the
@@ -55,7 +55,7 @@ int legion_wmi_events_register_notifier(struct notifier_block *nb)
 }
 
 /**
- * lwmi_events_unregister_notifier() - Remove a notifier from the notifier
+ * legion_wmi_events_unregister_notifier() - Remove a notifier from the notifier
  * chain.
  * @nb: The notifier_block struct to unregister
  *
@@ -70,7 +70,7 @@ int legion_wmi_events_unregister_notifier(struct notifier_block *nb)
 }
 
 /**
- * devm_lwmi_events_unregister_notifier() - Remove a notifier from the notifier
+ * devm_legion_wmi_events_unregister_notifier() - Remove a notifier from the notifier
  * chain.
  * @data: Void pointer to the notifier_block struct to unregister.
  *
@@ -87,7 +87,7 @@ static void devm_legion_wmi_events_unregister_notifier(void *data)
 }
 
 /**
- * devm_lwmi_events_register_notifier() - Add a notifier to the notifier chain.
+ * devm_legion_wmi_events_register_notifier() - Add a notifier to the notifier chain.
  * @dev: The parent device of the notifier_block struct.
  * @nb: The notifier_block struct to register
  *
@@ -111,7 +111,7 @@ int devm_legion_wmi_events_register_notifier(struct device *dev,
 }
 
 /**
- * lwmi_events_notify() - Call functions for the notifier call chain.
+ * legion_wmi_events_notify() - Call functions for the notifier call chain.
  * @wdev: The parent WMI device of the driver.
  * @obj: ACPI object passed by the registered WMI Event.
  *
@@ -129,12 +129,14 @@ static void legion_wmi_events_notify(struct wmi_device *wdev,
 	char *envp[] = { event_type, event_value, NULL };
 
 	if (priv->type != LEGION_WMI_EVENT_UNKNOWN) {
-		sprintf(event_type, "EVENT_TYPE=%d", priv->type);
+		snprintf(event_type, sizeof(event_type), "EVENT_TYPE=%d",
+			 priv->type);
 		if (obj->type == ACPI_TYPE_INTEGER) {
-			sprintf(event_value, "EVENT_VALUE=%llu",
-				obj->integer.value);
+			snprintf(event_value, sizeof(event_value),
+				 "EVENT_VALUE=%llu", obj->integer.value);
 		} else {
-			sprintf(event_value, "EVENT_VALUE=N/A");
+			snprintf(event_value, sizeof(event_value),
+				 "EVENT_VALUE=N/A");
 		}
 
 		kobject_uevent_env(&wdev->dev.kobj, KOBJ_CHANGE, envp);
@@ -162,7 +164,7 @@ static void legion_wmi_events_notify(struct wmi_device *wdev,
 			return;
 		}
 		default:
-			dev_err(&wdev->dev, "Got invalid thermal mode: %llx",
+			dev_err(&wdev->dev, "Got invalid thermal mode: %llx\n",
 				sel_prof);
 			return;
 		}

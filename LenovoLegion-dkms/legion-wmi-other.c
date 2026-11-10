@@ -49,7 +49,7 @@ static int lenovo_wmi_other_register_notifier(struct notifier_block *nb)
 }
 
 /**
- * lwmi_om_unregister_notifier() - Remove a notifier from the blocking notifier
+ * lenovo_wmi_other_unregister_notifier() - Remove a notifier from the blocking notifier
  * chain.
  * @nb: The notifier_block struct to register
  *
@@ -64,7 +64,7 @@ static int lenovo_wmi_other_unregister_notifier(struct notifier_block *nb)
 }
 
 /**
- * dev_lenovo_wmi_other_unregister_notifier() - Remove a notifier from the blocking
+ * devm_lenovo_wmi_other_unregister_notifier() - Remove a notifier from the blocking
  * notifier chain.
  * @data: Void pointer to the notifier_block struct to register.
  *
@@ -125,10 +125,10 @@ static int legion_wmi_other_call(struct notifier_block *nb,
 
 	switch (action) {
 	case LEGION_WMI_FM_GET_CAPABILITY_VALUE: {
-		struct wmi_method_args_32 args;
-
-		args.arg0 = value->capability_id & (~LEGION_WMI_MODE_ID_MASK);
-		args.arg1 = 0;
+		struct wmi_method_args_32 args = {
+			.arg0 = value->capability_id &
+				(~LEGION_WMI_MODE_ID_MASK),
+		};
 
 		if (legion_wmi_dev_evaluate_int(
 			    priv->wdev, 0x0, LEGION_WMI_OTHER_FEATURE_VALUE_GET,
@@ -221,6 +221,11 @@ static void legion_wmi_om_master_unbind(struct device *dev)
 	legion_wmi_other_sysfs_exit(priv);
 
 	component_unbind_all(dev, NULL);
+
+	/* The lists belong to the components (device managed), not valid after the unbind */
+	priv->cd00_list = NULL;
+	priv->cd01_list = NULL;
+	priv->dd_list = NULL;
 }
 
 static const struct component_master_ops legion_wmi_om_master_ops = {
@@ -237,8 +242,6 @@ static int legion_wmi_other_probe(struct wmi_device *wdev, const void *context)
 	if (!priv)
 		return -ENOMEM;
 
-	priv->cd01_list = NULL;
-	priv->dd_list = NULL;
 	priv->wdev = wdev;
 
 	dev_set_drvdata(&wdev->dev, priv);

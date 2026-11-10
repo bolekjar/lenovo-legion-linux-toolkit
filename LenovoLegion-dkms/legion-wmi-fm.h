@@ -12,9 +12,7 @@
 #include "legion-wmi-gamezone.h"
 
 #include <linux/notifier.h>
-#include <linux/hashtable.h>
 
-struct component_master_ops;
 struct wmi_device;
 struct kset;
 
@@ -33,10 +31,10 @@ struct fan_max_speed {
 };
 
 struct legion_wmi_fm_priv {
-	struct component_master_ops *ops;
 	struct wmi_device *wdev;
 
-	struct notifier_block hwmon_nb; /* hwmon*/
+	struct notifier_block
+		hwmon_nb; /* source of the hwmon maximal fan speeds */
 
 	struct legion_wmi_ftable_list *ft_list; /* only valid after ft bind */
 	struct fan_max_speed
@@ -46,13 +44,11 @@ struct legion_wmi_fm_priv {
 	struct device *fw_attr_dev;
 	struct kset *fw_attr_kset;
 	int ida_id;
-	int smart_fan_version;
+	unsigned int smart_fan_version;
 
 	int fan_cpu_max_speed;
 	int fan_gpu_max_speed;
 	int fan_sys_max_speed;
-
-	/* Completion to signal when binding is done */
 };
 
 int legion_wmi_fm_notifier_call(void *data,

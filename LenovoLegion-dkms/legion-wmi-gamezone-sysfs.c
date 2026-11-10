@@ -81,7 +81,8 @@ static int legion_wmi_validate_input(const u32 value,
 					    struct kobj_attribute *kattr,          \
 					    const char *buf, size_t count)         \
 	{                                                                          \
-		int ret = 0, value = 0;                                            \
+		unsigned int value = 0;                                            \
+		int ret = 0;                                                       \
 		struct lenovo_wmi_gz_priv *priv =                                  \
 			dev_get_drvdata(kobj_to_dev(kobj->parent));                \
 		/* Critical: Prevent NULL pointer dereference and system freeze */ \
@@ -128,7 +129,8 @@ static int legion_wmi_validate_input(const u32 value,
 					  struct kobj_attribute *kattr,            \
 					  const char *buf, size_t count)           \
 	{                                                                          \
-		int ret = 0, value = 0;                                            \
+		unsigned int value = 0;                                            \
+		int ret = 0;                                                       \
 		struct lenovo_wmi_gz_priv *priv =                                  \
 			dev_get_drvdata(kobj_to_dev(kobj->parent));                \
 		/* Critical: Prevent NULL pointer dereference and system freeze */ \
@@ -195,7 +197,8 @@ static int legion_wmi_validate_input(const u32 value,
 					  struct kobj_attribute *kattr,                     \
 					  const char *buf, size_t count)                    \
 	{                                                                                   \
-		int ret = 0, value = 0;                                                     \
+		unsigned int value = 0;                                                     \
+		int ret = 0;                                                                \
 		struct lenovo_wmi_gz_priv *priv =                                           \
 			dev_get_drvdata(kobj_to_dev(kobj->parent));                         \
 		/* Critical: Prevent NULL pointer dereference and system freeze */          \
@@ -232,8 +235,8 @@ static int legion_wmi_validate_input(const u32 value,
 		&kobj_attr_current_value_##_name.attr, NULL                                 \
 	};
 
-#define LEGION_WMI_RO_FEATURE_SET_GET_SUPPORTED_SMARTFAN(                                   \
-	_name, _attr, _attrget, _dispname)                                                  \
+#define LEGION_WMI_RO_FEATURE_SET_GET_SUPPORTED_SMARTFAN(_name, _attr,                      \
+							 _attrget, _dispname)               \
 	static ssize_t func_##_name##_show(                                                 \
 		struct kobject *kobj, struct kobj_attribute *kattr, char *buf)              \
 	{                                                                                   \
@@ -286,7 +289,8 @@ static int legion_wmi_validate_input(const u32 value,
 					  struct kobj_attribute *kattr,                     \
 					  const char *buf, size_t count)                    \
 	{                                                                                   \
-		int ret = 0, value = 0;                                                     \
+		unsigned int value = 0;                                                     \
+		int ret = 0;                                                                \
 		struct lenovo_wmi_gz_priv *priv =                                           \
 			dev_get_drvdata(kobj_to_dev(kobj->parent));                         \
 		/* Critical: Prevent NULL pointer dereference and system freeze */          \
@@ -540,8 +544,8 @@ static const struct attribute_group legion_sysfs_gz_group[] = {
 	{}
 };
 /**
- * lwmi_om_fw_attr_add() - Register all firmware_attributes_class members
- * @priv: The Other Mode driver data.
+ * legion_wmi_gz_fw_attr_add() - Register all firmware attributes of the game zone
+ * @priv: The game zone driver data.
  *
  * Return: Either 0, or an error code.
  */
@@ -591,8 +595,8 @@ err_free_ida:
 }
 
 /**
- * legion_wmi_gz_fw_attr_remove() - Unregister all capability data attribute groups
- * @priv: the lenovo-wmi-other driver data.
+ * legion_wmi_gz_fw_attr_remove() - Unregister all firmware attributes of the game zone
+ * @priv: The game zone driver data.
  */
 static void legion_wmi_gz_fw_attr_remove(struct lenovo_wmi_gz_priv *priv)
 {
