@@ -704,7 +704,7 @@ static struct wmi_driver lenovo_wmi_gz_driver = {
 	.no_singleton = true,
 };
 
-int legion_wmi_gamezone_driver_init(struct device *parent)
+int legion_wmi_gamezone_driver_init(void)
 {
 	return wmi_driver_register(&lenovo_wmi_gz_driver);
 }

@@ -60,4 +60,14 @@ Chyba nalezená při inventuře: `get_ir_temp` (gamezone other) volá metodu `Ge
 
    **Stav (2026-11-09): hotovo.** Načtení na 6.12 a 6.18 netestováno (vyžaduje nabootované jádro).
 
-Volitelné (samostatné rozhodnutí): spouštět modul bez vazby na ACPI zařízení `VPC2004` (WMI ovladače v `module_init`, kontrola modelu přes DMI), aby `ideapad_laptop` nemusel být na blacklistu (Fn-lock, conservation mode, kamera); předem ověřit, že se jeho `platform_profile` (DYTC) nepere s naším.
+5. **Bez vazby na ACPI zařízení VPC2004** (rozhodnutí autora 2026-11-10, po hardwarovém testu `ideapad_laptop`).
+   - test: `ideapad_laptop` na Legion Pro 7 16IAX10H nemá DYTC (žádný vlastní `platform_profile`, žádný cyklus profilu na Fn+Q), umí `conservation_mode`, `charge_types`, `usb_charging`, `fn_lock`, `camera_power`, `fan_mode`; váže WMI GUID `8FC0DE0C` (Fn klávesy), který používají události daemonu (podsvícení klávesnice, FnLock, kamera) → **souběh s `ideapad_laptop` není možný**, zůstává na blacklistu,
+   - modul nemá vlastní zařízení: `module_init` ověří model podle DMI (`dmi_first_match`, dřív `strcmp` nad případným NULL), zaregistruje třídu firmware atributů a WMI ovladače (komponenty před mastery), `module_exit` v opačném pořadí; načítá se podle aliasů WMI GUID,
+   - hwmon `legion` je potomek zařízení other mode, registruje se při navázání jeho komponent,
+   - opraveno: WMI ovladače se registrovaly v `probe` platform ovladače; `MODULE_DEVICE_TABLE(acpi, …)` nad tabulkami WMI GUID (nesmyslné aliasy `acpi*:300E:*`…), discrete data bez tabulky; notifiery hwmon registrované v `bind` přes devm (při opakovaném navázání komponent dvakrát); `probe` other mode a fan method čekal až 5 s na navázání komponent,
+   - odstraněno: `legion-compatibility.*`, `legion-machine-information.*`, `legion-common.c` (výpis DMI do dmesg, DMI je v `/sys/class/dmi/id`),
+   - blacklist: `lenovo_wmi_hotkey_utilities` odebrán (LED mic mute a audio mute, jeho GUID modul nepoužívá).
+
+   **Stav (2026-11-10): hotovo, otestováno na hardwaru (Legion Pro 7 16IAX10H):** modul se po restartu načte sám podle WMI aliasů, všech 13 WMI GUID drží jeho ovladače, hwmon `legion` jako dřív (sensors: `legion-virtual-0`, WMI sběrnice); `lenovo_wmi_hotkey_utilities` se naváže, LED mute tento model nemá (firmware hlásí bez podpory).
+
+Další možný krok: funkce `ideapad_laptop`, o které uživatel kvůli blacklistu přichází (limit nabíjení / conservation mode, rapid charge, usb_charging, fn_lock, camera_power), doplnit do vlastního stacku.

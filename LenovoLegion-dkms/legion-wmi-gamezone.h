@@ -235,7 +235,7 @@ int legion_wmi_gz_get_string(struct wmi_device *wdev,
 int legion_wmi_gz_thermal_mode_set(struct lenovo_wmi_gz_priv *priv,
 				   enum thermal_mode mode);
 
-int legion_wmi_gamezone_driver_init(struct device *parent);
+int legion_wmi_gamezone_driver_init(void);
 void legion_wmi_gamezone_driver_exit(void);
 
 #endif /* LEGION_WMI_GAMEZONE_H_ */

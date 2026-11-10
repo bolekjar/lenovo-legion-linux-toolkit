@@ -24,7 +24,7 @@ int legion_wmi_cd00_get_data(struct legion_wmi_cd00_list *list,
 			     struct legion_wmi_capdata00 *output);
 int legion_wmi_cd00_match(struct device *dev, void *data);
 
-int legion_wmi_cd00_driver_init(struct device *parent);
+int legion_wmi_cd00_driver_init(void);
 void legion_wmi_cd00_driver_exit(void);
 
 #endif /* LEGION_WMI_CAPDATA0_H_ */

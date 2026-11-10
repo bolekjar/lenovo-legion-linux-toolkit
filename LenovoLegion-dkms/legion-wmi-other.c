@@ -22,7 +22,6 @@
 #include <linux/device.h>
 #include <linux/wmi.h>
 #include <linux/component.h>
-#include <linux/completion.h>
 #include <linux/bitfield.h>
 
 #define LEGION_WMI_LENOVO_OTHER_METHOD_GUID \
@@ -181,16 +180,22 @@ static int legion_wmi_om_master_bind(struct device *dev)
 		goto sysfs_err;
 
 	priv->hwmon_nb.notifier_call = legion_wmi_other_call;
-	ret = legion_hwmon_other_register_notifier(dev, &priv->hwmon_nb);
+	ret = legion_hwmon_other_register_notifier(&priv->hwmon_nb);
 	if (ret)
-		goto hwmon_err;
+		goto notifier_err;
 
-	/* Signal that binding is complete */
-	complete(&priv->bind_complete);
+	priv->hwmon = legion_hwmon_register(dev);
+	if (IS_ERR(priv->hwmon)) {
+		ret = PTR_ERR(priv->hwmon);
+		priv->hwmon = NULL;
+		goto hwmon_err;
+	}
 
 	return 0;
 
 hwmon_err:
+	legion_hwmon_other_unregister_notifier(&priv->hwmon_nb);
+notifier_err:
 	legion_wmi_other_sysfs_exit(priv);
 sysfs_err:
 	component_unbind_all(dev, NULL);
@@ -208,6 +213,10 @@ sysfs_err:
 static void legion_wmi_om_master_unbind(struct device *dev)
 {
 	struct legion_wmi_other_priv *priv = dev_get_drvdata(dev);
+
+	legion_hwmon_unregister(priv->hwmon);
+	priv->hwmon = NULL;
+	legion_hwmon_other_unregister_notifier(&priv->hwmon_nb);
 
 	legion_wmi_other_sysfs_exit(priv);
 
@@ -232,9 +241,6 @@ static int legion_wmi_other_probe(struct wmi_device *wdev, const void *context)
 	priv->dd_list = NULL;
 	priv->wdev = wdev;
 
-	/* Initialize completion */
-	init_completion(&priv->bind_complete);
-
 	dev_set_drvdata(&wdev->dev, priv);
 
 	component_match_add(&wdev->dev, &master_match, legion_wmi_cd00_match,
@@ -252,23 +258,15 @@ static int legion_wmi_other_probe(struct wmi_device *wdev, const void *context)
 	if (IS_ERR(master_match))
 		return (int)PTR_ERR(master_match);
 
-	/* Register as a component master (for cd01/dd components) */
-	const int ret = component_master_add_with_match(
+	/*
+	 * Component master of the capability data 00, 01 and discrete data: bound when all of them are probed
+	 * (registered before the other mode by module_init, so at once)
+	 */
+	return component_master_add_with_match(
 		&wdev->dev, &legion_wmi_om_master_ops, master_match);
-	if (ret)
-		return ret;
-
-	/* Wait for binding to complete (with timeout) */
-	if (!wait_for_completion_timeout(&priv->bind_complete,
-					 msecs_to_jiffies(5000))) {
-		component_master_del(&wdev->dev, &legion_wmi_om_master_ops);
-		return -ETIMEDOUT;
-	}
-
-	return 0;
 }
 
-static void legio_nwmi_other_remove(struct wmi_device *wdev)
+static void legion_wmi_other_remove(struct wmi_device *wdev)
 {
 	/* Remove as a component master first (this calls unbind) */
 	component_master_del(&wdev->dev, &legion_wmi_om_master_ops);
@@ -281,11 +279,11 @@ static struct wmi_driver legion_wmi_other_driver = {
 	},
 	.id_table = legion_wmi_other_id_table,
 	.probe = legion_wmi_other_probe,
-	.remove = legio_nwmi_other_remove,
+	.remove = legion_wmi_other_remove,
 	.no_singleton = true,
 };
 
-int legion_wmi_other_driver_init(struct device *dev)
+int legion_wmi_other_driver_init(void)
 {
 	return wmi_driver_register(&legion_wmi_other_driver);
 }

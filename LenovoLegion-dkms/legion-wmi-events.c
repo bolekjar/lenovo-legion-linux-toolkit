@@ -242,7 +242,7 @@ static struct wmi_driver legion_wmi_events_driver = {
 	.no_singleton = true,
 };
 
-int legion_wmi_events_driver_init(struct device *parent)
+int legion_wmi_events_driver_init(void)
 {
 	return wmi_driver_register(&legion_wmi_events_driver);
 }

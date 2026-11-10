@@ -73,48 +73,13 @@ For all distribution
 5) Kernel modules are lenovo_legion.ko (Lenovo Legion notebook) and legion_intel_msr.ko (Intel CPU voltage offsets, any notebook, loaded by /etc/modules-load.d/lenovo-legion.conf)
 6) If you want to install the kernel modules:
    - for current kernel: run "make install"
-   - dkms: run "make dkms" you should see in dmesg for sucessfully installed and detected supported laptop this:
+   - dkms: run "make dkms"
+   - check the module on a supported notebook: the WMI drivers are bound and the hwmon device "legion" exists
 
-                    [    3.864415] lenovo-legion VPC2004:00:        Legion firmware attributes was initialized
-                    [    3.864416] lenovo-legion VPC2004:00:        Legion data structure was initialized
-                    [    3.864417] lenovo-legion VPC2004:00:        DMI Machine Information start
-                    [    3.864417] lenovo-legion VPC2004:00:                 bios_vendor:LENOVO
-                    [    3.864418] lenovo-legion VPC2004:00:                 bios_version:Q7CN45WW
-                    [    3.864418] lenovo-legion VPC2004:00:                 bios_date:12/02/2025
-                    [    3.864419] lenovo-legion VPC2004:00:                 bios_release:1.45
-                    [    3.864419] lenovo-legion VPC2004:00:                 product_name:83F5
-                    [    3.864419] lenovo-legion VPC2004:00:                 product_family:Legion Pro 7 16IAX10H
-                    [    3.864420] lenovo-legion VPC2004:00:                 product_version:Legion Pro 7 16IAX10H
-                    [    3.864420] lenovo-legion VPC2004:00:                 product_serial:XXXXXXX
-                    [    3.864421] lenovo-legion VPC2004:00:                 product_sku:LENOVO_MT_83F5_BU_idea_FM_Legion Pro 7 16IAX10H
-                    [    3.864421] lenovo-legion VPC2004:00:                 product_uuid:XXXXXXX
-                    [    3.864421] lenovo-legion VPC2004:00:                 board_name:XXXXXXX
-                    [    3.864422] lenovo-legion VPC2004:00:                 board_vendor:LENOVO
-                    [    3.864422] lenovo-legion VPC2004:00:                 board_version: NO DPK
-                    [    3.864423] lenovo-legion VPC2004:00:                 board_serial:XXXXXXX
-                    [    3.864423] lenovo-legion VPC2004:00:                 board_asset_tag:NO Asset Tag
-                    [    3.864423] lenovo-legion VPC2004:00:                 chassis_vendor:LENOVO
-                    [    3.864424] lenovo-legion VPC2004:00:                 chassis_version:Legion Pro 7 16IAX10H
-                    [    3.864424] lenovo-legion VPC2004:00:                 chassis_type:10
-                    [    3.864424] lenovo-legion VPC2004:00:                 chassis_serial:XXXXXXX
-                    [    3.864425] lenovo-legion VPC2004:00:                 chassis_asset_tag:NO Asset Tag
-                    [    3.864425] lenovo-legion VPC2004:00:                 sys_vendor:LENOVO
-                    [    3.864425] lenovo-legion VPC2004:00:                 ec_firmware_release:1.44
-                    [    3.864426] lenovo-legion VPC2004:00:        DMI Machine Information end
-                    [    3.870986] lenovo-legion VPC2004:00:        WMI game zone driver was initialized
-                    [    3.871068] lenovo-legion VPC2004:00:        WMI events driver was initialized
-                    [    3.872664] lenovo-legion VPC2004:00:        WMI capability data 00 driver was initialized
-                    [    3.877420] lenovo-legion VPC2004:00:        WMI capability data 01 driver was initialized
-                    [    3.879898] lenovo-legion VPC2004:00:        WMI discrete data driver was initialized
-                    [    3.879913] legion_wmi_other DC2A8805-3A8C-41BA-A6F7-092E0089CD3B-5: bound 362A3AFE-3D96-4665-8530-96DAD5BB300E-16 (ops legion_wmi_cd00_component_ops [lenovo_legion])
-                    [    3.879927] legion_wmi_other DC2A8805-3A8C-41BA-A6F7-092E0089CD3B-5: bound 7A8F5407-CB67-4D6E-B547-39B3BE018154-12 (ops legion_wmi_cd01_component_ops [lenovo_legion])
-                    [    3.879934] legion_wmi_other DC2A8805-3A8C-41BA-A6F7-092E0089CD3B-5: bound 91433B17-B7B7-4640-BB40-34C67349FBEC-14 (ops legion_wmi_dd_component_ops [lenovo_legion])
-                    [    3.880001] lenovo-legion VPC2004:00:        WMI other driver was initialized
-                    [    3.881305] lenovo-legion VPC2004:00:        WMI Fan table driver was initialized
-                    [    3.881325] legion_wmi_fan_method 92549549-4BDE-4F06-AC04-CE8BF898DBAA-3: bound 87FB2A6D-D802-48E7-9208-4576C5F5C8D8-10 (ops legion_wmi_ftable_component_ops [lenovo_legion])
-                    [    3.881427] lenovo-legion VPC2004:00:        WMI Fan method driver was initialized
-                    [    3.881469] lenovo-legion VPC2004:00:        HwMon driver was initialized
-                    [    3.882155] lenovo-legion VPC2004:00: Legion platform driver was loaded
+                    for d in /sys/bus/wmi/devices/*; do echo "$(basename $d) -> $(basename "$(readlink $d/driver)")"; done | grep legion
+                    grep -l '^legion$' /sys/class/hwmon/hwmon*/name
+
+     the module is not loaded on an unsupported model (no error, the DMI model check fails)
 
 7) Go to LenovoLegion-release-1.0.0/LenovoLegion
 8) run (qmake or qmake6) && make

@@ -53,7 +53,6 @@ struct legion_wmi_fm_priv {
 	int fan_sys_max_speed;
 
 	/* Completion to signal when binding is done */
-	struct completion bind_complete;
 };
 
 int legion_wmi_fm_notifier_call(void *data,
@@ -61,7 +60,7 @@ int legion_wmi_fm_notifier_call(void *data,
 int devm_lenovo_wmi_fm_register_notifier(struct device *dev,
 					 struct notifier_block *nb);
 
-int legion_wmi_fm_driver_init(struct device *parent);
+int legion_wmi_fm_driver_init(void);
 void legion_wmi_fm_driver_exit(void);
 
 #endif /* LEGION_WMI_FM_H_ */

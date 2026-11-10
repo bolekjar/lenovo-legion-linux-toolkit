@@ -245,7 +245,7 @@ int legion_wmi_dd_match(struct device *dev, void *data)
 	return dev->driver == &legion_wmi_dd_driver.driver;
 }
 
-int legion_wmi_dd_driver_init(struct device *parent)
+int legion_wmi_dd_driver_init(void)
 {
 	return wmi_driver_register(&legion_wmi_dd_driver);
 }
@@ -254,3 +254,5 @@ void legion_wmi_dd_driver_exit(void)
 {
 	wmi_driver_unregister(&legion_wmi_dd_driver);
 }
+
+MODULE_DEVICE_TABLE(wmi, legion_wmi_dd_id_table);

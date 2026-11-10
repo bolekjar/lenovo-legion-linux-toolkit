@@ -147,12 +147,9 @@ static int legion_wmi_fm_master_bind(struct device *dev)
 		goto sysfs_err;
 
 	priv->hwmon_nb.notifier_call = legion_wmi_fm_call;
-	ret = legion_hwmon_fm_register_notifier(dev, &priv->hwmon_nb);
+	ret = legion_hwmon_fm_register_notifier(&priv->hwmon_nb);
 	if (ret)
 		goto notifier_err;
-
-	/* Signal that binding is complete */
-	complete(&priv->bind_complete);
 
 	return 0;
 notifier_err:
@@ -166,6 +163,7 @@ static void legion_wmi_fm_master_unbind(struct device *dev)
 {
 	struct legion_wmi_fm_priv *priv = dev_get_drvdata(dev);
 
+	legion_hwmon_fm_unregister_notifier(&priv->hwmon_nb);
 	legion_wmi_fm_sysfs_exit(priv);
 
 	component_unbind_all(dev, NULL);
@@ -191,9 +189,6 @@ static int legion_fm_other_probe(struct wmi_device *wdev, const void *context)
 
 	priv->wdev = wdev;
 
-	/* Initialize completion */
-	init_completion(&priv->bind_complete);
-
 	dev_set_drvdata(&wdev->dev, priv);
 
 	component_match_add(&wdev->dev, &master_match, legion_wmi_ftable_match,
@@ -201,20 +196,12 @@ static int legion_fm_other_probe(struct wmi_device *wdev, const void *context)
 	if (IS_ERR(master_match))
 		return (int)PTR_ERR(master_match);
 
-	/* Register as a component master (for cd01/dd components) */
-	const int ret = component_master_add_with_match(
+	/*
+	 * Component master of the fan table: bound when it is probed (registered before the fan method by
+	 * module_init, so at once)
+	 */
+	return component_master_add_with_match(
 		&wdev->dev, &legion_wmi_fm_master_ops, master_match);
-	if (ret)
-		return ret;
-
-	/* Wait for binding to complete (with timeout) */
-	if (!wait_for_completion_timeout(&priv->bind_complete,
-					 msecs_to_jiffies(5000))) {
-		component_master_del(&wdev->dev, &legion_wmi_fm_master_ops);
-		return -ETIMEDOUT;
-	}
-
-	return 0;
 }
 
 static void legion_fm_other_remove(struct wmi_device *wdev)
@@ -233,7 +220,7 @@ static struct wmi_driver legion_fm_other_driver = {
 	.no_singleton = true,
 };
 
-int legion_wmi_fm_driver_init(struct device *parent)
+int legion_wmi_fm_driver_init(void)
 {
 	return wmi_driver_register(&legion_fm_other_driver);
 }
@@ -243,4 +230,4 @@ void legion_wmi_fm_driver_exit(void)
 	wmi_driver_unregister(&legion_fm_other_driver);
 }
 
-MODULE_DEVICE_TABLE(acpi, legion_fm_other_id_table);
+MODULE_DEVICE_TABLE(wmi, legion_fm_other_id_table);

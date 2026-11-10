@@ -21,7 +21,7 @@ int legion_wmi_events_unregister_notifier(struct notifier_block *nb);
 int devm_legion_wmi_events_register_notifier(struct device *dev,
 					     struct notifier_block *nb);
 
-int legion_wmi_events_driver_init(struct device *parent);
+int legion_wmi_events_driver_init(void);
 void legion_wmi_events_driver_exit(void);
 
 #endif /* LEGION_WMI_EVENTS_H_ */

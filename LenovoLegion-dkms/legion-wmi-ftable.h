@@ -28,7 +28,7 @@ int legion_wmi_ftable_get_data(struct legion_wmi_ftable_list *list, u16 mode,
 			       struct legion_wmi_ftable *output);
 int legion_wmi_ftable_match(struct device *dev, void *data);
 
-int legion_wmi_ftable_driver_init(struct device *parent);
+int legion_wmi_ftable_driver_init(void);
 void legion_wmi_ftable_driver_exit(void);
 
 #endif /* LEGION_WMI_FTABLE_H_ */

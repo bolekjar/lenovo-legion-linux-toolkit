@@ -22,7 +22,7 @@ int legion_wmi_dd_get_data(struct legion_wmi_dd_list *list, u32 attribute_id,
 			   struct legion_wmi_ddata *output, size_t output_len);
 int legion_wmi_dd_match(struct device *dev, void *data);
 
-int legion_wmi_dd_driver_init(struct device *parent);
+int legion_wmi_dd_driver_init(void);
 void legion_wmi_dd_driver_exit(void);
 
 #endif /* LEGION_WMI_DDATA_H_ */

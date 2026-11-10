@@ -106,18 +106,18 @@ struct legion_wmi_other_priv {
 	struct legion_wmi_dd_list *dd_list; /* only valid after ddata bind */
 	struct wmi_device *wdev;
 
-	struct notifier_block hwmon_nb; /* hwmon*/
+	struct notifier_block hwmon_nb; /* source of the hwmon sensors */
+	struct legion_hwmon
+		*hwmon; /* hwmon device, while the components are bound */
 
 	//SysFs
 	struct device *fw_attr_dev;
 	struct kset *fw_attr_kset;
 	int ida_id;
-
-	/* Completion to signal when binding is done */
-	struct completion bind_complete;
 };
 
 struct device;
+struct legion_hwmon;
 struct notifier_block;
 
 int legion_wmi_other_notifier_call(
@@ -126,7 +126,7 @@ int legion_wmi_other_notifier_call(
 int devm_lenovo_wmi_other_register_notifier(struct device *dev,
 					    struct notifier_block *nb);
 
-int legion_wmi_other_driver_init(struct device *dev);
+int legion_wmi_other_driver_init(void);
 void legion_wmi_other_driver_exit(void);
 
 #endif

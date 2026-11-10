@@ -8,7 +8,6 @@
 
 #include "legion-hwmon.h"
 #include "legion-wmi-other.h"
-#include "legion-common.h"
 #include "legion-wmi-fm.h"
 #include "legion-wmi-gamezone.h"
 #include "legion-wmi-capdata00.h"
@@ -19,37 +18,20 @@
 #include <linux/sysfs.h>
 #include <linux/notifier.h>
 #include <linux/component.h>
+#include <linux/err.h>
+#include <linux/slab.h>
 
 static BLOCKING_NOTIFIER_HEAD(legion_hwmon_chain_head);
 static BLOCKING_NOTIFIER_HEAD(legion_hwmon_fm_chain_head);
 
-static int legion_hwmon_other_register_notifier_dev(struct notifier_block *nb)
+int legion_hwmon_other_register_notifier(struct notifier_block *nb)
 {
 	return blocking_notifier_chain_register(&legion_hwmon_chain_head, nb);
 }
 
-static int legion_hwmon_other_unregister_notifier_dev(struct notifier_block *nb)
+void legion_hwmon_other_unregister_notifier(struct notifier_block *nb)
 {
-	return blocking_notifier_chain_unregister(&legion_hwmon_chain_head, nb);
-}
-
-static void legion_hwmon_wmi_other_unregister_notifier(void *data)
-{
-	struct notifier_block *const nb = data;
-
-	legion_hwmon_other_unregister_notifier_dev(nb);
-}
-
-int legion_hwmon_other_register_notifier(struct device *dev,
-					 struct notifier_block *nb)
-{
-	const int ret = legion_hwmon_other_register_notifier_dev(nb);
-
-	if (ret < 0)
-		return ret;
-
-	return devm_add_action_or_reset(
-		dev, legion_hwmon_wmi_other_unregister_notifier, nb);
+	blocking_notifier_chain_unregister(&legion_hwmon_chain_head, nb);
 }
 
 static ssize_t legion_hwmon_other_notifier_call(void *data,
@@ -81,35 +63,15 @@ legion_hwmon_other_data00_notifier_call(void *data,
 	return 0;
 }
 
-static int legion_hwmon_fm_register_notifier_dev(struct notifier_block *nb)
+int legion_hwmon_fm_register_notifier(struct notifier_block *nb)
 {
 	return blocking_notifier_chain_register(&legion_hwmon_fm_chain_head,
 						nb);
 }
 
-static int legion_hwmon_fm_unregister_notifier_dev(struct notifier_block *nb)
+void legion_hwmon_fm_unregister_notifier(struct notifier_block *nb)
 {
-	return blocking_notifier_chain_unregister(&legion_hwmon_fm_chain_head,
-						  nb);
-}
-
-static void legion_hwmon_fm_unregister_notifier(void *data)
-{
-	struct notifier_block *const nb = data;
-
-	legion_hwmon_fm_unregister_notifier_dev(nb);
-}
-
-int legion_hwmon_fm_register_notifier(struct device *dev,
-				      struct notifier_block *nb)
-{
-	const int ret = legion_hwmon_fm_register_notifier_dev(nb);
-
-	if (ret < 0)
-		return ret;
-
-	return devm_add_action_or_reset(
-		dev, legion_hwmon_fm_unregister_notifier, nb);
+	blocking_notifier_chain_unregister(&legion_hwmon_fm_chain_head, nb);
 }
 
 static int legion_hwmon_fm_notifier_call(void *data,
@@ -129,6 +91,12 @@ static int legion_hwmon_fm_notifier_call(void *data,
  * Fans: input from the other mode, max from the fan method, min is 0 (no data).
  */
 #define LEGION_HWMON_CHANNELS 3
+
+struct legion_hwmon {
+	struct device *dev;
+	u8 temperatures; /* supported temperature channels (bits) */
+	u8 fans; /* supported fan channels (bits) */
+};
 
 static const enum CapabilityID temperature_ids[LEGION_HWMON_CHANNELS] = {
 	CpuCurrentTemperature, GpuCurrentTemperature, SysCurrentTemperature
@@ -155,16 +123,16 @@ static umode_t legion_hwmon_is_visible(const void *drvdata,
 				       enum hwmon_sensor_types type, u32 attr,
 				       int channel)
 {
-	const struct legion_data *data = drvdata;
+	const struct legion_hwmon *hwmon = drvdata;
 
 	if (channel < 0 || channel >= LEGION_HWMON_CHANNELS)
 		return 0;
 
 	switch (type) {
 	case hwmon_temp:
-		return data->hwmon_temperatures & BIT(channel) ? 0444 : 0;
+		return hwmon->temperatures & BIT(channel) ? 0444 : 0;
 	case hwmon_fan:
-		return data->hwmon_fans & BIT(channel) ? 0444 : 0;
+		return hwmon->fans & BIT(channel) ? 0444 : 0;
 	default:
 		return 0;
 	}
@@ -275,43 +243,45 @@ static int legion_hwmon_supported(const enum CapabilityID ids[], u8 *mask)
 }
 
 /*
- * Not device managed: the hwmon device is removed before the WMI drivers it reads (legion_remove)
+ * Registered by the other mode when its components are bound, unregistered before they are unbound (not device
+ * managed: bind/unbind may repeat while the other mode device stays)
  */
-int legion_hwmon_init(struct device *parent)
+struct legion_hwmon *legion_hwmon_register(struct device *parent)
 {
-	struct legion_data *data = dev_get_drvdata(parent);
+	struct legion_hwmon *hwmon;
 	int err;
 
-	if (!data)
-		return -ENODEV;
+	hwmon = kzalloc(sizeof(*hwmon), GFP_KERNEL);
+	if (!hwmon)
+		return ERR_PTR(-ENOMEM);
 
-	err = legion_hwmon_supported(temperature_ids,
-				     &data->hwmon_temperatures);
+	err = legion_hwmon_supported(temperature_ids, &hwmon->temperatures);
 	if (err)
-		return err;
+		goto err_free;
 
-	err = legion_hwmon_supported(fan_ids, &data->hwmon_fans);
+	err = legion_hwmon_supported(fan_ids, &hwmon->fans);
 	if (err)
-		return err;
+		goto err_free;
 
-	data->hwmon_dev = hwmon_device_register_with_info(
-		parent, "legion", data, &legion_hwmon_chip_info, NULL);
-	if (IS_ERR(data->hwmon_dev)) {
-		err = (int)PTR_ERR(data->hwmon_dev);
-		data->hwmon_dev = NULL;
-		return err;
+	hwmon->dev = hwmon_device_register_with_info(
+		parent, "legion", hwmon, &legion_hwmon_chip_info, NULL);
+	if (IS_ERR(hwmon->dev)) {
+		err = PTR_ERR(hwmon->dev);
+		goto err_free;
 	}
 
-	return 0;
+	return hwmon;
+
+err_free:
+	kfree(hwmon);
+	return ERR_PTR(err);
 }
 
-void legion_hwmon_exit(const struct device *parent)
+void legion_hwmon_unregister(struct legion_hwmon *hwmon)
 {
-	struct legion_data *data = dev_get_drvdata(parent);
-
-	if (!data || !data->hwmon_dev)
+	if (IS_ERR_OR_NULL(hwmon))
 		return;
 
-	hwmon_device_unregister(data->hwmon_dev);
-	data->hwmon_dev = NULL;
+	hwmon_device_unregister(hwmon->dev);
+	kfree(hwmon);
 }

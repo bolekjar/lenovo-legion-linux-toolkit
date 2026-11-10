@@ -9,7 +9,7 @@ DKMS_DIR := /usr/src/LenovoLegion-$(VERSION)
 BUILD_DIR := $(CURDIR)/build
 
 obj-m := lenovo_legion.o
-lenovo_legion-objs := legion-dkms.o legion-common.o legion-firmware-attributes-class.o legion-compatibility.o legion-machine-information.o \
+lenovo_legion-objs := legion-dkms.o legion-firmware-attributes-class.o \
 					  legion-wmi-helpers.o legion-wmi-events.o legion-wmi-gamezone.o legion-wmi-gamezone-sysfs.o legion-wmi-capdata01.o legion-wmi-ddata.o legion-wmi-other.o \
 					  legion-wmi-other-sysfs.o legion-hwmon.o legion-wmi-ftable.o legion-wmi-fm.o legion-wmi-fm-sysfs.o legion-wmi-capdata00.o
 

@@ -9,20 +9,9 @@
 #ifndef LEGION_COMMON_H
 #define LEGION_COMMON_H
 
-#include "legion-machine-information.h"
-
-#include <linux/device.h>
-
 /*
- * Data of the platform device (VPC2004)
+ * Event types of the kernel uevents (EVENT_TYPE) and of the notifier chains of the driver
  */
-struct legion_data {
-	struct machine_information machine_info; /* DMI, compatibility check */
-	struct device *hwmon_dev;
-	u8 hwmon_temperatures; /* supported temperature channels (bits) */
-	u8 hwmon_fans; /* supported fan channels (bits) */
-};
-
 enum legion_events_type {
 
 	/*
@@ -70,8 +59,5 @@ enum legion_events_type {
 	 * 2001 - 2005: Intel MSR events of the separate module legion_intel_msr (legion-intel-msr-sysfs.h)
 	 */
 };
-
-int legion_data_init(struct legion_data *data);
-void legion_data_exit(struct legion_data *data);
 
 #endif // LEGION_COMMON_H
