@@ -1,29 +1,29 @@
-# LenovoLegion-Daemon – framework a moduly
+# LenovoLegion-Daemon – framework and modules
 
-Stav: návrh, v kódu zatím nic nezměněno.
+State: design, nothing changed in the code yet.
 
-Cíl: z daemona udělat **obecný framework** (protokol, autorizace, načítání modulů, životní cyklus, udev, nastavení, logování, izolace chyb), který nezná žádný konkrétní hardware. Veškerá znalost hardwaru (dnes `SysFsDrivers/`, `SysFsDataProviders/`, `DataProviders/`) bude v **modulech**, které jsou na frameworku i na sobě navzájem co nejvíc nezávislé. Výsledkem má být robustnější systém: chyba jednoho modulu neovlivní ostatní ani spojení s GUI.
+Goal: turn the daemon into a **generic framework** (protocol, authorization, loading of modules, life cycle, udev, settings, logging, fault isolation) that knows no specific hardware. All the knowledge of the hardware (today `SysFsDrivers/`, `SysFsDataProviders/`, `DataProviders/`) will be in **modules**, which are as independent of the framework and of each other as possible. The result should be a more robust system: an error of one module does not affect the others nor the connection with the GUI.
 
 ---
 
-## 1. Současný stav
+## 1. Current state
 
-**Drivery (16)** dědí z `SysFsDriver`. Provider s nimi komunikuje dvěma způsoby:
+**Drivers (16)** inherit from `SysFsDriver`. A provider communicates with them in two ways:
 
-- **Za běhu jen přes název:** `SysFsDriverManager::getDriverDesriptor(DRIVER_NAME)` vrátí mapu `název → cesta v sysfs`.
-- **Při překladu přes hlavičku driveru:** pomocná struktura (např. `SysFsDriverLegionIntelMSR::IntelMSR`) postavená z té mapy, výčty událostí a `DRIVER_NAME`.
+- **At run time only by the name:** `SysFsDriverManager::getDriverDesriptor(DRIVER_NAME)` returns the map `name → path in sysfs`.
+- **At compile time by the header of the driver:** a helper structure (e.g. `SysFsDriverLegionIntelMSR::IntelMSR`) built from that map, enums of the events and `DRIVER_NAME`.
 
-Driver je v podstatě držák cest v sysfs a reakce na udev události. Samostatně nemá smysl, vždy ho používá nějaký provider.
+A driver is basically a holder of the sysfs paths and a reaction to the udev events. It makes no sense on its own, some provider always uses it.
 
-**Providery (17 sysfs a 3 ostatní)** dědí z `DataProvider`:
+**Providers (17 sysfs and 3 others)** inherit from `DataProvider`:
 
-- rozhraní tvoří `serializeAndGetData`, `deserializeAndSetData`, `init`, `clean` a `kernelEventHandler`,
-- identifikuje je `dataType` z centrálního `MessageRegistry.proto`,
-- od driver manageru používají jen `getDriverDesriptor`, `getDriverDescriptorsInVector`, `blockKernelEvent`, `refreshDriver` a `processAllUdevEvents`.
+- the interface consists of `serializeAndGetData`, `deserializeAndSetData`, `init`, `clean` and `kernelEventHandler`,
+- they are identified by `dataType` from the central `MessageRegistry.proto`,
+- from the driver manager they use only `getDriverDesriptor`, `getDriverDescriptorsInVector`, `blockKernelEvent`, `refreshDriver` and `processAllUdevEvents`.
 
-**Závislosti providerů na driverech:**
+**Dependencies of the providers on the drivers:**
 
-| Provider | Drivery |
+| Provider | Drivers |
 |---|---|
 | Battery | LegionGameZone, PowerSuplyBattery0 |
 | CPUFrequency | CPUXList |
@@ -42,159 +42,159 @@ Driver je v podstatě držák cest v sysfs a reakce na udev události. Samostatn
 | Other | LegionEvents, LegionGameZone |
 | OtherGpuSwitch | LegionGameZone |
 | PowerProfile | LegionGameZone, LegionOther |
-| *RGBController* | *LegionEvents (události)* |
-| *NvidiaNvml, DaemonSettings* | *žádný driver* |
+| *RGBController* | *LegionEvents (events)* |
+| *NvidiaNvml, DaemonSettings* | *no driver* |
 
-`SysFsDriverACPIPlatformProfile` se jen registruje v `Application`, žádný provider ani notifier ho nepoužívá. Kandidát na odstranění.
+`SysFsDriverACPIPlatformProfile` is only registered in `Application`, no provider or notifier uses it. A candidate for removal.
 
-**Framework už teď skoro nezávisí na obsahu zpráv.** `ProtocolProcessor` posílá payload jako neprůhledné bajty a směruje ho jen podle `dataType`. Jediná místa, která znají konkrétní hardware nebo zprávy:
+**The framework already hardly depends on the content of the messages.** `ProtocolProcessor` sends the payload as opaque bytes and routes it only by `dataType`. The only places that know specific hardware or messages:
 
-1. **`Application` (konstruktor):** natvrdo registruje 16 driverů a 20 providerů.
-2. **`ProtocolProcessorNotifier`:** převádí události 6 konkrétních driverů a 2 providerů na zprávu `Notification`.
-3. **`DaemonSettingsManager` a `Settings.h`/`Settings.cpp`:** 27 tříd pro načtení a uložení nastavení, jedna pro každý provider, a pevné pořadí aplikace (nejdřív power profile, některé jen v režimu custom).
-4. **Centrální `.proto` v `LenovoLegion-PrepareBuild`:** všechny zprávy, výčet `DataType` a výčet akcí v `Notification`.
+1. **`Application` (constructor):** hard-codes the registration of 16 drivers and 20 providers.
+2. **`ProtocolProcessorNotifier`:** converts the events of 6 specific drivers and 2 providers to the message `Notification`.
+3. **`DaemonSettingsManager` and `Settings.h`/`Settings.cpp`:** 27 classes for loading and saving the settings, one for every provider, and a fixed order of application (the power profile first, some only in the custom mode).
+4. **Central `.proto` in `LenovoLegion-PrepareBuild`:** all messages, the enum `DataType` and the enum of the actions in `Notification`.
 
-**BJLibs už modulový mechanismus má:**
+**BJLibs already has a module mechanism:**
 
-- `ApplicationModulesLoader` načítá `.so` z adresáře `modules/` přes `QLibrary` a funkce `extern "C"` hledá podle názvu,
-- makra `APPLICATION_PLUGIN_DEF`/`DEC` deklarují factory funkce,
-- `appInitImpl` dostane `ApplicationModulesHandler`, ale daemon ho zatím ignoruje.
+- `ApplicationModulesLoader` loads `.so` from the directory `modules/` by `QLibrary` and looks up the `extern "C"` functions by name,
+- the macros `APPLICATION_PLUGIN_DEF`/`DEC` declare the factory functions,
+- `appInitImpl` gets `ApplicationModulesHandler`, but the daemon ignores it so far.
 
 ---
 
-## 2. Framework a moduly
+## 2. Framework and modules
 
-### 2.1 Rozdělení odpovědnosti
+### 2.1 Split of responsibilities
 
-| Framework (daemon) | Modul |
+| Framework (daemon) | Module |
 |---|---|
-| socket, protokol, autorizace (skupina `legion`) | znalost hardwaru (sysfs, HID, NVML) |
-| načtení a ověření modulů (vlastník, práva, ABI) | vlastní `.proto` zprávy |
-| životní cyklus, pořadí, závislosti | čtení a zápis hodnot, kontrola rozsahu |
-| udev monitor a rozesílání událostí | reakce na události, vlastní notifikace |
-| úložiště nastavení (per modul) | obsah a formát vlastního nastavení |
+| socket, protocol, authorization (group `legion`) | knowledge of the hardware (sysfs, HID, NVML) |
+| loading and verification of the modules (owner, permissions, ABI) | own `.proto` messages |
+| life cycle, order, dependencies | reading and writing of the values, range checks |
+| udev monitor and dispatch of the events | reaction to the events, own notifications |
+| settings storage (per module) | content and format of its own settings |
 | logger | |
-| systémové služby sdílené více moduly (seznam CPU, Legion WMI atributy) | |
-| izolace chyb (výjimka → vypnutí modulu, ne pád daemona) | |
+| system services shared by several modules (list of CPUs, Legion WMI attributes) | |
+| fault isolation (exception → module disabled, not a crash of the daemon) | |
 
-Framework nezná žádnou zprávu modulu. Pracuje jen s názvem modulu a neprůhlednými bajty.
+The framework knows no message of a module. It works only with the name of the module and opaque bytes.
 
-### 2.2 Feature moduly místo samostatných driverů
+### 2.2 Feature modules instead of separate drivers
 
-Modul = **jedna funkce** (dnešní provider) **včetně svých driverů**. Driver, který používá jen jeden provider, se stane vnitřním detailem modulu a ven se nedostane. Mezi moduly pak nejsou závislosti při překladu.
+Module = **one feature** (today's provider) **including its drivers**. A driver used by one provider only becomes an internal detail of the module and does not leak outside. There are then no compile-time dependencies between the modules.
 
-Drivery sdílené více providery se stanou **systémovými službami frameworku**. Moduly je používají přes rozhraní SDK, ne přes hlavičky jiných modulů:
+Drivers shared by several providers become **system services of the framework**. The modules use them through the SDK interface, not through the headers of other modules:
 
-| Sdílený driver | Používají | Služba frameworku |
+| Shared driver | Used by | Framework service |
 |---|---|---|
-| CPUXList | CPUFrequency, CPUOptions, CPUSMT, HWMon | `ICpuList` – seznam CPU a jejich sysfs cesty |
-| CPU | CPUSMT, CPUTopology | součást `ICpuList` |
-| LegionOther | CPUPower, FanOption, GPUPower, PowerProfile | `ILegionAttributes` – Legion WMI atributy (other) |
-| LegionGameZone | Battery, Other, OtherGpuSwitch, PowerProfile | součást `ILegionAttributes` (gamezone) |
-| LegionEvents | Other, RGBController | `ILegionEvents` – WMI události firmwaru |
+| CPUXList | CPUFrequency, CPUOptions, CPUSMT, HWMon | `ICpuList` – list of the CPUs and their sysfs paths |
+| CPU | CPUSMT, CPUTopology | part of `ICpuList` |
+| LegionOther | CPUPower, FanOption, GPUPower, PowerProfile | `ILegionAttributes` – Legion WMI attributes (other) |
+| LegionGameZone | Battery, Other, OtherGpuSwitch, PowerProfile | part of `ILegionAttributes` (gamezone) |
+| LegionEvents | Other, RGBController | `ILegionEvents` – WMI events of the firmware |
 
-Systémové služby jsou obecné pro Legion notebooky a Linux, ne pro jednu funkci, proto patří do frameworku.
+The system services are generic for Legion notebooks and Linux, not for one feature, therefore they belong to the framework.
 
-### 2.3 Vlastní zprávy a dynamický `dataType`
+### 2.3 Own messages and a dynamic `dataType`
 
-- Každý modul má **vlastní `.proto`**. Zprávu zná jen modul a GUI, framework ne.
-- `dataType` už není centrální výčet. Modul se identifikuje **názvem** (`"IntelMSR"`) a framework mu při startu přidělí číslo (`quint8`, formát hlavičky zprávy se nemění).
-- GUI se při připojení zeptá novým požadavkem `LIST_MODULES` na seznam `{název, dataType, verze}` a dál pracuje s přidělenými čísly.
-- Nový modul tak nevyžaduje změnu frameworku ani protokolu.
-- Přechodně může framework přidělovat čísla podle dnešního `MessageRegistry.proto`, aby staré GUI fungovalo dál.
+- Every module has its **own `.proto`**. The message is known only to the module and the GUI, not to the framework.
+- `dataType` is no longer a central enum. A module is identified by its **name** (`"IntelMSR"`) and the framework assigns it a number at start (`quint8`, the format of the message header does not change).
+- On connection the GUI asks with the new request `LIST_MODULES` for the list `{name, dataType, version}` and then works with the assigned numbers.
+- A new module therefore needs no change of the framework or the protocol.
+- Temporarily the framework may assign the numbers by today's `MessageRegistry.proto`, so that the old GUI keeps working.
 
-### 2.4 Nastavení
+### 2.4 Settings
 
-- Framework poskytne modulu **vlastní úložiště**: skupinu `[IntelMSR]` v `QSettings`, nebo samostatný soubor `data/modules/IntelMSR.ini`.
-- Formát a obsah určuje modul. Z `Settings.cpp`/`Settings.h` se stane 20 malých kusů v modulech.
-- Framework si ponechá jen **pořadí aplikace** a podmínku **„jen v custom profilu“** (`SettingsPolicy`).
+- The framework gives a module its **own storage**: the group `[IntelMSR]` in `QSettings`, or a separate file `data/modules/IntelMSR.ini`.
+- The module determines the format and the content. `Settings.cpp`/`Settings.h` become 20 small pieces in the modules.
+- The framework keeps only the **order of application** and the condition **"only in the custom profile"** (`SettingsPolicy`).
 
-### 2.5 Notifikace
+### 2.5 Notifications
 
-- `Notification.proto` dnes obsahuje centrální výčet akcí.
-- Ve frameworku bude obecná notifikace `{modul, payload}`. Payload je zpráva definovaná modulem. Framework ji jen přepošle a GUI si ji vyloží podle modulu.
-- Převod události na notifikaci (dnes v `ProtocolProcessorNotifier`) se přesune do modulu, který událost logicky vlastní.
+- `Notification.proto` contains a central enum of the actions today.
+- The framework will have a generic notification `{module, payload}`. The payload is a message defined by the module. The framework only forwards it and the GUI interprets it by the module.
+- The conversion of an event to a notification (today in `ProtocolProcessorNotifier`) moves to the module that logically owns the event.
 
-### 2.6 Izolace chyb a robustnost
+### 2.6 Fault isolation and robustness
 
-Modul v `.so` běží **ve stejném procesu** jako framework:
+A module in a `.so` runs **in the same process** as the framework:
 
-| Chyba v modulu | `.so` v procesu daemona | Modul jako samostatný proces |
+| Error in a module | `.so` in the daemon process | Module as a separate process |
 |---|---|---|
-| Výjimka | framework ji zachytí, modul vypne, zbytek běží | stejné |
-| Segfault, `abort`, nekonečná smyčka | **spadne nebo zamrzne celý daemon** | spadne jen modul, framework ho restartuje |
-| Poškození paměti | ovlivní celý daemon | jen modul |
-| Únik paměti nebo fd | celý daemon | jen modul |
+| Exception | the framework catches it, disables the module, the rest runs | the same |
+| Segfault, `abort`, infinite loop | **the whole daemon crashes or hangs** | only the module crashes, the framework restarts it |
+| Memory corruption | affects the whole daemon | only the module |
+| Memory or fd leak | the whole daemon | only the module |
 
-Pravidla pro moduly v `.so`:
+Rules for the modules in a `.so`:
 
-- Framework obalí **každé volání modulu** (`init`, get, set, událost, nastavení) do `try/catch`.
-- Výjimka z get/set: framework odpoví klientovi chybou a spojení **neukončí** (dnes `Application::notify()` odpojí GUI).
-- Opakované chyby nebo chyba v `init`: framework modul **vypne** (stav `FAILED`), zaloguje to a ostatní moduly běží dál. GUI se o stavu dozví z `LIST_MODULES`.
-- Výjimka nesmí projít kódem Qt (signál/slot), to je nedefinované chování. Framework proto volá moduly přímo, ne přes sloty.
+- The framework wraps **every call of a module** (`init`, get, set, event, settings) in `try/catch`.
+- An exception from get/set: the framework answers the client with an error and **does not close** the connection (today `Application::notify()` disconnects the GUI).
+- Repeated errors or an error in `init`: the framework **disables** the module (state `FAILED`), logs it and the other modules keep running. The GUI learns the state from `LIST_MODULES`.
+- An exception must not pass through Qt code (signal/slot), that is undefined behavior. The framework therefore calls the modules directly, not through slots.
 
-Opravdovou izolaci pádů dají jen moduly jako **samostatné procesy**: framework je spouští a komunikuje s nimi přes socketpair stejným protokolem, jaký už existuje. Je to výrazně složitější, ale dává smysl pro rizikové části s cizím kódem:
+Real isolation of crashes is given only by modules as **separate processes**: the framework starts them and communicates with them over a socketpair by the same protocol that already exists. It is considerably more complex, but it makes sense for the risky parts with foreign code:
 
-- **NVML** (proprietární `libnvidia-ml`),
-- **RGB/HID** (`hidapi`, komunikace s klávesnicí).
+- **NVML** (proprietary `libnvidia-ml`),
+- **RGB/HID** (`hidapi`, communication with the keyboard).
 
-Doporučený kompromis: sysfs moduly jako `.so` s izolací výjimek, NVML a RGB později jako samostatné procesy. API modulu (kap. 4) je navržené tak, aby šlo za stejné rozhraní schovat i modul v jiném procesu.
+Recommended compromise: sysfs modules as `.so` with exception isolation, NVML and RGB later as separate processes. The module API (ch. 4) is designed so that a module in another process can be hidden behind the same interface.
 
 ---
 
-## 3. Architektura
+## 3. Architecture
 
 ```
-LenovoLegion-Daemon                (framework: protokol, autorizace, moduly, udev, nastavení, izolace chyb)
- ├─ libLenovoLegionDaemonSDK.so    rozhraní modulu, IModuleHost, systémové služby (ICpuList,
+LenovoLegion-Daemon                (framework: protocol, authorization, modules, udev, settings, fault isolation)
+ ├─ libLenovoLegionDaemonSDK.so    module interface, IModuleHost, system services (ICpuList,
  │                                 ILegionAttributes, ILegionEvents), SysFsDriver, logger
- ├─ libBJLibs.so                   sdílená (logger, výjimky – viz kap. 6)
- └─ modules/                       root:root 0755, každý .so root:root 0644
-     ├─ libModuleIntelMSR.so       + IntelMSR.proto, interní driver LegionIntelMSR
-     ├─ libModuleHWMon.so          + HWMon.proto, interní drivery IntelPowercapRapl, LegionHWMon
-     ├─ libModuleNvidiaNvml.so     (volitelný, jediný linkuje libnvidia-ml)
-     ├─ libModuleRGBController.so  (volitelný, jediný linkuje hidapi)
+ ├─ libBJLibs.so                   shared (logger, exceptions – see ch. 6)
+ └─ modules/                       root:root 0755, every .so root:root 0644
+     ├─ libModuleIntelMSR.so       + IntelMSR.proto, internal driver LegionIntelMSR
+     ├─ libModuleHWMon.so          + HWMon.proto, internal drivers IntelPowercapRapl, LegionHWMon
+     ├─ libModuleNvidiaNvml.so     (optional, the only one linking libnvidia-ml)
+     ├─ libModuleRGBController.so  (optional, the only one linking hidapi)
      └─ ...
 ```
 
-Zprávy modulů se překládají do knihovny modulu (`libModuleX.so`) a GUI. Žádná zpráva není ve více `.so` zároveň (viz kap. 6, bod 2).
+The messages of the modules are compiled into the library of the module (`libModuleX.so`) and the GUI. No message is in more than one `.so` (see ch. 6, item 2).
 
 ---
 
-## 4. API modulu
+## 4. Module API
 
-### 4.1 Identifikace modulu
+### 4.1 Identification of a module
 
 ```cpp
 // LenovoLegionDaemonSDK/ModuleApi.h
 namespace LenovoLegionDaemon::Module {
 
-constexpr uint32_t ABI_VERSION = 2;          // zvýšit při každé nekompatibilní změně SDK (2: onKernelModule, kernelModuleWaiting)
+constexpr uint32_t ABI_VERSION = 2;          // increment on every incompatible change of the SDK (2: onKernelModule, kernelModuleWaiting)
 
 struct Info {
-    uint32_t            abiVersion;          // musí odpovídat ABI_VERSION frameworku
-    const char*         name;                // "IntelMSR" – unikátní identifikace modulu
-    const char*         version;             // verze modulu
-    const char* const*  requiredServices;    // pole zakončené nullptr, např. {"CpuList", nullptr}
+    uint32_t            abiVersion;          // must match ABI_VERSION of the framework
+    const char*         name;                // "IntelMSR" – unique identification of the module
+    const char*         version;             // version of the module
+    const char* const*  requiredServices;    // nullptr terminated array, e.g. {"CpuList", nullptr}
 };
 
 }
 
-/* Exportované symboly, hledá je ApplicationModulesLoader */
+/* Exported symbols, looked up by ApplicationModulesLoader */
 extern "C" const LenovoLegionDaemon::Module::Info* legion_module_info();
 extern "C" LenovoLegionDaemon::IModule*            legion_module_create(LenovoLegionDaemon::IModuleHost& host);
 extern "C" void                                    legion_module_destroy(LenovoLegionDaemon::IModule* module);
 ```
 
-Framework načte `legion_module_info()` dřív, než cokoli vytvoří:
+The framework loads `legion_module_info()` before it creates anything:
 
-- při jiném `abiVersion` modul odmítne,
-- modul se jménem, které už je načtené, odmítne,
-- modul, kterému chybí služba z `requiredServices`, nevytvoří (jen zaloguje).
+- with a different `abiVersion` it refuses the module,
+- it refuses a module with a name that is already loaded,
+- it does not create a module that misses a service from `requiredServices` (only logs it).
 
-`legion_module_destroy` uvolní modul ve stejné knihovně, ve které vznikl (alokátor a typy z jednoho `.so`).
+`legion_module_destroy` frees the module in the same library in which it was created (allocator and types from one `.so`).
 
-### 4.2 Rozhraní modulu
+### 4.2 Module interface
 
 ```cpp
 // LenovoLegionDaemonSDK/IModule.h
@@ -202,33 +202,33 @@ class IModule {
 public:
     virtual ~IModule() = default;
 
-    /* Lifecycle – výjimka z init → modul FAILED, ostatní běží */
+    /* Lifecycle – exception from init → module FAILED, the others run */
     virtual void init()  = 0;
     virtual void clean() = 0;
 
-    /* Data – payload je zpráva modulu (protobuf), framework ji nezná */
+    /* Data – the payload is a message of the module (protobuf), the framework does not know it */
     virtual QByteArray get(const QByteArray& request) = 0;
     virtual QByteArray set(const QByteArray& request) = 0;
 
-    /* Kernel events – udev filtr si modul registruje přes host, framework mu předá jen jeho události */
+    /* Kernel events – the module registers its udev filter through the host, the framework passes it only its events */
     virtual void onKernelEvent(const KernelEvent& event) {}
 
-    /* Kernel modul načten (až mají všechny moduly připravené jeho drivery) / odebrán (hned), jen moduly s filtrem "module" */
+    /* Kernel module loaded (once all modules have its drivers ready) / removed (at once), only modules with the filter "module" */
     virtual void onKernelModule(const QString& name, bool loaded) {}
 
     /* Settings */
     struct SettingsPolicy {
-        int  order      = 100;    // pořadí aplikace při startu (PowerProfile = 0)
-        bool customOnly = false;  // aplikovat jen při uloženém CUSTOM profilu (FanCurve, CPUPower, GPUPower)
-        bool persistent = false;  // modul ukládá nastavení
+        int  order      = 100;    // order of application at start (PowerProfile = 0)
+        bool customOnly = false;  // apply only with a saved CUSTOM profile (FanCurve, CPUPower, GPUPower)
+        bool persistent = false;  // the module saves settings
     };
     virtual SettingsPolicy settingsPolicy() const          { return {}; }
-    virtual void loadSettings(ISettingsStorage& storage)   {}   // načti uložené a aplikuj
-    virtual void saveSettings(ISettingsStorage& storage)   {}   // přečti stav a ulož
+    virtual void loadSettings(ISettingsStorage& storage)   {}   // load the saved settings and apply them
+    virtual void saveSettings(ISettingsStorage& storage)   {}   // read the state and save it
 };
 ```
 
-### 4.3 Rozhraní frameworku pro modul
+### 4.3 Framework interface for a module
 
 ```cpp
 // LenovoLegionDaemonSDK/IModuleHost.h
@@ -236,16 +236,16 @@ class IModuleHost {
 public:
     virtual ~IModuleHost() = default;
 
-    /* Logging (sdílený logger frameworku, viz kap. 6 bod 1) */
+    /* Logging (shared logger of the framework, see ch. 6 item 1) */
     virtual ILogger& logger() = 0;
 
     /* Kernel events */
     virtual void addKernelEventFilter(const KernelEvent::Filter& filter) = 0;
-    virtual void blockKernelEvents(bool block) = 0;                     // jen události tohoto modulu
+    virtual void blockKernelEvents(bool block) = 0;                     // only the events of this module
     virtual void processPendingKernelEvents(int timeoutInMiliseconds) = 0;
-    virtual void kernelModuleWaiting(const QString& kernelModule, bool waiting) = 0;  // modul ještě inicializuje drivery kernel modulu
+    virtual void kernelModuleWaiting(const QString& kernelModule, bool waiting) = 0;  // the module is still initializing the drivers of the kernel module
 
-    /* Notification to clients – payload je zpráva modulu */
+    /* Notification to clients – the payload is a message of the module */
     virtual void notify(const QByteArray& payload) = 0;
 
     /* Shared system services */
@@ -255,28 +255,28 @@ public:
 };
 ```
 
-Modul nedostane `SysFsDriverManager`, `DataProviderManager` ani jiný modul. Vidí jen `IModuleHost`.
+The module does not get `SysFsDriverManager`, `DataProviderManager` nor another module. It sees only `IModuleHost`.
 
-### 4.4 Načítání ve frameworku
+### 4.4 Loading in the framework
 
 ```
 appInitImpl(modules):
-  1. ověřit modules/ (root:root, bez zápisu pro skupinu a ostatní), stejně jako prepareSocketDir()
+  1. verify modules/ (root:root, no write for the group and the others), the same as prepareSocketDir()
   2. modules->load()                                      (ApplicationModulesLoader)
-  3. pro každý .so: ověřit vlastníka a práva, legion_module_info() → ABI, jméno, requiredServices
-  4. legion_module_create(host) → přidělit dataType → init() v try/catch (chyba → FAILED)
-  5. načíst nastavení podle settingsPolicy (order, customOnly), každý modul v try/catch
+  3. for every .so: verify the owner and the permissions, legion_module_info() → ABI, name, requiredServices
+  4. legion_module_create(host) → assign dataType → init() in try/catch (error → FAILED)
+  5. load the settings by settingsPolicy (order, customOnly), every module in try/catch
 appStopImpl:
-  uložit nastavení → clean() → legion_module_destroy() všech modulů → až potom modules->unload()
+  save the settings → clean() → legion_module_destroy() of all modules → only then modules->unload()
 ```
 
 ---
 
-## 5. Mapování souborů na moduly
+## 5. Mapping of the files to the modules
 
-**Feature moduly (provider + jeho interní drivery):**
+**Feature modules (provider + its internal drivers):**
 
-| Modul | Z provideru | Interní drivery | Služby frameworku |
+| Module | From the provider | Internal drivers | Framework services |
 |---|---|---|---|
 | `Battery` | SysFsDataProviderBattery | PowerSuplyBattery0 | LegionAttributes |
 | `CPUFrequency` | SysFsDataProviderCPUFrequency | – | CpuList |
@@ -295,256 +295,256 @@ appStopImpl:
 | `Other` | SysFsDataProviderOther | – | LegionAttributes, LegionEvents |
 | `OtherGpuSwitch` | SysFsDataProviderOtherGpuSwitch | – | LegionAttributes |
 | `PowerProfile` | SysFsDataProviderPowerProfile | – | LegionAttributes |
-| `NvidiaNvml` | DataProviderNvidiaNvml | – | – (volitelný, kandidát na samostatný proces) |
-| `RGBController` | DataProviderRGBController + `RGBControlers/` | – | LegionEvents (volitelný, kandidát na samostatný proces) |
+| `NvidiaNvml` | DataProviderNvidiaNvml | – | – (optional, candidate for a separate process) |
+| `RGBController` | DataProviderRGBController + `RGBControlers/` | – | LegionEvents (optional, candidate for a separate process) |
 
 **Framework:**
 
-| Soubory | Kam |
+| Files | Where |
 |---|---|
-| SysFsDriverCPUXList.*, SysFsDriverCPU.* | služba `ICpuList` |
-| SysFsDriverLegionOther.*, SysFsDriverLegionGameZone.* | služba `ILegionAttributes` |
-| SysFsDriverLegionEvents.* | služba `ILegionEvents` |
-| SysFsDriverLegion.h | SDK (společné definice) |
-| DataProviderDaemonSettings.* | framework (nastavení samotného daemona) |
-| SysFsDriverACPIPlatformProfile.* | nikdo nepoužívá – odstranit |
-| Settings.*, DaemonSettingsManager.* | framework jen úložiště a pořadí, obsah do modulů |
-| ProtocolProcessorNotifier.* | framework jen přeposílá `{modul, payload}`, převod do modulů |
+| SysFsDriverCPUXList.*, SysFsDriverCPU.* | service `ICpuList` |
+| SysFsDriverLegionOther.*, SysFsDriverLegionGameZone.* | service `ILegionAttributes` |
+| SysFsDriverLegionEvents.* | service `ILegionEvents` |
+| SysFsDriverLegion.h | SDK (common definitions) |
+| DataProviderDaemonSettings.* | framework (settings of the daemon itself) |
+| SysFsDriverACPIPlatformProfile.* | used by nobody – remove |
+| Settings.*, DaemonSettingsManager.* | framework only the storage and the order, the content to the modules |
+| ProtocolProcessorNotifier.* | framework only forwards `{module, payload}`, the conversion to the modules |
 
-Volitelné moduly `NvidiaNvml` a `RGBController` umožní přeložit a nainstalovat daemon bez CUDA (dnes povinná závislost `cuda` v `PKGBUILD`) a bez `hidapi`.
-
----
-
-## 6. Technické pasti
-
-1. **Logger v každém `.so` zvlášť (ověřeno v kódu).** `LoggerHolder` je šablonový singleton se statickou proměnnou a BJLibs se překládá s `--no-gnu-unique`. Každý modul by tak měl **vlastní, neinicializovaný logger** a první `LOG_*` v modulu by vyhodil výjimku „The log file engine was not initialized“.
-   → Řešení: logger předávat přes `IModuleHost::logger()`, nebo přeložit BJLibs jako sdílenou knihovnu.
-
-2. **Protobuf zprávy ve více `.so`.** Pokud by se stejný `*.pb.cc` přilinkoval do více knihoven, protobuf by zprávy registroval v globálním poolu vícekrát a při načtení druhé knihovny by skončil fatální chybou („File already exists in database“).
-   → Řešení: zpráva modulu je jen v jeho `.so` (a v GUI, což je jiný proces). Sdílené zprávy frameworku (hlavička, `LIST_MODULES`, obecná notifikace) jsou jen v SDK.
-
-3. **Typy výjimek a RTTI přes hranici `.so`.** `DEFINE_EXCEPTION` vytváří typy, které se chytají přes základní třídu `bj::framework::exception::Exception`. Fungovat to bude jen tehdy, když bude základní třída v jedné sdílené knihovně a moduly se přeloží stejným kompilátorem. Framework navíc chytá i `std::exception` a `...`.
-
-4. **Bezpečnost: root daemon načítá `.so`.** Kdo může zapsat do `modules/`, spustí kód jako root.
-   - `modules/` a jeho obsah musí patřit `root:root` s právy `0755`/`0644`, **na rozdíl od** `log/` a `data/`, kam může zapisovat skupina `legion`.
-   - Framework před načtením zkontroluje vlastníka a práva adresáře i každého `.so`.
-   - Do `tmpfiles.d` a `PKGBUILD` to explicitně uvést.
-
-5. **Uvolnění modulů.** Objekty modulu (včetně `QObject`, timerů a spojení signálů) musí zaniknout dřív než `dlclose`. Moduly načíst jednou při startu a uvolnit až po `legion_module_destroy`. `ApplicationModulesLoader::reload()` za běhu nepoužívat.
-
-6. **Výjimky přes Qt.** Výjimka, která projde kódem Qt (signál/slot, `QTimer`), je nedefinované chování. Framework volá metody modulu přímo a každé volání obalí `try/catch`. Moduly s vlastními timery musí výjimky chytat samy (pomůže helper v SDK).
+The optional modules `NvidiaNvml` and `RGBController` allow building and installing the daemon without CUDA (today a mandatory dependency `cuda` in `PKGBUILD`) and without `hidapi`.
 
 ---
 
-## 7. Doporučený postup
+## 6. Technical pitfalls
 
-Každý krok jde přeložit a otestovat samostatně. Kroky 1–4 zlepší robustnost i bez modulů.
+1. **Logger separately in every `.so` (verified in the code).** `LoggerHolder` is a template singleton with a static variable and BJLibs is compiled with `--no-gnu-unique`. Every module would therefore have **its own uninitialized logger** and the first `LOG_*` in a module would throw the exception "The log file engine was not initialized".
+   → Solution: pass the logger through `IModuleHost::logger()`, or build BJLibs as a shared library.
 
-1. **Izolace chyb ve frameworku:** obalit volání providerů do `try/catch`, chybová odpověď místo odpojení klienta (nahrazuje dnešní chování `Application::notify()`).
-2. **Systémové služby:** z `CPUXList`/`CPU`, `LegionOther`/`LegionGameZone` a `LegionEvents` udělat rozhraní `ICpuList`, `ILegionAttributes` a `ILegionEvents` a převést na ně providery.
-3. **Nastavení do providerů:** `SettingsPolicy`, `loadSettings`/`saveSettings`, framework jen úložiště a pořadí. Odstraní 27 tříd v `Settings.h`.
-4. **Notifikace do providerů:** převod událostí z `ProtocolProcessorNotifier` do providerů.
-5. **SDK a logger:** `libLenovoLegionDaemonSDK.so` s `IModule`, `IModuleHost` a službami, logger přes host.
-6. **Feature moduly:** převést providery i s interními drivery na `.so`, nahradit registraci v `Application` načítáním z `modules/` včetně kontroly vlastníka a práv. Začít volitelnými `NvidiaNvml` a `RGBController`, které přinesou největší užitek (odstranění povinných závislostí).
-7. **Vlastní zprávy a dynamický `dataType`:** `.proto` do modulů, `LIST_MODULES` v protokolu, GUI na přidělená čísla.
-8. **Volitelně:** `NvidiaNvml` a `RGBController` jako samostatné procesy.
+2. **Protobuf messages in more than one `.so`.** If the same `*.pb.cc` were linked into more libraries, protobuf would register the messages in the global pool more than once and on loading the second library it would end with a fatal error ("File already exists in database").
+   → Solution: a message of a module is only in its `.so` (and in the GUI, which is another process). The shared messages of the framework (header, `LIST_MODULES`, generic notification) are only in the SDK.
 
-### 7.1 Navržené pořadí prvních kroků (2026-10-22, zatím neschváleno)
+3. **Exception types and RTTI across the `.so` boundary.** `DEFINE_EXCEPTION` creates types that are caught through the base class `bj::framework::exception::Exception`. This works only when the base class is in one shared library and the modules are compiled by the same compiler. The framework additionally catches `std::exception` and `...`.
 
-API nenavrhovat celé předem, ale hned ho ověřit na pilotním modulu:
+4. **Security: a root daemon loads `.so`.** Whoever can write into `modules/` runs code as root.
+   - `modules/` and its content must belong to `root:root` with the permissions `0755`/`0644`, **unlike** `log/` and `data/`, which the group `legion` can write.
+   - Before loading, the framework checks the owner and the permissions of the directory and of every `.so`.
+   - State it explicitly in `tmpfiles.d` and `PKGBUILD`.
 
-1. **HOTOVO (2026-10-22, necommitnuto):** **Izolace chyb** v `ProtocolProcessor::processRequest` (try/catch, chybová odpověď místo odpojení klienta). Odpovídá kroku 1 výše.
-   - Nový typ zprávy `MessageHeader::ERROR_RESPONSE = 5`, payload je UTF-8 popis chyby.
-   - Daemon: výjimka z provideru i neznámý `dataType` → `LOG_E` + `ERROR_RESPONSE`, spojení zůstává. Chyby parseru (neplatná délka) dál ukončí spojení.
-   - GUI: `ProtocolProcessor::get/setDataRequest` vrací `{false, popis}`, `DataProvider::throwRequestError` vyhodí výjimku s kódem `DAEMON_ERROR` a textem od daemona.
-   - Ověřeno testem v `/tmp` (skutečný `ProtocolProcessor`, falešný provider): chyba → typ 5 s textem, neznámý `dataType` → typ 5, další požadavek funguje, klient zůstal připojený.
-   - Výjimky z timerů a kernel eventů (ToDo bod 7) zatím beze změny.
-2. **HOTOVO jako návrh (2026-10-22, necommitnuto, čeká na připomínky):** **API jako hlavičky** v adresáři `LenovoLegion/LenovoLegion-DaemonSDK/`, podprojekt `LenovoLegion-DaemonSDK.pro` (`TEMPLATE = aux`, nic nepřekládá) je v `LenovoLegion.pro` jen kvůli zobrazení v Qt Creatoru. **Hlavičky jsou závazné, kap. 4 je jen původní nástin.**
-   - `ModuleTypes.h` – `KernelEvent` (+ `Filter`), `ILogger`, `ISettingsStorage`, typy časovačů.
-   - `IModuleHost.h` – rozhraní frameworku pro jeden modul (logger, udev filtry, blokování a zpracování událostí, `notify`, `addTimer`/`removeTimer`) a RAII `KernelEventBlocker` (nahrazuje `blockKernelEvent` + `qScopeGuard` + `processAllUdevEvents(100)`).
-   - `IModule.h` – rozhraní modulu (`init`/`clean`/`isAvailable`, `get`/`set`, `onKernelEvent`, `settingsPolicy`/`loadSettings`/`saveSettings`) a pravidla pro výjimky.
-   - `ModuleApi.h` – `Info` (ABI verze, název, verze, `legacyDataType`, `settingsGroup`, `requiredServices`), typy a názvy factory funkcí, makro `LEGION_MODULE_DECLARE_ENTRY_POINTS`.
-   - Upřesnění oproti kap. 4: časovače přes framework (výjimky z callbacku chytá framework), přechodné `legacyDataType` a `settingsGroup` pro kompatibilitu se současným GUI a `.ini`, načtení/odstranění kernel modulu přes udev filtr na subsystém `module` (žádná zvláštní metoda), `isAvailable()`.
-   - Systémové služby (`ICpuList`, …) zatím v API nejsou, přijdou s krokem „systémové služby“.
-   - Ověřeno: falešný modul v `/tmp` se přeložil jako `.so` s `-Wall -Wextra -fvisibility=hidden` a exportuje jen `legion_module_info`, `legion_module_create`, `legion_module_destroy`.
-3. **HOTOVO (2026-10-23, necommitnuto, čeká na test autora jako root s GUI):** **Pilot `IntelMSR` jako `IModule` uvnitř daemona** (bez `.so`, přes adaptér ve frameworku).
-   - Modul: `LenovoLegion/LenovoLegion-DaemonModules/IntelMSR/` (`ModuleIntelMSR.h/.cpp`). Vlastní projekt `IntelMSR.pro` (statická knihovna `libDaemonModuleIntelMSR.a` v `Lib/`), `LenovoLegion-DaemonModules.pro` je `subdirs` se seznamem modulů. Daemon ji linkuje (`LIBS`, `PRE_TARGETDEPS`), `LenovoLegion-Daemon.depends` obsahuje `LenovoLegion-DaemonModules`. `IntelMSR.pro` nastavuje `INCLUDEPATH` znovu (jen modul, SDK, `LenovoLegion-PrepareBuild`), protože `.qmake.conf` přidává BJLibs a `LenovoLegion-Daemon` do všech projektů – překladač tak ohlídá, že modul nepoužívá nic z daemona. Používá jen SDK, Qt Core a zprávy `CpuIntelMSR`, `Notification`, `MessageRegistry`. Třída je skrytá v `.cpp`, ven jen `info()`/`create()`/`destroy()` (+ `create(host, sysfsPath)` pro testy).
-   - SDK doplněno: `Module::Error` (`ModuleTypes.h`), `SysFs.h` (`exists`/`read`/`write`, zápis bez bufferu vrací `false` při odmítnutí kernelem), `<chrono>` v `IModuleHost.h`.
-   - Framework (`LenovoLegion-Daemon/Modules/`): `ModuleHost` (implementace `IModuleHost`, `QPointer` na `SysFsDriverManager`, `callModule` s try/catch, časovače přes `QTimer`), `ModuleDataProviderAdapter` (modul jako `DataProvider`, stavy CREATED/RUNNING/FAILED, kontrola `Info`), `ModuleSettingsStorage` (`ISettingsStorage` nad stejným `.ini`), `StaticModules` (seznam staticky přilinkovaných modulů).
-   - Úpravy: `SysFsDriverManager` – posluchači kernel událostí pro moduly (`addKernelEventListener`/`removeKernelEventListeners`, filtry se obnoví i po `reconnectUdevMonitor`); `DataProvider` – virtuální `loadSettings()`/`saveSettings()` a signál `notification(QByteArray)`; `DataProviderManager` – signál `providerNotification`; `ProtocolProcessorNotifier` – `providerNotificationHandler` (posílá `NOTIFICATION` s payloadem modulu); `Application` – registrace ze `staticModules()` místo `SysFsDriverLegionIntelMSR` a `SysFsDataProviderIntelMSR`; `DaemonSettingsManager::loadIntelMSR`/`saveIntelMSR` volají `loadSettings()`/`saveSettings()` provideru.
-   - `SysFsDriverManager.h` includuje SDK relativní cestou (`../LenovoLegion-DaemonSDK/ModuleTypes.h`), protože ho přes hlavičky providerů includuje i GUI.
-   - Záměrné rozdíly proti starému chování: (1) při nedostupném zařízení se nastavení **neukládá** (staré ukládání přepsalo uložené offsety nulou), (2) SET při nedostupném zařízení se jen zaloguje (dřív výjimka), (3) chyba zápisu do sysfs se loguje (bod 3 `ToDoList.txt` pro tento modul), ostatní roviny se zapíšou. Zaokrouhlení offsetu na celé mV při ukládání zachováno.
-   - Ověřeno testy v `/tmp`: modul s falešným hostem a falešným sysfs (get, set jen přítomných rovin, blokování událostí, chyba zápisu, notifikace `CPU_OFFSET_CHANGED`, uložení s zaokrouhlením, načtení, odstranění/načtení kernel modulu, neplatná zpráva → `Error`) a framework se skutečným udev a reálným sysfs tohoto notebooku (čtení přes adaptér, uložení do `.ini` ve stejném formátu jako dřív).
+5. **Unloading of the modules.** The objects of a module (including `QObject`, timers and signal connections) must be destroyed before `dlclose`. Load the modules once at start and unload them only after `legion_module_destroy`. Do not use `ApplicationModulesLoader::reload()` at run time.
 
-   **Ke smazání po ověření pilotu (autor si přál zatím ponechat):**
+6. **Exceptions through Qt.** An exception that passes through Qt code (signal/slot, `QTimer`) is undefined behavior. The framework calls the methods of a module directly and wraps every call in `try/catch`. Modules with their own timers must catch the exceptions themselves (a helper in the SDK helps).
+
+---
+
+## 7. Recommended procedure
+
+Every step can be built and tested separately. Steps 1–4 improve the robustness even without modules.
+
+1. **Fault isolation in the framework:** wrap the calls of the providers in `try/catch`, an error answer instead of disconnecting the client (replaces today's behavior of `Application::notify()`).
+2. **System services:** turn `CPUXList`/`CPU`, `LegionOther`/`LegionGameZone` and `LegionEvents` into the interfaces `ICpuList`, `ILegionAttributes` and `ILegionEvents` and convert the providers to them.
+3. **Settings into the providers:** `SettingsPolicy`, `loadSettings`/`saveSettings`, the framework only the storage and the order. Removes 27 classes in `Settings.h`.
+4. **Notifications into the providers:** conversion of the events from `ProtocolProcessorNotifier` into the providers.
+5. **SDK and logger:** `libLenovoLegionDaemonSDK.so` with `IModule`, `IModuleHost` and the services, the logger through the host.
+6. **Feature modules:** convert the providers including the internal drivers to `.so`, replace the registration in `Application` by loading from `modules/` including the check of the owner and the permissions. Start with the optional `NvidiaNvml` and `RGBController`, which bring the biggest benefit (removal of mandatory dependencies).
+7. **Own messages and a dynamic `dataType`:** `.proto` into the modules, `LIST_MODULES` in the protocol, the GUI on the assigned numbers.
+8. **Optionally:** `NvidiaNvml` and `RGBController` as separate processes.
+
+### 7.1 Proposed order of the first steps (2026-10-22, not approved yet)
+
+Do not design the whole API up front, verify it at once on a pilot module:
+
+1. **DONE (2026-10-22, not committed):** **Fault isolation** in `ProtocolProcessor::processRequest` (try/catch, an error answer instead of disconnecting the client). Corresponds to step 1 above.
+   - New message type `MessageHeader::ERROR_RESPONSE = 5`, the payload is a UTF-8 description of the error.
+   - Daemon: an exception from a provider and an unknown `dataType` → `LOG_E` + `ERROR_RESPONSE`, the connection stays. Parser errors (invalid length) still close the connection.
+   - GUI: `ProtocolProcessor::get/setDataRequest` returns `{false, description}`, `DataProvider::throwRequestError` throws an exception with the code `DAEMON_ERROR` and the text from the daemon.
+   - Verified by a test in `/tmp` (real `ProtocolProcessor`, fake provider): error → type 5 with a text, unknown `dataType` → type 5, the next request works, the client stayed connected.
+   - Exceptions from timers and kernel events (ToDo item 7) unchanged so far.
+2. **DONE as a design (2026-10-22, not committed, waits for comments):** **API as headers** in the directory `LenovoLegion/LenovoLegion-DaemonSDK/`, the subproject `LenovoLegion-DaemonSDK.pro` (`TEMPLATE = aux`, compiles nothing) is in `LenovoLegion.pro` only to be shown in Qt Creator. **The headers are binding, ch. 4 is only the original sketch.**
+   - `ModuleTypes.h` – `KernelEvent` (+ `Filter`), `ILogger`, `ISettingsStorage`, timer types.
+   - `IModuleHost.h` – framework interface for one module (logger, udev filters, blocking and processing of the events, `notify`, `addTimer`/`removeTimer`) and RAII `KernelEventBlocker` (replaces `blockKernelEvent` + `qScopeGuard` + `processAllUdevEvents(100)`).
+   - `IModule.h` – module interface (`init`/`clean`/`isAvailable`, `get`/`set`, `onKernelEvent`, `settingsPolicy`/`loadSettings`/`saveSettings`) and the rules for the exceptions.
+   - `ModuleApi.h` – `Info` (ABI version, name, version, `legacyDataType`, `settingsGroup`, `requiredServices`), types and names of the factory functions, macro `LEGION_MODULE_DECLARE_ENTRY_POINTS`.
+   - Refinements against ch. 4: timers through the framework (the framework catches the exceptions from the callback), temporary `legacyDataType` and `settingsGroup` for the compatibility with the current GUI and `.ini`, loading/removal of a kernel module through a udev filter on the subsystem `module` (no special method), `isAvailable()`.
+   - The system services (`ICpuList`, …) are not in the API yet, they come with the step "system services".
+   - Verified: a fake module in `/tmp` built as a `.so` with `-Wall -Wextra -fvisibility=hidden` exports only `legion_module_info`, `legion_module_create`, `legion_module_destroy`.
+3. **DONE (2026-10-23, not committed, waits for a test of the author as root with the GUI):** **Pilot `IntelMSR` as an `IModule` inside the daemon** (without `.so`, through an adapter in the framework).
+   - Module: `LenovoLegion/LenovoLegion-DaemonModules/IntelMSR/` (`ModuleIntelMSR.h/.cpp`). Own project `IntelMSR.pro` (static library `libDaemonModuleIntelMSR.a` in `Lib/`), `LenovoLegion-DaemonModules.pro` is `subdirs` with the list of the modules. The daemon links it (`LIBS`, `PRE_TARGETDEPS`), `LenovoLegion-Daemon.depends` contains `LenovoLegion-DaemonModules`. `IntelMSR.pro` sets `INCLUDEPATH` again (only the module, SDK, `LenovoLegion-PrepareBuild`), because `.qmake.conf` adds BJLibs and `LenovoLegion-Daemon` to all projects – the compiler thus ensures that the module uses nothing from the daemon. It uses only the SDK, Qt Core and the messages `CpuIntelMSR`, `Notification`, `MessageRegistry`. The class is hidden in the `.cpp`, only `info()`/`create()`/`destroy()` are visible (+ `create(host, sysfsPath)` for tests).
+   - SDK extended: `Module::Error` (`ModuleTypes.h`), `SysFs.h` (`exists`/`read`/`write`, an unbuffered write returns `false` when the kernel refuses it), `<chrono>` in `IModuleHost.h`.
+   - Framework (`LenovoLegion-Daemon/Modules/`): `ModuleHost` (implementation of `IModuleHost`, `QPointer` to `SysFsDriverManager`, `callModule` with try/catch, timers through `QTimer`), `ModuleDataProviderAdapter` (module as a `DataProvider`, states CREATED/RUNNING/FAILED, check of `Info`), `ModuleSettingsStorage` (`ISettingsStorage` over the same `.ini`), `StaticModules` (list of the statically linked modules).
+   - Changes: `SysFsDriverManager` – listeners of kernel events for the modules (`addKernelEventListener`/`removeKernelEventListeners`, the filters are restored also after `reconnectUdevMonitor`); `DataProvider` – virtual `loadSettings()`/`saveSettings()` and the signal `notification(QByteArray)`; `DataProviderManager` – signal `providerNotification`; `ProtocolProcessorNotifier` – `providerNotificationHandler` (sends `NOTIFICATION` with the payload of the module); `Application` – registration from `staticModules()` instead of `SysFsDriverLegionIntelMSR` and `SysFsDataProviderIntelMSR`; `DaemonSettingsManager::loadIntelMSR`/`saveIntelMSR` call `loadSettings()`/`saveSettings()` of the provider.
+   - `SysFsDriverManager.h` includes the SDK by a relative path (`../LenovoLegion-DaemonSDK/ModuleTypes.h`), because the GUI includes it as well through the headers of the providers.
+   - Intentional differences against the old behavior: (1) with an unavailable device the settings are **not saved** (the old saving overwrote the saved offsets with zero), (2) a SET with an unavailable device is only logged (formerly an exception), (3) a sysfs write error is logged (item 3 of `ToDoList.txt` for this module), the other planes are written. Rounding of the offset to whole mV on saving is kept.
+   - Verified by tests in `/tmp`: the module with a fake host and a fake sysfs (get, set of the present planes only, blocking of events, write error, notification `CPU_OFFSET_CHANGED`, saving with rounding, loading, removal/loading of the kernel module, invalid message → `Error`) and the framework with the real udev and the real sysfs of this notebook (reading through the adapter, saving to `.ini` in the same format as before).
+
+   **To be deleted after the verification of the pilot (the author wished to keep it for now):**
    - `SysFsDrivers/SysFsDriverLegionIntelMSR.h/.cpp`,
-   - `SysFsDataProviders/SysFsDataProviderIntelMSR.h/.cpp` (GUI používá `SysFsDataProviderIntelMSR::dataType` ve 4 místech – `OffsetsControl.cpp`, `ToolBarProfilesWidget.cpp` – nahradit `legion::messages::DataType::CPU_INTEL_MSR`),
-   - `SettingsLoaderIntelMSR`/`SettingsSaverIntelMSR` v `Settings.h/.cpp`,
-   - větev `SysFsDriverLegionIntelMSR::DRIVER_NAME` a include v `ProtocolProcessorNotifier.cpp`,
-   - položky v `LenovoLegion-Daemon.pro`.
-4. **Úprava API podle pilotu**, pak zbytek postupu.
+   - `SysFsDataProviders/SysFsDataProviderIntelMSR.h/.cpp` (the GUI uses `SysFsDataProviderIntelMSR::dataType` in 4 places – `OffsetsControl.cpp`, `ToolBarProfilesWidget.cpp` – replace by `legion::messages::DataType::CPU_INTEL_MSR`),
+   - `SettingsLoaderIntelMSR`/`SettingsSaverIntelMSR` in `Settings.h/.cpp`,
+   - the branch `SysFsDriverLegionIntelMSR::DRIVER_NAME` and the include in `ProtocolProcessorNotifier.cpp`,
+   - the entries in `LenovoLegion-Daemon.pro`.
+4. **Adjustment of the API by the pilot**, then the rest of the procedure.
 
-### 7.2 Dynamické moduly (`.so`) – plán z 2026-10-23
+### 7.2 Dynamic modules (`.so`) – plan of 2026-10-23
 
-Ověřeno testy: BJLibs `ApplicationModulesLoader` umí načíst `.so` a najít factory funkce (`getModules<...>`). Pokud modul i daemon obsahují stejnou protobuf zprávu, daemon **spadne při `dlopen`** („File already exists in database“) – zprávy musí být ve sdílené knihovně.
+Verified by tests: BJLibs `ApplicationModulesLoader` can load a `.so` and find the factory functions (`getModules<...>`). When both the module and the daemon contain the same protobuf message, the daemon **crashes at `dlopen`** ("File already exists in database") – the messages must be in a shared library.
 
-1. **HOTOVO (necommitnuto):** sdílená knihovna zpráv `LenovoLegion-Messages/` (`libLenovoLegionMessages.so` v `Installation/`, `plugin` = bez symlinků s verzí). Daemon i GUI ji používají přes `LenovoLegion-Messages.pri` (`LIBS`, `PRE_TARGETDEPS`, `rpath $ORIGIN`), vlastní `*.pb.cc` už nepřekládají. Ověřeno: registrace zpráv (`descriptor_table_*`) je jen v knihovně, v binárkách jen slabé inline metody; GUI startuje.
-2. **HOTOVO (necommitnuto):** BJLibs `ApplicationModulesLoader` (zpětně kompatibilní):
-   - `setFileFilter(FileFilter)` – `bool(const QFileInfo&, QString& reason)`, volá se před načtením každého souboru, výchozí přijme vše,
-   - `errors()` – `{m_file, m_reason}` pro soubory odmítnuté filtrem, chyby `QLibrary::load` (`errorString()`) a knihovny bez symbolů požadovaných v `getModules`,
-   - výchozí přípona `defaultSuffix()` = `\.(so|dll)$`, porovnává se s názvem souboru (dřív `".dll|so$"` na celé cestě),
-   - jen soubory (`QDir::Files`), adresáře se ignorují, řazení podle jména,
+1. **DONE (not committed):** shared library of the messages `LenovoLegion-Messages/` (`libLenovoLegionMessages.so` in `Installation/`, `plugin` = without the version symlinks). The daemon and the GUI use it through `LenovoLegion-Messages.pri` (`LIBS`, `PRE_TARGETDEPS`, `rpath $ORIGIN`), they no longer compile their own `*.pb.cc`. Verified: the registration of the messages (`descriptor_table_*`) is only in the library, the binaries contain only weak inline methods; the GUI starts.
+2. **DONE (not committed):** BJLibs `ApplicationModulesLoader` (backward compatible):
+   - `setFileFilter(FileFilter)` – `bool(const QFileInfo&, QString& reason)`, called before loading every file, the default accepts everything,
+   - `errors()` – `{m_file, m_reason}` for the files refused by the filter, errors of `QLibrary::load` (`errorString()`) and libraries without the symbols requested in `getModules`,
+   - default suffix `defaultSuffix()` = `\.(so|dll)$`, compared with the file name (formerly `".dll|so$"` on the whole path),
+   - only files (`QDir::Files`), directories are ignored, sorted by name,
    - `ApplicationModulesHandler`: `setFileFilter`, `errors`, `path`,
-   - unit test `test_modulesLoader` v `BJLibs-UnitTests` (kopie systémové `libz`, odmítnutí filtrem, poškozená knihovna, přípony, chybějící symbol).
-3. **HOTOVO (necommitnuto):** **Daemon** načítá moduly jen dynamicky, `StaticModules` zrušeno (rozhodnutí autora).
-   - `Modules/ModuleLoader` – `loadModules(handler, drivers, providers)` volané v `appInitImpl` po `initDrivers()` a před `initDataProviders()`; `getModules<InfoFn, CreateFn, DestroyFn>` se symboly z `ModuleApi.h`; chyba jednoho modulu (ABI, duplicitní jméno nebo `dataType`, výjimka) se zaloguje a modul se přeskočí; chyby loaderu (`errors()`) se logují; `unload()` se nevolá (knihovny zůstanou načtené do konce procesu).
-   - Bezpečnostní filtr `isTrusted`: `lstat` (symlinky se nepřijímají), adresář / běžný soubor, vlastník **root nebo vlastník binárky daemona** (vývojový build patří vývojáři – kdo vlastní binárku, může ji stejně nahradit), bez zápisu pro skupinu a ostatní. Nedůvěryhodný adresář → nenačte se žádný modul.
-   - `ModuleDataProviderAdapter::Definition` používá `std::function` (tak je vrací loader), nová metoda `info()`.
-   - SDK: makro `LEGION_MODULE_VISIBLE` (viditelnost `default`) na `Error`, `ILogger`, `ISettingsStorage`, `IModuleHost`, `IModule` – typeinfo a vtable přes hranici `.so` i s `-fvisibility=hidden`.
-   - Daemon už na `LenovoLegion-DaemonModules` nezávisí (ani při linkování).
-4. **HOTOVO (necommitnuto):** **Modul `IntelMSR.pro`:** `TEMPLATE = lib`, `CONFIG += plugin hide_symbols`, `DESTDIR = Installation/modules/`, `rpath $ORIGIN/..`, `-Wl,--no-undefined -Wl,--as-needed`, linkuje `libLenovoLegionMessages.so`. Exportované vstupní body `legion_module_info/create/destroy` (`LEGION_MODULE_DECLARE_ENTRY_POINTS`) v `ModuleIntelMSR.cpp`. Ověřeno: export jen 3 symbolů, žádná registrace zpráv v modulu, kód modulu v daemonu není.
-5. **HOTOVO (necommitnuto):** **Balíček:** `PKGBUILD` – `modules/` 0755, `*.so` 0644, `tmpfiles.d` – `d /opt/<pkg>/modules 0755 root root -`.
+   - unit test `test_modulesLoader` in `BJLibs-UnitTests` (copy of the system `libz`, refusal by the filter, corrupted library, suffixes, missing symbol).
+3. **DONE (not committed):** the **daemon** loads the modules only dynamically, `StaticModules` removed (decision of the author).
+   - `Modules/ModuleLoader` – `loadModules(handler, drivers, providers)` called in `appInitImpl` after `initDrivers()` and before `initDataProviders()`; `getModules<InfoFn, CreateFn, DestroyFn>` with the symbols from `ModuleApi.h`; an error of one module (ABI, duplicate name or `dataType`, exception) is logged and the module is skipped; the errors of the loader (`errors()`) are logged; `unload()` is not called (the libraries stay loaded until the end of the process).
+   - Security filter `isTrusted`: `lstat` (symlinks are not accepted), directory / regular file, owner **root or the owner of the daemon binary** (a development build belongs to the developer – whoever owns the binary can replace it anyway), no write for the group and the others. Untrusted directory → no module is loaded.
+   - `ModuleDataProviderAdapter::Definition` uses `std::function` (that is how the loader returns them), new method `info()`.
+   - SDK: macro `LEGION_MODULE_VISIBLE` (visibility `default`) on `Error`, `ILogger`, `ISettingsStorage`, `IModuleHost`, `IModule` – typeinfo and vtable across the `.so` boundary even with `-fvisibility=hidden`.
+   - The daemon no longer depends on `LenovoLegion-DaemonModules` (not even when linking).
+4. **DONE (not committed):** **Module `IntelMSR.pro`:** `TEMPLATE = lib`, `CONFIG += plugin hide_symbols`, `DESTDIR = Installation/modules/`, `rpath $ORIGIN/..`, `-Wl,--no-undefined -Wl,--as-needed`, links `libLenovoLegionMessages.so`. Exported entry points `legion_module_info/create/destroy` (`LEGION_MODULE_DECLARE_ENTRY_POINTS`) in `ModuleIntelMSR.cpp`. Verified: only 3 symbols exported, no registration of messages in the module, the code of the module is not in the daemon.
+5. **DONE (not committed):** **Package:** `PKGBUILD` – `modules/` 0755, `*.so` 0644, `tmpfiles.d` – `d /opt/<pkg>/modules 0755 root root -`.
 
-Ověřeno end-to-end testem v `/tmp` (skutečný `ModuleLoader` + BJLibs loader + `.so` modulu): adresář zapisovatelný skupinou → nic se nenačte; modul zapisovatelný skupinou → odmítnut s důvodem v logu; správná práva → modul načten a čte reálné sysfs přes `DataProviderManager`.
+Verified by an end-to-end test in `/tmp` (real `ModuleLoader` + BJLibs loader + `.so` of the module): directory writable by the group → nothing is loaded; module writable by the group → refused with the reason in the log; correct permissions → the module is loaded and reads the real sysfs through `DataProviderManager`.
 
-Poznámka: když modul chybí (nenainstalovaný nebo odmítnutý), GUI dostane na jeho `dataType` `ERROR_RESPONSE` „Data provider not found“ a zobrazí chybu. Pro volitelné moduly (NVML, RGB) bude potřeba, aby GUI chybějící modul zvládlo (např. přes `LIST_MODULES`).
+Note: when a module is missing (not installed or refused), the GUI gets `ERROR_RESPONSE` "Data provider not found" for its `dataType` and shows an error. For the optional modules (NVML, RGB) the GUI will need to handle a missing module (e.g. through `LIST_MODULES`).
 
-Vedlejší nález: když daemon nemůže otevřít log, `main.cpp` skončí s kódem 0 (systemd ho nerestartuje), stejné jako bod 6 v `ToDoList.txt`.
+Side finding: when the daemon cannot open the log, `main.cpp` exits with the code 0 (systemd does not restart it), the same as item 6 in `ToDoList.txt`.
 
-### 7.3 Převod všech providerů na moduly (2026-10-24, necommitnuto, čeká na test autora jako root s GUI)
+### 7.3 Conversion of all providers to modules (2026-10-24, not committed, waits for a test of the author as root with the GUI)
 
-Rozhodnutí autora: sdílené drivery jako zdrojový kód bez sdílení za běhu (varianta A), notifikace vlastní ten modul, který atribut zapisuje, nastavení „jen v custom profilu“ přechodně řeší `DaemonSettingsManager`. Starý kód zůstává (nepoužívaný), smaže se po ověření (seznam níže a v `ToDoList.txt`).
+Decision of the author: shared drivers as source code without sharing at run time (variant A), the notification is owned by the module that writes the attribute, the settings "only in the custom profile" are temporarily handled by `DaemonSettingsManager`. The old code stays (unused), it is deleted after the verification (list below and in `ToDoList.txt`).
 
-**`LenovoLegion-DaemonModules/ModuleKit/`** (statická knihovna `libDaemonModuleKit.a`, přilinkovaná do každého modulu, za běhu nic sdíleného):
-- `SysFsDriver`, `SysFsDriverManager`, `DataProvider`, `SysFsDataProvider` – stejné rozhraní jako v daemonu (kód providerů a driverů se převádí mechanicky), bez `QObject` a BJLibs, napojené na `IModuleHost`: `emit kernelEvent/dataProviderEvent` jsou obyčejné metody, `startTimer/killTimer/timerEvent` přes časovače hostitele, `LOG_*` přes logger hostitele (`KitLog.h`), `THROW_EXCEPTION`/`DEFINE_EXCEPTION`/`errcodeInfo`/`descriptionInfo` v `KitException.h` (výjimky odvozené z `Module::Error`).
-- `SysFsDriverManager` (kit): jeden udev filtr na subsystém se sjednocenými vlastnostmi (starý `SysFsDriverManager` předával `EVENT_TYPE` driverům na `wmi` podle pořadí v mapě), filtr `module` – při načtení kernel modulu se drivery znovu inicializují, chyba driveru se zaloguje a driver vyčistí; drivery, které ještě nejsou načtené (kernel modul vytváří sysfs soubory až chvíli po události, `lenovo_legion` váže WMI části později), se zkouší znovu po 250 ms nejvýš 12× a modul mezitím hlásí `kernelModuleWaiting(modul, true)`; při odebrání se drivery vyčistí.
-- `SysFsDataProvider::setData` (kit): zápis bez bufferu, nepovedené otevření vyhodí výjimku (jako dřív), chyba zápisu se zaloguje (bod 3 `ToDoList.txt`).
-- `ProviderModule` – obecný `IModule` nad providerem a jeho drivery: háčky `notificationFor` (události driverů i provideru), `readSettings`/`writeSettings` (převod zprávy na klíče), helpery `notification`, `eventType`, `arrayKey`/`arraySizeKey` (pole ve formátu `QSettings`), `serialize`/`parse`.
-- `ModuleEntry.h` – makro `LEGION_KIT_MODULE(třída, jméno, verze, dataType, skupina nastavení)` pro vstupní body.
-- `ModuleKit.pri` – společné nastavení `.pro` modulu (`plugin`, `hide_symbols`, `INCLUDEPATH` jen kit/SDK/zprávy, `libLenovoLegionMessages.so`, `rpath $ORIGIN/..`, `--no-undefined`, `--as-needed`).
-- `Drivers/` – 14 driverů přenesených z daemona (bez IntelMSR a nepoužívaného ACPIPlatformProfile), filtry `wmi` mají vlastnosti `EVENT_TYPE`/`EVENT_VALUE`.
+**`LenovoLegion-DaemonModules/ModuleKit/`** (static library `libDaemonModuleKit.a`, linked into every module, nothing shared at run time):
+- `SysFsDriver`, `SysFsDriverManager`, `DataProvider`, `SysFsDataProvider` – the same interface as in the daemon (the code of the providers and drivers is converted mechanically), without `QObject` and BJLibs, connected to `IModuleHost`: `emit kernelEvent/dataProviderEvent` are ordinary methods, `startTimer/killTimer/timerEvent` through the timers of the host, `LOG_*` through the logger of the host (`KitLog.h`), `THROW_EXCEPTION`/`DEFINE_EXCEPTION`/`errcodeInfo`/`descriptionInfo` in `KitException.h` (exceptions derived from `Module::Error`).
+- `SysFsDriverManager` (kit): one udev filter per subsystem with merged properties (the old `SysFsDriverManager` passed `EVENT_TYPE` to the drivers on `wmi` by the order in the map), filter `module` – when the kernel module is loaded the drivers are initialized again, an error of a driver is logged and the driver is cleaned; drivers that are not loaded yet (the kernel module creates the sysfs files only a while after the event, `lenovo_legion` binds the WMI parts later) are retried after 250 ms at most 12 times and meanwhile the module reports `kernelModuleWaiting(module, true)`; on removal the drivers are cleaned.
+- `SysFsDataProvider::setData` (kit): unbuffered write, a failed open throws an exception (as before), a write error is logged (item 3 of `ToDoList.txt`).
+- `ProviderModule` – generic `IModule` over a provider and its drivers: hooks `notificationFor` (events of the drivers and of the provider), `readSettings`/`writeSettings` (conversion of the message to keys), helpers `notification`, `eventType`, `arrayKey`/`arraySizeKey` (arrays in the `QSettings` format), `serialize`/`parse`.
+- `ModuleEntry.h` – macro `LEGION_KIT_MODULE(class, name, version, dataType, settings group)` for the entry points.
+- `ModuleKit.pri` – common settings of a module `.pro` (`plugin`, `hide_symbols`, `INCLUDEPATH` only kit/SDK/messages, `libLenovoLegionMessages.so`, `rpath $ORIGIN/..`, `--no-undefined`, `--as-needed`).
+- `Drivers/` – 14 drivers moved from the daemon (without IntelMSR and the unused ACPIPlatformProfile), the `wmi` filters have the properties `EVENT_TYPE`/`EVENT_VALUE`.
 
-**Moduly (18 nových + IntelMSR, každý `Installation/modules/libDaemonModule<Jméno>.so`):**
+**Modules (18 new + IntelMSR, every one `Installation/modules/libDaemonModule<Name>.so`):**
 
-| Modul | Drivery | Notifikace | Nastavení (skupina, pořadí) |
+| Module | Drivers | Notifications | Settings (group, order) |
 |---|---|---|---|
-| MachineInformation | LegionMachineInformation | `LENOVO_DRIVER_ADDED/REMOVED` (kernel modul `lenovo_legion`) | – |
+| MachineInformation | LegionMachineInformation | `LENOVO_DRIVER_ADDED/REMOVED` (kernel module `lenovo_legion`) | – |
 | CPUInfo | CPUInfo | – | – |
 | Battery | LegionGameZone, PowerSuplyBattery0 | `POWER_SUPPLY_BATTERY0_CHANGE` | – |
 | HWMon | CPUXList, IntelPowercapRapl, LegionHWMon | – | – |
 | PowerProfile | LegionGameZone, LegionOther, LegionEvents | `THERMAL_MODE_CHANGE` | PowerProfileData, 0 |
 | CPUOptions | CPUXList | `CPU_X_LIST_RELOADED` | CPUsControlData, 10 |
-| CPUFrequency | CPUXList | `CPU_FREQUENCY_CHANGED` (časovač) | CPUFrequencyData, 20 |
+| CPUFrequency | CPUXList | `CPU_FREQUENCY_CHANGED` (timer) | CPUFrequencyData, 20 |
 | FanCurve | LegionFanMode | `FAN_CURVE_CHANGED` (LegionFanMode) | FanCurveData, 30, custom |
 | CPUPower | LegionOther | `POWER_CONTROL_CHANGED` (CPU_*, APU_PPT, GPU_TAC) | CPUPowerData, 40, custom |
 | GPUPower | LegionOther | `POWER_CONTROL_CHANGED` (GPU_PB, GPU_TGP, GPU_TMP) | GPUPowerData, 50, custom |
 | FanOption | LegionOther | `FAN_CURVE_CHANGED` (FF_S) | FanOptionData, 60 |
 | CPUSMT | CPU, CPUXList | – | CPUSMTData, 70 |
-| NvidiaNvml | – (linkuje `libnvidia-ml`) | – | NvidiaNvmlData, 80 |
-| IntelMSR | vlastní | `CPU_OFFSET_CHANGED` | IntelMSRData, 90 |
+| NvidiaNvml | – (links `libnvidia-ml`) | – | NvidiaNvmlData, 80 |
+| IntelMSR | own | `CPU_OFFSET_CHANGED` | IntelMSRData, 90 |
 | Other | LegionEvents, LegionGameZone | `KEYLOCK_STATUS_CHANGE` | OtherData, 100 |
-| CPUPState | CPUIntelPState | `CPU_PSTATE_CHANGED` (časovač) | CPUPStateData, 110 |
+| CPUPState | CPUIntelPState | `CPU_PSTATE_CHANGED` (timer) | CPUPStateData, 110 |
 | CPUTopology | CPU, CPUAtom, CPUCore | – | – |
 | OtherGpuSwitch | LegionGameZone | – | – |
-| RGBController | LegionEvents (linkuje `hidapi`, obsahuje `RGBControlers/`) | `SPECIAL_KEY_PRESSED` | – |
+| RGBController | LegionEvents (links `hidapi`, contains `RGBControlers/`) | `SPECIAL_KEY_PRESSED` | – |
 
-Odchylky od původní tabulky (podle pravidla „notifikaci posílá ten, kdo atribut zapisuje“): `FF_S` vlastní FanOption (zapisuje `fan_full_speed`), `CPU_X_LIST_RELOADED` vlastní CPUOptions (zapisuje online stav CPU; změna SMT z CPUSMT se notifikuje také – GUI jen obnoví ovládání CPU ještě jednou), `GPU_TAC` vlastní CPUPower (zapisuje `gpu_total_onac`).
+Deviations from the original table (by the rule "the notification is sent by whoever writes the attribute"): `FF_S` is owned by FanOption (writes `fan_full_speed`), `CPU_X_LIST_RELOADED` is owned by CPUOptions (writes the online state of the CPUs; a change of SMT from CPUSMT is notified as well – the GUI only refreshes the CPU controls once more), `GPU_TAC` is owned by CPUPower (writes `gpu_total_onac`).
 
-**Framework:** `Application` registruje jen `DataProviderDaemonSettings`, vše ostatní jsou moduly. `DaemonSettingsManager::loadAllSettings/saveAllSettings` procházejí moduly podle `settingsPolicy().order` (`persistentModules`), moduly s `customOnly` se načtou jen při uloženém CUSTOM profilu (zjištění profilu zůstává staré). `ModuleDataProviderAdapter::settingsPolicy()`.
+**Framework:** `Application` registers only `DataProviderDaemonSettings`, everything else are modules. `DaemonSettingsManager::loadAllSettings/saveAllSettings` go through the modules by `settingsPolicy().order` (`persistentModules`), the modules with `customOnly` are loaded only with a saved CUSTOM profile (the detection of the profile stays the old one). `ModuleDataProviderAdapter::settingsPolicy()`.
 
-**Ověřeno** srovnávacím programem (`/tmp/legion-tools/compare`, staré providery proti modulům na tomto notebooku, jen čtení): všechny moduly kromě RGB vracejí stejná data, rozdíly jen v hodnotách, které se mezi čteními mění (energie, aktuální frekvence, PCIe propustnost). RGB nejde porovnat bez roota (`/dev/hidraw*` jen pro roota) – ověřeno jen načtení a inicializace. Uložené nastavení (`saveAllSettings` přes moduly proti starým funkcím `save*`) je stejné ve všech skupinách včetně polí. Načtení nastavení netestováno (zapisuje do hardwaru).
+**Verified** by a comparison program (`/tmp/legion-tools/compare`, the old providers against the modules on this notebook, read only): all modules except RGB return the same data, the differences are only in the values that change between the reads (energy, current frequency, PCIe throughput). RGB cannot be compared without root (`/dev/hidraw*` only for root) – only the loading and the initialization verified. The saved settings (`saveAllSettings` through the modules against the old functions `save*`) are the same in all groups including the arrays. Loading of the settings not tested (writes to the hardware).
 
-**SMAZÁNO 2026-10-27 (necommitnuto)** – staré implementace podle seznamu níže:
+**DELETED 2026-10-27 (not committed)** – the old implementations by the list below:
 - daemon: `SysFsDrivers/`, `SysFsDataProviders/`, `RGBControlers/`, `SysFsDriver.*`, `SysFsDataProvider.*`, `RGBController.*`, `RGBControllerDetector.h`, `StringUtils.*`, `DataProviders/DataProviderNvidiaNvml.*`, `DataProviders/DataProviderRGBController.*`,
-- `SysFsDriverManager` je jen udev monitor pro moduly (posluchači, `processAllUdevEvents`, obnova monitoru), podpora starých driverů a signály `kernelEvent`/`moduleSubsystem` odstraněny; `DataProvider::kernelEventHandler` a `DataProviderManager::kernelEventHandler` odstraněny, `DataProviderManager(QObject*)`,
-- `ProtocolProcessorNotifier(DataProviderManager*, QLocalSocket*, QObject*)` jen přeposílá notifikace modulů,
-- `DaemonSettingsManager` bez funkcí `load*/save*` pro jednotlivé providery, `Settings.h/.cpp` jen `Settings`, `SettingsLoaderPowerProfiles` (zjištění CUSTOM profilu) a `SettingsLoader/SaverDaemonSettings`,
-- `LenovoLegion-Daemon.pro` bez `hidapi`, CUDA a `libnvidia-ml` – daemon závisí jen na `libLenovoLegionMessages.so` a `libudev` (binárka ~12 MB místo ~43 MB),
-- GUI používá `legion::messages::DataType::*` místo `LenovoLegionDaemon::*::dataType`.
+- `SysFsDriverManager` is only a udev monitor for the modules (listeners, `processAllUdevEvents`, restoring of the monitor), the support of the old drivers and the signals `kernelEvent`/`moduleSubsystem` removed; `DataProvider::kernelEventHandler` and `DataProviderManager::kernelEventHandler` removed, `DataProviderManager(QObject*)`,
+- `ProtocolProcessorNotifier(DataProviderManager*, QLocalSocket*, QObject*)` only forwards the notifications of the modules,
+- `DaemonSettingsManager` without the functions `load*/save*` for the individual providers, `Settings.h/.cpp` only `Settings`, `SettingsLoaderPowerProfiles` (detection of the CUSTOM profile) and `SettingsLoader/SaverDaemonSettings`,
+- `LenovoLegion-Daemon.pro` without `hidapi`, CUDA and `libnvidia-ml` – the daemon depends only on `libLenovoLegionMessages.so` and `libudev` (binary ~12 MB instead of ~43 MB),
+- the GUI uses `legion::messages::DataType::*` instead of `LenovoLegionDaemon::*::dataType`.
 
-Zůstává v `LenovoLegion-Daemon`: `RGBControllerKeyNames.h` – názvy kláves sdílené s GUI (`Ui/KeyboardLayout.cpp`, modul RGBController má vlastní kopii v `Kit`). `RGBControllerInterface.h` GUI po odstranění starých widgetů klávesnice nepotřebuje, je jen v modulu. Kandidát na přesun do společného místa (např. vedle zpráv).
+Stays in `LenovoLegion-Daemon`: `RGBControllerKeyNames.h` – key names shared with the GUI (`Ui/KeyboardLayout.cpp`, the module RGBController has its own copy in `Kit`). `RGBControllerInterface.h` is not needed by the GUI after the removal of the old keyboard widgets, it is only in the module. A candidate for moving to a common place (e.g. next to the messages).
 
-Ověřeno: celý build bez chyb a varování, všech 19 modulů se načte a vrací data (test s novými objekty daemona), GUI startuje.
+Verified: the whole build without errors and warnings, all 19 modules are loaded and return data (test with the new objects of the daemon), the GUI starts.
 
-**Původní seznam ke smazání:**
-- `LenovoLegion-Daemon/SysFsDrivers/*`, `SysFsDataProviders/*`, `DataProviders/DataProviderNvidiaNvml.*`, `DataProviders/DataProviderRGBController.*`, `RGBController.*`, `RGBControlers/*`, `RGBController*.h`, `StringUtils.*`, `SysFsDataProvider.*`, `SysFsDriver.*` (pokud ho nepotřebuje `SysFsDriverManager` – ten zůstává kvůli udev),
-- per-provider funkce `DaemonSettingsManager::load*/save*` a třídy `SettingsLoader*/SettingsSaver*` v `Settings.h/.cpp` (kromě `PowerProfiles` – používá se pro zjištění CUSTOM profilu – a `DaemonSettings`),
-- převody událostí v `ProtocolProcessorNotifier` (`kernelEventHandler`, `dataProviderEventHandler`, `moduleSubsystemHandler`), zůstane jen `providerNotificationHandler`,
-- položky v `LenovoLegion-Daemon.pro`, závislosti daemona na `cuda`/`libnvidia-ml` a `hidapi` (pak má jen modul NvidiaNvml a RGBController),
-- GUI: `LenovoLegionDaemon::SysFsDataProvider*::dataType` a `DataProvider*::dataType` nahradit `legion::messages::DataType::*`.
+**Original list to delete:**
+- `LenovoLegion-Daemon/SysFsDrivers/*`, `SysFsDataProviders/*`, `DataProviders/DataProviderNvidiaNvml.*`, `DataProviders/DataProviderRGBController.*`, `RGBController.*`, `RGBControlers/*`, `RGBController*.h`, `StringUtils.*`, `SysFsDataProvider.*`, `SysFsDriver.*` (unless `SysFsDriverManager` needs it – that one stays because of udev),
+- the per-provider functions `DaemonSettingsManager::load*/save*` and the classes `SettingsLoader*/SettingsSaver*` in `Settings.h/.cpp` (except `PowerProfiles` – used for the detection of the CUSTOM profile – and `DaemonSettings`),
+- the conversions of the events in `ProtocolProcessorNotifier` (`kernelEventHandler`, `dataProviderEventHandler`, `moduleSubsystemHandler`), only `providerNotificationHandler` stays,
+- the entries in `LenovoLegion-Daemon.pro`, the dependencies of the daemon on `cuda`/`libnvidia-ml` and `hidapi` (then only the modules NvidiaNvml and RGBController have them),
+- GUI: replace `LenovoLegionDaemon::SysFsDataProvider*::dataType` and `DataProvider*::dataType` by `legion::messages::DataType::*`.
 
 ---
 
-## 8. Kontext pro navázání konverzace
+## 8. Context for continuing the conversation
 
-Tahle kapitola slouží k navázání práce v nové konverzaci (Claude Code). Popisuje stav k **2026-10-22**.
+This chapter serves for continuing the work in a new conversation (Claude Code). It describes the state as of **2026-10-22**.
 
-### 8.1 Co už je hotové (commity v `main`)
+### 8.1 What is already done (commits in `main`)
 
-| Commit | Obsah |
+| Commit | Content |
 |---|---|
-| `a6fcb6c` | daemon: `deleteLater` pro protocol processory, async-signal-safe `bj::framework::Signal` (self-pipe + `QSocketNotifier`), výjimka při selhání `listen()`, `Restart=on-failure` v service |
-| `0544c42` | `log/`, `data/` jako `root:legion 2770` přes `tmpfiles.d`, logger s `O_NOFOLLOW`, `umask(0007)` v daemonu i GUI |
-| `ca26196` | kernel: chyby zápisu MSR offsetu se vracejí ze `store`; protokol: limit délky zprávy 1 MiB, neblokující `tryParseMessage` v daemonu |
-| `e3fdacc` | udev pravidlo RAPL: `root:legion 0440` (dřív `0444`, `energy_uj` byl čitelný pro všechny – CVE-2020-8694) |
-| `3c22730` | `processAllUdevEvents` se společným timeoutem, `reconnectUdevMonitor` bez pádu (retry po 5 s) |
-| `9aa933d` | RGB: kontrola rozsahu profilu/jasu, timeout čekání v reálném čase; NVML: kontrola rozsahu offsetů, inicializace min/max; GUI: pořadí ukončení; výjimka z `init` driveru při načtení modulu; CPU frequency: polling jen `scaling_min/max`, oprava indexu v `init()` |
-| `ddd1667` | GUI: přepínače power profilu po SETu znovu načtou stav; úprava `ToDoList.txt` |
+| `a6fcb6c` | daemon: `deleteLater` for the protocol processors, async-signal-safe `bj::framework::Signal` (self-pipe + `QSocketNotifier`), exception on a failure of `listen()`, `Restart=on-failure` in the service |
+| `0544c42` | `log/`, `data/` as `root:legion 2770` through `tmpfiles.d`, logger with `O_NOFOLLOW`, `umask(0007)` in the daemon and the GUI |
+| `ca26196` | kernel: errors of the MSR offset write are returned from `store`; protocol: message length limit 1 MiB, non-blocking `tryParseMessage` in the daemon |
+| `e3fdacc` | RAPL udev rule: `root:legion 0440` (formerly `0444`, `energy_uj` was readable by everybody – CVE-2020-8694) |
+| `3c22730` | `processAllUdevEvents` with a common timeout, `reconnectUdevMonitor` without a crash (retry after 5 s) |
+| `9aa933d` | RGB: range check of the profile/brightness, wait timeout in real time; NVML: range check of the offsets, initialization of min/max; GUI: order of termination; exception from `init` of a driver on loading the module; CPU frequency: polling only `scaling_min/max`, fix of an index in `init()` |
+| `ddd1667` | GUI: the power profile switches load the state again after a SET; update of `ToDoList.txt` |
 
-Zbývající známé problémy jsou v `LenovoLegion/ToDoList.txt`.
+The remaining known problems are in `LenovoLegion/ToDoList.txt`.
 
-### 8.2 Rozhodnutí a preference autora
+### 8.2 Decisions and preferences of the author
 
-- **Neplatný požadavek od klienta:** daemon ho **jen zaloguje (`LOG_E`) a ignoruje**, nevyhazuje výjimku (výjimka dnes odpojí GUI přes `Application::notify()`). GUI si po SETu hodnotu znovu načte a ukáže skutečný stav.
-- **Chyby zápisu do sysfs:** stačí je logovat, bez změny protokolu (bod 3 v `ToDoList.txt`).
-- **Blokování vlastních kernel eventů** během SETu (`blockKernelEvent` + `processAllUdevEvents(100)`) zůstává, autor ho nechce měnit.
-- **Práva:** `log/`, `data/` zapisovatelné pro skupinu `legion`, ostatní nic. `modules/` bude jen pro roota.
-- **`bj::framework::Signal`** zůstává v BJLibs, používá se i v jiných projektech.
-- **Commit message anglicky**, styl repozitáře (rozkazovací způsob v předmětu, odrážky v těle). Commity dělá autor sám, Claude jen navrhne zprávu.
-- **`ToDoList.txt` anglicky.** Komunikace s autorem česky.
-- Před větší změnou nejdřív návrh, implementace až po souhlasu.
+- **Invalid request from a client:** the daemon **only logs it (`LOG_E`) and ignores it**, it does not throw an exception (an exception today disconnects the GUI through `Application::notify()`). After a SET the GUI loads the value again and shows the real state.
+- **Sysfs write errors:** logging them is enough, without a change of the protocol (item 3 in `ToDoList.txt`).
+- **Blocking of own kernel events** during a SET (`blockKernelEvent` + `processAllUdevEvents(100)`) stays, the author does not want to change it.
+- **Permissions:** `log/`, `data/` writable by the group `legion`, nothing for the others. `modules/` will be for root only.
+- **`bj::framework::Signal`** stays in BJLibs, it is used in other projects as well.
+- **Commit messages in English**, in the style of the repository (imperative mood in the subject, bullets in the body). The author makes the commits himself, Claude only proposes the message.
+- **`ToDoList.txt` in English.** Communication with the author in Czech.
+- Before a bigger change a proposal first, the implementation only after the approval.
 
-### 8.3 Prostředí
+### 8.3 Environment
 
-- Repozitář: `/home/bojar/Git-projects/lenovo-legion-linux-toolkit`, větev `main`.
-- Qt 6.12 (`/home/bojar/Qt/6.12.0/gcc_64`), Qt Creator, build adresář `LenovoLegion/build/Desktop_Qt_6_12_0_Debug`.
-- Překlad: `make -j24` v build adresáři (nebo `build` přes Qt Creator MCP). Kernel modul jde přeložit v kopii v `/tmp` (`make -C <kopie> all`), hlavičky běžícího jádra jsou k dispozici.
-- Daemon i GUI za běhu Claude netestuje (daemon potřebuje roota, GUI běžící daemon). Ověřuje se překladem a malými testy v `/tmp`.
+- Repository: `/home/bojar/Git-projects/lenovo-legion-linux-toolkit`, branch `main`.
+- Qt 6.12 (`/home/bojar/Qt/6.12.0/gcc_64`), Qt Creator, build directory `LenovoLegion/build/Desktop_Qt_6_12_0_Debug`.
+- Build: `make -j24` in the build directory (or `build` through the Qt Creator MCP). The kernel module can be built in a copy in `/tmp` (`make -C <copy> all`), the headers of the running kernel are available.
+- Claude does not test the daemon and the GUI at run time (the daemon needs root, the GUI a running daemon). Verification by building and small tests in `/tmp`.
 
-### 8.4 Otevřené otázky k modulům
+### 8.4 Open questions about the modules
 
-- Schválit pořadí v kap. 7.1 (izolace chyb → hlavičky API → pilot `IntelMSR`).
-- Logger v modulech: přes `IModuleHost::logger()`, nebo BJLibs jako sdílená knihovna?
-- Přechod na dynamický `dataType` (`LIST_MODULES`) hned, nebo až po převodu všech modulů (přechodně čísla podle `MessageRegistry.proto`)?
-- Odstranit nepoužívaný `SysFsDriverACPIPlatformProfile`?
+- Approve the order in ch. 7.1 (fault isolation → API headers → pilot `IntelMSR`).
+- Logger in the modules: through `IModuleHost::logger()`, or BJLibs as a shared library?
+- Switch to the dynamic `dataType` (`LIST_MODULES`) at once, or only after the conversion of all modules (temporarily the numbers by `MessageRegistry.proto`)?
+- Remove the unused `SysFsDriverACPIPlatformProfile`?
 
-## 9. Diagramy tříd a komunikace
+## 9. Class and communication diagrams
 
-Stav po převodu všech modulů a smazání starého kódu (2026-10-29). Diagramy jsou v Mermaid (Qt Creator / GitHub je zobrazí), šipky:
-`<|--` dědičnost, `*--` vlastnictví, `o--` odkaz bez vlastnictví, `..>` volání / signál.
+State after the conversion of all modules and the deletion of the old code (2026-10-29). The diagrams are in Mermaid (Qt Creator / GitHub show them), arrows:
+`<|--` inheritance, `*--` ownership, `o--` reference without ownership, `..>` call / signal.
 
-### 9.1 Binárky a knihovny
+### 9.1 Binaries and libraries
 
 ```
                   +----------------------------------+
-                  |  libLenovoLegionMessages.so      |   protobuf zprávy, v procesu jen jednou
+                  |  libLenovoLegionMessages.so      |   protobuf messages, only once in a process
                   +----------------------------------+
                      ^             ^              ^
                      |             |              |
 +--------------------+--+   +------+--------+   +-+-----------------------------------+
-| LenovoLegion (GUI)    |   | daemon        |   | modules/*.so  (19 modulů)           |
-| QLocalSocket x2       |   | framework     |   |  ModuleKit (staticlib, ve zdroji)   |
-+-----------+-----------+   | + BJLibs      |   |  + ovladače ModuleKit/Drivers       |
-            |               | + libudev     |   |  + vlastní provider modulu          |
+| LenovoLegion (GUI)    |   | daemon        |   | modules/*.so  (19 modules)          |
+| QLocalSocket x2       |   | framework     |   |  ModuleKit (staticlib, in source)   |
++-----------+-----------+   | + BJLibs      |   |  + drivers ModuleKit/Drivers        |
+            |               | + libudev     |   |  + own provider of the module       |
             |  socket       +------+--------+   +-+-----------------------------------+
-            |  (požadavky,         |   dlopen      ^
-            |   notifikace)        +---------------+  jen přes C ABI: legion_module_info/create/destroy
-            +--------------------->|                  a rozhraní z LenovoLegion-DaemonSDK (IModule, IModuleHost)
+            |  (requests,          |   dlopen      ^
+            |   notifications)     +---------------+  only through the C ABI: legion_module_info/create/destroy
+            +--------------------->|                  and the interfaces of LenovoLegion-DaemonSDK (IModule, IModuleHost)
 ```
 
-Daemon nelinkuje žádný modul, modul nelinkuje daemon (`-Wl,--no-undefined`). Společné jsou jen hlavičky SDK a knihovna zpráv.
+The daemon links no module, a module does not link the daemon (`-Wl,--no-undefined`). Only the SDK headers and the message library are common.
 
-### 9.2 Framework daemonu (LenovoLegion-Daemon)
+### 9.2 Framework of the daemon (LenovoLegion-Daemon)
 
 ```mermaid
 classDiagram
@@ -591,7 +591,7 @@ classDiagram
     }
     ProtocolProcessorBase <|-- ProtocolProcessor
     ProtocolProcessorBase <|-- ProtocolProcessorNotifier
-    ProtocolProcessorBase ..> ProtocolParser : parsuje
+    ProtocolProcessorBase ..> ProtocolParser : parses
 
     class DataProviderManager {
         <<QObject>>
@@ -673,32 +673,32 @@ classDiagram
         +saveAllSettingsOnExit(manager)
         +persistentModules(manager)
     }
-    class IModule["Module::IModule (v .so)"] {
+    class IModule["Module::IModule (in .so)"] {
         <<interface>>
     }
 
     Application *-- SysFsDriverManager
     Application *-- DataProviderManager
-    Application *-- ProtocolProcessor : 1 klient
-    Application *-- ProtocolProcessorNotifier : 1 klient
+    Application *-- ProtocolProcessor : 1 client
+    Application *-- ProtocolProcessorNotifier : 1 client
     Application ..> ModuleLoader : appInitImpl
     Application ..> DaemonSettingsManager : load / save
-    ModuleLoader ..> ModuleDataProviderAdapter : vytváří
+    ModuleLoader ..> ModuleDataProviderAdapter : creates
     ModuleLoader ..> DataProviderManager : addDataProvider
-    DataProviderManager o-- DataProvider : vlastní (QObject parent)
+    DataProviderManager o-- DataProvider : owns (QObject parent)
     ModuleDataProviderAdapter *-- ModuleHost
     ModuleDataProviderAdapter o-- IModule : create / destroy
     ModuleDataProviderAdapter ..> ModuleSettingsStorage : load / saveSettings
     ModuleHost o-- SysFsDriverManager : listener, processAllUdevEvents
-    ModuleHost o-- IModule : onKernelEvent, timery
+    ModuleHost o-- IModule : onKernelEvent, timers
     ProtocolProcessor o-- DataProviderManager : getDataProvider
     ProtocolProcessorNotifier o-- DataProviderManager : providerNotification
     DaemonSettingsManager ..> ModuleDataProviderAdapter : persistentModules
 ```
 
-Framework nezná žádný hardware. Moduly vidí jen jako `DataProvider` (přes `ModuleDataProviderAdapter`), jediný vlastní provider frameworku je `DataProviderDaemonSettings`.
+The framework knows no hardware. It sees the modules only as a `DataProvider` (through `ModuleDataProviderAdapter`), the only own provider of the framework is `DataProviderDaemonSettings`.
 
-### 9.3 Strana modulu (LenovoLegion-DaemonSDK + ModuleKit + moduly)
+### 9.3 Module side (LenovoLegion-DaemonSDK + ModuleKit + modules)
 
 ```mermaid
 classDiagram
@@ -748,8 +748,8 @@ classDiagram
     }
     IModule <|.. ProviderModule
 
-    class ModuleBattery["ModuleBattery (příklad)"]
-    class ModuleIntelMSR["ModuleIntelMSR (bez ModuleKit)"]
+    class ModuleBattery["ModuleBattery (example)"]
+    class ModuleIntelMSR["ModuleIntelMSR (without ModuleKit)"]
     ProviderModule <|-- ModuleBattery
     IModule <|.. ModuleIntelMSR
 
@@ -789,7 +789,7 @@ classDiagram
         #getData(path)
         #setData(path, value)
     }
-    class SysFsDataProviderBattery["SysFsDataProviderBattery (příklad)"]
+    class SysFsDataProviderBattery["SysFsDataProviderBattery (example)"]
     KitDataProvider <|-- KitSysFsDataProvider
     KitSysFsDataProvider <|-- SysFsDataProviderBattery
 
@@ -803,14 +803,14 @@ classDiagram
     ProviderModule *-- KitDataProvider
     KitSysFsDriverManager *-- KitSysFsDriver
     KitSysFsDriverManager ..> IModuleHost : addKernelEventFilter, blockKernelEvents
-    KitDataProvider o-- KitSysFsDriverManager : deskriptory, block, refresh
+    KitDataProvider o-- KitSysFsDriverManager : descriptors, block, refresh
     KitDataProvider ..> IModuleHost : addTimer, logger
     ProviderModule ..> ISettingsStorage : read / writeSettings
 ```
 
-Vstupní body `.so` vytváří makro `LEGION_KIT_MODULE(ModuleClass, name, version, legacyDataType, settingsGroup)` z `ModuleEntry.h`, `IntelMSR` je má napsané ručně. Ovladače ModuleKit se kompilují do každého modulu zvlášť, za běhu se nesdílí.
+The entry points of a `.so` are created by the macro `LEGION_KIT_MODULE(ModuleClass, name, version, legacyDataType, settingsGroup)` from `ModuleEntry.h`, `IntelMSR` has them written by hand. The ModuleKit drivers are compiled into every module separately, they are not shared at run time.
 
-### 9.4 Start a načtení modulů
+### 9.4 Start and loading of the modules
 
 ```mermaid
 sequenceDiagram
@@ -823,30 +823,30 @@ sequenceDiagram
     participant DPM as DataProviderManager
     participant DSM as DaemonSettingsManager
 
-    App->>App: kontrola root, socket dir, signály, listen() obou serverů
+    App->>App: check of root, socket dir, signals, listen() of both servers
     App->>ML: loadModules(modules, sysFsDriverManager, dataProviderManager)
-    ML->>ML: isTrusted(adresář modules/)
+    ML->>ML: isTrusted(directory modules/)
     ML->>BJ: setFileFilter(isTrusted), load() = dlopen
     ML->>BJ: getModules(info, create, destroy)
-    loop každý modul
+    loop every module
         ML->>A: new Adapter(definition)
-        A->>A: info(), checkInfo() (ABI, jméno, dataType)
+        A->>A: info(), checkInfo() (ABI, name, dataType)
         A->>H: new ModuleHost(name)
         A->>M: legion_module_create(host)
         A->>H: setModule(M), connect(notification)
-        ML->>DPM: addDataProvider(A) (duplicitní dataType / jméno = modul se nenačte)
+        ML->>DPM: addDataProvider(A) (duplicate dataType / name = the module is not loaded)
     end
     App->>DPM: initDataProviders()
-    loop každý provider
+    loop every provider
         DPM->>A: connect(notification), init()
         A->>H: callModule("init")
         H->>M: init()
-        Note over A: výjimka = FAILED, host.release(), ostatní moduly běží
+        Note over A: exception = FAILED, host.release(), the other modules run
     end
     App->>DSM: loadAllSettings(DPM)
 ```
 
-### 9.5 Požadavek GET / SET
+### 9.5 GET / SET request
 
 ```mermaid
 sequenceDiagram
@@ -858,7 +858,7 @@ sequenceDiagram
     participant P as Kit::DataProvider
     participant D as Kit::SysFsDriverManager
 
-    GUI->>PP: readyRead (hlavička + protobuf)
+    GUI->>PP: readyRead (header + protobuf)
     PP->>PP: ProtocolParser::tryParseMessage
     PP->>DPM: getDataProvider(dataType)
     alt GET_DATA_REQUEST
@@ -866,21 +866,21 @@ sequenceDiagram
         A->>A: checkRunning()
         A->>M: get(request)
         M->>P: serializeAndGetData()
-        P->>D: getDriverDesriptor() → čtení sysfs
+        P->>D: getDriverDesriptor() → read sysfs
         PP-->>GUI: GET_DATA_RESPONSE
     else SET_DATA_REQUEST
         PP->>A: deserializeAndSetData(data)
         A->>M: set(request)
         M->>P: deserializeAndSetData()
-        P->>D: blockKernelEvent(true) → zápis sysfs → processAllUdevEvents → blockKernelEvent(false)
+        P->>D: blockKernelEvent(true) → write sysfs → processAllUdevEvents → blockKernelEvent(false)
         PP-->>GUI: SET_DATA_RESPONSE
     end
-    Note over PP,GUI: jakákoliv výjimka (neznámý dataType, FAILED modul, chyba modulu)<br/>→ ERROR_RESPONSE s textem chyby, spojení zůstává
+    Note over PP,GUI: any exception (unknown dataType, FAILED module, error of the module)<br/>→ ERROR_RESPONSE with the error text, the connection stays
 ```
 
-Blokování vlastních kernel událostí při SET znamená, že GUI po vlastním zápisu nedostane notifikaci a musí si hodnoty znovu načíst (ToDoList 1, 5).
+Blocking of the own kernel events on SET means that after its own write the GUI gets no notification and must load the values again (ToDoList 1, 5).
 
-### 9.6 Kernel událost → notifikace
+### 9.6 Kernel event → notification
 
 ```mermaid
 sequenceDiagram
@@ -897,36 +897,36 @@ sequenceDiagram
     participant GUI
 
     K->>SDM: uevent (QSocketNotifier::activated → onDataReceived)
-    SDM->>H: listener(event) pro každý odpovídající filtr
-    H->>M: pokud m_kernelEventsBlocked == false: callModule("kernel event") → onKernelEvent(event)
+    SDM->>H: listener(event) for every matching filter
+    H->>M: if m_kernelEventsBlocked == false: callModule("kernel event") → onKernelEvent(event)
     M->>D: handleKernelEvent(event)
     alt subsystem "module"
-        D->>D: add: drivery kernel modulu znovu inicializovat, remove: vyčistit
-        opt add a některý driver ještě není načtený
-            D->>H: kernelModuleWaiting(name, true), opakování časovačem
-            Note over D,H: po načtení všech driverů / vyčerpání pokusů kernelModuleWaiting(name, false)
+        D->>D: add: initialize the drivers of the kernel module again, remove: clean them
+        opt add and some driver is not loaded yet
+            D->>H: kernelModuleWaiting(name, true), retries by a timer
+            Note over D,H: after all drivers are loaded / the attempts are exhausted kernelModuleWaiting(name, false)
         end
-    else ovladač
+    else driver
         D->>Drv: handleKernelEvent(event)
         Drv->>M: kernelEvent sink(SubsystemEvent)
         M->>P: kernelEventHandler(driverEvent)
         M->>M: notificationFor(driverEvent)
     end
-    M->>H: notify(Notification) (jen modul, který atribut vlastní)
+    M->>H: notify(Notification) (only the module that owns the attribute)
     H-->>A: signal notification(payload)
     A-->>DPM: signal DataProvider::notification
     DPM-->>PN: signal providerNotification
     PN-->>GUI: NOTIFICATION (dataType 0)
 ```
 
-Kernel modul (subsystém `module`) koordinuje daemonový `SysFsDriverManager` pro všechny moduly (každý modul má vlastní kopii statického ModuleKitu, proto ne v kitu):
+A kernel module (subsystem `module`) is coordinated by the daemon's `SysFsDriverManager` for all modules (every module has its own copy of the static ModuleKit, therefore not in the kit):
 
-- `add`: stav PENDING, událost se doručí všem posluchačům; kdo ještě inicializuje drivery, ohlásí `kernelModuleWaiting(name, true)`. Když po doručení nikdo nečeká (nebo až poslední ohlásí `false`), zavolá se `onKernelModule(name, true)` u všech modulů s filtrem `module` – např. MachineInformation pak pošle `LENOVO_DRIVER_ADDED` a GUI načítá data, až jsou drivery všech modulů připravené.
-- `remove`: po doručení události hned `onKernelModule(name, false)` (`LENOVO_DRIVER_REMOVED`), čekání se zruší.
-- Uvolněný modul (`removeKernelEventListeners`) už nečeká; ohlášení se pak vyhodnotí odloženě (`QTimer::singleShot(0)`), protože se může právě ukončovat daemon.
-- Jméno kernel modulu nikde v kitu ani v `ProviderModule` natvrdo není, `ModuleMachineInformation` jen filtruje `LEGION_MODULE_NAME` pro svou notifikaci.
+- `add`: state PENDING, the event is delivered to all listeners; whoever is still initializing the drivers reports `kernelModuleWaiting(name, true)`. When nobody waits after the delivery (or when the last one reports `false`), `onKernelModule(name, true)` is called for all modules with the filter `module` – e.g. MachineInformation then sends `LENOVO_DRIVER_ADDED` and the GUI loads the data once the drivers of all modules are ready.
+- `remove`: right after the delivery of the event `onKernelModule(name, false)` (`LENOVO_DRIVER_REMOVED`), the waiting is cancelled.
+- A released module (`removeKernelEventListeners`) no longer waits; the announcement is then evaluated deferred (`QTimer::singleShot(0)`), because the daemon may just be shutting down.
+- The name of the kernel module is hard-coded nowhere in the kit nor in `ProviderModule`, `ModuleMachineInformation` only filters `LEGION_MODULE_NAME` for its notification.
 
-### 9.7 Timer → notifikace
+### 9.7 Timer → notification
 
 ```mermaid
 sequenceDiagram
@@ -939,13 +939,13 @@ sequenceDiagram
     H->>T: new QTimer, start
     T-->>H: timeout
     H->>P: callModule("timer") → timerEvent()
-    P->>M: dataProviderEvent(event) (sink z attach)
+    P->>M: dataProviderEvent(event) (sink from attach)
     M->>M: notificationFor(providerEvent)
     M->>H: notify(payload)
-    Note over H: dál stejně jako v 9.6 (ModuleHost::notification → … → GUI)
+    Note over H: further the same as in 9.6 (ModuleHost::notification → … → GUI)
 ```
 
-### 9.8 Nastavení (start, uložení, ukončení)
+### 9.8 Settings (start, saving, shutdown)
 
 ```mermaid
 sequenceDiagram
@@ -956,66 +956,66 @@ sequenceDiagram
     participant M as ProviderModule
     participant P as Kit::DataProvider
 
-    DSM->>DSM: loadDaemonSettings(), SettingsLoaderPowerProfiles (uložený CUSTOM profil?)
-    DSM->>DPM: persistentModules() = moduly RUNNING s persistent, seřazené podle order
-    loop každý modul (customOnly jen při CUSTOM profilu)
+    DSM->>DSM: loadDaemonSettings(), SettingsLoaderPowerProfiles (saved CUSTOM profile?)
+    DSM->>DPM: persistentModules() = RUNNING modules with persistent, sorted by order
+    loop every module (customOnly only with the CUSTOM profile)
         DSM->>A: loadSettings()
         A->>S: ModuleSettingsStorage(settingsGroup)
         A->>M: callModule("load settings") → loadSettings(storage)
-        M->>M: readSettings(storage) → zpráva (prázdná = nic se nenastaví)
-        M->>P: deserializeAndSetData(zpráva) → settable(zpráva, REQUEST)
+        M->>M: readSettings(storage) → message (empty = nothing is set)
+        M->>P: deserializeAndSetData(message) → settable(message, REQUEST)
     end
-    Note over DSM,P: uložení (saveAllSettings / saveAllSettingsOnExit):<br/>A.saveSettings → M.saveSettings → P.settableData(P.serializeAndGetData(), STATE) → writeSettings(storage)
-    Note over A: výjimky z nastavení jsou jen zalogované
+    Note over DSM,P: saving (saveAllSettings / saveAllSettingsOnExit):<br/>A.saveSettings → M.saveSettings → P.settableData(P.serializeAndGetData(), STATE) → writeSettings(storage)
+    Note over A: exceptions from the settings are only logged
 ```
 
-#### Profily
+#### Profiles
 
-Profily ukládá a aplikuje daemon, GUI nemá vlastní ukládání (`DataType::PROFILES`, `Profiles.proto`, `DataProviderProfiles`):
+The profiles are saved and applied by the daemon, the GUI has no saving of its own (`DataType::PROFILES`, `Profiles.proto`, `DataProviderProfiles`):
 
-- GET vrátí seznam profilů (jméno, popis). SET pošle `ProfileCommand` (`SAVE`, `LOAD`, `DELETE`) a odpověď je seznam profilů po provedení příkazu. Neplatné jméno nebo neexistující profil vrátí ERROR_RESPONSE.
-- Profil je stejné nastavení modulů jako uložené nastavení daemonu, jen ve skupinách `Profiles/<jméno>/<settingsGroup>` souboru `LenovoLegion-Daemon.ini` (`SettingsProfiles::prefix`). `DaemonSettingsManager` má pro obojí jednu cestu: `applyModuleSettings(prefix)` a `storeModuleSettings(prefix)`, tedy pořadí modulů, `customOnly` podle uloženého `PowerProfile` a `settableData`.
-- `SAVE` nejdřív smaže celý profil, takže po přepsání v něm nezůstanou staré hodnoty.
-- Jméno nesmí být prázdné, začínat nebo končit mezerou, obsahovat lomítko nebo zpětné lomítko a mít víc než 64 znaků.
-- Staré profily GUI v `LenovoLegionGui.ini` (`Profile_<jméno>`) se nepřevádějí.
+- GET returns the list of the profiles (name, description). SET sends `ProfileCommand` (`SAVE`, `LOAD`, `DELETE`) and the answer is the list of the profiles after the command. An invalid name or a non-existent profile returns ERROR_RESPONSE.
+- A profile is the same settings of the modules as the saved settings of the daemon, only in the groups `Profiles/<name>/<settingsGroup>` of the file `LenovoLegion-Daemon.ini` (`SettingsProfiles::prefix`). `DaemonSettingsManager` has one path for both: `applyModuleSettings(prefix)` and `storeModuleSettings(prefix)`, i.e. the order of the modules, `customOnly` by the saved `PowerProfile` and `settableData`.
+- `SAVE` first deletes the whole profile, so no old values remain in it after an overwrite.
+- The name must not be empty, start or end with a space, contain a slash or a backslash and have more than 64 characters.
+- The old GUI profiles in `LenovoLegionGui.ini` (`Profile_<name>`) are not converted.
 
-#### Co lze nastavit (`settableData`)
+#### What can be set (`settableData`)
 
-Pravidla, která pole zprávy lze zapsat do hardwaru, jsou jen v provideru (`Kit::DataProvider::settableData`, u `IntelMSR` v `ModuleIntelMSR::settable`). Používají se ve dvou případech:
+The rules which fields of a message can be written to the hardware are only in the provider (`Kit::DataProvider::settableData`, for `IntelMSR` in `ModuleIntelMSR::settable`). They are used in two cases:
 
-- **Zápis (`deserializeAndSetData`):** zapíše se jen `settable(požadavek, REQUEST)`. Platí to pro přímý zápis z GUI, načtení GUI profilu i načtení nastavení daemonu. Přeskočené pole se zaloguje jako varování, ostatní pole se zapíšou.
-- **Uložení:** uloží se jen `settableData(aktuální stav, STATE)`. Přeskočené pole se loguje jen jako debug. Pole, které se nezapíše, nepřepíše dřív uloženou hodnotu.
+- **Write (`deserializeAndSetData`):** only `settable(request, REQUEST)` is written. This applies to a direct write from the GUI, loading of a GUI profile and loading of the daemon settings. A skipped field is logged as a warning, the other fields are written.
+- **Saving:** only `settableData(current state, STATE)` is saved. A skipped field is logged as debug only. A field that is not written does not overwrite a previously saved value.
 
-Pravidla:
+Rules:
 
-- Pole jen pro čtení (deskriptory, `supported`, `available_governors`, ID topologie atd.) se odstraní bez logu.
-- Neplatná hodnota se odstraní a zaloguje přes `skipField`.
-- Mezní hodnoty se berou vždy z hardwaru, ne z požadavku, protože požadavek obsahuje jen hodnoty.
-- `writeSettings` ukládá jen pole, která ve zprávě jsou (`has_*`).
-- GUI nezná hodnoty jádra. Co lze nastavit, mu řeknou data: `supported`, rozsahy, `steps`, `supported_profiles`, `available_governors` a u řetězcových hodnot seznam z téhož pravidla (`CPUSMT.settable_controls`, `CPUPState.settable_statuses`).
+- Read-only fields (descriptors, `supported`, `available_governors`, topology IDs etc.) are removed without a log.
+- An invalid value is removed and logged by `skipField`.
+- The limits are always taken from the hardware, not from the request, because the request contains only the values.
+- `writeSettings` saves only the fields present in the message (`has_*`).
+- The GUI does not know the values of the kernel. What can be set is told by the data: `supported`, ranges, `steps`, `supported_profiles`, `available_governors` and for string values a list from the same rule (`CPUSMT.settable_controls`, `CPUPState.settable_statuses`).
 
-| Modul | Zapíše se jen |
+| Module | Only this is written |
 |-------|---------------|
-| CPUSMT | `control` `on`/`off`, a jen když je aktuální stav `on`/`off` (ne `forceoff`, `notsupported`, `notimplemented`). `on` znamená „SMT běží“: při `control=on` a `active=0` (všechna sourozenecká vlákna vypnutá v CPUOptions) daemon zapíše `off` a pak `on`. Tento stav se ukládá jako `off`. |
-| CPUOptions | `online` jen u CPU se souborem `online` (CPU0 nelze vypnout), governor z `scaling_available_governors` u zapnutého CPU, nejvýš tolik CPU, kolik jich je |
-| CPUFrequency | `scaling_min/max_freq` v rozsahu `cpuinfo_min/max_freq` zapnutého CPU |
-| CPUPState | `status` `active`/`passive` (ne `off`), `min/max_perf_pct` v rozsahu 0–100 |
-| CPUPower, GPUPower | hodnota podporovaná v deskriptoru `POWER_PROFILE_CUSTOM`, jedna z `steps`, nebo v rozsahu `<min_value,max_value>` (stejně jako GUI) |
-| FanCurve | celá křivka, 10 bodů s úrovní 0–10 |
-| FanOption, Other, PowerProfile (Fn+Q) | jen když je funkce `supported` |
-| PowerProfile | profil ze `supported_profiles` (ne `UNKNOWN`) |
-| OtherGpuSwitch | platný režim a podporované `gsync` i `igpu_mode`, požadavek bez režimu nic nezapíše |
-| NvidiaNvml | offsety v rozsahu ze zařízení, jen když je NVIDIA GPU |
-| IntelMSR | podporovaná rovina, offset v rozsahu `<-max_undervolt,max_overvolt>` |
+| CPUSMT | `control` `on`/`off`, and only when the current state is `on`/`off` (not `forceoff`, `notsupported`, `notimplemented`). `on` means "SMT runs": with `control=on` and `active=0` (all sibling threads disabled in CPUOptions) the daemon writes `off` and then `on`. This state is saved as `off`. |
+| CPUOptions | `online` only for a CPU with the file `online` (CPU0 cannot be disabled), a governor from `scaling_available_governors` of an enabled CPU, at most as many CPUs as there are |
+| CPUFrequency | `scaling_min/max_freq` in the range `cpuinfo_min/max_freq` of an enabled CPU |
+| CPUPState | `status` `active`/`passive` (not `off`), `min/max_perf_pct` in the range 0–100 |
+| CPUPower, GPUPower | a value supported in the descriptor `POWER_PROFILE_CUSTOM`, one of `steps`, or in the range `<min_value,max_value>` (the same as the GUI) |
+| FanCurve | the whole curve, 10 points with a level 0–10 |
+| FanOption, Other, PowerProfile (Fn+Q) | only when the feature is `supported` |
+| PowerProfile | a profile from `supported_profiles` (not `UNKNOWN`) |
+| OtherGpuSwitch | a valid mode and supported `gsync` and `igpu_mode`, a request without a mode writes nothing |
+| NvidiaNvml | offsets in the range from the device, only when there is an NVIDIA GPU |
+| IntelMSR | a supported plane, an offset in the range `<-max_undervolt,max_overvolt>` |
 
-### 9.9 Hranice chyb
+### 9.9 Error boundaries
 
-| Místo | Zachytí | Následek |
+| Place | Catches | Consequence |
 |-------|---------|----------|
-| `ModuleLoader::loadModules` | chyba dlopen, chybějící symbol, `checkInfo`, duplicitní jméno / dataType | modul se nenačte, ostatní ano |
-| `ModuleDataProviderAdapter::init` (`callModule`) | výjimka z `IModule::init` | modul FAILED, GET/SET vrací ERROR_RESPONSE |
-| `ProtocolProcessor::processRequest` | výjimka z `get`/`set` | ERROR_RESPONSE, klient zůstává připojený |
-| `ModuleHost::callModule` | výjimka z kernel události, timeru, nastavení, `clean` | jen log |
-| `ProtocolProcessorBase::readyReadHandlerSlot` | výjimka při čtení zprávy klienta, např. `ProtocolParser::validateHeader` (délka mimo 0..1 MiB), data na notifikačním socketu | odpojí se jen tento klient (`dropClient`) |
-| `Application::acceptConnection` | chyba při vytvoření procesoru nového spojení | spojení se zahodí, daemon běží dál |
-| `Application::notify` | ostatní výjimky z event loopu | jen log, klienti zůstávají připojení |
+| `ModuleLoader::loadModules` | dlopen error, missing symbol, `checkInfo`, duplicate name / dataType | the module is not loaded, the others are |
+| `ModuleDataProviderAdapter::init` (`callModule`) | exception from `IModule::init` | module FAILED, GET/SET returns ERROR_RESPONSE |
+| `ProtocolProcessor::processRequest` | exception from `get`/`set` | ERROR_RESPONSE, the client stays connected |
+| `ModuleHost::callModule` | exception from a kernel event, timer, settings, `clean` | only a log |
+| `ProtocolProcessorBase::readyReadHandlerSlot` | exception while reading a message of the client, e.g. `ProtocolParser::validateHeader` (length outside 0..1 MiB), data on the notification socket | only this client is disconnected (`dropClient`) |
+| `Application::acceptConnection` | error while creating the processor of a new connection | the connection is dropped, the daemon keeps running |
+| `Application::notify` | other exceptions from the event loop | only a log, the clients stay connected |

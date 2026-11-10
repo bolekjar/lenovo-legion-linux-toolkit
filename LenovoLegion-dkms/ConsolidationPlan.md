@@ -1,88 +1,88 @@
-# Konsolidace kernel modulu lenovo_legion (plán z 2026-11-09)
+# Consolidation of the kernel module lenovo_legion (plan of 2026-11-09)
 
-## Výchozí rozhodnutí
+## Starting decisions
 
-- **Vlastní uzavřený stack, žádné stavění nad upstream ovladači** `lenovo-wmi-*` (`drivers/platform/x86/lenovo/`):
-  - upstream existuje až od jádra 6.16 a mezi verzemi se mění (přejmenování `capdata01` → `wmi-capdata`, nové atributy, hwmon, baterie); starší jádra (všechna LTS do 6.12) nemají nic, modul musí fungovat stejně na každém jádře,
-  - na jeden WMI GUID se naváže jen jeden ovladač (`no_singleton` znamená víc zařízení jednoho ovladače, ne dva ovladače na jednom zařízení); legacy `wmi_evaluate_method(guid)` je zastaralé, nedoručí události a dva ovladače by si přepisovaly stav (cache režimu); exportované funkce upstreamu potřebují jeho `wmi_device` a mezi verzemi se mění,
-  - sdílené GUID (gamezone, other, capdata00/01, thermal-mode event) proto drží náš modul a **blacklist upstream `lenovo_wmi_*` je správné řešení**.
-- Jména atributů zůstávají naše (daemon a GUI je mají namapované), sjednocení s upstreamem se nedělá.
-- `legion_intel_msr` zůstává beze změny (jádro undervolt nemá, `msr` driver zápis do 0x150 bez `allow_writes` blokuje).
+- **Own self-contained stack, no building on top of the upstream drivers** `lenovo-wmi-*` (`drivers/platform/x86/lenovo/`):
+  - upstream exists since kernel 6.16 only and changes between versions (rename `capdata01` → `wmi-capdata`, new attributes, hwmon, battery); older kernels (all LTS up to 6.12) have none of it, the module has to work the same on every kernel,
+  - only one driver binds a WMI GUID (`no_singleton` means several devices of one driver, not two drivers on one device); the legacy `wmi_evaluate_method(guid)` is deprecated, does not deliver the events and two drivers would overwrite each other's state (cached mode); the exported functions of upstream need its `wmi_device` and change between versions,
+  - the shared GUIDs (gamezone, other, capdata00/01, thermal mode event) are therefore held by our module and **blacklisting the upstream `lenovo_wmi_*` is the right solution**.
+- The attribute names stay ours (the daemon and the GUI have them mapped), no unification with upstream.
+- `legion_intel_msr` stays unchanged (the kernel has no undervolt, the `msr` driver blocks writes to 0x150 without `allow_writes`).
 
-## Inventura (stav před konsolidací)
+## Inventory (state before the consolidation)
 
-| Část | Co dělá | Daemon | Duplicita |
+| Part | What it does | Daemon | Duplicate |
 |---|---|---|---|
-| gamezone | `platform_profile`, sysfs `legion-wmi-gamezone-0` (smart_fan, disable_tp, disable_win_key, gsync, igpu_mode, over_drive, skupiny fans, cpu, gpu, macro_key, other) | jen smart_fan, disable_tp, disable_win_key, gsync, igpu_mode, get_power_charge_mode, get_thermal_mode | tepelný režim třemi cestami (platform_profile, smart_fan, get_thermal_mode); teploty a otáčky i v hwmon |
-| other + capdata01 + ddata | výkonové limity CPU/GPU, bool funkce capdata00, skupina others | 11 limitů, fan_full_speed, god_mode_fnq_switchable | – |
-| fan curve (ftable, fm) | `legion-wmi-fan-mode-0` | ano | – (upstream nemá) |
-| events | uevents EVENT_TYPE/EVENT_VALUE | ano | – |
-| hwmon | temp1-3, fan1-3 | ano | – |
-| machine-information | `legion-dmi/machine-information-0` | ano | **celé v `/sys/class/dmi/id/`** |
-| RAPL (`legion-rapl.c`) | jádro čte a zapisuje sysfs `/sys/class/powercap/intel-rapl` | – | **`intel_rapl_msr` (powercap), user space** |
-| RAPL MMIO (`legion-rapl-mmio.c`) | `ioremap` registrů processor thermal zařízení, PL1/PL2/PL4, zámek | – | **`processor_thermal_rapl` → `intel-rapl-mmio:0`**, dva zapisovatelé bez společného zámku |
-| synchronizace RAPL (`legion-dkms.c`) | po změně režimu zapíše limity režimu do RAPL a MMIO | – | patří do daemonu |
+| gamezone | `platform_profile`, sysfs `legion-wmi-gamezone-0` (smart_fan, disable_tp, disable_win_key, gsync, igpu_mode, over_drive, groups fans, cpu, gpu, macro_key, other) | only smart_fan, disable_tp, disable_win_key, gsync, igpu_mode, get_power_charge_mode, get_thermal_mode | thermal mode in three ways (platform_profile, smart_fan, get_thermal_mode); temperatures and fan speeds in hwmon as well |
+| other + capdata01 + ddata | CPU/GPU power limits, bool features of capdata00, group others | 11 limits, fan_full_speed, god_mode_fnq_switchable | – |
+| fan curve (ftable, fm) | `legion-wmi-fan-mode-0` | yes | – (not in upstream) |
+| events | uevents EVENT_TYPE/EVENT_VALUE | yes | – |
+| hwmon | temp1-3, fan1-3 | yes | – |
+| machine-information | `legion-dmi/machine-information-0` | yes | **all of it in `/sys/class/dmi/id/`** |
+| RAPL (`legion-rapl.c`) | the kernel reads and writes the sysfs `/sys/class/powercap/intel-rapl` | – | **`intel_rapl_msr` (powercap), user space** |
+| RAPL MMIO (`legion-rapl-mmio.c`) | `ioremap` of the registers of the processor thermal device, PL1/PL2/PL4, lock | – | **`processor_thermal_rapl` → `intel-rapl-mmio:0`**, two writers without a common lock |
+| RAPL synchronization (`legion-dkms.c`) | writes the limits of the mode to RAPL and MMIO after a mode change | – | belongs to the daemon |
 
-Chyba nalezená při inventuře: `get_ir_temp` (gamezone other) volá metodu `GetPowerChargeMode`.
+Bug found during the inventory: `get_ir_temp` (gamezone other) calls the method `GetPowerChargeMode`.
 
-## Plán
+## Plan
 
-1. **Odstranit duplicity s jádrem** (obecná rozhraní existují i na starých jádrech: DMI odjakživa, `intel-rapl` od 3.13, `intel-rapl-mmio` od 5.3):
-   - machine-information a třída `legion-dmi` → daemon čte `/sys/class/dmi/id/` (`SysFsDriverLegionMachineInformation`),
-   - `legion-rapl.c`, `legion-rapl-mmio.c` a synchronizace RAPL v `legion-dkms.c` → daemon na uevent změny tepelného režimu zapíše limity režimu do powercapu `intel-rapl` a `intel-rapl-mmio` (hodnoty režimu z capdata01/ddata, které už čte modul Other); custom režim podle aktuálních hodnot,
-   - ověřit na hardwaru, že po změně režimu Fn+Q platí stejné limity jako dřív.
+1. **Remove the duplicates of the kernel** (the generic interfaces exist on old kernels as well: DMI always, `intel-rapl` since 3.13, `intel-rapl-mmio` since 5.3):
+   - machine-information and the class `legion-dmi` → the daemon reads `/sys/class/dmi/id/` (`SysFsDriverLegionMachineInformation`),
+   - `legion-rapl.c`, `legion-rapl-mmio.c` and the RAPL synchronization in `legion-dkms.c` → on the uevent of a thermal mode change the daemon writes the limits of the mode to the powercap `intel-rapl` and `intel-rapl-mmio` (values of the mode from capdata01/ddata, already read by the module Other); the custom mode by the current values,
+   - verify on the hardware that the same limits apply after a mode change by Fn+Q as before.
 
-   **Stav (2026-11-09): hotovo, otestováno na hardwaru (Legion Pro 7 16IAX10H).**
-   - jádro: odstraněné `legion-rapl.*`, `legion-rapl-mmio.*`, `legion-machine-information-sysfs.*`, `legion-dkms.h` (notifier synchronizace), nepoužívané položky `legion_data`; kontrola modelu podle DMI zůstává,
-   - daemon: `SysFsDriverLegionMachineInformation` čte `/sys/class/dmi/id/` (bez vazby na kernel modul, `MACHINE_INFORMATION` už není `PLATFORM_LENOVO`),
-   - daemon: `CPUPower/RaplPowerLimits` zapisuje limity režimu (stejná pravidla jako jádro: MMIO výchozí hodnoty režimu, v custom aktuální, zapne MMIO; MSR maxima režimu jen když je RAPL zapnutý a MMIO zápis prošel) při startu modulu, načtení kernel modulu, události změny tepelného režimu (`ProviderModule::onDriverEvent`) a v custom režimu hned po nastavení limitů (požadavek klienta, obnovení nastavení),
-   - opraveno: provider CPUPower ořezával aktuální hodnoty limitů na 8 bitů (`static_cast<quint8>`),
-   - udev pravidlo `99-rapl-readonly.rules` (`rapl-readonly.sh`) zůstává: soubory limitů jsou `0440 root:legion` a sysfs otevření pro zápis souboru bez bitu `w` odmítne i rootovi (ostatní nástroje, např. thermald, limity nezmění); daemon před zápisem přidá vlastníkovi `w` a hned vrátí původní práva.
-2. **Jedna cesta pro tepelný režim, hwmon, probe:**
-   - tepelný režim jde nastavit jen funkcí `legion_wmi_gz_thermal_mode_set()` (kontrola režimu vůči notebooku, extreme jen s podporou, WMI, uložení režimu zdroje napájení); používá ji `smart_fan/current_value` i `platform_profile`, `platform_profile` čte režim z firmwaru,
-   - `smart_fan/current_value` zůstává rozhraním daemonu (stejné na všech jádrech), `platform_profile` je pro ostatní nástroje (power-profiles-daemon),
-   - hwmon přes `hwmon_device_register_with_info` (stejná jména `tempX_*`, `fanX_*`),
-   - probe nic nenastavuje, jen čte stav.
+   **State (2026-11-09): done, tested on the hardware (Legion Pro 7 16IAX10H).**
+   - kernel: removed `legion-rapl.*`, `legion-rapl-mmio.*`, `legion-machine-information-sysfs.*`, `legion-dkms.h` (synchronization notifier), unused members of `legion_data`; the model check by DMI stays,
+   - daemon: `SysFsDriverLegionMachineInformation` reads `/sys/class/dmi/id/` (no dependency on the kernel module, `MACHINE_INFORMATION` is not `PLATFORM_LENOVO` any more),
+   - daemon: `CPUPower/RaplPowerLimits` writes the limits of the mode (the same rules as the kernel: MMIO the default values of the mode, the current ones in custom, enables MMIO; MSR the maximums of the mode only when RAPL is enabled and the MMIO write succeeded) on the start of the module, when the kernel module is loaded, on the thermal mode event (`ProviderModule::onDriverEvent`) and in the custom mode at once after the limits were set (client request, restored settings),
+   - fixed: the provider CPUPower truncated the current values of the limits to 8 bits (`static_cast<quint8>`),
+   - the udev rule `99-rapl-readonly.rules` (`rapl-readonly.sh`) stays: the files of the limits are `0440 root:legion` and sysfs refuses to open a file without the `w` bit for writing even for root (other tools, e.g. thermald, do not change the limits); the daemon adds `w` for the owner before the write and restores the permissions at once.
+2. **One way for the thermal mode, hwmon, probe:**
+   - the thermal mode is set only by `legion_wmi_gz_thermal_mode_set()` (mode checked against the notebook, extreme only with support, WMI, stored mode of the power source); used by `smart_fan/current_value` and `platform_profile`, `platform_profile` reads the mode of the firmware,
+   - `smart_fan/current_value` stays the interface of the daemon (the same on all kernels), `platform_profile` is for the other tools (power-profiles-daemon),
+   - hwmon by `hwmon_device_register_with_info` (the same names `tempX_*`, `fanX_*`),
+   - probe sets nothing, it only reads the state.
 
-   **Stav (2026-11-09): hotovo, otestováno na hardwaru (Legion Pro 7 16IAX10H).**
-   - mapování profilů: quiet, balanced, performance stejně; extreme = `max-power` (jádro 6.19+), jinak skrytý `balanced-performance` (6.14+); custom = `custom` (6.14+, nově viditelná volba), na starších jádrech zobrazen jako `balanced-performance`,
-   - zrušeno: `platform_profile` dřív na baterii tiše měnil performance na balanced (daemon to nikdy nedělal), nešlo nastavit custom ani extreme; `smart_fan` přijímal i 0 a extreme bez podpory,
-   - hwmon: zrušeny globální měnitelné tabulky atributů, registrace bez devm (odstraní se před WMI ovladači, ze kterých čte).
+   **State (2026-11-09): done, tested on the hardware (Legion Pro 7 16IAX10H).**
+   - mapping of the profiles: quiet, balanced, performance the same; extreme = `max-power` (kernel 6.19+), otherwise the hidden `balanced-performance` (6.14+); custom = `custom` (6.14+, newly a visible choice), shown as `balanced-performance` on older kernels,
+   - removed: `platform_profile` silently changed performance to balanced on battery (the daemon never did it), custom and extreme could not be set; `smart_fan` accepted 0 and extreme without support,
+   - hwmon: no global modifiable attribute tables, registration without devm (removed before the WMI drivers it reads).
 
-3. **Gamezone sysfs**: rozhodnutí autora (2026-11-09): funkce, které daemon nepoužívá, zůstávají (skupiny fans, cpu, gpu, macro_key, other, funkce capdata00); opraveno `get_ir_temp` (volalo metodu `GetPowerChargeMode` místo `GetIRTemp`).
+3. **Gamezone sysfs**: decision of the author (2026-11-09): the features the daemon does not use stay (groups fans, cpu, gpu, macro_key, other, features of capdata00); fixed `get_ir_temp` (called the method `GetPowerChargeMode` instead of `GetIRTemp`).
 
-   **Stav (2026-11-09): hotovo.**
+   **State (2026-11-09): done.**
 
-4. **Nejnižší podporované jádro: 6.12 LTS** (rozhodnutí autora 2026-11-09).
-   - API: `platform_driver.remove` vrací `void` (6.11), `wmi_driver.no_singleton` (6.10), `guard()`/`scoped_guard()`/`__free` (6.5); novější API přes podmínky verze (`platform_profile` ops a custom 6.14, max-power 6.19, `rdmsrq_safe_on_cpu` 7.2),
-   - `legion-kernel-version.h`: `#error` pro jádro < 6.12, `dkms.conf`: `BUILD_EXCLUSIVE_KERNEL` (DKMS modul pro starší jádro nestaví), README: požadavek jádra 6.12+,
-   - ověřeno: překlad bez varování proti 6.12.116 a 6.18.62 (zdrojáky z kernel.org, `defconfig` + WMI, hwmon, platform_profile, `modules_prepare`), všechny použité symboly jsou v obou jádrech exportované; načtení otestováno na 7.2.
+4. **Minimal supported kernel: 6.12 LTS** (decision of the author 2026-11-09).
+   - API: `platform_driver.remove` returns `void` (6.11), `wmi_driver.no_singleton` (6.10), `guard()`/`scoped_guard()`/`__free` (6.5); newer APIs by version checks (`platform_profile` ops and custom 6.14, max-power 6.19, `rdmsrq_safe_on_cpu` 6.16),
+   - `legion-kernel-version.h`: `#error` for a kernel < 6.12, `dkms.conf`: `BUILD_EXCLUSIVE_KERNEL` (DKMS does not build the module for an older kernel), README: kernel 6.12+ required,
+   - verified: built without warnings against 6.12.116 and 6.18.62 (sources of kernel.org, `defconfig` + WMI, hwmon, platform_profile, `modules_prepare`), all used symbols are exported in both kernels; loading tested on 7.2.
 
-   **Stav (2026-11-09): hotovo.** Načtení na 6.12 a 6.18 netestováno (vyžaduje nabootované jádro).
+   **State (2026-11-09): done.** Loading on 6.12 and 6.18 not tested (needs a booted kernel).
 
-5. **Bez vazby na ACPI zařízení VPC2004** (rozhodnutí autora 2026-11-10, po hardwarovém testu `ideapad_laptop`).
-   - test: `ideapad_laptop` na Legion Pro 7 16IAX10H nemá DYTC (žádný vlastní `platform_profile`, žádný cyklus profilu na Fn+Q), umí `conservation_mode`, `charge_types`, `usb_charging`, `fn_lock`, `camera_power`, `fan_mode`; váže WMI GUID `8FC0DE0C` (Fn klávesy), který používají události daemonu (podsvícení klávesnice, FnLock, kamera) → **souběh s `ideapad_laptop` není možný**, zůstává na blacklistu,
-   - modul nemá vlastní zařízení: `module_init` ověří model podle DMI (`dmi_first_match`, dřív `strcmp` nad případným NULL), zaregistruje třídu firmware atributů a WMI ovladače (komponenty před mastery), `module_exit` v opačném pořadí; načítá se podle aliasů WMI GUID,
-   - hwmon `legion` je potomek zařízení other mode, registruje se při navázání jeho komponent,
-   - opraveno: WMI ovladače se registrovaly v `probe` platform ovladače; `MODULE_DEVICE_TABLE(acpi, …)` nad tabulkami WMI GUID (nesmyslné aliasy `acpi*:300E:*`…), discrete data bez tabulky; notifiery hwmon registrované v `bind` přes devm (při opakovaném navázání komponent dvakrát); `probe` other mode a fan method čekal až 5 s na navázání komponent,
-   - odstraněno: `legion-compatibility.*`, `legion-machine-information.*`, `legion-common.c` (výpis DMI do dmesg, DMI je v `/sys/class/dmi/id`),
-   - blacklist: `lenovo_wmi_hotkey_utilities` odebrán (LED mic mute a audio mute, jeho GUID modul nepoužívá).
+5. **No binding to the ACPI device VPC2004** (decision of the author 2026-11-10, after the hardware test of `ideapad_laptop`).
+   - test: `ideapad_laptop` has no DYTC on Legion Pro 7 16IAX10H (no own `platform_profile`, no profile cycle on Fn+Q), it supports `conservation_mode`, `charge_types`, `usb_charging`, `fn_lock`, `camera_power`, `fan_mode`; it binds the WMI GUID `8FC0DE0C` (Fn keys) used by the events of the daemon (keyboard backlight, FnLock, camera) → **running together with `ideapad_laptop` is not possible**, it stays blacklisted,
+   - the module has no device of its own: `module_init` checks the model by DMI (`dmi_first_match`, formerly `strcmp` on a possible NULL), registers the firmware attributes class and the WMI drivers (components before the masters), `module_exit` in the reverse order; loaded by the aliases of the WMI GUIDs,
+   - the hwmon `legion` is a child of the other mode device, registered when its components are bound,
+   - fixed: the WMI drivers were registered in `probe` of the platform driver; `MODULE_DEVICE_TABLE(acpi, …)` on WMI GUID tables (bogus aliases `acpi*:300E:*`…), discrete data without a table; hwmon notifiers registered in `bind` by devm (twice after a repeated bind of the components); `probe` of the other mode and fan method waited up to 5 s for the components to bind,
+   - removed: `legion-compatibility.*`, `legion-machine-information.*`, `legion-common.c` (DMI dump to dmesg, DMI is in `/sys/class/dmi/id`),
+   - blacklist: `lenovo_wmi_hotkey_utilities` removed (mic mute and audio mute LEDs, the module does not use its GUID).
 
-   **Stav (2026-11-10): hotovo, otestováno na hardwaru (Legion Pro 7 16IAX10H):** modul se po restartu načte sám podle WMI aliasů, všech 13 WMI GUID drží jeho ovladače, hwmon `legion` jako dřív (sensors: `legion-virtual-0`, WMI sběrnice); `lenovo_wmi_hotkey_utilities` se naváže, LED mute tento model nemá (firmware hlásí bez podpory).
+   **State (2026-11-10): done, tested on the hardware (Legion Pro 7 16IAX10H):** the module is loaded by the WMI aliases after a reboot, all 13 WMI GUIDs are held by its drivers, hwmon `legion` as before (sensors: `legion-virtual-0`, WMI bus); `lenovo_wmi_hotkey_utilities` binds, this model has no mute LEDs (the firmware reports no support).
 
-6. **Audit podle standardů jádra** (2026-11-10).
-   - chyby:
-     - build s `MO=` (kbuild až od 6.13): na 6.12 DKMS a `make install` selhaly → build ve zdrojovém adresáři (`dkms.conf` bez `BUILT_MODULE_LOCATION`, `CLEAN`, `.gitignore`),
-     - other mode: atributy s diskrétními hodnotami (steps) přijímaly libovolnou hodnotu, kontrola `contains_value` chyběla,
-     - MSR: `cache_`, `gpu_`, `uncore_max_overvolt` vracely `max_undervolt_uv`,
-     - other mode: `args.arg1` WMI metod nebyl nastaven (hodnota ze zásobníku),
-     - MSR: Meteor/Arrow Lake podle čísel modelu → `x86_match_cpu` (`INTEL_*`); mailbox z kontextu procesu (`*msr*_safe_on_cpu`, `usleep_range`) místo až ~3 ms čekání v IPI se zakázanými přerušeními,
-     - po odpojení komponent zůstávaly ukazatele na jejich seznamy (`cd00/cd01/dd/ft_list`),
-     - discrete data: `-E2BIG` i při přesně zaplněném výstupu,
-     - fan křivka: zápis i čtení přes zabalené little endian struktury (`cpu_to_le16`/`le32_to_cpu`, `static_assert` velikosti) místo ručních offsetů; čtení selže, když firmware vrátí méně bajtů než tabulka (`legion_wmi_dev_evaluate_buffer` vrací délku),
-   - standardy: MSR atributy přes `.dev_groups` třídy (vzniknou před uevent), `sysfs_emit`, bez vlastní uevent proměnné `DRIVER` (daemon filtruje podle subsystému), atributy pouze pro zápis `0200`, `snprintf`, typy `kstrtouint`/formáty, kernel-doc jména, `-y` v Makefile, odstraněné nepoužité kódy,
-   - ověřeno: build jako DKMS (ve zdrojovém adresáři) proti 6.12.116 a 6.18.62 bez varování, všechny symboly exportované; checkpatch 0 chyb.
+6. **Audit by the kernel standards** (2026-11-10).
+   - bugs:
+     - build with `MO=` (kbuild since 6.13 only): DKMS and `make install` failed on 6.12 → build in the source directory (`dkms.conf` without `BUILT_MODULE_LOCATION`, `CLEAN`, `.gitignore`),
+     - other mode: attributes with discrete values (steps) accepted any value, the `contains_value` check was missing,
+     - MSR: `cache_`, `gpu_`, `uncore_max_overvolt` returned `max_undervolt_uv`,
+     - other mode: `args.arg1` of the WMI methods was not set (value from the stack),
+     - MSR: Meteor/Arrow Lake by model numbers → `x86_match_cpu` (`INTEL_*`); mailbox from the process context (`*msr*_safe_on_cpu`, `usleep_range`) instead of waiting up to ~3 ms in an IPI with interrupts disabled,
+     - after the unbind of the components the pointers to their lists stayed (`cd00/cd01/dd/ft_list`),
+     - discrete data: `-E2BIG` also for an exactly filled output,
+     - fan curve: write and read by packed little endian structures (`cpu_to_le16`/`le32_to_cpu`, `static_assert` of the size) instead of raw offsets; reading fails when the firmware returns fewer bytes than the table (`legion_wmi_dev_evaluate_buffer` returns the length),
+   - standards: MSR attributes by `.dev_groups` of the class (created before the uevent), `sysfs_emit`, no custom uevent variable `DRIVER` (the daemon filters by the subsystem), write-only attributes `0200`, `snprintf`, types of `kstrtouint`/formats, kernel-doc names, `-y` in the Makefile, unused code removed,
+   - verified: built as DKMS builds it (in the source directory) against 6.12.116 and 6.18.62 without warnings, all symbols exported; checkpatch 0 errors.
 
-   **Stav (2026-11-10): hotovo, čeká na test na hardwaru.**
+   **State (2026-11-10): done, waits for the test on the hardware.**
 
-Další možný krok: funkce `ideapad_laptop`, o které uživatel kvůli blacklistu přichází (limit nabíjení / conservation mode, rapid charge, usb_charging, fn_lock, camera_power), doplnit do vlastního stacku.
+Possible next step: add the features of `ideapad_laptop` the user loses because of the blacklist (charge limit / conservation mode, rapid charge, usb_charging, fn_lock, camera_power) to the own stack.
