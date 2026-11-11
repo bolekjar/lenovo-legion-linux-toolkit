@@ -11,22 +11,23 @@ enum DataType {
   CPU_INFO            = 1 [(legion.ui.message) = "legion.messages.CPUInfo"];
   CPU_FREQUENCY       = 2 [(legion.ui.message) = "legion.messages.CPUFrequency"];
   CPU_INTEL_MSR       = 3 [(legion.ui.message) = "legion.messages.CpuIntelMSR"];
-  CPU_OPTIONS         = 4 [(legion.ui.message) = "legion.messages.CPUOptions"];
-  CPU_POWER           = 5 [(legion.ui.message) = "legion.messages.CPUPower", (legion.ui.platform) = PLATFORM_LENOVO];
+  CPU_OPTIONS         = 4 [(legion.ui.message) = "legion.messages.CPUOptions", (legion.ui.reload_after_set) = "CPU_FREQUENCY,CPU_TOPOLOGY,CPU_SMT"];
+  CPU_POWER           = 5 [(legion.ui.message) = "legion.messages.CPUPower", (legion.ui.platform) = PLATFORM_LENOVO, (legion.ui.reload_after_set) = "GPU_POWER"];
   CPU_TOPOLOGY        = 6 [(legion.ui.message) = "legion.messages.CPUTopology"];
   DAEMON_SETTINGS     = 7 [(legion.ui.message) = "legion.messages.DaemonSettings", (legion.ui.command) = "legion.messages.DaemonSettings"];
-  FAN_CURVE           = 8 [(legion.ui.message) = "legion.messages.FanCurve", (legion.ui.platform) = PLATFORM_LENOVO];
-  GPU_POWER           = 9 [(legion.ui.message) = "legion.messages.GPUPower", (legion.ui.platform) = PLATFORM_LENOVO];
+  FAN_CURVE           = 8 [(legion.ui.message) = "legion.messages.FanCurve", (legion.ui.platform) = PLATFORM_LENOVO, (legion.ui.reload_after_set) = "FAN_OPTION"];
+  GPU_POWER           = 9 [(legion.ui.message) = "legion.messages.GPUPower", (legion.ui.platform) = PLATFORM_LENOVO, (legion.ui.reload_after_set) = "CPU_POWER"];
   HW_MONITORING       = 10 [(legion.ui.message) = "legion.messages.HardwareMonitor"];
   NVIDIA_NWML         = 11 [(legion.ui.message) = "legion.messages.NvidiaNvml"];
   OTHER               = 12 [(legion.ui.message) = "legion.messages.OtherSettings", (legion.ui.platform) = PLATFORM_LENOVO];
-  POWER_PROFILE       = 13 [(legion.ui.message) = "legion.messages.PowerProfile", (legion.ui.platform) = PLATFORM_LENOVO];
+  POWER_PROFILE       = 13 [(legion.ui.message) = "legion.messages.PowerProfile", (legion.ui.platform) = PLATFORM_LENOVO,
+                            (legion.ui.reload_after_set) = "CPU_POWER,GPU_POWER,FAN_CURVE,FAN_OPTION"];
   RGB_CONTROLLER      = 14 [(legion.ui.message) = "legion.messages.RGBControllerResponse", (legion.ui.request) = "legion.messages.RGBControllerRequest",
                             (legion.ui.command) = "legion.messages.RGBControllerSetRequest", (legion.ui.platform) = PLATFORM_LENOVO];
   MACHINE_INFORMATION = 15 [(legion.ui.message) = "legion.messages.MachineInformation"];
-  CPU_SMT             = 16 [(legion.ui.message) = "legion.messages.CPUSMT"];
-  FAN_OPTION          = 17 [(legion.ui.message) = "legion.messages.FanOption", (legion.ui.platform) = PLATFORM_LENOVO];
+  CPU_SMT             = 16 [(legion.ui.message) = "legion.messages.CPUSMT", (legion.ui.reload_after_set) = "CPU_OPTIONS,CPU_FREQUENCY,CPU_TOPOLOGY"];
+  FAN_OPTION          = 17 [(legion.ui.message) = "legion.messages.FanOption", (legion.ui.platform) = PLATFORM_LENOVO, (legion.ui.reload_after_set) = "FAN_CURVE"];
   OTHER_GPU_SWITCH    = 18 [(legion.ui.message) = "legion.messages.GpuSwitchValue", (legion.ui.platform) = PLATFORM_LENOVO];
-  CPU_PSTATE          = 19 [(legion.ui.message) = "legion.messages.CPUPState"];
+  CPU_PSTATE          = 19 [(legion.ui.message) = "legion.messages.CPUPState", (legion.ui.reload_after_set) = "CPU_OPTIONS,CPU_FREQUENCY"];
   PROFILES            = 20 [(legion.ui.message) = "legion.messages.Profiles", (legion.ui.command) = "legion.messages.ProfileCommand"];
 }

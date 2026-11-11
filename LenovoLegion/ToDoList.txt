@@ -1,6 +1,10 @@
 ﻿
 ----------------------------------------------------------------------------------------------------------------------
-1) I have to make review of expecting updates when gui change the values which are dependency on event. If interaction is by gui then no event should be in expectation gui should handle this himself.
+1) DONE - after its own write (apply, sendCommand) the GUI reads again the written data type and the data types changed by the write,
+   (legion.ui.reload_after_set) of the DataType values (UiDesign.md 3.3.3), it does not expect a notification of the daemon.
+   Found: enabled CPUs were not shown on the CPU Freq Control page (CPUOptions blocks its kernel events, CPU_X_LIST_RELOADED did not come);
+   the P-state status changes the governors, CPU_PSTATE_CHANGED reloads CPU_OPTIONS and CPU_FREQUENCY as well.
+   Original: I have to make review of expecting updates when gui change the values which are dependency on event. If interaction is by gui then no event should be in expectation gui should handle this himself.
 2) Fix issue in brightness of keyboard - not able to simulate but sometimes shows brightness off and keyboard lights on.
 3) DONE - Kit SysFsDataProvider writes unbuffered and logs the error of write() (LOG_E), no exception.
    Original: Daemon ignores sysfs write errors - SysFsDataProvider::setData writes via QTextStream and errors from the kernel store (-EINVAL, -EBUSY, -EOPNOTSUPP) are lost on flush.

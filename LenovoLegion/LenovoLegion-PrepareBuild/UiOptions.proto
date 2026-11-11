@@ -70,4 +70,7 @@ extend google.protobuf.EnumValueOptions {
                                   // of DataSource.request (RGB_CONTROLLER: RGBControllerRequest with request_flags)
     string reload      = 50009;   // Notification.Action value: the data types read again by the GUI (DataType names,
                                   // comma separated: "POWER_PROFILE,CPU_POWER"), not set = all data types
+    string reload_after_set = 50010; // DataType value: the other data types read again by the GUI after a SET of this
+                                     // data type (DataType names, comma separated). The daemon blocks the kernel events
+                                     // of its own write, so the notification of the other data types does not come.
 }

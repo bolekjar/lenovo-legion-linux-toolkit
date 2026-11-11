@@ -105,6 +105,12 @@ public:
      */
     static void reloadForNotification(int action);
 
+    /*
+     * Reload the data sources of the data types (DataType names, comma separated), origin for the log.
+     * False for an unknown data type, nothing is reloaded then.
+     */
+    static bool reloadDataTypes(const QString& types,const QString& origin);
+
     QString dataType() const;
     void    setDataType(const QString& dataType);
 
@@ -266,6 +272,12 @@ private:
      * Reload after a change outside of the page: sources with an interval in the worker thread
      */
     void refresh();
+
+    /*
+     * After a SET (apply, command): reload the data types changed by the write as well ((legion.ui.reload_after_set)),
+     * the daemon does not notify about its own write (ToDo 1)
+     */
+    void reloadAfterSet() const;
 
     /*
      * Data from the daemon -> message, changes of the user are kept

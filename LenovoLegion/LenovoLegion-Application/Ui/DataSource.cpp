@@ -111,12 +111,17 @@ void DataSource::reloadForNotification(int action)
     const EnumValueDescriptor* value = legion::messages::Notification::Action_descriptor()->FindValueByNumber(action);
     const QString              types = value != nullptr ? QString::fromStdString(value->options().GetExtension(legion::ui::reload)) : QString();
 
-    if(types.isEmpty())
+    /*
+     * No or a wrong annotation: all data sources, nothing is missed
+     */
+    if(types.isEmpty() || !reloadDataTypes(types,QString("Notification ").append(QString::fromUtf8(value->name().data(),static_cast<qsizetype>(value->name().size()))).append(" (legion.ui.reload)")))
     {
         reloadAll();
-        return;
     }
+}
 
+bool DataSource::reloadDataTypes(const QString &types, const QString &origin)
+{
     QSet<int> dataTypes;
 
     for(const QString& name : types.split(',',Qt::SkipEmptyParts))
@@ -125,12 +130,8 @@ void DataSource::reloadForNotification(int action)
 
         if(dataType == nullptr)
         {
-            /*
-             * Wrong annotation: all data sources, nothing is missed
-             */
-            LOG_W(QString("Notification ").append(QString::fromUtf8(value->name().data(),static_cast<qsizetype>(value->name().size()))).append(": unknown data type ").append(name.trimmed()).append(" in (legion.ui.reload), all data are read again"));
-            reloadAll();
-            return;
+            LOG_W(QString(origin).append(": unknown data type ").append(name.trimmed()));
+            return false;
         }
 
         dataTypes.insert(dataType->number());
@@ -143,6 +144,8 @@ void DataSource::reloadForNotification(int action)
             source->refresh();
         }
     }
+
+    return true;
 }
 
 void DataSource::refresh()
@@ -492,6 +495,19 @@ void DataSource::apply()
             source->reload();
         }
     }
+
+    reloadAfterSet();
+}
+
+void DataSource::reloadAfterSet() const
+{
+    const EnumValueDescriptor* value = legion::messages::DataType_descriptor()->FindValueByNumber(m_dataTypeValue);
+    const QString              types = value != nullptr ? QString::fromStdString(value->options().GetExtension(legion::ui::reload_after_set)) : QString();
+
+    if(!types.isEmpty())
+    {
+        reloadDataTypes(types,QString("DataSource ").append(m_dataType).append(" (legion.ui.reload_after_set)"));
+    }
 }
 
 void DataSource::applyValues(const QVariantMap &values)
@@ -766,15 +782,18 @@ bool DataSource::sendCommand(const QVariantMap &values)
         if(response.isEmpty())
         {
             reload();
+            reloadAfterSet();
             return true;
         }
 
         parse(response);
+        reloadAfterSet();
     }
     catch(const std::exception& ex)
     {
         LOG_E(QString("DataSource ").append(m_dataType).append(": command failed: ").append(ex.what()));
         setLastError(ex.what());
+        reloadAfterSet();
         ++m_revision;
         emit messageChanged();
         return false;

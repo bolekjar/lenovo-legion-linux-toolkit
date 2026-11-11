@@ -97,6 +97,21 @@ Data type whose SET sends a different message than GET returns: `PROFILES` sends
 
 Data type whose GET needs a request message: `RGB_CONTROLLER` sends `RGBControllerRequest` (`request_flags`). `DataSource.request` (`{"request_flags": 4095}`) is built into this message and sent with every load. Writing RGB is a command (`RGBControllerSetRequest`), the daemon answers empty and `sendCommand` then reads the data again. `sendCommand` also takes whole messages and repeated fields as QML objects and arrays (`{"led_group_effects": [{mode, speed, colors: [...], leds: [{name, value}]}]}`, `Reflection::fromVariant`), `DataSource.data(field, revision)` returns a whole field of the data as QML objects (`Reflection::toVariant`: modes, effects, LEDs).
 
+### 3.3.3 Reload after a write (`(legion.ui.reload_after_set)` on the values of `DataType`)
+
+Data types that change together with a written data type. The daemon blocks the kernel events of its own write (or the event of the firmware may not come), so the GUI does not expect a notification after its own write: after `apply()` and `sendCommand()` it reads the written data type and the data types of the annotation again itself (ToDo 1). The lists are the same as `(legion.ui.reload)` of the notification the write would cause:
+
+| Written | Read again | Why |
+|---|---|---|
+| `CPU_OPTIONS` | `CPU_FREQUENCY,CPU_TOPOLOGY,CPU_SMT` | enabled and disabled CPUs (`CPU_X_LIST_RELOADED`) |
+| `CPU_SMT` | `CPU_OPTIONS,CPU_FREQUENCY,CPU_TOPOLOGY` | SMT switches the sibling threads |
+| `CPU_PSTATE` | `CPU_OPTIONS,CPU_FREQUENCY` | the status changes the governors, the performance limits change the frequency limits |
+| `POWER_PROFILE` | `CPU_POWER,GPU_POWER,FAN_CURVE,FAN_OPTION` | values of the thermal mode (`THERMAL_MODE_CHANGE`) |
+| `CPU_POWER`, `GPU_POWER` | the other one | `POWER_CONTROL_CHANGED` |
+| `FAN_CURVE`, `FAN_OPTION` | the other one | `FAN_CURVE_CHANGED` |
+
+`PROFILES` (`LOAD`) reads all data types again (`reloadAllSources`). The other data types change only themselves.
+
 ### 3.4 Platform (`(legion.ui.platform)` on the values of `DataType`)
 
 `PLATFORM_GENERIC` (default): standard Linux interfaces (cpufreq, intel_pstate, NVML, `legion-intel-msr`), works on any notebook. `PLATFORM_LENOVO`: needs the Lenovo Legion driver (`legion`): power profiles, fans, power limits, touchpad, Win key, GPU switch, RGB. `HW_MONITORING` and `BATTERY` are mixed and stay generic (temperatures and fans are missing without the driver, their groups are hidden).
