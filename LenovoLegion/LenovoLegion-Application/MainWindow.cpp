@@ -143,11 +143,23 @@ void MainWindow::dameonConnectionStatus(bool isConnected)
     LOG_D(QString("MainWindow: daemon ").append(isConnected ? "connected" : "disconnected"));
 
     /*
-     * The pages are created again when connected (Shell.qml), the other data sources read the data again
+     * The existing data sources (status bar, panels) read the data again, then the pages are created (Shell.qml).
+     * The data sources of a new page load their data at once when they are created: the bindings of the page get the
+     * data together (e.g. a slider value is not clamped by an empty range and the global values of the frequencies
+     * are set). When disconnected the pages are removed first.
      */
-    m_appState->setConnected(isConnected);
-    DataSource::setConnected(isConnected);
-    DataSource::reloadAll();
+    if(isConnected)
+    {
+        DataSource::setConnected(true);
+        DataSource::reloadAll();
+        m_appState->setConnected(true);
+    }
+    else
+    {
+        m_appState->setConnected(false);
+        DataSource::setConnected(false);
+        DataSource::reloadAll();
+    }
 }
 
 void MainWindow::daemonNotification(const legion::messages::Notification &msg)

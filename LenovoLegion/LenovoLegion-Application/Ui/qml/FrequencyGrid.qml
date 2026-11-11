@@ -174,13 +174,23 @@ Section {
     }
 
     function resetGlobal() {
-        if (threads.length > 0 && minField(threads[0]) !== null) {
-            globalMin = minField(threads[0]).value
-            globalMax = maxField(threads[0]).value
+        if (frequency.dirty || threads.length === 0)
+            return
+
+        const min = minField(threads[0])
+        const max = maxField(threads[0])
+
+        if (min !== null && max !== null && min.value !== undefined && max.value !== undefined) {
+            globalMin = min.value
+            globalMax = max.value
         }
     }
 
     Component.onCompleted: resetGlobal()
+
+    // The topology and the frequencies are loaded in any order (after the connection to the daemon, notifications):
+    // the global values follow the first thread also when the threads come after the frequencies
+    onThreadsChanged: resetGlobal()
 
     // Shown global values inside the range of the new filter, the threads are not changed
     onFilterChanged: {
@@ -193,8 +203,7 @@ Section {
 
         // New data from the daemon without changes of the user (after Apply, Cancel): the global values follow the first thread
         function onMessageChanged() {
-            if (!frequency.dirty)
-                grid.resetGlobal()
+            grid.resetGlobal()
         }
     }
 
