@@ -161,7 +161,15 @@ On other distributions install the packages with the same purpose (e.g. `qt6-bas
 
 ### Arch Linux, Manjaro, EndeavourOS
 
-The package is built from [`LenovoLegion-archpkg/PKGBUILD`](LenovoLegion-archpkg/PKGBUILD):
+The latest release from the AUR
+([`lenovo-legion-linux-toolkit-release`](https://aur.archlinux.org/packages/lenovo-legion-linux-toolkit-release)):
+
+```bash
+yay -S lenovo-legion-linux-toolkit-release
+```
+
+Or the current development state of the repository
+([`LenovoLegion-archpkg/PKGBUILD`](LenovoLegion-archpkg/PKGBUILD), package `lenovo-legion-linux-toolkit`):
 
 ```bash
 git clone https://github.com/bolekjar/lenovo-legion-linux-toolkit.git
@@ -169,7 +177,7 @@ cd lenovo-legion-linux-toolkit/LenovoLegion-archpkg
 makepkg -si
 ```
 
-The package installs the application to `/opt/LenovoLegion`, the kernel modules by DKMS, the systemd service and adds
+Install only one of them. The package installs the application to `/opt/LenovoLegion`, the kernel modules by DKMS, the systemd service and adds
 the installing user to the group `legion`. Then:
 
 ```bash
@@ -294,6 +302,7 @@ The log of the daemon is in `/opt/LenovoLegion/log`.
 **Lenovo features are grayed out ("Requires the Lenovo Legion kernel driver")**
 ```bash
 lsmod | grep lenovo_legion
+modinfo -F version lenovo_legion     # the same version as the application (old module after an update: reboot)
 dkms status
 # the WMI drivers of lenovo_legion are bound:
 for d in /sys/bus/wmi/devices/*; do echo "$(basename $d) -> $(basename "$(readlink $d/driver)")"; done | grep legion
@@ -317,7 +326,7 @@ queried, its values appear when it wakes up.
 
 ```bash
 # Arch
-sudo pacman -R lenovo-legion-linux-toolkit
+sudo pacman -R lenovo-legion-linux-toolkit-release     # or lenovo-legion-linux-toolkit (development package)
 
 # from source
 sudo systemctl disable --now lenovo-legion-daemon.service

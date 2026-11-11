@@ -156,4 +156,4 @@ MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Jaroslav Bolek");
 MODULE_DESCRIPTION(
 	"Lenovo Legion notebooks: WMI game zone, other mode, fan curve, hwmon");
-MODULE_VERSION("0.9.10");
+MODULE_VERSION(LEGION_VERSION);

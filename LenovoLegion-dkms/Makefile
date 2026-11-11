@@ -1,7 +1,15 @@
 SHELL := /bin/bash
 KERNEL_VERSION  ?= $(shell uname --kernel-release)
 KSRC := /lib/modules/$(KERNEL_VERSION)/build
+# Version of the development DKMS installation (make dkms)
 VERSION := 0.0.0
+
+# Version of the modules (MODULE_VERSION): PACKAGE_VERSION of dkms.conf given by DKMS (set by the package), otherwise the
+# release tag of git (the same as the application), otherwise 0.0.0. Passed to kbuild on its command line.
+LEGION_VERSION ?= $(shell VER=`git describe --exact-match --tags 2>/dev/null | grep 'release/' | sed 's/release\///'`; echo $${VER:-0.0.0})
+ifeq ($(LEGION_VERSION),DKMS_VERSION)
+override LEGION_VERSION := 0.0.0
+endif
 
 INSTALL_DIR := /lib/modules/$(KERNEL_VERSION)/kernel/drivers/platform/x86
 MOD_DEST_DIR := /lib/modules/$(KERNEL_VERSION)/kernel/drivers/platform/x86
@@ -17,11 +25,14 @@ lenovo_legion-y := legion-dkms.o legion-firmware-attributes-class.o \
 # Intel CPU voltage offsets, independent of the notebook
 obj-m += legion_intel_msr.o
 legion_intel_msr-y := legion-intel-msr.o legion-intel-msr-sysfs.o
+
+ccflags-y += -DLEGION_VERSION='"$(LEGION_VERSION)"'
+
 all:
-	$(MAKE) -C $(KSRC) M=$(CURDIR) modules
+	$(MAKE) -C $(KSRC) M=$(CURDIR) LEGION_VERSION=$(LEGION_VERSION) modules
 
 allWarn:
-	$(MAKE) -C $(KSRC) M=$(CURDIR) W=1 modules
+	$(MAKE) -C $(KSRC) M=$(CURDIR) LEGION_VERSION=$(LEGION_VERSION) W=1 modules
 
 clean:
 	$(MAKE) -C $(KSRC) M=$(CURDIR) clean

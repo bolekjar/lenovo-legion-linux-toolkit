@@ -219,4 +219,4 @@ MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Jaroslav Bolek");
 MODULE_DESCRIPTION(
 	"Intel CPU voltage offsets (OC mailbox MSR 0x150), part of Lenovo Legion Linux Toolkit");
-MODULE_VERSION("0.9.10");
+MODULE_VERSION(LEGION_VERSION);

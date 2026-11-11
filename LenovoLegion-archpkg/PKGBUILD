@@ -1,17 +1,25 @@
 # Maintainer: Jaroslav Bolek <jarris@post.cz>
 pkgname=lenovo-legion-linux-toolkit
 srcname=LenovoLegion
-pkgver=1.1.0
+# Development package of the current state of the repository (the release package is lenovo-legion-linux-toolkit-release
+# in the AUR, built from the tag release/<version>), version by pkgver(): <last release>.r<commits>.g<commit>
+pkgver=2.3.1
 pkgrel=1
 pkgdesc="Lenovo Legion Linux Toolkit - for Lenovo Legion laptops"
 arch=("x86_64")
 url="git+https://github.com/bolekjar/lenovo-legion-linux-toolkit.git"
 license=('GPL3')
-depends=("qt6-base" "qt6-5compat" "dkms" "make" "gcc" "qt6-declarative" "protobuf" "cuda" "pkgconf" "rust" "nvidia-utils")
-source=("$pkgname-$pkgver::$url")
+depends=("qt6-base" "qt6-5compat" "dkms" "make" "gcc" "qt6-declarative" "protobuf" "hidapi" "cuda" "pkgconf" "rust" "nvidia-utils")
+makedepends=("git")
+conflicts=("lenovo-legion-linux-toolkit-release")
+source=("$pkgname::$url")
 sha256sums=('SKIP')
 install=default.install
 qmake=qmake6
+
+pkgver() {
+  git -C "$srcdir/$pkgname" describe --long --tags --match 'release/*' | sed 's/^release\///;s/\([^-]*-g\)/r\1/;s/-/./g'
+}
 
 package() {
 
@@ -30,21 +38,23 @@ package() {
   ln -s $pkgname-$pkgver $pkgdir/opt/$srcname
 
   #dms driver
-  cp $srcdir/$pkgname-$pkgver/$srcname-dkms/* $pkgdir/usr/src/$pkgname-$pkgver
+  cp $srcdir/$pkgname/$srcname-dkms/* $pkgdir/usr/src/$pkgname-$pkgver
+  # version of the DKMS package and of the kernel modules (MODULE_VERSION)
+  sed -i "s/^PACKAGE_VERSION=.*/PACKAGE_VERSION=\"$pkgver\"/" $pkgdir/usr/src/$pkgname-$pkgver/dkms.conf
 
   #settings
-  cp $srcdir/$pkgname-$pkgver/$srcname-dkms/blacklist-lenovo-legion.conf $pkgdir/etc/modprobe.d/
-  cp $srcdir/$pkgname-$pkgver/$srcname-dkms/lenovo-legion.conf $pkgdir/etc/modules-load.d/
-  cp $srcdir/$pkgname-$pkgver/$srcname-dkms/99-rapl-readonly.rules $pkgdir/etc/udev/rules.d
-  cp $srcdir/$pkgname-$pkgver/$srcname-dkms/rapl-readonly.sh $pkgdir/opt/$pkgname-$pkgver/
+  cp $srcdir/$pkgname/$srcname-dkms/blacklist-lenovo-legion.conf $pkgdir/etc/modprobe.d/
+  cp $srcdir/$pkgname/$srcname-dkms/lenovo-legion.conf $pkgdir/etc/modules-load.d/
+  cp $srcdir/$pkgname/$srcname-dkms/99-rapl-readonly.rules $pkgdir/etc/udev/rules.d
+  cp $srcdir/$pkgname/$srcname-dkms/rapl-readonly.sh $pkgdir/opt/$pkgname-$pkgver/
   chmod 755 $pkgdir/opt/$pkgname-$pkgver/rapl-readonly.sh
 
   #daemon, gui
-  $qmake $srcdir/$pkgname-$pkgver/$srcname/ -o $srcdir/$pkgname-$pkgver/$srcname/Makefile
-  make -C $srcdir/$pkgname-$pkgver/$srcname/
+  $qmake $srcdir/$pkgname/$srcname/ -o $srcdir/$pkgname/$srcname/Makefile
+  make -C $srcdir/$pkgname/$srcname/
 
   #daemon, gui, dkms
-  cp -r $srcdir/$pkgname-$pkgver/$srcname/Installation/* $pkgdir/opt/$pkgname-$pkgver
+  cp -r $srcdir/$pkgname/$srcname/Installation/* $pkgdir/opt/$pkgname-$pkgver
   # log, data are shared with group legion (root:legion 2770), set by systemd-tmpfiles after the group is created
   chmod 750 $pkgdir/opt/$pkgname-$pkgver/log
   chmod 750 $pkgdir/opt/$pkgname-$pkgver/data
@@ -54,15 +64,15 @@ package() {
   printf 'd /opt/%s/log  2770 root legion -\nd /opt/%s/data 2770 root legion -\nd /opt/%s/modules 0755 root root -\n' "$pkgname-$pkgver" "$pkgname-$pkgver" "$pkgname-$pkgver" > $pkgdir/usr/lib/tmpfiles.d/lenovo-legion.conf
 
   #daemon setings
-  cp $srcdir/$pkgname-$pkgver/$srcname/$srcname-Daemon/lenovo-legion-daemon.service $pkgdir/usr/lib/systemd/system/
-  cp $srcdir/$pkgname-$pkgver/$srcname/$srcname-Daemon/lenovo-legion.sysusers $pkgdir/usr/lib/sysusers.d/lenovo-legion.conf
-  cp $srcdir/$pkgname-$pkgver/$srcname/$srcname-Daemon/lenovo-legion-setup.sh $pkgdir/opt/$pkgname-$pkgver/
+  cp $srcdir/$pkgname/$srcname/$srcname-Daemon/lenovo-legion-daemon.service $pkgdir/usr/lib/systemd/system/
+  cp $srcdir/$pkgname/$srcname/$srcname-Daemon/lenovo-legion.sysusers $pkgdir/usr/lib/sysusers.d/lenovo-legion.conf
+  cp $srcdir/$pkgname/$srcname/$srcname-Daemon/lenovo-legion-setup.sh $pkgdir/opt/$pkgname-$pkgver/
   chmod 755 $pkgdir/opt/$pkgname-$pkgver/lenovo-legion-setup.sh
 
   #kde menu entry
-  cp $srcdir/$pkgname-$pkgver/$srcname/$srcname-Application/LenovoLegion.desktop $pkgdir/usr/share/applications/
+  cp $srcdir/$pkgname/$srcname/$srcname-Application/LenovoLegion.desktop $pkgdir/usr/share/applications/
 
   #command line interface
-  cargo build --manifest-path $srcdir/$pkgname-$pkgver/lenovo-legion-cli/Cargo.toml -r
-  cp $srcdir/$pkgname-$pkgver/lenovo-legion-cli/target/release/lenovo-legion-cli $pkgdir/opt/$pkgname-$pkgver
+  cargo build --manifest-path $srcdir/$pkgname/lenovo-legion-cli/Cargo.toml -r
+  cp $srcdir/$pkgname/lenovo-legion-cli/target/release/lenovo-legion-cli $pkgdir/opt/$pkgname-$pkgver
 }
