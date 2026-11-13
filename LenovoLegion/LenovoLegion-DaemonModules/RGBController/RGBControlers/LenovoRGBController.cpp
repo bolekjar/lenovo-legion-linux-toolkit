@@ -13,7 +13,12 @@
 #include <QRandomGenerator>
 #include <QDeadlineTimer>
 
+#include <algorithm>
+#include <optional>
+#include <set>
 #include <thread>
+#include <tuple>
+#include <vector>
 
 
 
@@ -82,7 +87,10 @@ void LenovoRGBController::DeviceRefreshProfile(int expectedProfile)
         // Wait for USB device to switch to expected profile
         int atempt = 0;
         do {
-            m_profiles.active = fromControlerProfile(controller->getCurrentProfileId());
+            if(const auto profile = fromControlerProfile(controller->getCurrentProfileId()))
+            {
+                m_profiles.active = *profile;
+            }
 
             if(m_profiles.active  == static_cast<unsigned int>(expectedProfile))
             {
@@ -105,20 +113,110 @@ void LenovoRGBController::DeviceRefreshProfile(int expectedProfile)
     {
         LOG_T(QString(__PRETTY_FUNCTION__) + ":  No expected profile provided, reading current profile from device");
 
-        m_profiles.active = fromControlerProfile(controller->getCurrentProfileId());
+        if(const auto profile = fromControlerProfile(controller->getCurrentProfileId()))
+        {
+            m_profiles.active = *profile;
+        }
+        else
+        {
+            LOG_W(QString(__PRETTY_FUNCTION__) + QString(":  No valid profile read, profile %1 is kept").arg(m_profiles.active));
+        }
     }
+}
+
+/*
+ * The controller applies a written value later: a read right after the write gives the previous value (with the right
+ * operation, the retries of sendAndGetFeatureReport do not help). The value is read until the controller confirms it,
+ * so a read after the write (the GUI reads the data again at once) gets the new value.
+ *
+ * check() reads the device and returns true when the written state is confirmed, at most ~420 ms.
+ */
+template<class Check>
+static bool waitUntil(Check&& check)
+{
+    constexpr int ATTEMPTS = 6;
+
+    for(int attempt = 0; attempt < ATTEMPTS; ++attempt)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(20 * (attempt + 1)));
+
+        if(check())
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/*
+ * read() returns an empty value for an invalid answer: not a confirmation, the next attempt follows
+ */
+template<class Read,class Value>
+static bool waitForValue(Read&& read,const Value& expected,std::optional<Value>& last)
+{
+    return waitUntil([&] { last = read(); return last == expected; });
+}
+
+template<class Value>
+static QString toString(const std::optional<Value>& value)
+{
+    return value.has_value() ? QString::number(static_cast<int>(*value)) : QString("invalid answer");
 }
 
 void LenovoRGBController::DeviceUpdateBrightness()
 {
     LOG_T(QString(__PRETTY_FUNCTION__) + ": Updating brightness on device");
-    controller->setBrightness(toControlerBrightness(static_cast<uint8_t>(m_britnesses.active)));
+
+    const uint8_t          brightness = toControlerBrightness(static_cast<uint8_t>(m_britnesses.active));
+    std::optional<uint8_t> current;
+
+    controller->setBrightness(brightness);
+
+    if(!waitForValue([this] { return controller->getCurrentBrightness(); },brightness,current))
+    {
+        LOG_W(QString(__PRETTY_FUNCTION__) + QString(":  Brightness %1 was not confirmed by the controller, it reads %2").arg(static_cast<int>(brightness)).arg(toString(current)));
+    }
 }
 
-void LenovoRGBController::DeviceRefreshBrightness()
+void LenovoRGBController::DeviceRefreshBrightness(bool waitForChange)
 {
     LOG_T(QString(__PRETTY_FUNCTION__) + ":  Refreshing brightness from device");
-    m_britnesses.active = fromControlerBrightness(controller->getCurrentBrightness());
+
+    /*
+     * Changed by the keyboard: a read right after the event can give the previous brightness (see waitUntil),
+     * the last read stays if it does not change (e.g. the same level again)
+     */
+    if(waitForChange)
+    {
+        const unsigned int before = m_britnesses.active;
+
+        if(!waitUntil([&] {
+                const auto brightness = fromControlerBrightness(controller->getCurrentBrightness());
+
+                if(!brightness.has_value())
+                {
+                    return false;   // invalid answer is not a change
+                }
+
+                m_britnesses.active = *brightness;
+                return m_britnesses.active != before;
+            }))
+        {
+            LOG_D(QString(__PRETTY_FUNCTION__) + QString(":  Brightness did not change after the event, it reads %1").arg(m_britnesses.active));
+        }
+
+        return;
+    }
+
+    if(const auto brightness = fromControlerBrightness(controller->getCurrentBrightness()))
+    {
+        m_britnesses.active = *brightness;
+    }
+    else
+    {
+        LOG_W(QString(__PRETTY_FUNCTION__) + QString(":  No valid brightness read, brightness %1 is kept").arg(m_britnesses.active));
+    }
 }
 
 std::vector<RGBColor> LenovoRGBController::DeviceGetState() const
@@ -158,7 +256,15 @@ void LenovoRGBController::DeviceUpdateLogoState()
 {
     if(m_hasLogo)
     {
-        controller->setLogoStatus(m_logoState);
+        const bool          logoState = m_logoState;
+        std::optional<bool> current;
+
+        controller->setLogoStatus(logoState);
+
+        if(!waitForValue([this] { return controller->getLogoStatus(); },logoState,current))
+        {
+            LOG_W(QString(__PRETTY_FUNCTION__) + QString(":  Logo state %1 was not confirmed by the controller, it reads %2").arg(logoState ? "on" : "off").arg(current.has_value() ? (*current ? "on" : "off") : "invalid answer"));
+        }
     }
 }
 
@@ -166,7 +272,14 @@ void LenovoRGBController::DeviceRefreshLogoState()
 {
     if(m_hasLogo)
     {
-        m_logoState = controller->getLogoStatus();
+        if(const auto logoState = controller->getLogoStatus())
+        {
+            m_logoState = *logoState;
+        }
+        else
+        {
+            LOG_W(QString(__PRETTY_FUNCTION__) + QString(":  No valid logo state read, logo state %1 is kept").arg(m_logoState ? "on" : "off"));
+        }
     }
 }
 
@@ -236,21 +349,38 @@ void LenovoRGBController::DeviceUpdateEfects()
         sentLeds += group.m_leds.size();
     }
 
-    DeviceRefreshEffects();
+    size_t keptEffects = 0, keptLeds = 0;
 
-    size_t keptEffects = m_effects.size(), keptLeds = 0;
+    /*
+     * A read right after the write can give the effects before the write (old answer of the same operation):
+     * read again until the effects match the written ones (mode and LEDs of every effect, the colors may be changed
+     * by the keyboard), a real shortened list stays after the last attempt
+     */
+    waitUntil([&] {
+        DeviceRefreshEffects();
 
-    for(const auto& effect : m_effects)
-    {
-        std::set<unsigned int> codes;
+        keptEffects = m_effects.size();
+        keptLeds    = 0;
 
-        for(const auto& led : effect.m_leds)
+        bool same = keptEffects == sentEffects;
+
+        for(size_t i = 0; i < m_effects.size(); ++i)
         {
-            codes.insert(led.value);
+            std::set<unsigned int> codes;
+
+            for(const auto& led : m_effects[i].m_leds)
+            {
+                codes.insert(led.value);
+            }
+
+            keptLeds += codes.size();
+
+            same = same && m_effects[i].m_mode == groups[i].m_mode
+                        && std::equal(codes.begin(),codes.end(),groups[i].m_leds.begin(),groups[i].m_leds.end());
         }
 
-        keptLeds += codes.size();
-    }
+        return same && keptLeds == sentLeds;
+    });
 
     if(keptEffects != sentEffects || keptLeds != sentLeds)
     {
@@ -263,7 +393,39 @@ void LenovoRGBController::DeviceUpdateEfects()
 
 void LenovoRGBController::DeviceResetEffectsToDefault()
 {
+    /*
+     * Effects (mode, LEDs, colors) for a comparison
+     */
+    auto effects = [this] {
+        std::vector<std::tuple<unsigned int,std::set<unsigned int>,std::vector<RGBColor>>> result;
+
+        for(const auto& effect : m_effects)
+        {
+            std::set<unsigned int> codes;
+
+            for(const auto& led : effect.m_leds)
+            {
+                codes.insert(led.value);
+            }
+
+            result.emplace_back(effect.m_mode,codes,effect.m_colors);
+        }
+
+        return result;
+    };
+
+    const auto before = effects();
+
     controller->setProfileDefault(toControlerProfile(m_profiles.active));
+
+    /*
+     * A read right after the reset can give the effects before it (old answer of the same operation): read until
+     * they change, the effects which were already the default ones do not change (the last read stays)
+     */
+    waitUntil([&] {
+        DeviceRefreshEffects();
+        return effects() != before;
+    });
 }
 
 void LenovoRGBController::DeviceRefreshEffects()
@@ -391,26 +553,36 @@ unsigned int LenovoRGBController::fromControlerSpin(const uint8_t spin) const
     return MODE_DIRECTION_NA;
 }
 
-unsigned int LenovoRGBController::fromControlerBrightness(uint8_t brightness) const
+std::optional<unsigned int> LenovoRGBController::fromControlerBrightness(std::optional<uint8_t> brightness) const
 {
-    if(brightness < m_britnesses.min || brightness > m_britnesses.max)
+    if(!brightness.has_value())
     {
-        LOG_E(QString(__PRETTY_FUNCTION__) + ":  Received brightness level from controller is out of range");
-        return m_britnesses.min;
+        return std::nullopt;
     }
 
-    return static_cast<uint8_t>(brightness);
+    if(*brightness < m_britnesses.min || *brightness > m_britnesses.max)
+    {
+        LOG_E(QString(__PRETTY_FUNCTION__) + QString(":  Received brightness level %1 from controller is out of range").arg(static_cast<int>(*brightness)));
+        return std::nullopt;
+    }
+
+    return *brightness;
 }
 
-unsigned int LenovoRGBController::fromControlerProfile(uint8_t profile) const
+std::optional<unsigned int> LenovoRGBController::fromControlerProfile(std::optional<uint8_t> profile) const
 {
-    if(profile < m_profiles.min || profile > m_profiles.max)
+    if(!profile.has_value())
     {
-        LOG_E(QString(__PRETTY_FUNCTION__) + ":  Received profile id from controller is out of range");
-        return m_profiles.min;
+        return std::nullopt;
     }
 
-    return static_cast<uint8_t>(profile);
+    if(*profile < m_profiles.min || *profile > m_profiles.max)
+    {
+        LOG_E(QString(__PRETTY_FUNCTION__) + QString(":  Received profile id %1 from controller is out of range").arg(static_cast<int>(*profile)));
+        return std::nullopt;
+    }
+
+    return *profile;
 }
 
 uint8_t LenovoRGBController::toControlerDirection(unsigned int  direction) const

@@ -16,6 +16,7 @@
 #include <QtTypes>
 
 #include <memory>
+#include <optional>
 
 namespace LenovoLegionDaemon::Kit {
 
@@ -91,7 +92,7 @@ public:
     void        DeviceRefreshProfile(int expectedProfile = -1)  override;
 
     void        DeviceUpdateBrightness()               override;
-    void        DeviceRefreshBrightness()              override;
+    void        DeviceRefreshBrightness(bool waitForChange = false) override;
 
     void        DeviceRefresh(int expectedProfile = -1) override;
 
@@ -113,8 +114,11 @@ private:
                                                     const uint8_t color_mode)                               const;
     unsigned int             fromControlerDirection(const uint8_t direction)                                const;
     unsigned int             fromControlerSpin(const uint8_t spin)                                          const;
-    unsigned int             fromControlerProfile(uint8_t profile)                                          const;
-    unsigned int             fromControlerBrightness(uint8_t brightness)                                    const;
+    /*
+     * Empty for an invalid answer or a value out of range (the caller keeps the previous value)
+     */
+    std::optional<unsigned int> fromControlerProfile(std::optional<uint8_t> profile)                        const;
+    std::optional<unsigned int> fromControlerBrightness(std::optional<uint8_t> brightness)                  const;
 
 
 protected:

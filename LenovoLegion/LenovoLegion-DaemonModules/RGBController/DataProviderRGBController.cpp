@@ -274,30 +274,28 @@ namespace LenovoLegionDaemon::Kit {
             }
         }
 
-        // Apply profile if changed
+        /*
+         * Apply profile: always written, the cached value may be old (profile switched by the keyboard)
+         * and an equal cached value would skip the write
+         */
         if(rgbController.set_request_flags() & legion::messages::RGBControllerSetRequest::SetRequestFlags::RGBControllerSetRequest_SetRequestFlags_SET_REQUEST_PROFILE)
         {
-            auto currentProfile = m_rgbController->GetProfiles().active;
-            if(currentProfile != rgbController.profile().current())
-            {
-                LOG_D(QString("Changing profile from %1 to %2").arg(currentProfile).arg(rgbController.profile().current()));
+            LOG_D(QString("Changing profile from %1 to %2").arg(m_rgbController->GetProfiles().active).arg(rgbController.profile().current()));
 
-                m_rgbController->SetProfile(rgbController.profile().current());
-                m_rgbController->DeviceUpdateProfile();
-            }
+            m_rgbController->SetProfile(rgbController.profile().current());
+            m_rgbController->DeviceUpdateProfile();
         }
 
-        // Apply brightness if changed
+        /*
+         * Apply brightness: always written, the cached value may be old (brightness changed by the keyboard, Fn+Space)
+         * and an equal cached value would skip the write
+         */
         if(rgbController.set_request_flags() & legion::messages::RGBControllerSetRequest::SetRequestFlags::RGBControllerSetRequest_SetRequestFlags_SET_REQUEST_BRITNESS)
         {
-            auto currentBrightness = m_rgbController->GetBrightness().active;
-            if(currentBrightness != rgbController.britness().current())
-            {
-                LOG_D(QString("Changing brightness from %1 to %2").arg(currentBrightness).arg(rgbController.britness().current()));
+            LOG_D(QString("Changing brightness from %1 to %2").arg(m_rgbController->GetBrightness().active).arg(rgbController.britness().current()));
 
-                m_rgbController->SetBrightness(rgbController.britness().current());
-                m_rgbController->DeviceUpdateBrightness();
-            }
+            m_rgbController->SetBrightness(rgbController.britness().current());
+            m_rgbController->DeviceUpdateBrightness();
         }
 
         /*
@@ -456,7 +454,7 @@ namespace LenovoLegionDaemon::Kit {
                                 case legion::messages::Notification_SpecialKey::Notification_SpecialKey_SPECTRUMBACKLIGHT1:
                                 case legion::messages::Notification_SpecialKey::Notification_SpecialKey_SPECTRUMBACKLIGHT2:
                                 case legion::messages::Notification_SpecialKey::Notification_SpecialKey_SPECTRUMBACKLIGHT3:
-                                    m_rgbController->DeviceRefreshBrightness();
+                                    m_rgbController->DeviceRefreshBrightness(true);
                                     break;
                                 case legion::messages::Notification_SpecialKey::Notification_SpecialKey_SPECTRUMPRESET1:
                                     m_rgbController->DeviceRefresh(1);

@@ -12,6 +12,7 @@
 
 #include <KitException.h>
 
+#include <optional>
 #include <string>
 #include <vector>
 #include <unordered_map>
@@ -149,10 +150,14 @@ public:
     std::string                             getLocation()           const;
     std::string                             getSerialString()       const;
 
-    uint8_t                                 getCurrentProfileId()   const;
-    uint8_t                                 getCurrentBrightness()  const;
+    /*
+     * Values read from the controller, empty for an invalid answer (short, of another operation, profile 0):
+     * the caller keeps the previous value instead of a default one (brightness 0 would show the keyboard off)
+     */
+    std::optional<uint8_t>                  getCurrentProfileId()   const;
+    std::optional<uint8_t>                  getCurrentBrightness()  const;
     const KeyMap&                           getKeyMap()             const;
-    bool                                    getLogoStatus()         const;
+    std::optional<bool>                     getLogoStatus()         const;
 
     /*
      * Current LED state
@@ -197,6 +202,11 @@ private:
 protected:
     void        sendFeatureReport(const ByteArray& packet)       const;
     ByteArray   sendAndGetFeatureReport(const ByteArray& packet) const;
+
+    /*
+     * Value (byte 4) of the answer of the operation, empty for a short answer or an answer of another operation
+     */
+    std::optional<uint8_t> requestValue(LENOVO_SPECTRUM_OPERATION_TYPE type) const;
 
     ByteArray   getFeatureReport() const;
 };

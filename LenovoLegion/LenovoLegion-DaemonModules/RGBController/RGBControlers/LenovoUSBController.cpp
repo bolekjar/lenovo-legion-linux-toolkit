@@ -141,49 +141,72 @@ void LenovoUSBController::setProfileDescription(uint8_t profile_id,const  std::v
     sendFeatureReport(packet);
 }
 
-uint8_t LenovoUSBController::getCurrentProfileId() const
+std::optional<uint8_t> LenovoUSBController::getCurrentProfileId() const
 {
     LOG_T("LenovoUSBController::getCurrentProfileId: Getting current profile ID");
 
     // Retry up to 10 times if we get profile 0 (device may be in reset state)
     for(int attempt = 0; attempt < 10; ++attempt)
     {
-        ByteArray result = sendAndGetFeatureReport(serializeToBuffer(LENOVO_SPECTRUM_OPERATION_TYPE::Profile));
-        
-        if(result.size() >= 5 && result[4] != 0x00)
+        const auto profile = requestValue(LENOVO_SPECTRUM_OPERATION_TYPE::Profile);
+
+        if(profile.has_value() && *profile != 0x00)
         {
             if(attempt > 0)
             {
                 LOG_T(QString::asprintf("getCurrentProfileId: Got valid profile after %d retries", attempt));
             }
-            return result[4];
+            return profile;
         }
-        
+
         if(attempt < 9)
         {
-            LOG_T("getCurrentProfileId: Got profile 0 (device may be in reset state), retrying...");
+            LOG_T("getCurrentProfileId: Got profile 0 or an invalid answer (device may be in reset state), retrying...");
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
     }
-    
-    LOG_W("getCurrentProfileId: Device returned profile 0 after all retries");
-    return 0;
+
+    LOG_W("getCurrentProfileId: Device returned no valid profile after all retries");
+    return std::nullopt;
 }
 
-uint8_t LenovoUSBController::getCurrentBrightness() const
+std::optional<uint8_t> LenovoUSBController::getCurrentBrightness() const
 {
     LOG_T("LenovoUSBController::getCurrentBrightness: Getting current brightness");
 
-    ByteArray result = sendAndGetFeatureReport(serializeToBuffer(LENOVO_SPECTRUM_OPERATION_TYPE::GetBrightness));
-    return  result.size() >= 5 ? result[4] : 0;
+    return requestValue(LENOVO_SPECTRUM_OPERATION_TYPE::GetBrightness);
 }
 
-bool LenovoUSBController::getLogoStatus() const
+std::optional<bool> LenovoUSBController::getLogoStatus() const
 {
     LOG_T("LenovoUSBController::getLogoStatus: Getting current logo LED status");
 
-    ByteArray result = sendAndGetFeatureReport(serializeToBuffer(LENOVO_SPECTRUM_OPERATION_TYPE::GetLogoStatus));
-    return  result.size() >= 5 ? result[4] == 0x01 : false;
+    const auto status = requestValue(LENOVO_SPECTRUM_OPERATION_TYPE::GetLogoStatus);
+
+    if(!status.has_value())
+    {
+        return std::nullopt;
+    }
+
+    return *status == 0x01;
+}
+
+std::optional<uint8_t> LenovoUSBController::requestValue(LENOVO_SPECTRUM_OPERATION_TYPE type) const
+{
+    const ByteArray packet = serializeToBuffer(type);
+    const ByteArray result = sendAndGetFeatureReport(packet);
+
+    /*
+     * sendAndGetFeatureReport returns the last answer also when it is of another operation (after all attempts)
+     */
+    if(result.size() < 5 || packet.size() < 2 || result[1] != packet[1])
+    {
+        LOG_W(QString::asprintf("LenovoUSBController::requestValue: Invalid answer of operation %X (size %d, operation %X), the value is not used",
+                                packet.size() >= 2 ? packet[1] : 0, static_cast<int>(result.size()), result.size() >= 2 ? result[1] : 0));
+        return std::nullopt;
+    }
+
+    return result[4];
 }
 
 std::unordered_map<uint16_t, RGBColor> LenovoUSBController::getState() const
@@ -406,12 +429,15 @@ std::vector<LenovoUSBController::led_group> LenovoUSBController::getProfileDescr
                                                                                                                  .value2 = {}
                                                                                                                  }));
 
-        // Check if response is valid and profile ID matches
-        if(response.size() < 5 || response[4] == 0x00)
+        /*
+         * Check if response is valid and profile ID matches: an old answer of the same operation (e.g. the effects of
+         * the previous profile right after a profile switch) has another profile
+         */
+        if(response.size() < 5 || response[4] == 0x00 || response[4] != profile_id)
         {
             if(attempt < 9)
             {
-                LOG_T(QString::asprintf("getProfileDescription: Got invalid profile data (profile=%d), retrying... (attempt %d/10)", response.size() >= 5 ? response[4] : -1, attempt + 1));
+                LOG_T(QString::asprintf("getProfileDescription: Got invalid profile data (profile=%d, expected %d), retrying... (attempt %d/10)", response.size() >= 5 ? response[4] : -1, profile_id, attempt + 1));
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
             }
             continue;

@@ -135,7 +135,10 @@ public:
     virtual void        DeviceRefreshProfile(int expectedProfile = -1)  =   0;
 
     virtual void        DeviceUpdateBrightness()                =   0;
-    virtual void        DeviceRefreshBrightness()               =   0;
+    /*
+     * waitForChange: brightness was changed by the keyboard (Fn+Space event), read until it differs from the cached one
+     */
+    virtual void        DeviceRefreshBrightness(bool waitForChange = false) =   0;
 
     virtual void        DeviceRefresh(int expectedProfile = -1) =   0;
 
