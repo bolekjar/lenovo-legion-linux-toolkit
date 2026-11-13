@@ -6,14 +6,16 @@
  *   Jaroslav Bolek <jaroslav.bolek@gmail.com>
  *
  * Features of the ACPI device VPC2004 (Lenovo "VPC" interface) which are lost with the blacklisted ideapad_laptop:
- * battery conservation mode (charge limit), USB charging, Fn lock and camera power. Only the ACPI device is bound,
+ * battery conservation mode (charge limit), rapid charge, USB charging, Fn lock and camera power. Only the ACPI device is bound,
  * the WMI GUID 8FC0DE0C of ideapad_laptop stays with the events driver of this module.
  *
  * The ACPI methods, their bits and the EC handshake are the same as in ideapad_laptop of the Linux kernel
  * (drivers/platform/x86/lenovo/ideapad-laptop.c).
  *
  * Firmware attributes: /sys/class/legion-firmware-attributes/legion-vpc-0/attributes/<feature>/
- * {current_value, supported, type, display_name}, a write sends a uevent of the class device. A write is verified by
+ * {current_value, supported, type, display_name}, a write sends a uevent of the class device. Since kernel 6.16 the
+ * conservation mode and rapid charge are also charge_types of the battery (Standard, Fast, Long_Life) for the battery
+ * settings of the desktops. A write is verified by
  * reading the state back: a feature whose write the firmware ignores (camera power of Legion Pro 7 16IAX10H, reported
  * by _CFG) is marked as not supported.
  */
@@ -33,6 +35,27 @@
 #include <linux/mutex.h>
 #include <linux/platform_device.h>
 #include <linux/sysfs.h>
+#include <linux/version.h>
+
+#include <acpi/battery.h>
+
+/*
+ * charge_types of a power supply extension (struct power_supply_ext.charge_types) since 6.16
+ */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 16, 0)
+#define LEGION_ACPI_VPC_BATTERY_EXT
+#endif
+
+/*
+ * Name of the ACPI battery hook functions, detected by the Makefile (renamed in some kernels)
+ */
+#ifdef LEGION_ACPI_BATTERY_HOOK_PREFIX
+#define legion_battery_hook_register acpi_battery_hook_register
+#define legion_battery_hook_unregister acpi_battery_hook_unregister
+#else
+#define legion_battery_hook_register battery_hook_register
+#define legion_battery_hook_unregister battery_hook_unregister
+#endif
 
 #define LEGION_ACPI_VPC_FW_ATTR_BASE_PATH "legion-vpc"
 
@@ -46,6 +69,7 @@
 
 #define VPC_SBMC_CONSERVATION_ON 3
 #define VPC_SBMC_CONSERVATION_OFF 5
+#define VPC_SBMC_RAPID_CHARGE_ON 7
 #define VPC_SBMC_RAPID_CHARGE_OFF 8
 
 /* HALS state / SALS commands */
@@ -72,6 +96,7 @@ enum legion_acpi_vpc_feature {
 	VPC_USB_CHARGING,
 	VPC_FN_LOCK,
 	VPC_CAMERA_POWER,
+	VPC_RAPID_CHARGE,
 	VPC_FEATURES_COUNT
 };
 
@@ -81,8 +106,13 @@ struct legion_acpi_vpc_priv {
 	struct kset *fw_attr_kset;
 	struct mutex mutex; /* serializes the ACPI methods and the EC handshake */
 	bool supported[VPC_FEATURES_COUNT]; /* cleared when the firmware ignores a write */
-	bool rapid_charge;
 	int ida_id;
+#ifdef LEGION_ACPI_VPC_BATTERY_EXT
+	struct device *dev;
+	struct acpi_battery_hook battery_hook;
+	const struct power_supply_ext *battery_ext;
+	bool battery_hook_registered;
+#endif
 };
 
 static DEFINE_IDA(legion_acpi_vpc_ida);
@@ -92,6 +122,7 @@ static const char *const legion_acpi_vpc_names[VPC_FEATURES_COUNT] = {
 	[VPC_USB_CHARGING] = "usb_charging",
 	[VPC_FN_LOCK] = "fn_lock",
 	[VPC_CAMERA_POWER] = "camera_power",
+	[VPC_RAPID_CHARGE] = "rapid_charge",
 };
 
 static int vpc_eval_int(acpi_handle handle, char *name, unsigned long *res)
@@ -236,6 +267,10 @@ static int legion_acpi_vpc_read(struct legion_acpi_vpc_priv *priv,
 		err = vpc_ec_read(handle, VPC_CMD_R_CAMERA, &result);
 		*value = !!result;
 		break;
+	case VPC_RAPID_CHARGE:
+		err = vpc_eval_int(handle, "GBMD", &result);
+		*value = test_bit(VPC_GBMD_RAPID_CHARGE_STATE_BIT, &result);
+		break;
 	default:
 		return -EINVAL;
 	}
@@ -257,7 +292,7 @@ static int legion_acpi_vpc_write(struct legion_acpi_vpc_priv *priv,
 
 	switch (feature) {
 	case VPC_CONSERVATION_MODE:
-		if (value && priv->rapid_charge) {
+		if (value && priv->supported[VPC_RAPID_CHARGE]) {
 			err = vpc_exec(handle, "SBMC",
 				       VPC_SBMC_RAPID_CHARGE_OFF);
 			if (err)
@@ -276,6 +311,16 @@ static int legion_acpi_vpc_write(struct legion_acpi_vpc_priv *priv,
 					VPC_SALS_FNLOCK_OFF);
 	case VPC_CAMERA_POWER:
 		return vpc_ec_write(handle, VPC_CMD_W_CAMERA, value);
+	case VPC_RAPID_CHARGE:
+		if (value && priv->supported[VPC_CONSERVATION_MODE]) {
+			err = vpc_exec(handle, "SBMC",
+				       VPC_SBMC_CONSERVATION_OFF);
+			if (err)
+				return err;
+		}
+		return vpc_exec(handle, "SBMC",
+				value ? VPC_SBMC_RAPID_CHARGE_ON :
+					VPC_SBMC_RAPID_CHARGE_OFF);
 	default:
 		return -EINVAL;
 	}
@@ -309,8 +354,8 @@ static int legion_acpi_vpc_get(struct legion_acpi_vpc_priv *priv,
  * @value: The state (0 or 1).
  * @current_value: The state read back after the write.
  *
- * Conservation mode and rapid charge are mutually exclusive (the same as the manufacturer utilities): rapid charge
- * is switched off when the conservation mode is switched on.
+ * Conservation mode and rapid charge are mutually exclusive (the same as the manufacturer utilities): switching
+ * one of them on switches the other one off.
  *
  * The state is read back: the firmware may report a feature (e.g. camera power by _CFG) which it does not control
  * on the model and ignore the write. Such a feature is marked as not supported.
@@ -481,6 +526,7 @@ LEGION_ACPI_VPC_FEATURE(usb_charging, VPC_USB_CHARGING,
 			"USB charging when the notebook is off");
 LEGION_ACPI_VPC_FEATURE(fn_lock, VPC_FN_LOCK, "Fn lock");
 LEGION_ACPI_VPC_FEATURE(camera_power, VPC_CAMERA_POWER, "Camera power");
+LEGION_ACPI_VPC_FEATURE(rapid_charge, VPC_RAPID_CHARGE, "Rapid charge");
 
 static const struct attribute_group legion_acpi_vpc_groups[] = {
 	{ .name = "conservation_mode",
@@ -488,6 +534,7 @@ static const struct attribute_group legion_acpi_vpc_groups[] = {
 	{ .name = "usb_charging", .attrs = legion_acpi_vpc_usb_charging_attrs },
 	{ .name = "fn_lock", .attrs = legion_acpi_vpc_fn_lock_attrs },
 	{ .name = "camera_power", .attrs = legion_acpi_vpc_camera_power_attrs },
+	{ .name = "rapid_charge", .attrs = legion_acpi_vpc_rapid_charge_attrs },
 };
 
 /**
@@ -559,6 +606,177 @@ static void legion_acpi_vpc_fw_attr_remove(struct legion_acpi_vpc_priv *priv)
 	ida_free(&legion_acpi_vpc_ida, priv->ida_id);
 }
 
+#ifdef LEGION_ACPI_VPC_BATTERY_EXT
+/*
+ * charge_types of the battery: Fast = rapid charge, Long_Life = conservation mode, Standard = none of them
+ */
+static int legion_acpi_vpc_psy_get(struct power_supply *psy,
+				   const struct power_supply_ext *ext, void *data,
+				   enum power_supply_property psp,
+				   union power_supply_propval *val)
+{
+	struct legion_acpi_vpc_priv *priv = data;
+	unsigned int conservation = 0, rapid = 0;
+	int err;
+
+	scoped_guard(mutex, &priv->mutex) {
+		err = legion_acpi_vpc_read(priv, VPC_CONSERVATION_MODE,
+					   &conservation);
+		if (err)
+			return err;
+
+		if (READ_ONCE(priv->supported[VPC_RAPID_CHARGE])) {
+			err = legion_acpi_vpc_read(priv, VPC_RAPID_CHARGE,
+						   &rapid);
+			if (err)
+				return err;
+		}
+	}
+
+	if (rapid && conservation) {
+		dev_err(priv->dev,
+			"unexpected charge_types: both Fast and Long_Life are enabled\n");
+		return -EINVAL;
+	}
+
+	if (rapid)
+		val->intval = POWER_SUPPLY_CHARGE_TYPE_FAST;
+	else if (conservation)
+		val->intval = POWER_SUPPLY_CHARGE_TYPE_LONGLIFE;
+	else
+		val->intval = POWER_SUPPLY_CHARGE_TYPE_STANDARD;
+
+	return 0;
+}
+
+static int legion_acpi_vpc_psy_set(struct power_supply *psy,
+				   const struct power_supply_ext *ext, void *data,
+				   enum power_supply_property psp,
+				   const union power_supply_propval *val)
+{
+	struct legion_acpi_vpc_priv *priv = data;
+	unsigned int current_value;
+	int err;
+
+	switch (val->intval) {
+	case POWER_SUPPLY_CHARGE_TYPE_FAST:
+		err = legion_acpi_vpc_set(priv, VPC_RAPID_CHARGE, 1,
+					  &current_value);
+		break;
+	case POWER_SUPPLY_CHARGE_TYPE_LONGLIFE:
+		err = legion_acpi_vpc_set(priv, VPC_CONSERVATION_MODE, 1,
+					  &current_value);
+		break;
+	case POWER_SUPPLY_CHARGE_TYPE_STANDARD:
+		err = legion_acpi_vpc_set(priv, VPC_CONSERVATION_MODE, 0,
+					  &current_value);
+		if (!err && READ_ONCE(priv->supported[VPC_RAPID_CHARGE]))
+			err = legion_acpi_vpc_set(priv, VPC_RAPID_CHARGE, 0,
+						  &current_value);
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	if (err)
+		return err;
+
+	/* The daemon reads the firmware attributes again */
+	legion_acpi_vpc_send_event(priv, VPC_CONSERVATION_MODE,
+				   val->intval ==
+					   POWER_SUPPLY_CHARGE_TYPE_LONGLIFE);
+
+	return 0;
+}
+
+static int legion_acpi_vpc_psy_is_writeable(struct power_supply *psy,
+					    const struct power_supply_ext *ext,
+					    void *data,
+					    enum power_supply_property psp)
+{
+	return 1;
+}
+
+static const enum power_supply_property legion_acpi_vpc_psy_props[] = {
+	POWER_SUPPLY_PROP_CHARGE_TYPES,
+};
+
+#define LEGION_ACPI_VPC_BATTERY_EXTENSION(_name, _charge_types)                \
+	static const struct power_supply_ext _name = {                       \
+		.name = "legion_acpi_vpc",                                   \
+		.properties = legion_acpi_vpc_psy_props,                     \
+		.num_properties = ARRAY_SIZE(legion_acpi_vpc_psy_props),     \
+		.charge_types = _charge_types,                               \
+		.get_property = legion_acpi_vpc_psy_get,                     \
+		.set_property = legion_acpi_vpc_psy_set,                     \
+		.property_is_writeable = legion_acpi_vpc_psy_is_writeable,   \
+	}
+
+LEGION_ACPI_VPC_BATTERY_EXTENSION(legion_acpi_vpc_battery_ext,
+				  BIT(POWER_SUPPLY_CHARGE_TYPE_STANDARD) |
+					  BIT(POWER_SUPPLY_CHARGE_TYPE_LONGLIFE));
+
+LEGION_ACPI_VPC_BATTERY_EXTENSION(legion_acpi_vpc_battery_ext_rapid,
+				  BIT(POWER_SUPPLY_CHARGE_TYPE_STANDARD) |
+					  BIT(POWER_SUPPLY_CHARGE_TYPE_FAST) |
+					  BIT(POWER_SUPPLY_CHARGE_TYPE_LONGLIFE));
+
+static int legion_acpi_vpc_battery_add(struct power_supply *battery,
+				       struct acpi_battery_hook *hook)
+{
+	struct legion_acpi_vpc_priv *priv =
+		container_of(hook, struct legion_acpi_vpc_priv, battery_hook);
+
+	return power_supply_register_extension(battery, priv->battery_ext,
+					       priv->dev, priv);
+}
+
+static int legion_acpi_vpc_battery_remove(struct power_supply *battery,
+					  struct acpi_battery_hook *hook)
+{
+	struct legion_acpi_vpc_priv *priv =
+		container_of(hook, struct legion_acpi_vpc_priv, battery_hook);
+
+	power_supply_unregister_extension(battery, priv->battery_ext);
+
+	return 0;
+}
+
+/*
+ * Registered only with the conservation mode, unregistered in remove before the firmware attributes
+ * (the extension sends their uevents)
+ */
+static void legion_acpi_vpc_battery_register(struct legion_acpi_vpc_priv *priv)
+{
+	if (!priv->supported[VPC_CONSERVATION_MODE])
+		return;
+
+	priv->battery_ext = priv->supported[VPC_RAPID_CHARGE] ?
+				    &legion_acpi_vpc_battery_ext_rapid :
+				    &legion_acpi_vpc_battery_ext;
+	priv->battery_hook.name = "Legion VPC Battery Extension";
+	priv->battery_hook.add_battery = legion_acpi_vpc_battery_add;
+	priv->battery_hook.remove_battery = legion_acpi_vpc_battery_remove;
+
+	legion_battery_hook_register(&priv->battery_hook);
+	priv->battery_hook_registered = true;
+}
+
+static void legion_acpi_vpc_battery_unregister(struct legion_acpi_vpc_priv *priv)
+{
+	if (priv->battery_hook_registered)
+		legion_battery_hook_unregister(&priv->battery_hook);
+}
+#else
+static void legion_acpi_vpc_battery_register(struct legion_acpi_vpc_priv *priv)
+{
+}
+
+static void legion_acpi_vpc_battery_unregister(struct legion_acpi_vpc_priv *priv)
+{
+}
+#endif
+
 /**
  * legion_acpi_vpc_check_features() - Find the features supported by the firmware
  * @priv: The driver data.
@@ -575,7 +793,7 @@ static void legion_acpi_vpc_check_features(struct legion_acpi_vpc_priv *priv,
 	if (acpi_has_method(handle, "GBMD") && acpi_has_method(handle, "SBMC") &&
 	    !vpc_eval_int(handle, "GBMD", &val)) {
 		priv->supported[VPC_CONSERVATION_MODE] = true;
-		priv->rapid_charge =
+		priv->supported[VPC_RAPID_CHARGE] =
 			test_bit(VPC_GBMD_RAPID_CHARGE_SUPPORTED_BIT, &val);
 	}
 
@@ -608,6 +826,9 @@ static int legion_acpi_vpc_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	priv->adev = adev;
+#ifdef LEGION_ACPI_VPC_BATTERY_EXT
+	priv->dev = &pdev->dev;
+#endif
 
 	err = devm_mutex_init(&pdev->dev, &priv->mutex);
 	if (err)
@@ -617,18 +838,28 @@ static int legion_acpi_vpc_probe(struct platform_device *pdev)
 
 	dev_info(&pdev->dev,
 		 "conservation mode %u, rapid charge %u, USB charging %u, Fn lock %u, camera power %u\n",
-		 priv->supported[VPC_CONSERVATION_MODE], priv->rapid_charge,
+		 priv->supported[VPC_CONSERVATION_MODE],
+		 priv->supported[VPC_RAPID_CHARGE],
 		 priv->supported[VPC_USB_CHARGING], priv->supported[VPC_FN_LOCK],
 		 priv->supported[VPC_CAMERA_POWER]);
 
 	platform_set_drvdata(pdev, priv);
 
-	return legion_acpi_vpc_fw_attr_add(priv);
+	err = legion_acpi_vpc_fw_attr_add(priv);
+	if (err)
+		return err;
+
+	legion_acpi_vpc_battery_register(priv);
+
+	return 0;
 }
 
 static void legion_acpi_vpc_remove(struct platform_device *pdev)
 {
-	legion_acpi_vpc_fw_attr_remove(platform_get_drvdata(pdev));
+	struct legion_acpi_vpc_priv *priv = platform_get_drvdata(pdev);
+
+	legion_acpi_vpc_battery_unregister(priv);
+	legion_acpi_vpc_fw_attr_remove(priv);
 }
 
 static const struct acpi_device_id legion_acpi_vpc_ids[] = {

@@ -46,6 +46,7 @@ static const std::vector<std::pair<legion::messages::OtherSettings::EnableDisabl
     { &legion::messages::OtherSettings::mutable_usb_charging,      &SysFsDriverLegionVpc::Vpc::m_usbCharging      },
     { &legion::messages::OtherSettings::mutable_fn_lock,           &SysFsDriverLegionVpc::Vpc::m_fnLock           },
     { &legion::messages::OtherSettings::mutable_camera_power,      &SysFsDriverLegionVpc::Vpc::m_cameraPower      },
+    { &legion::messages::OtherSettings::mutable_rapid_charge,      &SysFsDriverLegionVpc::Vpc::m_rapidCharge      },
 };
 
 
@@ -215,7 +216,7 @@ void SysFsDataProviderOther::settable(legion::messages::OtherSettings &settings,
     /*
      * ACPI device VPC2004: without the driver or the feature the field is skipped
      */
-    if(!settings.has_conservation_mode() && !settings.has_usb_charging() && !settings.has_fn_lock() && !settings.has_camera_power())
+    if(!settings.has_conservation_mode() && !settings.has_usb_charging() && !settings.has_fn_lock() && !settings.has_camera_power() && !settings.has_rapid_charge())
     {
         return;
     }
@@ -261,6 +262,11 @@ void SysFsDataProviderOther::settable(legion::messages::OtherSettings &settings,
     if(!checkVpc(settings.has_camera_power(),settings.mutable_camera_power(),&SysFsDriverLegionVpc::Vpc::m_cameraPower,"camera power"))
     {
         settings.clear_camera_power();
+    }
+
+    if(!checkVpc(settings.has_rapid_charge(),settings.mutable_rapid_charge(),&SysFsDriverLegionVpc::Vpc::m_rapidCharge,"rapid charge"))
+    {
+        settings.clear_rapid_charge();
     }
 }
 

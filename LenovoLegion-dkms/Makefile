@@ -29,6 +29,12 @@ legion_intel_msr-y := legion-intel-msr.o legion-intel-msr-sysfs.o
 
 ccflags-y += -DLEGION_VERSION='"$(LEGION_VERSION)"'
 
+# ACPI battery hook: some kernels (e.g. 7.2 of distributions with backports) name it acpi_battery_hook_*,
+# the kernel version does not tell it (evaluated by kbuild, srctree is the kernel source tree)
+ifneq ($(shell grep -s -l devm_acpi_battery_hook_register $(srctree)/include/acpi/battery.h),)
+ccflags-y += -DLEGION_ACPI_BATTERY_HOOK_PREFIX
+endif
+
 all:
 	$(MAKE) -C $(KSRC) M=$(CURDIR) LEGION_VERSION=$(LEGION_VERSION) modules
 

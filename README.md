@@ -73,7 +73,8 @@
 
 **Other**
 - Disable the touchpad and the Windows key, Fn lock, camera power.
-- Battery conservation mode (charging stops at about 80 %) and USB charging when the notebook is off.
+- Battery conservation mode (charging stops at about 80 %), rapid charge and USB charging when the notebook is off;
+  since kernel 6.16 the charge mode is also `charge_types` of the battery (battery settings of KDE / GNOME).
 - Profiles: save the whole configuration under a name and load it later.
 - The settings are restored by the daemon after a reboot (can be switched off in Settings).
 - Themes, tray icon, system check on the Help page.
@@ -115,7 +116,7 @@
 
 | Part | Description |
 |---|---|
-| `lenovo_legion` (kernel module, DKMS) | WMI drivers of the Legion firmware: game zone (power profile, touchpad, Win key, GPU mode), other mode (power limits, fan full speed), fan curve, firmware events, ACPI device VPC2004 (conservation mode, USB charging, Fn lock, camera power), hwmon `legion` (temperatures and fan speeds), `platform_profile`. Loaded automatically on a supported notebook. |
+| `lenovo_legion` (kernel module, DKMS) | WMI drivers of the Legion firmware: game zone (power profile, touchpad, Win key, GPU mode), other mode (power limits, fan full speed), fan curve, firmware events, ACPI device VPC2004 (conservation mode, rapid charge, USB charging, Fn lock, camera power), hwmon `legion` (temperatures and fan speeds), `platform_profile`. Loaded automatically on a supported notebook. |
 | `legion_intel_msr` (kernel module, DKMS) | Intel CPU voltage offsets through the OC mailbox (MSR 0x150), `/sys/class/legion-intel-msr/intel-msr-0`. Independent of the notebook. |
 | `LenovoLegion-Daemon` | Root service. Reads and writes the hardware, checks the values, restores the settings after a reboot, stores the profiles. Every feature is a module in `/opt/LenovoLegion/modules`; a failing module does not stop the others. |
 | `LenovoLegion` | The GUI. It runs as a normal user of the group `legion` and talks to the daemon only. |

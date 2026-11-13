@@ -31,9 +31,11 @@ SettingsPage {
         title: "Charging"
         source: other
         visible: other.value("conservation_mode.supported", other.revision) === true
+                 || other.value("rapid_charge.supported", other.revision) === true
                  || other.value("usb_charging.supported", other.revision) === true
 
         Field { source: other; path: "conservation_mode.current" }
+        Field { source: other; path: "rapid_charge.current" }
         Field { source: other; path: "usb_charging.current" }
     }
 

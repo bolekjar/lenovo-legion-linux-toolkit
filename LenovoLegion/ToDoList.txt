@@ -77,3 +77,8 @@
 18) DONE (2026-11-13, releases 2.3.0 - 2.3.3) - Consolidation of the kernel module lenovo_legion (LenovoLegion-dkms/ConsolidationPlan.md): own self-contained stack (works on all kernels, one driver per WMI GUID),
    remove duplicates of the kernel (machine information -> /sys/class/dmi/id, RAPL and RAPL MMIO -> daemon via powercap), one thermal mode interface,
    hwmon with_info, probe does not change settings, reduce the gamezone sysfs, minimal supported kernel.
+19) LIST_MODULES and a dynamic dataType (LenovoLegion-Daemon/ModulesDesign.md ch. 3, 6 item 2, 7 item 7): on connection the GUI asks for
+   the list of the daemon modules {name, dataType, version, state} and works with the assigned numbers instead of the fixed DataType of
+   MessageRegistry.proto. The GUI learns a missing or failed module (optional NVML, RGB: today ERROR_RESPONSE "Data provider not found")
+   and modules can bring their own messages (.proto in the module). Needs: request in the protocol (SDK), registry of the modules in the
+   framework, DataSource by the module name in the GUI.

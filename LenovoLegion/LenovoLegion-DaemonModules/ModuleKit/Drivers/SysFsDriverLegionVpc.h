@@ -14,8 +14,8 @@
 namespace LenovoLegionDaemon::Kit {
 
 /*
- * Features of the ACPI device VPC2004 (lenovo_legion legion-acpi-vpc.c): conservation mode, USB charging,
- * Fn lock, camera power. Every feature is optional (directory of the feature exists, its supported is 1).
+ * Features of the ACPI device VPC2004 (lenovo_legion legion-acpi-vpc.c): conservation mode, rapid charge,
+ * USB charging, Fn lock, camera power. Every feature is optional (directory of the feature exists, its supported is 1).
  */
 class SysFsDriverLegionVpc : public SysFsDriver
 {
@@ -40,13 +40,15 @@ public:
             m_conservationMode(descriptor,"conservation_mode"),
             m_usbCharging(descriptor,"usb_charging"),
             m_fnLock(descriptor,"fn_lock"),
-            m_cameraPower(descriptor,"camera_power")
+            m_cameraPower(descriptor,"camera_power"),
+            m_rapidCharge(descriptor,"rapid_charge")
         {}
 
         const Feature m_conservationMode;
         const Feature m_usbCharging;
         const Feature m_fnLock;
         const Feature m_cameraPower;
+        const Feature m_rapidCharge;
     };
 
     /*
@@ -56,7 +58,8 @@ public:
         CONSERVATION_MODE = 3000,
         USB_CHARGING      = 3001,
         FN_LOCK           = 3002,
-        CAMERA_POWER      = 3003
+        CAMERA_POWER      = 3003,
+        RAPID_CHARGE      = 3004
     };
 
 public:

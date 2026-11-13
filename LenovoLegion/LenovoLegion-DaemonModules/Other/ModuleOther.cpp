@@ -19,7 +19,7 @@
 namespace LenovoLegionDaemon::Kit {
 
 /*
- * Other settings (touchpad, Win key, Legion WMI gamezone; conservation mode, USB charging, Fn lock, camera power,
+ * Other settings (touchpad, Win key, Legion WMI gamezone; conservation mode, rapid charge, USB charging, Fn lock, camera power,
  * ACPI device VPC2004). Owns notifications KEYLOCK_STATUS_CHANGE (Legion WMI event) and VPC_FEATURE_CHANGED.
  */
 class ModuleOther : public ProviderModule
@@ -75,6 +75,7 @@ protected:
 
         // ACPI device VPC2004, camera power is not saved (privacy switch, the state of the firmware wins)
         if (storage.contains("conservation_mode")) otherSettings.mutable_conservation_mode()->set_current(storage.value("conservation_mode").toBool());
+        if (storage.contains("rapid_charge"))      otherSettings.mutable_rapid_charge()->set_current(storage.value("rapid_charge").toBool());
         if (storage.contains("usb_charging"))      otherSettings.mutable_usb_charging()->set_current(storage.value("usb_charging").toBool());
         if (storage.contains("fn_lock"))           otherSettings.mutable_fn_lock()->set_current(storage.value("fn_lock").toBool());
 
@@ -89,6 +90,7 @@ protected:
         if (otherSettings.has_win_key() && otherSettings.win_key().has_current())     storage.setValue("disable_win_key", otherSettings.win_key().current());
 
         if (otherSettings.has_conservation_mode() && otherSettings.conservation_mode().has_current()) storage.setValue("conservation_mode", otherSettings.conservation_mode().current());
+        if (otherSettings.has_rapid_charge() && otherSettings.rapid_charge().has_current())           storage.setValue("rapid_charge", otherSettings.rapid_charge().current());
         if (otherSettings.has_usb_charging() && otherSettings.usb_charging().has_current())           storage.setValue("usb_charging", otherSettings.usb_charging().current());
         if (otherSettings.has_fn_lock() && otherSettings.fn_lock().has_current())                     storage.setValue("fn_lock", otherSettings.fn_lock().current());
     }

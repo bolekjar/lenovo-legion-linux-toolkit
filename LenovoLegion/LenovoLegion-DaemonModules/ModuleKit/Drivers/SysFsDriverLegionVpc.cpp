@@ -22,7 +22,7 @@ void SysFsDriverLegionVpc::init()
 
     clean();
 
-    for(const char* feature : {"conservation_mode","usb_charging","fn_lock","camera_power"})
+    for(const char* feature : {"conservation_mode","usb_charging","fn_lock","camera_power","rapid_charge"})
     {
         const std::filesystem::path path = std::filesystem::path(m_path).append(feature);
 
