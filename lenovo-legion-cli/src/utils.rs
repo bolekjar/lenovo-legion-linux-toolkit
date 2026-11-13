@@ -91,12 +91,12 @@ pub fn read_value_as_type<Type: FromStr>(path: String) -> Result<Type, std::io::
                     Ok(value)
                 }
                 Err(_err) => {
-                    Err(std::io::Error::new(std::io::ErrorKind::Other,path.as_str()))
+                    Err(std::io::Error::new(std::io::ErrorKind::InvalidData,format!("{}: invalid value \"{}\"",path,content.trim())))
                 }
             }
         }
         Err(err) => {
-            return Err(std::io::Error::new(err.kind(),path.as_str()));
+            return Err(std::io::Error::new(err.kind(),format!("{}: {}",path,err)));
         }
     }
 }
@@ -112,14 +112,14 @@ pub fn read_hex_value(path: String) -> Result<u32, std::io::Error>
                     Ok(value)
                 }
                 Err(_) => {
-                    return Err(std::io::Error::new(std::io::ErrorKind::Other,path.as_str()));
+                    return Err(std::io::Error::new(std::io::ErrorKind::InvalidData,format!("{}: invalid value \"{}\"",path,content.trim())));
                 }
             }
 
         }
 
-        Err(_err) => {
-            return Err(std::io::Error::new(std::io::ErrorKind::Other,path.as_str()));
+        Err(err) => {
+            return Err(std::io::Error::new(err.kind(),format!("{}: {}",path,err)));
         }
     }
 }
@@ -134,7 +134,7 @@ pub fn write_value_as_type<Type: ToString>(path: String, value: Type) -> Result<
     match fs::write(path.as_str(), value.to_string().as_str())
     {
         Err(err) => {
-            return Err(std::io::Error::new(err.kind(),path.as_str()));
+            return Err(std::io::Error::new(err.kind(),format!("{}: {}",path,err)));
         }
 
         Ok(_) => {
@@ -153,13 +153,25 @@ pub fn int_to_string_power_modes(u32 : u32) -> String {
     }
 }
 
-pub fn string_power_modes_to_int(mode : &String) -> u32 {
+/// Inverse of int_to_string_power_modes (thermal modes of the kernel module: 1 quiet, 2 balanced, 3 performance, 0xE0 extreme, 0xFF custom)
+pub fn string_power_modes_to_int(mode : &String) -> Result<u32,std::io::Error> {
     match mode.as_str() {
-        "Quiet"     => 2,
-        "Balance"   => 3,
-        "Power"     => 4,
-        "Extreme"   => 224,
-        "Custom"    => 255,
-        _ => 0
+        "Quiet"     => Ok(1),
+        "Balance"   => Ok(2),
+        "Power"     => Ok(3),
+        "Extreme"   => Ok(224),
+        "Custom"    => Ok(255),
+        _ => Err(std::io::Error::new(std::io::ErrorKind::InvalidInput,format!("Unknown mode: {} (allowed: Quiet, Balance, Power, Extreme, Custom)",mode)))
     }
+}
+
+/// Value of an optional sysfs file (depends on the CPU, driver or kernel version), None if the file does not exist
+pub fn read_optional_value_as_type<Type: FromStr>(path: String) -> Result<Option<Type>, std::io::Error>
+{
+    if !Path::new(&path).exists()
+    {
+        return Ok(None);
+    }
+
+    read_value_as_type::<Type>(path).map(Some)
 }

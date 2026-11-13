@@ -7,7 +7,20 @@ use clap::Parser;
 use crate::sysfs_drivers::others_control::{Attribute, FanFullSpeed, IsACFitForOc, SmartFan, ThermalMode};
 use crate::utils::string_power_modes_to_int;
 
-fn main() -> Result<(),std::io::Error> {
+fn main() -> std::process::ExitCode {
+   /*
+    * Readable error (Display) instead of the Debug output of a returned error
+    */
+   match run() {
+      Ok(()) => std::process::ExitCode::SUCCESS,
+      Err(err) => {
+         eprintln!("Error: {}",err);
+         std::process::ExitCode::FAILURE
+      }
+   }
+}
+
+fn run() -> Result<(),std::io::Error> {
    let cli = Cli::parse();
 
    if cli.smart_fan()
@@ -64,7 +77,7 @@ fn main() -> Result<(),std::io::Error> {
 
    match cli.smart_fan_set() {
       Some(value) => {
-         SmartFan::new()?.set_value(string_power_modes_to_int(value))?;
+         SmartFan::new()?.set_value(string_power_modes_to_int(value)?)?;
       }
       None => {}
    }

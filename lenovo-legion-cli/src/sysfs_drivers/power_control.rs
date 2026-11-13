@@ -23,101 +23,114 @@ pub struct Attributes {
     type_value: String
 }
 
+/// Attributes not provided by the model (firmware) are None
 #[derive(Debug,Clone,Default)]
 pub struct PowerControl {
-    cpu_clp_limit: Attributes,
-    cpu_ltp_limit: Attributes,
-    cpu_pl1_tau: Attributes,
-    gpu_to_cpu_dynamic_boost: Attributes,
-    cpu_tmp_limit: Attributes,
-    cpu_pp_limit: Attributes,
-    cpu_stp_limit: Attributes,
-    gpu_total_onac: Attributes,
-    gpu_power_boost : Attributes,
-    gpu_tmp_limit : Attributes,
-    gpu_configurable_tgp: Attributes
+    cpu_clp_limit: Option<Attributes>,
+    cpu_ltp_limit: Option<Attributes>,
+    cpu_pl1_tau: Option<Attributes>,
+    gpu_to_cpu_dynamic_boost: Option<Attributes>,
+    cpu_tmp_limit: Option<Attributes>,
+    cpu_pp_limit: Option<Attributes>,
+    cpu_stp_limit: Option<Attributes>,
+    gpu_total_onac: Option<Attributes>,
+    gpu_power_boost : Option<Attributes>,
+    gpu_tmp_limit : Option<Attributes>,
+    gpu_configurable_tgp: Option<Attributes>
 }
 
 impl PowerControl {
     pub fn new() -> Result<PowerControl,std::io::Error> {
         let cpu_power = PowerControl {
-            cpu_tmp_limit : Attributes::new("cpu_tmp_limit")?,
-            cpu_clp_limit : Attributes::new("cpu_clp_limit")?,
-            cpu_ltp_limit : Attributes::new("cpu_ltp_limit")?,
-            cpu_pl1_tau  :  Attributes::new("cpu_pl1_tau")?,
-            gpu_to_cpu_dynamic_boost : Attributes::new("gpu_to_cpu_dynamic_boost")?,
-            cpu_pp_limit : Attributes::new("cpu_pp_limit")?,
-            cpu_stp_limit : Attributes::new("cpu_stp_limit")?,
-            gpu_total_onac : Attributes::new("gpu_total_onac")?,
-            gpu_power_boost : Attributes::new("gpu_power_boost")?,
-            gpu_tmp_limit : Attributes::new("gpu_temperature_limit/")?,
-            gpu_configurable_tgp : Attributes::new("gpu_configurable_tgp")?
+            cpu_tmp_limit : Attributes::new_optional("cpu_tmp_limit")?,
+            cpu_clp_limit : Attributes::new_optional("cpu_clp_limit")?,
+            cpu_ltp_limit : Attributes::new_optional("cpu_ltp_limit")?,
+            cpu_pl1_tau  :  Attributes::new_optional("cpu_pl1_tau")?,
+            gpu_to_cpu_dynamic_boost : Attributes::new_optional("gpu_to_cpu_dynamic_boost")?,
+            cpu_pp_limit : Attributes::new_optional("cpu_pp_limit")?,
+            cpu_stp_limit : Attributes::new_optional("cpu_stp_limit")?,
+            gpu_total_onac : Attributes::new_optional("gpu_total_onac")?,
+            gpu_power_boost : Attributes::new_optional("gpu_power_boost")?,
+            gpu_tmp_limit : Attributes::new_optional("gpu_temperature_limit")?,
+            gpu_configurable_tgp : Attributes::new_optional("gpu_configurable_tgp")?
         };
 
         Ok(cpu_power)
     }
 
     pub fn refresh(&mut self) -> Result<&PowerControl,std::io::Error> {
-        self.cpu_clp_limit.refresh()?;
-        self.cpu_ltp_limit.refresh()?;
-        self.cpu_pl1_tau.refresh()?;
-        self.gpu_to_cpu_dynamic_boost.refresh()?;
-        self.cpu_tmp_limit.refresh()?;
-        self.cpu_pp_limit.refresh()?;
-        self.cpu_stp_limit.refresh()?;
-        self.gpu_total_onac.refresh()?;
+        for attribute in [&mut self.cpu_clp_limit, &mut self.cpu_ltp_limit, &mut self.cpu_pl1_tau, &mut self.gpu_to_cpu_dynamic_boost,
+                          &mut self.cpu_tmp_limit, &mut self.cpu_pp_limit, &mut self.cpu_stp_limit, &mut self.gpu_total_onac,
+                          &mut self.gpu_power_boost, &mut self.gpu_tmp_limit, &mut self.gpu_configurable_tgp] {
+            if let Some(attribute) = attribute {
+                attribute.refresh()?;
+            }
+        }
 
         Ok(self)
     }
 
-    pub fn cpu_clp_limit(&self) -> &Attributes {
-        &self.cpu_clp_limit
+    pub fn cpu_clp_limit(&self) -> Result<&Attributes,std::io::Error> {
+        supported(&self.cpu_clp_limit,"cpu_clp_limit")
     }
 
-    pub fn cpu_ltp_limit(&self) -> &Attributes {
-        &self.cpu_ltp_limit
+    pub fn cpu_ltp_limit(&self) -> Result<&Attributes,std::io::Error> {
+        supported(&self.cpu_ltp_limit,"cpu_ltp_limit")
     }
 
-    pub fn cpu_pl1_tau(&self) -> &Attributes {
-        &self.cpu_pl1_tau
+    pub fn cpu_pl1_tau(&self) -> Result<&Attributes,std::io::Error> {
+        supported(&self.cpu_pl1_tau,"cpu_pl1_tau")
     }
 
-    pub fn gpu_to_cpu_dynamic_boost(&self) -> &Attributes {
-        &self.gpu_to_cpu_dynamic_boost
+    pub fn gpu_to_cpu_dynamic_boost(&self) -> Result<&Attributes,std::io::Error> {
+        supported(&self.gpu_to_cpu_dynamic_boost,"gpu_to_cpu_dynamic_boost")
     }
 
-    pub fn cpu_tmp_limit(&self) -> &Attributes {
-        &self.cpu_tmp_limit
+    pub fn cpu_tmp_limit(&self) -> Result<&Attributes,std::io::Error> {
+        supported(&self.cpu_tmp_limit,"cpu_tmp_limit")
     }
 
-    pub fn cpu_pp_limit(&self) -> &Attributes {
-        &self.cpu_pp_limit
+    pub fn cpu_pp_limit(&self) -> Result<&Attributes,std::io::Error> {
+        supported(&self.cpu_pp_limit,"cpu_pp_limit")
     }
 
-    pub fn cpu_stp_limit(&self) -> &Attributes {
-        &self.cpu_stp_limit
+    pub fn cpu_stp_limit(&self) -> Result<&Attributes,std::io::Error> {
+        supported(&self.cpu_stp_limit,"cpu_stp_limit")
     }
 
-    pub fn gpu_total_onac(&self) -> &Attributes {
-        &self.gpu_total_onac
+    pub fn gpu_total_onac(&self) -> Result<&Attributes,std::io::Error> {
+        supported(&self.gpu_total_onac,"gpu_total_onac")
     }
 
-    pub fn gpu_power_boost(&self) -> &Attributes {
-        &self.gpu_power_boost
+    pub fn gpu_power_boost(&self) -> Result<&Attributes,std::io::Error> {
+        supported(&self.gpu_power_boost,"gpu_power_boost")
     }
 
-    pub fn gpu_tmp_limit(&self) -> &Attributes {
-        &self.gpu_tmp_limit
+    pub fn gpu_tmp_limit(&self) -> Result<&Attributes,std::io::Error> {
+        supported(&self.gpu_tmp_limit,"gpu_tmp_limit")
     }
 
-    pub fn gpu_configurable_tgp(&self) -> &Attributes {
-        &self.gpu_configurable_tgp
+    pub fn gpu_configurable_tgp(&self) -> Result<&Attributes,std::io::Error> {
+        supported(&self.gpu_configurable_tgp,"gpu_configurable_tgp")
     }
 }
 
 
 
+fn supported<'a>(attribute: &'a Option<Attributes>,name: &str) -> Result<&'a Attributes,std::io::Error> {
+    attribute.as_ref().ok_or_else(|| std::io::Error::new(std::io::ErrorKind::Unsupported,format!("{} is not supported by this model",name)))
+}
+
 impl Attributes {
+    /// None if the attribute does not exist (not provided by the model)
+    pub fn new_optional(name: &str) -> Result<Option<Attributes>,std::io::Error> {
+        if !Path::new(&format!("{}{}", SYSFS_POWER_CONTROLS, name)).exists() {
+            return Ok(None);
+        }
+
+        Attributes::new(name).map(Some)
+    }
+
     pub fn new(name: &str) -> Result<Attributes,std::io::Error> {
         let mut attributes = Attributes {
             path: format!("{}{}/", SYSFS_POWER_CONTROLS, name),
@@ -185,21 +198,28 @@ impl Display for Attributes {
 }
 
 
+fn display_optional(attribute: &Option<Attributes>) -> String {
+    match attribute {
+        Some(attribute) => attribute.to_string(),
+        None => String::from("N/A (not supported by this model)")
+    }
+}
+
 impl Display for PowerControl {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         _ = write!(f,"CPU Power: [\n");
         _ = write!(f, "CPU CLP Limit: {},\nCPU LTP Limit: {},\nCPU PL1 Tau: {},\nGPU to CPU Dynamic Boost: {},\nCPU Temp Limit: {},\nCPU PP Limit: {},\nCPU STP Limit: {},\nGPU Total ONAC: {}\nGPU Power Boost: {},\nGPU Temp Limit: {},\nGPU Configurable TGP: {}",
-               self.cpu_clp_limit,
-               self.cpu_ltp_limit,
-               self.cpu_pl1_tau,
-               self.gpu_to_cpu_dynamic_boost,
-               self.cpu_tmp_limit,
-               self.cpu_pp_limit,
-               self.cpu_stp_limit,
-               self.gpu_total_onac,
-               self.gpu_power_boost,
-               self.gpu_tmp_limit,
-               self.gpu_configurable_tgp);
+               display_optional(&self.cpu_clp_limit),
+               display_optional(&self.cpu_ltp_limit),
+               display_optional(&self.cpu_pl1_tau),
+               display_optional(&self.gpu_to_cpu_dynamic_boost),
+               display_optional(&self.cpu_tmp_limit),
+               display_optional(&self.cpu_pp_limit),
+               display_optional(&self.cpu_stp_limit),
+               display_optional(&self.gpu_total_onac),
+               display_optional(&self.gpu_power_boost),
+               display_optional(&self.gpu_tmp_limit),
+               display_optional(&self.gpu_configurable_tgp));
         write!(f,"\n]\n")
     }
 }

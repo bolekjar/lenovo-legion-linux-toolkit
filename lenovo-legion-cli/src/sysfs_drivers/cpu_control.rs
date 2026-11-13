@@ -58,13 +58,13 @@ pub struct CPUFreq
 
 
     affected_cpus: BTreeSet<u32>,
-    base_frequency: u32,
-    cpuinfo_avg_freq: u32,
+    base_frequency: Option<u32>,            // intel_pstate only
+    cpuinfo_avg_freq: Option<u32>,          // newer kernels only
     cpuinfo_max_freq: u32,
     cpuinfo_min_freq: u32,
     cpuinfo_transition_latency: u32,
-    energy_performance_available_preferences: BTreeSet<String>,
-    energy_performance_preference: String,
+    energy_performance_available_preferences: BTreeSet<String>,     // empty without EPP (HWP, amd-pstate)
+    energy_performance_preference: Option<String>,
     related_cpus: BTreeSet<u32>,
     scaling_available_governors: BTreeSet<String>,
     scaling_governor: String,
@@ -183,6 +183,16 @@ pub fn parse_cpu_range(path : &str ) -> Result<BTreeSet<u32>,std::io::Error>
     }
 }
 
+/// CPU range of an optional sysfs file, empty if the file does not exist
+pub fn parse_optional_cpu_range(path : &str ) -> Result<BTreeSet<u32>,std::io::Error>
+{
+    if !Path::new(path).exists() {
+        return Ok(BTreeSet::new());
+    }
+
+    parse_cpu_range(path)
+}
+
 impl Topology {
 
     pub fn new() -> Result<Topology,std::io::Error> {
@@ -204,14 +214,18 @@ impl Topology {
                     ({SYSFS_SYSTEM_CPU.to_string() + "online" },  |topology: & mut Topology,cpu_range: BTreeSet<u32>| { topology.online = cpu_range}),
                     ({SYSFS_SYSTEM_CPU.to_string() + "possible" },|topology: & mut Topology,cpu_range: BTreeSet<u32>| { topology.possible = cpu_range}),
                     ({SYSFS_SYSTEM_CPU.to_string() + "present" }, |topology: & mut Topology,cpu_range: BTreeSet<u32>| { topology.present = cpu_range}),
-                    ({SYSFS_CPU_ATOM.to_string() + "cpus" }, |topology: & mut Topology,cpu_range: BTreeSet<u32>| { topology.atom = cpu_range}),
-                    ({SYSFS_CPU_CORES.to_string() + "cpus" }, |topology: & mut Topology,cpu_range: BTreeSet<u32>| { topology.core = cpu_range}),
                 ];
             vec
         }.iter()
         {
             s.1(self, parse_cpu_range(s.0.as_str())?);
         }
+
+        /*
+         * Atom (E) and Core (P) CPUs exist only on hybrid Intel CPUs, empty otherwise
+         */
+        self.atom = parse_optional_cpu_range((SYSFS_CPU_ATOM.to_string() + "cpus").as_str())?;
+        self.core = parse_optional_cpu_range((SYSFS_CPU_CORES.to_string() + "cpus").as_str())?;
 
         Ok(self)
     }
@@ -307,14 +321,14 @@ impl CPUFreq {
     pub fn refresh(&mut self) -> Result<&CPUFreq, std::io::Error> {
 
         self.affected_cpus = parse_cpu_range({self.path.clone() + "affected_cpus"}.as_str())?;
-        self.base_frequency = read_value_as_type::<u32>(self.path.clone() + "base_frequency" )?;
-        self.cpuinfo_avg_freq = read_value_as_type::<u32>(self.path.clone() + "cpuinfo_avg_freq" )?;
+        self.base_frequency = read_optional_value_as_type::<u32>(self.path.clone() + "base_frequency" )?;
+        self.cpuinfo_avg_freq = read_optional_value_as_type::<u32>(self.path.clone() + "cpuinfo_avg_freq" )?;
         self.cpuinfo_min_freq = read_value_as_type::<u32>(self.path.clone() + "cpuinfo_min_freq" )?;
         self.cpuinfo_max_freq = read_value_as_type::<u32>(self.path.clone() + "cpuinfo_max_freq" )?;
         self.cpuinfo_transition_latency = read_value_as_type::<u32>(self.path.clone() + "cpuinfo_transition_latency" )?;
-        self.energy_performance_available_preferences = read_value_as_type::<String>(self.path.clone() + "energy_performance_available_preferences" )?.
-            split(" ").map(|s|{s.trim().to_string()}).collect();
-        self.energy_performance_preference = read_value_as_type::<String>(self.path.clone() + "energy_performance_preference" )?.trim().to_string();
+        self.energy_performance_available_preferences = read_optional_value_as_type::<String>(self.path.clone() + "energy_performance_available_preferences" )?.
+            unwrap_or_default().split_whitespace().map(|s|{s.to_string()}).collect();
+        self.energy_performance_preference = read_optional_value_as_type::<String>(self.path.clone() + "energy_performance_preference" )?.map(|s| s.trim().to_string());
         self.related_cpus = parse_cpu_range({self.path.clone() + "related_cpus"}.as_str())?;
         self.scaling_available_governors = read_value_as_type::<String>(self.path.clone() + "scaling_available_governors" )?.
             split(" ").map(|s|{s.trim().to_string()}).collect();
@@ -323,7 +337,7 @@ impl CPUFreq {
         self.scaling_max_freq = read_value_as_type::<u32>(self.path.clone() + "scaling_max_freq" )?;
         self.scaling_min_freq = read_value_as_type::<u32>(self.path.clone() + "scaling_min_freq" )?;
         self.scaling_driver = read_value_as_type::<String>(self.path.clone() + "scaling_driver" )?.trim().to_string();
-        self.scaling_setspeed = read_value_as_type::<String>(self.path.clone() + "cpuinfo_max_freq" )?.trim().to_string();
+        self.scaling_setspeed = read_value_as_type::<String>(self.path.clone() + "scaling_setspeed" )?.trim().to_string();
 
         Ok(self)
     }
@@ -352,12 +366,12 @@ impl CPUFreq {
         }
     }
 
-    pub fn base_frequency(&self)  -> u32 { self.base_frequency }
-    pub fn cpuinfo_avg_freq (&self) -> u32 { self.cpuinfo_avg_freq }
+    pub fn base_frequency(&self)  -> Option<u32> { self.base_frequency }
+    pub fn cpuinfo_avg_freq (&self) -> Option<u32> { self.cpuinfo_avg_freq }
     pub fn cpuinfo_min_freq (&self) -> u32 { self.cpuinfo_min_freq }
     pub fn cpuinfo_max_freq (&self) -> u32 { self.cpuinfo_max_freq }
     pub fn cpuinfo_transition_latency(&self) -> u32 { self.cpuinfo_transition_latency }
-    pub fn energy_performance_preference (&self) -> &String{ &self.energy_performance_preference }
+    pub fn energy_performance_preference (&self) -> &Option<String>{ &self.energy_performance_preference }
     pub fn scaling_governor(&self) -> &String{ &self.scaling_governor }
     pub fn scaling_cur_freq (&self) -> u32 { self.scaling_cur_freq }
     pub fn scaling_max_freq (&self) -> u32 { self.scaling_max_freq }
@@ -445,6 +459,11 @@ impl CPUX {
         self.online
     }
 
+    /// Offline CPU has no cpufreq, its frequency and governor can not be set
+    fn offline_error(&self) -> std::io::Error {
+        std::io::Error::new(std::io::ErrorKind::NotFound,format!("cpu{} is offline, cpufreq is not available",self.id))
+    }
+
     pub fn enable(&self)  -> Result<&CPUX, std::io::Error> {
         let path = self.path.clone() + "online";
         write_value_as_type::<bool>(path,true)?;
@@ -470,7 +489,7 @@ impl CPUX {
                     }
                 }
             }
-            None => {Ok(self)}
+            None => Err(self.offline_error())
         }
     }
 
@@ -487,9 +506,7 @@ impl CPUX {
                     }
                 }
             }
-            None => {
-                Ok(self)
-            }
+            None => Err(self.offline_error())
         }
     }
 
@@ -506,9 +523,7 @@ impl CPUX {
                     }
                 }
             }
-            None => {
-                Ok(self)
-            }
+            None => Err(self.offline_error())
         }
     }
 }
@@ -550,7 +565,7 @@ impl SMT {
 
          for cpu in  Topology::new()?.iter_possible()
          {
-             if (cpu as usize) > cpus.cpus.len()
+             if (cpu as usize) >= cpus.cpus.len()
              {
                  cpus.cpus.resize(cpu as usize + 1,CPUX::default());
              }
@@ -852,7 +867,10 @@ impl IntelUnCorePackages {
             let path = entry.path();
             if path.is_dir() {
                 if let Some(package_name) = path.file_name().and_then(|n| n.to_str()) {
-                    if package_name.starts_with("package") {
+                    /*
+                     * package_XX_die_YY (MSR interface), uncoreXX (TPMI interface)
+                     */
+                    if package_name.starts_with("package") || package_name.starts_with("uncore") {
                         match IntelUnCore::new(package_name.to_string()) {
                             Ok(package) => self.packages.push(package),
                             Err(e) => return Err(e)
@@ -917,25 +935,32 @@ impl Display for CPUs {
      }
  }
 
- impl Display for CPUFreq {
+ fn display_optional<Type: Display>(value: &Option<Type>) -> String {
+    match value {
+        Some(value) => value.to_string(),
+        None => String::from("N/A")
+    }
+}
+
+impl Display for CPUFreq {
      fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
          _ = write!(f,"cpufreq: [\n");
          _ = write!(f, "\taffected_cpus: {}\n", self.affected_cpus.iter().map(|i| i.to_string() ).collect::<Vec<String>>().join(","));
-         _ = write!(f, "\tbase_frequency: {} Hz\n", self.base_frequency);
-         _ = write!(f, "\tcpuinfo_avg_freq: {} Hz\n", self.cpuinfo_avg_freq);
-         _ = write!(f, "\tcpuinfo_min_freq: {} Hz\n", self.cpuinfo_min_freq);
-         _ = write!(f, "\tcpuinfo_max_freq: {} Hz\n", self.cpuinfo_max_freq);
-         _ = write!(f, "\tscaling_cur_freq: {} Hz\n", self.scaling_cur_freq);
-         _ = write!(f, "\tscaling_min_freq (W): {} Hz\n", self.scaling_min_freq);
-         _ = write!(f, "\tscaling_max_freq (W): {} Hz\n", self.scaling_max_freq);
+         _ = write!(f, "\tbase_frequency: {} kHz\n", display_optional(&self.base_frequency));
+         _ = write!(f, "\tcpuinfo_avg_freq: {} kHz\n", display_optional(&self.cpuinfo_avg_freq));
+         _ = write!(f, "\tcpuinfo_min_freq: {} kHz\n", self.cpuinfo_min_freq);
+         _ = write!(f, "\tcpuinfo_max_freq: {} kHz\n", self.cpuinfo_max_freq);
+         _ = write!(f, "\tscaling_cur_freq: {} kHz\n", self.scaling_cur_freq);
+         _ = write!(f, "\tscaling_min_freq (W): {} kHz\n", self.scaling_min_freq);
+         _ = write!(f, "\tscaling_max_freq (W): {} kHz\n", self.scaling_max_freq);
          _ = write!(f, "\tscaling_available_governors: {}\n", self.scaling_available_governors.iter().map(|i| i.to_string() ).collect::<Vec<String>>().join(","));
          _ = write!(f, "\tscaling_governor (W): {}\n",self.scaling_governor);
          _ = write!(f, "\tcpuinfo_transition_latency: {}\n", self.cpuinfo_transition_latency);
          _ = write!(f, "\tenergy_performance_available_preferences: {}\n",self.energy_performance_available_preferences.iter().map(|i| i.to_string() ).collect::<Vec<String>>().join(","));
-         _ = write!(f, "\tenergy_performance_preference: {}\n",self.energy_performance_preference);
+         _ = write!(f, "\tenergy_performance_preference: {}\n",display_optional(&self.energy_performance_preference));
          _ = write!(f, "\trelated_cpus: {}\n",self.related_cpus.iter().map(|i| i.to_string() ).collect::<Vec<String>>().join(","));
          _ = write!(f, "\tscaling_driver: {}\n", self.scaling_driver);
-         _ = write!(f, "\tscaling_setspeed: {} Hz\n", self.scaling_setspeed);
+         _ = write!(f, "\tscaling_setspeed: {}\n", self.scaling_setspeed);
          _ = write!(f,"]");
          Ok(())
      }

@@ -5,7 +5,7 @@ use crate::utils::{*};
 use crate::sysfs_drivers::power_control::{PowerControl};
 
 #[derive(Parser)]
-#[command(version, about, long_about = None)]
+#[command(version = env!("LEGION_VERSION"), about, long_about = None)]
 pub struct Cli {
 
     /// Display If AC is fit for OC, if is true then you can switch to Custom mode
@@ -422,6 +422,15 @@ impl Commands {
 
 
                         for cpu in cpus_vec {
+                            /*
+                             * Enabled first: an offline CPU has no cpufreq (read again after the enable),
+                             * disabled last
+                             */
+                            if *enable
+                            {
+                                CPUX::new(cpu)?.enable()?;
+                            }
+
                             let cpu_x = CPUX::new(cpu)?;
 
                             match freq_min
@@ -448,11 +457,6 @@ impl Commands {
                                     cpu_x.governor(governor)?;
                                 }
                                 None => {}
-                            }
-
-                            if *enable
-                            {
-                                cpu_x.enable()?;
                             }
 
                             if *disable
@@ -574,57 +578,57 @@ impl Commands {
 
                 if *clp
                 {
-                    print!("{}",cpu_power.cpu_clp_limit());
+                    print!("{}",cpu_power.cpu_clp_limit()?);
                 }
 
                 if *ltp
                 {
-                    print!("{}",cpu_power.cpu_ltp_limit());
+                    print!("{}",cpu_power.cpu_ltp_limit()?);
                 }
 
                 if *pl1
                 {
-                    print!("{}",cpu_power.cpu_pl1_tau());
+                    print!("{}",cpu_power.cpu_pl1_tau()?);
                 }
 
                 if *gpu_to_cpu_db
                 {
-                    print!("{}",cpu_power.gpu_to_cpu_dynamic_boost());
+                    print!("{}",cpu_power.gpu_to_cpu_dynamic_boost()?);
                 }
 
                 if *tmp
                 {
-                    print!("{}",cpu_power.cpu_tmp_limit());
+                    print!("{}",cpu_power.cpu_tmp_limit()?);
                 }
 
                 if *pp
                 {
-                    print!("{}", PowerControl::new()?.cpu_pp_limit());
+                    print!("{}", PowerControl::new()?.cpu_pp_limit()?);
                 }
 
                 if *stp
                 {
-                    print!("{}", PowerControl::new()?.cpu_stp_limit());
+                    print!("{}", PowerControl::new()?.cpu_stp_limit()?);
                 }
 
                 if *gpu_total_onac
                 {
-                    print!("{}", PowerControl::new()?.gpu_total_onac());
+                    print!("{}", PowerControl::new()?.gpu_total_onac()?);
                 }
 
                 if *gpu_power_boost
                 {
-                    print!("{}", PowerControl::new()?.gpu_power_boost());
+                    print!("{}", PowerControl::new()?.gpu_power_boost()?);
                 }
 
                 if *gpu_tmp
                 {
-                    print!("{}", PowerControl::new()?.gpu_tmp_limit());
+                    print!("{}", PowerControl::new()?.gpu_tmp_limit()?);
                 }
 
                 if *gpu_tgp
                 {
-                    print!("{}", PowerControl::new()?.gpu_configurable_tgp());
+                    print!("{}", PowerControl::new()?.gpu_configurable_tgp()?);
                 }
             }
 
@@ -646,77 +650,77 @@ impl Commands {
 
                 match clp {
                     Some(clp) => {
-                        cpu_power.cpu_clp_limit().current_value(*clp)?;
+                        cpu_power.cpu_clp_limit()?.current_value(*clp)?;
                     }
                     None => {}
                 }
 
                 match ltp {
                     Some(ltp) => {
-                        cpu_power.cpu_ltp_limit().current_value(*ltp)?;
+                        cpu_power.cpu_ltp_limit()?.current_value(*ltp)?;
                     }
                     None => {}
                 }
 
                 match pl1 {
                     Some(pl1) => {
-                        cpu_power.cpu_pl1_tau().current_value(*pl1)?;
+                        cpu_power.cpu_pl1_tau()?.current_value(*pl1)?;
                     }
                     None => {}
                 }
 
                 match gpu_to_cpu_db {
                     Some(gpu_to_cpu_db) => {
-                        cpu_power.gpu_to_cpu_dynamic_boost().current_value(*gpu_to_cpu_db)?;
+                        cpu_power.gpu_to_cpu_dynamic_boost()?.current_value(*gpu_to_cpu_db)?;
                     }
                     None => {}
                 }
 
                 match tmp {
                     Some(tmp) => {
-                        cpu_power.cpu_tmp_limit().current_value(*tmp)?;
+                        cpu_power.cpu_tmp_limit()?.current_value(*tmp)?;
                     }
                     None => {}
                 }
 
                 match pp {
                     Some(pp) => {
-                        cpu_power.cpu_pp_limit().current_value(*pp)?;
+                        cpu_power.cpu_pp_limit()?.current_value(*pp)?;
                     }
                     None => {}
                 }
 
                 match stp {
                     Some(stp) => {
-                        cpu_power.cpu_stp_limit().current_value(*stp)?;
+                        cpu_power.cpu_stp_limit()?.current_value(*stp)?;
                     }
                     None => {}
                 }
 
                 match gpu_total_onac {
                     Some(gpu_total_onac) => {
-                        cpu_power.gpu_total_onac().current_value(*gpu_total_onac)?;
+                        cpu_power.gpu_total_onac()?.current_value(*gpu_total_onac)?;
                     }
                     None => {}
                 }
 
                 match gpu_power_boost {
                     Some(gpu_power_boost) => {
-                        cpu_power.gpu_power_boost().current_value(*gpu_power_boost)?;
+                        cpu_power.gpu_power_boost()?.current_value(*gpu_power_boost)?;
                     }
                     None => {}
                 }
 
                 match gpu_tmp {
                     Some(gpu_tmp) => {
-                        cpu_power.gpu_tmp_limit().current_value(*gpu_tmp)?;
+                        cpu_power.gpu_tmp_limit()?.current_value(*gpu_tmp)?;
                     }
                     None => {}
                 }
 
                 match gpu_tgp {
                     Some(gpu_tgp) => {
-                        cpu_power.gpu_configurable_tgp().current_value(*gpu_tgp)?;
+                        cpu_power.gpu_configurable_tgp()?.current_value(*gpu_tgp)?;
                     }
                     None => {}
                 }

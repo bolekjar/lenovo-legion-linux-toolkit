@@ -81,7 +81,7 @@ impl SmartFan {
 
     pub fn refresh (&mut self) -> Result<&SmartFan,std::io::Error> {
         self.current_value = read_value_as_type::<u32>(format!("{}smart_fan/current_value",SYSFS_GAMEZONE_CONTROLS))?;
-        self.extreme_supported = read_value_as_type::<u32>(format!("{}smart_fan/supported",SYSFS_GAMEZONE_CONTROLS))? != 0;
+        self.extreme_supported = read_value_as_type::<u32>(format!("{}smart_fan/extreme_supported",SYSFS_GAMEZONE_CONTROLS))? != 0;
         self.display_name = read_value_as_type::<String>(format!("{}smart_fan/display_name",SYSFS_GAMEZONE_CONTROLS))?;
         self.supported = read_value_as_type::<u32>(format!("{}smart_fan/supported",SYSFS_GAMEZONE_CONTROLS))? != 0;
         Ok(self)
