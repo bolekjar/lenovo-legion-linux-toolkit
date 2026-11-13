@@ -22,7 +22,6 @@ HEADERS += \
     RGBControllerDetector.h \
     RGBController.h \
     RGBControllerInterface.h \
-    RGBControllerKeyNames.h \
     StringUtils.h
 
 SOURCES += \

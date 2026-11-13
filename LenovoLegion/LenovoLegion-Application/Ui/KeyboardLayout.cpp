@@ -8,7 +8,7 @@
 #include "KeyboardLayout.h"
 #include "DataSource.h"
 
-#include "RGBControllerKeyNames.h"
+#include "../LenovoLegion-DaemonSDK/RGBControllerKeyNames.h"
 
 #include "../LenovoLegion-PrepareBuild/RGBController.pb.h"
 

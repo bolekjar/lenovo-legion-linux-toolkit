@@ -16,3 +16,7 @@ HEADERS += \
     IModule.h \
     ModuleApi.h \
     SysFs.h
+
+# RGB key names, shared by the module RGBController and the GUI (Ui/KeyboardLayout.cpp)
+HEADERS += \
+    RGBControllerKeyNames.h

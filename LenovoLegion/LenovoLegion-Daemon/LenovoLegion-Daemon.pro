@@ -62,10 +62,6 @@ HEADERS +=  \
         Modules/ModuleLoader.h \
         Modules/ModuleSettingsStorage.h
 
-# RGB key names shared with the GUI (Ui/KeyboardLayout.cpp), the RGB module has its own copy
-HEADERS += \
-        RGBControllerKeyNames.h
-
 # Daemon module API (SDK) and messages used by modules,
 # hardware is handled by modules (.so) loaded at runtime from modules/ (LenovoLegion-DaemonModules)
 INCLUDEPATH += $$PWD/../LenovoLegion-DaemonSDK \

@@ -462,7 +462,7 @@ Deviations from the original table (by the rule "the notification is sent by who
 - `LenovoLegion-Daemon.pro` without `hidapi`, CUDA and `libnvidia-ml` – the daemon depends only on `libLenovoLegionMessages.so` and `libudev` (binary ~12 MB instead of ~43 MB),
 - the GUI uses `legion::messages::DataType::*` instead of `LenovoLegionDaemon::*::dataType`.
 
-Stays in `LenovoLegion-Daemon`: `RGBControllerKeyNames.h` – key names shared with the GUI (`Ui/KeyboardLayout.cpp`, the module RGBController has its own copy in `Kit`). `RGBControllerInterface.h` is not needed by the GUI after the removal of the old keyboard widgets, it is only in the module. A candidate for moving to a common place (e.g. next to the messages).
+`RGBControllerKeyNames.h` – key names shared by the module RGBController and the GUI (`Ui/KeyboardLayout.cpp`) – is one header in `LenovoLegion-DaemonSDK` (namespace `LenovoLegionDaemon`, found by the module code in `Kit` without qualification). `RGBControllerInterface.h` is not needed by the GUI after the removal of the old keyboard widgets, it is only in the module.
 
 Verified: the whole build without errors and warnings, all 19 modules are loaded and return data (test with the new objects of the daemon), the GUI starts.
 
