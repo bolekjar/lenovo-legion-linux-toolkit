@@ -30,8 +30,15 @@
    - remove dead ProtocolProcessorBase::disconnectedHandlerSlot (start() connects disconnectedHandler, destructor disconnects the slot),
    - remove unused SysFsStructure forward declaration, SAVE_ERROR, ApplicationModulesLoader.h include, add missing QLocalSocket include.
 12) Optional idle timeout for the client which sends incomplete message - it does not block the daemon anymore, but holds the only allowed connection.
-13) Files from old installations in log, data (mode 0644/0777) are not fixed by tmpfiles, only directories.
-14) Not reviewed yet: Rust CLI. (GUI widget pages are replaced by the QML pages, ToolBarSettingsWidget is deleted.)
+13) DONE (2026-11-13) - lenovo-legion-setup.sh (run by the package install/upgrade) sets also the content of log, data:
+   group legion, files 0660 (owner kept), directories 2770. Every version has its own directory in /opt, settings and logs
+   of other versions are not migrated (may be incompatible) and not removed (may be needed): the package (default.install)
+   lists them after install, upgrade and removal.
+   Original: Files from old installations in log, data (mode 0644/0777) are not fixed by tmpfiles, only directories.
+14) DONE (2026-11-13) - Rust CLI reviewed and fixed: power mode values of --smart-fan-set, optional attributes of the model, CPU without
+   hybrid cores and cpufreq files depending on the driver, extreme_supported, cpu-set order, units, readable errors, TPMI uncore, --version.
+   The CLI writes sysfs directly (not through the daemon, which allows only one connection, see 12).
+   Original: Not reviewed yet: Rust CLI. (GUI widget pages are replaced by the QML pages, ToolBarSettingsWidget is deleted.)
 15) DONE (2026-11-13) - NVML is opened lazily by the first request (GET, SET, saved settings) and closed after 30 s without a request
    (kept open while a clock offset is not zero, the driver keeps the offsets only while a client holds the GPU). Failed open is retried
    by requests at most once per 10 s, only the first failure is a warning: at boot the daemon may start before the NVIDIA driver is ready,

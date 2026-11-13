@@ -57,6 +57,11 @@ APP_DIR="$(dirname "$(readlink -f "$0")")"
 for dir in "$APP_DIR/log" "$APP_DIR/data"; do
     if [ -d "$dir" ]; then
         chown root:"$GROUP" "$dir" && chmod 2770 "$dir" || exit 1
+
+        # Content created by older installations (files 0644/0777, other group): group legion read/write,
+        # nothing for others, owners are kept (settings of the GUI belong to the user)
+        find "$dir" -mindepth 1 -type d -exec chgrp "$GROUP" {} + -exec chmod 2770 {} + || exit 1
+        find "$dir" -mindepth 1 -type f -exec chgrp "$GROUP" {} + -exec chmod a-x,g+rw,o-rwx {} + || exit 1
     fi
 done
 

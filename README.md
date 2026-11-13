@@ -337,6 +337,11 @@ sudo rm -r /opt/LenovoLegion /usr/lib/systemd/system/lenovo-legion-daemon.servic
     /etc/udev/rules.d/99-rapl-readonly.rules /usr/share/applications/LenovoLegion.desktop
 ```
 
+Every package version has its own directory `/opt/lenovo-legion-linux-toolkit-*-<version>`. After an upgrade or
+removal the settings (`data`) and logs (`log`) of the previous version stay there and are not used by a new version
+(settings of another version may be incompatible). The package lists these directories, remove them with
+`sudo rm -r <directory>` when they are not needed.
+
 ## Credits
 
 - The WMI game zone, events, helpers, other mode and capability data drivers of `lenovo_legion` are based on the
