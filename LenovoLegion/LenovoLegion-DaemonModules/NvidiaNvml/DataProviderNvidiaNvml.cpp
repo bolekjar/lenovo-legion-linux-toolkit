@@ -16,7 +16,10 @@ DataProviderNvidiaNvml::DataProviderNvidiaNvml(): DataProvider(dataType),
     m_minMemOffset(0),
     m_maxGpuOffset(0),
     m_maxMemOffset(0),
-    m_device(nullptr)
+    m_device(nullptr),
+    m_hasGpu(false),
+    m_idleTimerId(-1),
+    m_openFailureLogged(false)
 {
 
 }
@@ -35,9 +38,20 @@ QByteArray DataProviderNvidiaNvml::serializeAndGetData()
     LOG_T(__PRETTY_FUNCTION__);
 
     /*
+     * Suspended GPU (runtime D3) is not queried and NVML is not opened for it, every NVML query (and nvmlInit)
+     * would wake it up. Static data are known after the first open.
+     */
+    const bool suspended = m_hasGpu && isSuspended();
+
+    if(!suspended)
+    {
+        open();
+    }
+
+    /*
      * Static data
      */
-    if(m_device != nullptr)
+    if(m_hasGpu)
     {
         LOG_T("Filling NVML GPU data");
 
@@ -87,17 +101,15 @@ QByteArray DataProviderNvidiaNvml::serializeAndGetData()
 
 
 
-        /*
-         * Suspended GPU (runtime D3) is not queried, every NVML query would wake it up
-         */
-        if(isSuspended())
+        if(suspended || isSuspended())
         {
             LOG_T("NVIDIA GPU is suspended, only static data and last known offsets");
             gpuData.set_gpu_suspended(true);
         }
-        else
+        else if(m_device != nullptr)
         {
             readDynamicData(gpuData);
+            m_lastUse = clock_T::now();
         }
 
         if(m_gpuOffset.has_value())
@@ -272,11 +284,13 @@ QByteArray DataProviderNvidiaNvml::deserializeAndSetData(const QByteArray &data)
     /*
       * Apply GPU offset
       */
-    if(m_device == nullptr)
+    if(!open())
     {
         LOG_W("No NVIDIA GPU device available to set data.");
         return {};
     }
+
+    m_lastUse = clock_T::now();
 
     settable(nvmlData,Origin::REQUEST);
 
@@ -324,6 +338,14 @@ QByteArray DataProviderNvidiaNvml::deserializeAndSetData(const QByteArray &data)
 
 QByteArray DataProviderNvidiaNvml::settableData(const QByteArray &data, Origin origin)
 {
+    /*
+     * Ranges of the offsets are static data (e.g. saved settings applied before the first GET)
+     */
+    if(!m_hasGpu)
+    {
+        open();
+    }
+
     return settableMessage<legion::messages::NvidiaNvml>(data,[this,origin](legion::messages::NvidiaNvml& nvml) { settable(nvml,origin); });
 }
 
@@ -348,7 +370,7 @@ void DataProviderNvidiaNvml::settable(legion::messages::NvidiaNvml &nvml, Origin
 
         const QString name = QString(field).append('=').append(QString::number(offset->value()));
 
-        if(m_device == nullptr)
+        if(!m_hasGpu)
         {
             skipField(origin,name,"no NVIDIA GPU device");
             return false;
@@ -379,6 +401,51 @@ void DataProviderNvidiaNvml::settable(legion::messages::NvidiaNvml &nvml, Origin
 
 void DataProviderNvidiaNvml::init()
 {
+    /*
+     * NVML is not opened here: the NVIDIA driver may not be ready at the daemon start (open is retried by requests)
+     * and an idle NVML client is not kept for the daemon lifetime
+     */
+    m_idleTimerId = startTimer(IDLE_CHECK);
+
+    LOG_D("NVIDIA NVML is opened by the first request");
+}
+
+void DataProviderNvidiaNvml::timerEvent(QTimerEvent *event)
+{
+    if(event->timerId() != m_idleTimerId || m_device == nullptr)
+    {
+        return;
+    }
+
+    /*
+     * Not zero clock offsets are kept by the driver only while a client holds the GPU
+     */
+    if(m_gpuOffset.value_or(0) != 0 || m_memOffset.value_or(0) != 0)
+    {
+        return;
+    }
+
+    if(clock_T::now() - m_lastUse >= IDLE_CLOSE)
+    {
+        LOG_D("NVIDIA NVML is idle, closing");
+        close();
+    }
+}
+
+bool DataProviderNvidiaNvml::open()
+{
+    if(m_device != nullptr)
+    {
+        return true;
+    }
+
+    if(m_lastFailedOpen.has_value() && clock_T::now() - *m_lastFailedOpen < OPEN_RETRY)
+    {
+        return false;
+    }
+
+    bool initialized = false;
+
     try {
         nvmlReturn_t result;
         unsigned int device_count, i;
@@ -387,19 +454,19 @@ void DataProviderNvidiaNvml::init()
         // Initialize NVML library
         result = nvmlInit();
         if (NVML_SUCCESS != result) {
-            THROW_EXCEPTION(exception_T,ERROR_NVML_INIT_FAILED, "NVML initialization failed");
+            THROW_EXCEPTION(exception_T,ERROR_NVML_INIT_FAILED, QString("NVML initialization failed: %1").arg(nvmlErrorString(result)).toStdString().c_str());
         }
+
+        initialized = true;
 
         // Get number of GPU devices
         result = nvmlDeviceGetCount(&device_count);
         if (NVML_SUCCESS != result) {
-            nvmlShutdown();
             THROW_EXCEPTION(exception_T,ERROR_NVML_DEVICE_COUNT_FAILED, "Failed to get NVML device count");
         }
 
 
         if(device_count == 0){
-            nvmlShutdown();
             THROW_EXCEPTION(exception_T,ERROR_NVML_DEVICE_COUNT_FAILED, "Unusual NVML device count");
         }
 
@@ -510,32 +577,82 @@ void DataProviderNvidiaNvml::init()
 
     } catch(exception_T& ex)
     {
-        cleanUp();
-        LOG_W(QString("DataProviderNvidiaNvml initialization failed: %1").arg(ex.what()));
+        m_device = nullptr;
+
+        if(initialized && nvmlShutdown() != NVML_SUCCESS)
+        {
+            LOG_W("NVML shutdown failed");
+        }
+
+        m_lastFailedOpen = clock_T::now();
+
+        /*
+         * Retried by requests (GUI polls), only the first failure is a warning
+         */
+        if(!m_openFailureLogged)
+        {
+            m_openFailureLogged = true;
+            LOG_W(QString("DataProviderNvidiaNvml open failed: %1").arg(ex.what()));
+        }
+        else
+        {
+            LOG_T(QString("DataProviderNvidiaNvml open failed: %1").arg(ex.what()));
+        }
+
+        return false;
+    }
+
+    m_hasGpu            = true;
+    m_openFailureLogged = false;
+    m_lastFailedOpen.reset();
+    m_lastUse           = clock_T::now();
+
+    LOG_D(QString("NVIDIA NVML opened: ").append(m_GPUName));
+
+    return true;
+}
+
+void DataProviderNvidiaNvml::close()
+{
+    if(m_device == nullptr)
+    {
+        return;
+    }
+
+    /*
+     * Handle is not valid after the shutdown even if the shutdown failed
+     */
+    m_device = nullptr;
+
+    if(nvmlShutdown() != NVML_SUCCESS){
+        LOG_W("NVML shutdown failed");
+    }
+    else {
+        LOG_T("NVML shutdown successful");
     }
 }
 
 void DataProviderNvidiaNvml::clean()
 {
+    if(m_idleTimerId != -1)
+    {
+        killTimer(m_idleTimerId);
+        m_idleTimerId = -1;
+    }
+
     cleanUp();
 }
 
 void DataProviderNvidiaNvml::cleanUp()
 {
-    if(m_device != nullptr)
-    {
-        if(nvmlShutdown() != NVML_SUCCESS){
-            LOG_W("NVML shutdown failed");
-        }
-        else {
-            m_device = nullptr;
-            LOG_T("NVML shutdown successful");
-        }
-    }
+    close();
 
+    m_hasGpu = false;
     m_runtimeStatusPath.clear();
     m_gpuOffset.reset();
     m_memOffset.reset();
+    m_lastFailedOpen.reset();
+    m_openFailureLogged = false;
 }
 
 }

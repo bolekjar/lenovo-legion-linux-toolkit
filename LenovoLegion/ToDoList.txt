@@ -32,7 +32,15 @@
 12) Optional idle timeout for the client which sends incomplete message - it does not block the daemon anymore, but holds the only allowed connection.
 13) Files from old installations in log, data (mode 0644/0777) are not fixed by tmpfiles, only directories.
 14) Not reviewed yet: Rust CLI. (GUI widget pages are replaced by the QML pages, ToolBarSettingsWidget is deleted.)
-15) DONE (needs test in an iGPU session) - NVML module does not query a suspended GPU (power/runtime_status of the PCI device),
+15) DONE (2026-11-13) - NVML is opened lazily by the first request (GET, SET, saved settings) and closed after 30 s without a request
+   (kept open while a clock offset is not zero, the driver keeps the offsets only while a client holds the GPU). Failed open is retried
+   by requests at most once per 10 s, only the first failure is a warning: at boot the daemon may start before the NVIDIA driver is ready,
+   NVML initialized once at the start failed and the GPU page stayed unavailable until the daemon restart
+   (2026-11-13: the daemon started at boot held no /dev/nvidia*, after a manual restart it did).
+   Static data (name, ranges, PCI runtime status path) are kept while NVML is closed.
+   2026-11-13 test in hybrid mode: the daemon held /dev/nvidia0 the whole time, the GPU was also held by nvidia-powerd, Hyprland
+   (opens both GPUs without AQ_DRM_DEVICES) and voxtype-osd-gtk, so RTD3 could not be verified with this session. The GUI renders on the iGPU.
+   Earlier: NVML module does not query a suspended GPU (power/runtime_status of the PCI device),
    it reports gpu_suspended with static data and the last known offsets. GUI HWMonitoring polls NVML every refresh, every NVML query would wake the GPU.
    Fine-grained RTD3 (DynamicPowerManagement 3) allows suspend with idle NVML clients according to the NVIDIA README.
    Original: NVML initialized for the whole daemon lifetime may prevent runtime suspend (RTD3) of the NVIDIA dGPU. Check power/runtime_status of the dGPU with all other GPU users closed.
@@ -47,9 +55,9 @@
    - event conversions in ProtocolProcessorNotifier (kernelEventHandler, dataProviderEventHandler, moduleSubsystemHandler), keep providerNotificationHandler,
    - entries in LenovoLegion-Daemon.pro, daemon dependencies on cuda/libnvidia-ml and hidapi (only modules NvidiaNvml and RGBController need them),
    - GUI: replace LenovoLegionDaemon::*::dataType by legion::messages::DataType::*.
-17) DONE (needs hardware test) - offset is written once on CPU 0 (the same as intel-undervolt), waits for the busy bit before and after the command.
+17) DONE (2026-11-13, tested on Core Ultra 9 275HX: -50000 uV read back as -49804, 1/1024 V steps) - offset is written once on CPU 0 (the same as intel-undervolt), waits for the busy bit before and after the command.
    Original: Kernel MSR write (write_voltage_offset_on_cpu) is executed on all CPUs in parallel and does not wait for the mailbox (busy bit),
    if the mailbox is shared by the package, parallel commands may overwrite each other. Check with the hardware, maybe write only once per package and wait for the busy bit.
-18) Consolidation of the kernel module lenovo_legion (LenovoLegion-dkms/ConsolidationPlan.md): own self-contained stack (works on all kernels, one driver per WMI GUID),
+18) DONE (2026-11-13, releases 2.3.0 - 2.3.3) - Consolidation of the kernel module lenovo_legion (LenovoLegion-dkms/ConsolidationPlan.md): own self-contained stack (works on all kernels, one driver per WMI GUID),
    remove duplicates of the kernel (machine information -> /sys/class/dmi/id, RAPL and RAPL MMIO -> daemon via powercap), one thermal mode interface,
    hwmon with_info, probe does not change settings, reduce the gamezone sysfs, minimal supported kernel.

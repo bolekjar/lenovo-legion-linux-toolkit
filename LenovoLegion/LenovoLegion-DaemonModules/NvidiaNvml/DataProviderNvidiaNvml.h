@@ -15,6 +15,7 @@
 
 #include <nvml.h>
 
+#include <chrono>
 #include <filesystem>
 #include <optional>
 namespace LenovoLegionDaemon::Kit {
@@ -45,9 +46,20 @@ public:
     virtual void init() override;
     virtual void clean() override;
 
+protected:
+
+    void timerEvent(QTimerEvent *event) override;
+
 private:
 
     void cleanUp();
+
+    /*
+     * NVML is opened lazily by the first request and closed after idle time (idle client may prevent runtime D3 of the GPU),
+     * returns false if NVML or the GPU is not available. Failed open is retried at most once per OPEN_RETRY.
+     */
+    bool open();
+    void close();
 
     void settable(legion::messages::NvidiaNvml& nvml,Origin origin) const;
 
@@ -83,11 +95,23 @@ private:
      */
 
 
-    nvmlDevice_t m_device;
+    nvmlDevice_t m_device;                          // not null while NVML is open
+    bool         m_hasGpu;                          // static data were read (kept while NVML is closed)
 
     std::filesystem::path   m_runtimeStatusPath;    // /sys/bus/pci/devices/<bdf>/power/runtime_status
     std::optional<int>      m_gpuOffset;            // last known clock offsets, reported while the GPU is suspended
-    std::optional<int>      m_memOffset;  
+    std::optional<int>      m_memOffset;
+
+    using clock_T = std::chrono::steady_clock;
+
+    int                         m_idleTimerId;
+    clock_T::time_point         m_lastUse;          // last request which used NVML
+    std::optional<clock_T::time_point> m_lastFailedOpen;
+    bool                        m_openFailureLogged;
+
+    static constexpr std::chrono::seconds IDLE_CLOSE{30};
+    static constexpr std::chrono::seconds OPEN_RETRY{10};
+    static constexpr std::chrono::seconds IDLE_CHECK{10};
 public:
 
     static constexpr quint8  dataType = legion::messages::DataType::NVIDIA_NWML;
