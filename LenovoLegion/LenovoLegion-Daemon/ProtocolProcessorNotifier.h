@@ -55,6 +55,11 @@ public:
 private:
 
     DataProviderManager*    m_dataProviderManger;
+
+    /*
+     * Unread notifications of the client (notifications are small, the GUI reads them at once)
+     */
+    static constexpr qint64 MAX_UNREAD_BYTES = 1024 * 1024;
 };
 
 }

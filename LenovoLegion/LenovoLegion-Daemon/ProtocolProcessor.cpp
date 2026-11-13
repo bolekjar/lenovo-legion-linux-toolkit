@@ -20,7 +20,17 @@ namespace LenovoLegionDaemon {
 ProtocolProcessor::ProtocolProcessor(DataProviderManager* dataProviderManager,QLocalSocket* clientSocket,QObject* parent) :
     ProtocolProcessorBase(clientSocket,parent),
     m_dataProviderManager(dataProviderManager)
-{}
+{
+    m_incompleteMessageTimer.setSingleShot(true);
+    m_incompleteMessageTimer.setInterval(INCOMPLETE_MESSAGE_TIMEOUT);
+
+    connect(&m_incompleteMessageTimer,&QTimer::timeout,this,[this]() {
+        if(isRunning() && m_clientSocket->bytesAvailable() > 0)
+        {
+            dropClient(QString("Incomplete message for %1 s (%2 bytes)").arg(INCOMPLETE_MESSAGE_TIMEOUT.count()).arg(m_clientSocket->bytesAvailable()));
+        }
+    });
+}
 
 ProtocolProcessor::~ProtocolProcessor()
 {
@@ -29,6 +39,8 @@ ProtocolProcessor::~ProtocolProcessor()
 void ProtocolProcessor::stop()
 {
     LOG_T("ProtocolProcessor stopped !");
+
+    m_incompleteMessageTimer.stop();
 
     ProtocolProcessorBase::stop();
 }
@@ -58,7 +70,11 @@ void ProtocolProcessor::readyReadHandler()
     /*
      * Process all complete messages, incomplete one waits for the next readyRead (no blocking of the event loop)
      */
-    while(isRunning() && ProtocolParser::tryParseMessage(*m_clientSocket,[this](const MessageHeader& header,const QByteArray& data ){
+    bool parsed = false;
+
+    while(isRunning() && ProtocolParser::tryParseMessage(*m_clientSocket,[this,&parsed](const MessageHeader& header,const QByteArray& data ){
+
+        parsed = true;
 
         LOG_T(QString("Message header was readed: header.m_type= ").append(QString::number(header.m_type)).append(", header.m_dataType=").append(QString::number(header.m_dataType)).append(", header.m_dataLength=").append(QString::number(header.m_dataLength)));
 
@@ -79,6 +95,19 @@ void ProtocolProcessor::readyReadHandler()
 
         LOG_T(QString("Message received: done !"));
     }));
+
+    /*
+     * Rest of an incomplete message: the timer runs from its first bytes (restarted only by a new message, more bytes
+     * of the same message do not extend it)
+     */
+    if(!isRunning() || m_clientSocket->bytesAvailable() == 0)
+    {
+        m_incompleteMessageTimer.stop();
+    }
+    else if(parsed || !m_incompleteMessageTimer.isActive())
+    {
+        m_incompleteMessageTimer.start();
+    }
 }
 
 void ProtocolProcessor::processRequest(const MessageHeader &header, const QByteArray &data)

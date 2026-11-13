@@ -61,6 +61,16 @@ void ProtocolProcessorNotifier::providerNotificationHandler(const QByteArray &pa
         return;
     }
 
+    /*
+     * A client which does not read holds the only notification connection and its unread notifications would grow
+     * in the daemon (the write buffer of QLocalSocket is not limited)
+     */
+    if(m_clientSocket->bytesToWrite() > MAX_UNREAD_BYTES)
+    {
+        dropClient(QString("Notification client does not read, %1 bytes unread").arg(m_clientSocket->bytesToWrite()));
+        return;
+    }
+
     m_clientSocket->write(ProtocolParser::parseMessage(MessageHeader{
                                                            .m_type         = MessageHeader::NOTIFICATION,
                                                            .m_dataType     = m_dataType,

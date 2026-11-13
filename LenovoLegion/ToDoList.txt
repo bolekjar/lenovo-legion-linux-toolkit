@@ -5,7 +5,12 @@
    Found: enabled CPUs were not shown on the CPU Freq Control page (CPUOptions blocks its kernel events, CPU_X_LIST_RELOADED did not come);
    the P-state status changes the governors, CPU_PSTATE_CHANGED reloads CPU_OPTIONS and CPU_FREQUENCY as well.
    Original: I have to make review of expecting updates when gui change the values which are dependency on event. If interaction is by gui then no event should be in expectation gui should handle this himself.
-2) Fix issue in brightness of keyboard - not able to simulate but sometimes shows brightness off and keyboard lights on.
+2) DONE (2026-11-13, fbe58ff) - the RGB controller answers a request later, a read right after a write or a Fn+Space event returned
+   the previous answer of the same operation: brightness, logo, effects and reset are read until the controller confirms them,
+   effects of a profile must be of the requested profile, brightness and profile are always written, an invalid answer keeps
+   the previous value instead of 0 (Off). Not done: periodic refresh on the Keyboard page (more HID traffic on a device sensitive
+   to timing), changes without an event (backlight timeout, resume) are shown after the page is opened again.
+   Original: Fix issue in brightness of keyboard - not able to simulate but sometimes shows brightness off and keyboard lights on.
 3) DONE - Kit SysFsDataProvider writes unbuffered and logs the error of write() (LOG_E), no exception.
    Original: Daemon ignores sysfs write errors - SysFsDataProvider::setData writes via QTextStream and errors from the kernel store (-EINVAL, -EBUSY, -EOPNOTSUPP) are lost on flush.
    GUI re-reads the values after set, so it shows the real state. Only log the error (LOG_E) in setData: write unbuffered and check the result of write(), no exception, no protocol change.
@@ -29,7 +34,10 @@
    - remove useless template parameters and dynamic_cast in deleteProtocolProcessors,
    - remove dead ProtocolProcessorBase::disconnectedHandlerSlot (start() connects disconnectedHandler, destructor disconnects the slot),
    - remove unused SysFsStructure forward declaration, SAVE_ERROR, ApplicationModulesLoader.h include, add missing QLocalSocket include.
-12) Optional idle timeout for the client which sends incomplete message - it does not block the daemon anymore, but holds the only allowed connection.
+12) DONE (2026-11-13) - the rest of an incomplete message must come within 5 s from its first bytes, otherwise the client is disconnected
+   (ProtocolProcessor), an idle client without data stays connected. The notification client is disconnected at once by any data,
+   and when it does not read (more than 1 MB of unread notifications in the daemon, the write buffer of QLocalSocket is not limited).
+   Original: Optional idle timeout for the client which sends incomplete message - it does not block the daemon anymore, but holds the only allowed connection.
 13) DONE (2026-11-13) - lenovo-legion-setup.sh (run by the package install/upgrade) sets also the content of log, data:
    group legion, files 0660 (owner kept), directories 2770. Every version has its own directory in /opt, settings and logs
    of other versions are not migrated (may be incompatible) and not removed (may be needed): the package (default.install)

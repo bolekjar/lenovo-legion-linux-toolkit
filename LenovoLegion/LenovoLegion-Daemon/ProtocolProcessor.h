@@ -15,6 +15,7 @@
 #include <QObject>
 #include <QLocalSocket>
 #include <QFileSystemWatcher>
+#include <QTimer>
 
 
 namespace LenovoLegionDaemon {
@@ -48,6 +49,14 @@ private:
 private:
 
     DataProviderManager*     m_dataProviderManager;
+
+    /*
+     * Incomplete message: the client is disconnected when the rest does not come in time, otherwise it would hold
+     * the only allowed connection (an idle client without data is fine, the GUI is idle between its requests)
+     */
+    QTimer                   m_incompleteMessageTimer;
+
+    static constexpr std::chrono::seconds INCOMPLETE_MESSAGE_TIMEOUT{5};
 };
 
 }
