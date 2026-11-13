@@ -126,7 +126,7 @@ shown separately on hybrid Intel CPUs
 - **GPU** – NVIDIA GPU and memory clock offsets with presets
 - **Power** – CPU and GPU power limits and temperature limits of the current power profile
 - **Fan Curve** – fan curve with 10 points (drag the points, the curve stays rising), fan full speed
-- **Device** – touchpad, Windows key and the GPU mode (hybrid, iGPU only, dGPU only; needs a restart)
+- **Device** – touchpad, Windows key, Fn lock, camera power, battery conservation mode (charging stops at about 80 %), USB charging when off and the GPU mode (hybrid, iGPU only, dGPU only; needs a restart)
 
 Tabs with the Lenovo icon need the Lenovo Legion kernel driver; without it they are shown grayed with the reason." },
 

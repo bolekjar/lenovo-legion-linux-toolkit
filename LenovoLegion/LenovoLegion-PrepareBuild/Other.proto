@@ -15,6 +15,12 @@ message OtherSettings
 
     EnableDisableValue touch_pad  = 1 [(legion.ui.field) = { label: "Disable Touchpad",    tooltip: "When enabled, the touchpad will be disabled", supported_from: "touch_pad.supported" }];
     EnableDisableValue win_key    = 2 [(legion.ui.field) = { label: "Disable Windows Key", tooltip: "When enabled, the Windows key will be disabled", supported_from: "win_key.supported" }];
+
+    // ACPI device VPC2004 (lenovo_legion legion-acpi-vpc.c), not set without the driver
+    EnableDisableValue conservation_mode = 3 [(legion.ui.field) = { label: "Battery Conservation Mode", tooltip: "Charging stops at about 80 % to extend the battery life (rapid charge is switched off)", supported_from: "conservation_mode.supported" }];
+    EnableDisableValue usb_charging      = 4 [(legion.ui.field) = { label: "USB Charging When Off",     tooltip: "The USB port charges devices also when the notebook is off or sleeping", supported_from: "usb_charging.supported" }];
+    EnableDisableValue fn_lock           = 5 [(legion.ui.field) = { label: "Fn Lock",                   tooltip: "F1 - F12 work as function keys without Fn (the same as Fn+Esc)", supported_from: "fn_lock.supported" }];
+    EnableDisableValue camera_power      = 6 [(legion.ui.field) = { label: "Camera Power",              tooltip: "Turns the camera on or off", supported_from: "camera_power.supported" }];
 }
 
 

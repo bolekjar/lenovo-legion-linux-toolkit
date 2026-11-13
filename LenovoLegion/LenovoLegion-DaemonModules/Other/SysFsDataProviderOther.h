@@ -8,9 +8,12 @@
 #pragma once
 
 #include <SysFsDataProvider.h>
+#include <Drivers/SysFsDriverLegionVpc.h>
 
 #include <MessageRegistry.pb.h>
 #include <Other.pb.h>
+
+#include <optional>
 
 namespace LenovoLegionDaemon::Kit {
 
@@ -29,6 +32,11 @@ public:
 private:
 
     void settable(legion::messages::OtherSettings& settings,Origin origin) const;
+
+    /*
+     * Features of the ACPI device VPC2004, empty without the driver (not on every model)
+     */
+    std::optional<SysFsDriverLegionVpc::Vpc> vpc() const;
 
 public:
 

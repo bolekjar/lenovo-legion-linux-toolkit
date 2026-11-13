@@ -10,10 +10,12 @@
  *
  * The module has no device of its own: module_init checks the model by DMI and registers the WMI drivers, the
  * component drivers (capability data, discrete data, fan table) before their masters (other mode, fan method).
- * The module is loaded by the aliases of the WMI GUIDs. The ACPI device VPC2004 belongs to ideapad_laptop, which
- * has to stay blacklisted: it binds the WMI GUID 8FC0DE0C (Fn keys) used by the events driver as well.
+ * The module is loaded by the aliases of the WMI GUIDs and of the ACPI device VPC2004. ideapad_laptop has to stay
+ * blacklisted: it binds the WMI GUID 8FC0DE0C (Fn keys) used by the events driver as well. Its features of the ACPI
+ * device VPC2004 (conservation mode, USB charging, Fn lock, camera power) are provided by legion-acpi-vpc.c.
  */
 #include "legion-kernel-version.h"
+#include "legion-acpi-vpc.h"
 #include "legion-firmware-attributes-class.h"
 #include "legion-wmi-capdata00.h"
 #include "legion-wmi-capdata01.h"
@@ -106,6 +108,8 @@ static const struct legion_driver legion_drivers[] = {
 	{ "other mode", legion_wmi_other_driver_init,
 	  legion_wmi_other_driver_exit },
 	{ "fan method", legion_wmi_fm_driver_init, legion_wmi_fm_driver_exit },
+	{ "ACPI VPC", legion_acpi_vpc_driver_init,
+	  legion_acpi_vpc_driver_exit },
 };
 
 static void legion_drivers_exit(size_t count)
@@ -129,7 +133,7 @@ static int __init legion_init(void)
 	for (i = 0; i < ARRAY_SIZE(legion_drivers); i++) {
 		err = legion_drivers[i].init();
 		if (err) {
-			pr_err("lenovo_legion: WMI %s driver not registered: %d\n",
+			pr_err("lenovo_legion: %s driver not registered: %d\n",
 			       legion_drivers[i].name, err);
 			goto err_drivers;
 		}

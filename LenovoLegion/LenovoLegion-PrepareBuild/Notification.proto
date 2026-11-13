@@ -61,6 +61,7 @@ message Notification
         FAN_CURVE_CHANGED                       = 9 [(legion.ui.reload) = "FAN_CURVE,FAN_OPTION"];
         CPU_FREQUENCY_CHANGED                   = 10 [(legion.ui.reload) = "CPU_FREQUENCY"];
         CPU_PSTATE_CHANGED                      = 11 [(legion.ui.reload) = "CPU_PSTATE,CPU_OPTIONS,CPU_FREQUENCY"];
+        VPC_FEATURE_CHANGED                     = 12 [(legion.ui.reload) = "OTHER"];   // conservation mode, USB charging, Fn lock, camera power (written by another client)
     }
 
 

@@ -48,6 +48,7 @@ HEADERS += \
     Drivers/SysFsDriverLegionEvents.h \
     Drivers/SysFsDriverLegionFanMode.h \
     Drivers/SysFsDriverLegionGameZone.h \
+    Drivers/SysFsDriverLegionVpc.h \
     Drivers/SysFsDriverLegionHWMon.h \
     Drivers/SysFsDriverLegionMachineInformation.h \
     Drivers/SysFsDriverLegionOther.h \
@@ -70,6 +71,7 @@ SOURCES += \
     Drivers/SysFsDriverLegionEvents.cpp \
     Drivers/SysFsDriverLegionFanMode.cpp \
     Drivers/SysFsDriverLegionGameZone.cpp \
+    Drivers/SysFsDriverLegionVpc.cpp \
     Drivers/SysFsDriverLegionHWMon.cpp \
     Drivers/SysFsDriverLegionMachineInformation.cpp \
     Drivers/SysFsDriverLegionOther.cpp \

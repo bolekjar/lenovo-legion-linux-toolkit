@@ -53,11 +53,19 @@ enum legion_events_type {
 	/*
 	 * Reserve 2000 - 2999 for WMI FAN Events
 	 */
-	LENOVO_WMI_FAN_CURVE = 2000
+	LENOVO_WMI_FAN_CURVE = 2000,
 
 	/*
 	 * 2001 - 2005: Intel MSR events of the separate module legion_intel_msr (legion-intel-msr-sysfs.h)
 	 */
+
+	/*
+	 * Reserve 3000 - 3999 for the ACPI VPC2004 features (legion-acpi-vpc.c, order of its features)
+	 */
+	LEGION_ACPI_VPC_CONSERVATION_MODE = 3000,
+	LEGION_ACPI_VPC_USB_CHARGING = 3001,
+	LEGION_ACPI_VPC_FN_LOCK = 3002,
+	LEGION_ACPI_VPC_CAMERA_POWER = 3003
 };
 
 #endif // LEGION_COMMON_H
