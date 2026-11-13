@@ -67,7 +67,8 @@ SettingsPage {
                                          + "It is loaded by /etc/modules-load.d/lenovo-legion.conf."
                                          : "Unknown, the daemon is not connected." },
         { name: "NVIDIA GPU", ok: nvidiaCheck.available, required: false,
-          okText: "NVML available",
+          // the module answers also without a GPU: available only with the GPU name ((legion.ui.available_from))
+          okText: nvidiaCheck.value("name", nvidiaCheck.revision) + " (NVML)",
           failText: page.daemonConnected ? "No NVIDIA GPU or the proprietary NVIDIA driver (NVML) is not installed."
                                          : "Unknown, the daemon is not connected." },
         { name: "RGB keyboard", ok: page.keyboardFound, required: false,

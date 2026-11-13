@@ -112,6 +112,10 @@ Data types that change together with a written data type. The daemon blocks the 
 
 `PROFILES` (`LOAD`) reads all data types again (`reloadAllSources`). The other data types change only themselves.
 
+### 3.3.4 Hardware not present (`(legion.ui.available_from)`, `(legion.ui.unavailable_reason)` on the values of `DataType`)
+
+A module that runs but has no hardware answers with data without its main field: `NVIDIA_NWML` without an NVIDIA GPU (or without the NVIDIA driver) has no `name`. Such data are not available: the groups hide their fields and presets and show `unavailable_reason`, the page is grayed out with the same reason (`PageSources.reason`), the Help check reports it. It is a state, not an error of a request: `lastError` is set without `failed` (no notification on every load, the HW monitor polls NVML) and the daemon does not log an error on every poll.
+
 ### 3.4 Platform (`(legion.ui.platform)` on the values of `DataType`)
 
 `PLATFORM_GENERIC` (default): standard Linux interfaces (cpufreq, intel_pstate, NVML, `legion-intel-msr`), works on any notebook. `PLATFORM_LENOVO`: needs the Lenovo Legion driver (`legion`): power profiles, fans, power limits, touchpad, Win key, GPU switch, RGB. `HW_MONITORING` and `BATTERY` are mixed and stay generic (temperatures and fans are missing without the driver, their groups are hidden).

@@ -310,6 +310,8 @@ private:
     int                                          m_batchDepth = 0;       // beginChanges() without endChanges()
     bool                                         m_batchChanged = false; // a field changed during the batch
     QString                                      m_platform  = "generic";
+    QString                                      m_availableFrom;        // (legion.ui.available_from) of the data type
+    QString                                      m_unavailableReason;    // (legion.ui.unavailable_reason) of the data type
     int                                          m_revision = 0;
 
     std::unique_ptr<google::protobuf::Message>   m_message;    // state from the daemon

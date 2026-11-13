@@ -73,4 +73,8 @@ extend google.protobuf.EnumValueOptions {
     string reload_after_set = 50010; // DataType value: the other data types read again by the GUI after a SET of this
                                      // data type (DataType names, comma separated). The daemon blocks the kernel events
                                      // of its own write, so the notification of the other data types does not come.
+    string available_from = 50011;   // DataType value: path of a field present only when the data are available, the data
+                                     // without it are shown as not available with unavailable_reason (NVIDIA_NWML without
+                                     // an NVIDIA GPU: no "name"); for a state of the hardware, not an error of the daemon
+    string unavailable_reason = 50012;
 }

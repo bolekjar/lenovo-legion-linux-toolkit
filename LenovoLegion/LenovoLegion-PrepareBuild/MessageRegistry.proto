@@ -18,7 +18,8 @@ enum DataType {
   FAN_CURVE           = 8 [(legion.ui.message) = "legion.messages.FanCurve", (legion.ui.platform) = PLATFORM_LENOVO, (legion.ui.reload_after_set) = "FAN_OPTION"];
   GPU_POWER           = 9 [(legion.ui.message) = "legion.messages.GPUPower", (legion.ui.platform) = PLATFORM_LENOVO, (legion.ui.reload_after_set) = "CPU_POWER"];
   HW_MONITORING       = 10 [(legion.ui.message) = "legion.messages.HardwareMonitor"];
-  NVIDIA_NWML         = 11 [(legion.ui.message) = "legion.messages.NvidiaNvml"];
+  NVIDIA_NWML         = 11 [(legion.ui.message) = "legion.messages.NvidiaNvml", (legion.ui.available_from) = "name",
+                            (legion.ui.unavailable_reason) = "No NVIDIA GPU or the proprietary NVIDIA driver (NVML) is not installed"];
   OTHER               = 12 [(legion.ui.message) = "legion.messages.OtherSettings", (legion.ui.platform) = PLATFORM_LENOVO];
   POWER_PROFILE       = 13 [(legion.ui.message) = "legion.messages.PowerProfile", (legion.ui.platform) = PLATFORM_LENOVO,
                             (legion.ui.reload_after_set) = "CPU_POWER,GPU_POWER,FAN_CURVE,FAN_OPTION"];

@@ -87,7 +87,23 @@ QString PageSources::reason() const
         return {};
     }
 
-    return platform() == "lenovo" ? "Requires the Lenovo Legion kernel driver" : "The daemon provides no data for this page";
+    if(platform() == "lenovo")
+    {
+        return "Requires the Lenovo Legion kernel driver";
+    }
+
+    /*
+     * Reason of the data source (e.g. no NVIDIA GPU, (legion.ui.unavailable_reason))
+     */
+    for(const auto& source : m_sources)
+    {
+        if(source != nullptr && !source->lastError().isEmpty())
+        {
+            return source->lastError();
+        }
+    }
+
+    return "The daemon provides no data for this page";
 }
 
 QString PageSources::description() const

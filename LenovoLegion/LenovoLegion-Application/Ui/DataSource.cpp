@@ -176,6 +176,8 @@ void DataSource::setDataType(const QString &dataType)
     m_dataTypeValue = -1;
     m_available     = false;
     m_platform      = "generic";
+    m_availableFrom.clear();
+    m_unavailableReason.clear();
 
     for(auto& [path,field] : m_fields)
     {
@@ -210,6 +212,8 @@ void DataSource::setDataType(const QString &dataType)
 
             m_dataTypeValue = value->number();
             m_platform      = value->options().GetExtension(legion::ui::platform) == legion::ui::PLATFORM_LENOVO ? "lenovo" : "generic";
+            m_availableFrom     = QString::fromStdString(value->options().GetExtension(legion::ui::available_from));
+            m_unavailableReason = QString::fromStdString(value->options().GetExtension(legion::ui::unavailable_reason));
             m_message.reset(prototype->New());
             m_changes.reset(prototype->New());
         }
@@ -427,6 +431,36 @@ void DataSource::parse(const QByteArray &data)
     if(!m_available)
     {
         setLastError("Invalid data from the daemon");
+        return;
+    }
+
+    /*
+     * Data without the field of (legion.ui.available_from): a state of the hardware (e.g. no NVIDIA GPU), not an
+     * error, the reason is shown by the groups without the failed signal (no notification on every load)
+     */
+    if(!m_availableFrom.isEmpty())
+    {
+        const auto fields    = Reflection::resolve(m_message->GetDescriptor(),m_availableFrom);
+        const bool available = !fields.empty() && Reflection::has(*m_message,fields);
+        const QString reason = m_unavailableReason.isEmpty() ? QString("The hardware is not available") : m_unavailableReason;
+
+        QString error = m_lastError;
+
+        if(!available)
+        {
+            m_available = false;
+            error       = reason;
+        }
+        else if(error == reason)
+        {
+            error.clear();      // the hardware came back
+        }
+
+        if(error != m_lastError)
+        {
+            m_lastError = error;
+            emit lastErrorChanged();
+        }
     }
 }
 
