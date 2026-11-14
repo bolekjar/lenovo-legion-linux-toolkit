@@ -9,6 +9,7 @@
 
 #include <QObject>
 #include <QString>
+#include <QVariantMap>
 
 #include <functional>
 
@@ -45,6 +46,12 @@ signals:
      * The About dialog is opened (tray menu)
      */
     void aboutRequested();
+
+    /*
+     * Notification of the daemon (Notification.proto) for QML: the set fields by their names, enums by the names of
+     * their values (e.g. { action: "SPECIAL_KEY_PRESSED", special_key: "CAMERAON" })
+     */
+    void daemonNotification(const QVariantMap& notification);
 
 private:
 

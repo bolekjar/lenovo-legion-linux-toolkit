@@ -50,6 +50,17 @@ Control {
         function onAboutRequested() {
             about.open()
         }
+
+        // Camera shutter (Legion WMI utility event): the firmware reports only its changes, its state can not be read
+        function onDaemonNotification(notification) {
+            if (notification.action !== "SPECIAL_KEY_PRESSED")
+                return
+
+            if (notification.special_key === "CAMERAON")
+                hardwareNotifications.notify("Camera", "Camera shutter is open", "info")
+            else if (notification.special_key === "CAMERAOFF")
+                hardwareNotifications.notify("Camera", "Camera shutter is closed", "info")
+        }
     }
 
     // Button of the navigation: icon and name, the current page with the light bar of the accent (like the view
@@ -267,6 +278,19 @@ Control {
 
                 anchors.fill: parent
                 source: shell.pageShown ? shell.current.url : ""
+            }
+
+            // Information about the hardware (camera shutter, onDaemonNotification) over every page
+            Notifications {
+                id: hardwareNotifications
+
+                z: 100
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                anchors.rightMargin: 24
+                anchors.bottomMargin: 80
+                width: 420
+                height: parent.height / 2
             }
 
             // Page which needs the daemon without the connection

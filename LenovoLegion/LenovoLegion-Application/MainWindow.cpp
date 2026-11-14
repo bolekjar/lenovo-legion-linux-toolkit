@@ -16,6 +16,7 @@
 #include "Ui/FieldModel.h"
 #include "Ui/KeyboardLayout.h"
 #include "Ui/PageSources.h"
+#include "Ui/Reflection.h"
 #include "Ui/Theme.h"
 
 #include <Core/Application.h>
@@ -168,6 +169,37 @@ void MainWindow::daemonNotification(const legion::messages::Notification &msg)
      * Only the data types of the notification ((legion.ui.reload) in Notification.proto)
      */
     DataSource::reloadForNotification(msg.action());
+
+    /*
+     * Everything else (e.g. information about the camera shutter) is up to QML
+     */
+    QVariantMap notification = Reflection::toVariant(msg);
+
+    const auto* descriptor = msg.GetDescriptor();
+
+    for(int i = 0; i < descriptor->field_count(); ++i)
+    {
+        const auto* field = descriptor->field(i);
+        const QString name = QString::fromStdString(std::string(field->name()));
+
+        if(!field->is_repeated() && field->has_presence() && !msg.GetReflection()->HasField(msg,field))
+        {
+            notification.remove(name);
+            continue;
+        }
+
+        if(field->cpp_type() == google::protobuf::FieldDescriptor::CPPTYPE_ENUM && !field->is_repeated() && notification.contains(name))
+        {
+            const auto* value = field->enum_type()->FindValueByNumber(notification.value(name).toInt());
+
+            if(value != nullptr)
+            {
+                notification.insert(name,QString::fromStdString(std::string(value->name())));
+            }
+        }
+    }
+
+    emit m_appState->daemonNotification(notification);
 }
 
 void MainWindow::registerTypes()
