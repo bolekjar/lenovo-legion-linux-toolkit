@@ -1020,3 +1020,44 @@ Rules:
 | `ProtocolProcessorBase::readyReadHandlerSlot` | exception while reading a message of the client, e.g. `ProtocolParser::validateHeader` (length outside 0..1 MiB), data on the notification socket | only this client is disconnected (`dropClient`) |
 | `Application::acceptConnection` | error while creating the processor of a new connection | the connection is dropped, the daemon keeps running |
 | `Application::notify` | other exceptions from the event loop | only a log, the clients stay connected |
+
+## 10. Phase B: modules defined outside of the framework (plan, 2026-11-14)
+
+**Goal of the author:** a general framework for controlling a PC, the modules define what is controlled (e.g. AMD CPUs,
+other notebooks), not only Lenovo Legion. A new module is only a `.so` (with its `.proto`) in `modules/`: no change of the
+daemon framework, of `MessageRegistry.proto` or of the GUI. The GUI learns the module from `MODULES` and shows its data on
+generic pages.
+
+**Idea:** the GUI already works with the messages by protobuf reflection (`DataSource`, `Reflection`, `FieldModel`), the
+generated classes are used only to create the message. With the descriptor of the message from the daemon the GUI creates
+it dynamically (`DynamicMessageFactory`) and the rest of the GUI stays.
+
+Steps:
+
+1. **B1 – descriptor in the module:** the build of a module creates `protoc --descriptor_set_out --include_imports` of its
+   `.proto` (`FileDescriptorSet`) embedded into the `.so`; `Module::Info` gets `descriptorSet` (bytes), the names of the
+   messages `message` / `request` / `command` and the reload rules (today the annotations of `MessageRegistry`). `ABI_VERSION`
+   of the SDK is increased, modules without a descriptor work by `legacyDataType`.
+2. **B2 – numbers by name:** the built-in modules keep 0–21 (`legacyDataType`, an older GUI keeps working); a module without
+   `legacyDataType` gets a number from 64 by the alphabetical order of the names (stable between starts with the same set of
+   modules). The message header stays `quint8`.
+3. **B3 – `MODULES` with the descriptions:** `ModuleList.Module` gets the names of the messages and the reload rules; the
+   descriptors by a separate request `MODULE_DESCRIPTOR(name)` (small list), the GUI asks only for unknown modules.
+4. **B4 – GUI by module names:** `DataSource.module: "IntelMSR"` (number and message from the list), `dataType: "CPU_POWER"`
+   stays as an alias of the built-in modules (pages unchanged). A module with a descriptor: `DescriptorPool` from its
+   `FileDescriptorSet`, dynamic message; built-in modules keep the compiled classes. A new module is shown on a generic page
+   (`AutoSection`, all fields by `(legion.ui.field)`); an own QML page of a module is an optional later step.
+5. **B5 – notifications of a module:** generic notification `{module, payload}` (ch. 2.5) instead of the central enum
+   `Notification.Action`, the reload rules in the description of the module; the built-in notifications stay.
+
+Risks:
+
+- **UI annotations of a dynamic descriptor:** custom options (`(legion.ui.field)`) of a dynamically built pool are unknown
+  fields, not extensions; the options of every field are serialized again and parsed into the generated `FieldOptions` with
+  the extension registry of `UiOptions.proto` (known technique, the most complex part).
+- **Security:** the descriptor comes from a module loaded by the root daemon after the check of its owner and permissions;
+  it is data, not code. Own QML pages of modules would be code in the GUI – only optional and later.
+- **Compatibility:** test old daemon + new GUI and new daemon + old GUI (`legacyDataType` keeps both working).
+
+Cheapest first step preparing everything else: **B4 without dynamic messages** – `DataSource.module` as an alias of
+`dataType`, pages written by module names. Size of B1–B4: 3–4 larger commits (comparable with the generic GUI), B5 separate.

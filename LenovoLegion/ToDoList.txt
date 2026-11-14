@@ -81,7 +81,9 @@
    (name, data type, version, running / failed with the reason), the providers of the framework and the module files not loaded.
    The GUI reads it on connection: a data type without a running provider is not available with the reason, without a request
    (DataSource::skipNotProvided); Help system check shows the modules. An older daemon without MODULES works as before.
-   Phase B (not done, only for modules outside of the repository):
+   Phase B (not done, plan in LenovoLegion-Daemon/ModulesDesign.md ch. 10, goal: a general framework for controlling a PC, the modules
+   define what is controlled, e.g. AMD CPUs; steps B1 descriptor in the module, B2 numbers by name, B3 MODULES with descriptions,
+   B4 GUI by module names, B5 notifications of a module; first step B4 without dynamic messages):
    LIST_MODULES and a dynamic dataType (LenovoLegion-Daemon/ModulesDesign.md ch. 3, 6 item 2, 7 item 7): on connection the GUI asks for
    the list of the daemon modules {name, dataType, version, state} and works with the assigned numbers instead of the fixed DataType of
    MessageRegistry.proto. The GUI learns a missing or failed module (optional NVML, RGB: today ERROR_RESPONSE "Data provider not found")
