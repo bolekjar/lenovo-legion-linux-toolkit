@@ -57,24 +57,35 @@ void ModuleHost::release()
 
 bool ModuleHost::callModule(const QString &what, const std::function<void ()> &call) noexcept
 {
+    QString error;
+
     try {
         call();
         return true;
     }
     catch(const bj::framework::exception::Exception& ex)
     {
-        LOG_E(QString("Module ").append(m_moduleName).append(" ").append(what).append(" failed: ").append(bj::framework::exception::ExceptionBuilder::print(ex).c_str()));
+        error = bj::framework::exception::ExceptionBuilder::print(ex).c_str();
     }
     catch(const std::exception& ex)
     {
-        LOG_E(QString("Module ").append(m_moduleName).append(" ").append(what).append(" failed: ").append(ex.what()));
+        error = ex.what();
     }
     catch(...)
     {
-        LOG_E(QString("Module ").append(m_moduleName).append(" ").append(what).append(" failed: unknown error !"));
+        error = "unknown error !";
     }
 
+    m_lastError = QString(what).append(" failed: ").append(error);
+
+    LOG_E(QString("Module ").append(m_moduleName).append(" ").append(m_lastError));
+
     return false;
+}
+
+const QString &ModuleHost::lastError() const
+{
+    return m_lastError;
 }
 
 const QString &ModuleHost::moduleName() const

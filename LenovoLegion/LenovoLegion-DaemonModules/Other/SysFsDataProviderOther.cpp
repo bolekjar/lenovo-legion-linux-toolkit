@@ -14,6 +14,9 @@
 
 #include <Other.pb.h>
 
+#include <QMap>
+#include <QStringList>
+
 #include <optional>
 
 
@@ -150,18 +153,53 @@ QByteArray SysFsDataProviderOther::deserializeAndSetData(const QByteArray &data)
         m_sysFsDriverManager->blockKernelEvent(SysFsDriverLegionVpc::DRIVER_NAME,true);
         auto cleanupVpc =  qScopeGuard([this] { m_sysFsDriverManager->blockKernelEvent(SysFsDriverLegionVpc::DRIVER_NAME,false); });
 
+        /*
+         * Labels of the features for the client (the same as on the Device page)
+         */
+        static const QMap<QString,QString> LABELS = {
+            { "conservation_mode", "Battery conservation mode" },
+            { "rapid_charge",      "Rapid charge"              },
+            { "usb_charging",      "USB charging when off"     },
+            { "fn_lock",           "Fn lock"                   },
+            { "camera_power",      "Camera power"              },
+        };
+
+        QStringList ignored;
+
         for(const auto& [field,member] : VPC_FIELDS)
         {
             const auto* value = (otherSettingsMsg.*field)();
 
             if(value->has_current())
             {
-                setData(((*features).*member).m_current_value, value->current());
-                LOG_D(QString("Setting VPC feature ").append(((*features).*member).m_current_value.parent_path().filename().c_str()).append(" to: ").append(QString::number(value->current())));
+                const auto&   feature = (*features).*member;
+                const QString name    = feature.m_current_value.parent_path().filename().c_str();
+
+                setData(feature.m_current_value, value->current());
+                LOG_D(QString("Setting VPC feature ").append(name).append(" to: ").append(QString::number(value->current())));
+
+                /*
+                 * The kernel verifies the write: a write ignored by the firmware (e.g. camera power reported by the
+                 * firmware but not controlled by it) marks the feature as not supported
+                 */
+                if(getData(feature.m_supported).toUShort() != 1)
+                {
+                    ignored.append(LABELS.value(name,name));
+                }
             }
         }
 
         m_sysFsDriverManager->processAllUdevEvents(100);
+
+        /*
+         * The client gets the error (notification in the GUI), it reads the data again and does not show the option
+         */
+        if(!ignored.isEmpty())
+        {
+            THROW_EXCEPTION(exception_T,DataProvider::ERROR_CODES::INVALID_DATA,
+                            ignored.join(", ").append(ignored.size() == 1 ? " is" : " are")
+                            .append(" not supported by the firmware of this notebook (the setting was ignored), the option is removed").toStdString());
+        }
     }
 
     m_sysFsDriverManager->processAllUdevEvents(100);

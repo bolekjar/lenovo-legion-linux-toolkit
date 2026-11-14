@@ -52,6 +52,11 @@ public:
      */
     bool callModule(const QString& what,const std::function<void()>& call) noexcept;
 
+    /*
+     * Description of the last failed call (callModule returned false)
+     */
+    const QString& lastError() const;
+
     const QString& moduleName() const;
 
     /*
@@ -96,6 +101,7 @@ private:
 private:
 
     const QString                    m_moduleName;
+    QString                          m_lastError;
     /*
      * Driver manager may be destroyed before the host (children of Application are deleted in creation order)
      */

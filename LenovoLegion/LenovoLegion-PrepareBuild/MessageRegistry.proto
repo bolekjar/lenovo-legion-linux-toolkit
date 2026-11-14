@@ -4,31 +4,33 @@ package legion.messages;
 
 import "UiOptions.proto";
 
+// (legion.ui.module): daemon module (.so) providing the data type, named in the GUI when the module is not loaded
 // (legion.ui.platform): Lenovo Legion kernel driver needed, the others use standard interfaces
 // (HW_MONITORING and BATTERY are mixed: temperatures, fans and the conservation mode come from the legion driver)
 enum DataType {
-  BATTERY             = 0 [(legion.ui.message) = "legion.messages.Battery"];
-  CPU_INFO            = 1 [(legion.ui.message) = "legion.messages.CPUInfo"];
-  CPU_FREQUENCY       = 2 [(legion.ui.message) = "legion.messages.CPUFrequency"];
-  CPU_INTEL_MSR       = 3 [(legion.ui.message) = "legion.messages.CpuIntelMSR"];
-  CPU_OPTIONS         = 4 [(legion.ui.message) = "legion.messages.CPUOptions", (legion.ui.reload_after_set) = "CPU_FREQUENCY,CPU_TOPOLOGY,CPU_SMT"];
-  CPU_POWER           = 5 [(legion.ui.message) = "legion.messages.CPUPower", (legion.ui.platform) = PLATFORM_LENOVO, (legion.ui.reload_after_set) = "GPU_POWER"];
-  CPU_TOPOLOGY        = 6 [(legion.ui.message) = "legion.messages.CPUTopology"];
+  BATTERY             = 0 [(legion.ui.module) = "Battery", (legion.ui.message) = "legion.messages.Battery"];
+  CPU_INFO            = 1 [(legion.ui.module) = "CPUInfo", (legion.ui.message) = "legion.messages.CPUInfo"];
+  CPU_FREQUENCY       = 2 [(legion.ui.module) = "CPUFrequency", (legion.ui.message) = "legion.messages.CPUFrequency"];
+  CPU_INTEL_MSR       = 3 [(legion.ui.module) = "IntelMSR", (legion.ui.message) = "legion.messages.CpuIntelMSR"];
+  CPU_OPTIONS         = 4 [(legion.ui.module) = "CPUOptions", (legion.ui.message) = "legion.messages.CPUOptions", (legion.ui.reload_after_set) = "CPU_FREQUENCY,CPU_TOPOLOGY,CPU_SMT"];
+  CPU_POWER           = 5 [(legion.ui.module) = "CPUPower", (legion.ui.message) = "legion.messages.CPUPower", (legion.ui.platform) = PLATFORM_LENOVO, (legion.ui.reload_after_set) = "GPU_POWER"];
+  CPU_TOPOLOGY        = 6 [(legion.ui.module) = "CPUTopology", (legion.ui.message) = "legion.messages.CPUTopology"];
   DAEMON_SETTINGS     = 7 [(legion.ui.message) = "legion.messages.DaemonSettings", (legion.ui.command) = "legion.messages.DaemonSettings"];
-  FAN_CURVE           = 8 [(legion.ui.message) = "legion.messages.FanCurve", (legion.ui.platform) = PLATFORM_LENOVO, (legion.ui.reload_after_set) = "FAN_OPTION"];
-  GPU_POWER           = 9 [(legion.ui.message) = "legion.messages.GPUPower", (legion.ui.platform) = PLATFORM_LENOVO, (legion.ui.reload_after_set) = "CPU_POWER"];
-  HW_MONITORING       = 10 [(legion.ui.message) = "legion.messages.HardwareMonitor"];
-  NVIDIA_NWML         = 11 [(legion.ui.message) = "legion.messages.NvidiaNvml", (legion.ui.available_from) = "name",
+  FAN_CURVE           = 8 [(legion.ui.module) = "FanCurve", (legion.ui.message) = "legion.messages.FanCurve", (legion.ui.platform) = PLATFORM_LENOVO, (legion.ui.reload_after_set) = "FAN_OPTION"];
+  GPU_POWER           = 9 [(legion.ui.module) = "GPUPower", (legion.ui.message) = "legion.messages.GPUPower", (legion.ui.platform) = PLATFORM_LENOVO, (legion.ui.reload_after_set) = "CPU_POWER"];
+  HW_MONITORING       = 10 [(legion.ui.module) = "HWMon", (legion.ui.message) = "legion.messages.HardwareMonitor"];
+  NVIDIA_NWML         = 11 [(legion.ui.module) = "NvidiaNvml", (legion.ui.message) = "legion.messages.NvidiaNvml", (legion.ui.available_from) = "name",
                             (legion.ui.unavailable_reason) = "No NVIDIA GPU or the proprietary NVIDIA driver (NVML) is not installed"];
-  OTHER               = 12 [(legion.ui.message) = "legion.messages.OtherSettings", (legion.ui.platform) = PLATFORM_LENOVO];
-  POWER_PROFILE       = 13 [(legion.ui.message) = "legion.messages.PowerProfile", (legion.ui.platform) = PLATFORM_LENOVO,
+  OTHER               = 12 [(legion.ui.module) = "Other", (legion.ui.message) = "legion.messages.OtherSettings", (legion.ui.platform) = PLATFORM_LENOVO];
+  POWER_PROFILE       = 13 [(legion.ui.module) = "PowerProfile", (legion.ui.message) = "legion.messages.PowerProfile", (legion.ui.platform) = PLATFORM_LENOVO,
                             (legion.ui.reload_after_set) = "CPU_POWER,GPU_POWER,FAN_CURVE,FAN_OPTION"];
-  RGB_CONTROLLER      = 14 [(legion.ui.message) = "legion.messages.RGBControllerResponse", (legion.ui.request) = "legion.messages.RGBControllerRequest",
+  RGB_CONTROLLER      = 14 [(legion.ui.module) = "RGBController", (legion.ui.message) = "legion.messages.RGBControllerResponse", (legion.ui.request) = "legion.messages.RGBControllerRequest",
                             (legion.ui.command) = "legion.messages.RGBControllerSetRequest", (legion.ui.platform) = PLATFORM_LENOVO];
-  MACHINE_INFORMATION = 15 [(legion.ui.message) = "legion.messages.MachineInformation"];
-  CPU_SMT             = 16 [(legion.ui.message) = "legion.messages.CPUSMT", (legion.ui.reload_after_set) = "CPU_OPTIONS,CPU_FREQUENCY,CPU_TOPOLOGY"];
-  FAN_OPTION          = 17 [(legion.ui.message) = "legion.messages.FanOption", (legion.ui.platform) = PLATFORM_LENOVO, (legion.ui.reload_after_set) = "FAN_CURVE"];
-  OTHER_GPU_SWITCH    = 18 [(legion.ui.message) = "legion.messages.GpuSwitchValue", (legion.ui.platform) = PLATFORM_LENOVO];
-  CPU_PSTATE          = 19 [(legion.ui.message) = "legion.messages.CPUPState", (legion.ui.reload_after_set) = "CPU_OPTIONS,CPU_FREQUENCY"];
+  MACHINE_INFORMATION = 15 [(legion.ui.module) = "MachineInformation", (legion.ui.message) = "legion.messages.MachineInformation"];
+  CPU_SMT             = 16 [(legion.ui.module) = "CPUSMT", (legion.ui.message) = "legion.messages.CPUSMT", (legion.ui.reload_after_set) = "CPU_OPTIONS,CPU_FREQUENCY,CPU_TOPOLOGY"];
+  FAN_OPTION          = 17 [(legion.ui.module) = "FanOption", (legion.ui.message) = "legion.messages.FanOption", (legion.ui.platform) = PLATFORM_LENOVO, (legion.ui.reload_after_set) = "FAN_CURVE"];
+  OTHER_GPU_SWITCH    = 18 [(legion.ui.module) = "OtherGpuSwitch", (legion.ui.message) = "legion.messages.GpuSwitchValue", (legion.ui.platform) = PLATFORM_LENOVO];
+  CPU_PSTATE          = 19 [(legion.ui.module) = "CPUPState", (legion.ui.message) = "legion.messages.CPUPState", (legion.ui.reload_after_set) = "CPU_OPTIONS,CPU_FREQUENCY"];
   PROFILES            = 20 [(legion.ui.message) = "legion.messages.Profiles", (legion.ui.command) = "legion.messages.ProfileCommand"];
+  MODULES             = 21 [(legion.ui.message) = "legion.messages.ModuleList"];   // data providers of the daemon (read only)
 }

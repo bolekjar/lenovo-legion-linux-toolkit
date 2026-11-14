@@ -347,6 +347,7 @@ Every step can be built and tested separately. Steps 1–4 improve the robustnes
 5. **SDK and logger:** `libLenovoLegionDaemonSDK.so` with `IModule`, `IModuleHost` and the services, the logger through the host.
 6. **Feature modules:** convert the providers including the internal drivers to `.so`, replace the registration in `Application` by loading from `modules/` including the check of the owner and the permissions. Start with the optional `NvidiaNvml` and `RGBController`, which bring the biggest benefit (removal of mandatory dependencies).
 7. **Own messages and a dynamic `dataType`:** `.proto` into the modules, `LIST_MODULES` in the protocol, the GUI on the assigned numbers.
+   **Phase A done (2026-11-14):** the list of the data providers as the data type `MODULES` (`ModuleList`, `DataProviderModules`): modules with the state (running / failed with the reason of `init`), the providers of the framework and the module files which were not loaded (`ModuleLoader::NotLoaded`). The GUI reads it on connection and does not request a data type without a running provider (shown as not available with the reason); Help shows the modules. The numbers stay fixed (`MessageRegistry.proto`); the dynamic numbers and own messages of the modules (phase B) only when there are modules outside of the repository.
 8. **Optionally:** `NvidiaNvml` and `RGBController` as separate processes.
 
 ### 7.1 Proposed order of the first steps (2026-10-22, not approved yet)

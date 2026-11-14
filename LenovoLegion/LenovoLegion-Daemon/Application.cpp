@@ -19,6 +19,7 @@
  */
 #include "DataProviders/DataProviderDaemonSettings.h"
 #include "DataProviders/DataProviderProfiles.h"
+#include "DataProviders/DataProviderModules.h"
 
 #include "Modules/ModuleLoader.h"
 
@@ -52,6 +53,7 @@ Application::Application(int &argc, char *argv[]) :
     m_serverSocketNotification(new QLocalServer(this)),
     m_sysFsDriverManager(new SysFsDriverManager(this)),
     m_dataProviderManager(new DataProviderManager(this)),
+    m_dataProviderModules(nullptr),
     m_protocolProcessor(nullptr),
     m_protocolProcessorNotification(nullptr)
 {
@@ -63,6 +65,9 @@ Application::Application(int &argc, char *argv[]) :
      */
     m_dataProviderManager->addDataProvider(new DataProviderDaemonSettings(m_dataProviderManager));
     m_dataProviderManager->addDataProvider(new DataProviderProfiles(m_dataProviderManager));
+
+    m_dataProviderModules = new DataProviderModules(m_dataProviderManager);
+    m_dataProviderManager->addDataProvider(m_dataProviderModules);
 }
 
 void Application::appRollBackImpl() noexcept
@@ -131,7 +136,11 @@ void Application::appInitImpl(std::unique_ptr<ApplicationModulesHandler_T> modul
     /*
      * Load daemon modules (.so) from modules/, registered as data providers
      */
-    ModuleLoader::loadModules(*modules,m_sysFsDriverManager,m_dataProviderManager);
+    std::vector<ModuleLoader::NotLoaded> notLoaded;
+
+    ModuleLoader::loadModules(*modules,m_sysFsDriverManager,m_dataProviderManager,notLoaded);
+
+    m_dataProviderModules->setNotLoaded(notLoaded);
 
 
     /*

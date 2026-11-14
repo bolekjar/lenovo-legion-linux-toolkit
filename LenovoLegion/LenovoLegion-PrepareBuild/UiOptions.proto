@@ -77,4 +77,6 @@ extend google.protobuf.EnumValueOptions {
                                      // without it are shown as not available with unavailable_reason (NVIDIA_NWML without
                                      // an NVIDIA GPU: no "name"); for a state of the hardware, not an error of the daemon
     string unavailable_reason = 50012;
+    string module = 50013;           // DataType value: name of the daemon module providing it (libDaemonModule<name>.so), the GUI
+                                     // names it when the module is not loaded or failed (list of the data providers, MODULES)
 }

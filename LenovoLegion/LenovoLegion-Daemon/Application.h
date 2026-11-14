@@ -21,6 +21,7 @@ namespace LenovoLegionDaemon {
 
 class ProtocolProcessorBase;
 class DataProviderManager;
+class DataProviderModules;
 class SysFsDriverManager;
 
 class Application : public QCoreApplication,
@@ -144,6 +145,7 @@ private:
      * Data Provider Manager
      */
     DataProviderManager*            m_dataProviderManager;
+    DataProviderModules*            m_dataProviderModules;     // owned by m_dataProviderManager
 
 
     /*

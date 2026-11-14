@@ -53,6 +53,12 @@ public:
     const Module::Info& info() const;
 
     /*
+     * State for the list of the data providers (DataProviderModules): running, or the reason why not
+     */
+    bool    running() const;
+    QString error() const;
+
+    /*
      * Settings policy of the module, not persistent when the module is not running
      */
     Module::IModule::SettingsPolicy settingsPolicy() const;

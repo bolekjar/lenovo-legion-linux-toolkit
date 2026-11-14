@@ -47,6 +47,23 @@ const Module::Info &ModuleDataProviderAdapter::info() const
     return *m_info;
 }
 
+bool ModuleDataProviderAdapter::running() const
+{
+    return m_state == State::RUNNING;
+}
+
+QString ModuleDataProviderAdapter::error() const
+{
+    switch(m_state)
+    {
+    case State::RUNNING: return {};
+    case State::CREATED: return "not initialized";
+    case State::FAILED:  return m_host->lastError().isEmpty() ? QString("initialization failed") : m_host->lastError();
+    }
+
+    return {};
+}
+
 Module::IModule::SettingsPolicy ModuleDataProviderAdapter::settingsPolicy() const
 {
     Module::IModule::SettingsPolicy policy {};

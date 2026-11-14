@@ -36,11 +36,13 @@ uid_t executableOwner()
     return st.st_uid;
 }
 
-void logLoaderErrors(const bj::framework::ApplicationModulesHandler& modules,size_t from)
+void logLoaderErrors(const bj::framework::ApplicationModulesHandler& modules,size_t from,std::vector<ModuleLoader::NotLoaded>& notLoaded)
 {
     for(size_t i = from; i < modules.errors().size(); ++i)
     {
         LOG_E(QString("Module ").append(modules.errors().at(i).m_file).append(" is not loaded: ").append(modules.errors().at(i).m_reason));
+
+        notLoaded.push_back({ QFileInfo(modules.errors().at(i).m_file).fileName(), modules.errors().at(i).m_reason });
     }
 }
 
@@ -80,7 +82,8 @@ bool ModuleLoader::isTrusted(const QFileInfo &file, bool directory, QString &rea
     return true;
 }
 
-int ModuleLoader::loadModules(bj::framework::ApplicationModulesHandler &modules, SysFsDriverManager *sysFsDriverManager, DataProviderManager *dataProviderManager)
+int ModuleLoader::loadModules(bj::framework::ApplicationModulesHandler &modules, SysFsDriverManager *sysFsDriverManager, DataProviderManager *dataProviderManager,
+                              std::vector<NotLoaded>& notLoaded)
 {
     QString reason;
 
@@ -89,6 +92,7 @@ int ModuleLoader::loadModules(bj::framework::ApplicationModulesHandler &modules,
     if(!isTrusted(QFileInfo(modules.path().absolutePath()),true,reason))
     {
         LOG_E(QString("Modules directory ").append(modules.path().absolutePath()).append(" is not trusted (").append(reason).append("), no module is loaded !"));
+        notLoaded.push_back({ modules.path().absolutePath(), QString("modules directory is not trusted: ").append(reason) });
         return 0;
     }
 
@@ -99,10 +103,11 @@ int ModuleLoader::loadModules(bj::framework::ApplicationModulesHandler &modules,
     if(modules.load() < 0)
     {
         LOG_E(QString("Unable to load modules from ").append(modules.path().absolutePath()));
+        notLoaded.push_back({ modules.path().absolutePath(), "unable to load the modules" });
         return 0;
     }
 
-    logLoaderErrors(modules,0);
+    logLoaderErrors(modules,0,notLoaded);
 
     /*
      * Libraries with the module entry points
@@ -111,7 +116,7 @@ int ModuleLoader::loadModules(bj::framework::ApplicationModulesHandler &modules,
 
     auto entryPoints = modules.getModules<Module::InfoFn,Module::CreateFn,Module::DestroyFn>({ Module::INFO_SYMBOL, Module::CREATE_SYMBOL, Module::DESTROY_SYMBOL });
 
-    logLoaderErrors(modules,resolveErrorsFrom);
+    logLoaderErrors(modules,resolveErrorsFrom,notLoaded);
 
     using Loader = bj::framework::ApplicationModulesLoader;
 
@@ -146,16 +151,19 @@ int ModuleLoader::loadModules(bj::framework::ApplicationModulesHandler &modules,
         catch(const bj::framework::exception::Exception& ex)
         {
             LOG_E(QString("Module is not loaded: ").append(bj::framework::exception::ExceptionBuilder::print(ex).c_str()));
+            notLoaded.push_back({ adapter != nullptr ? QString(adapter->info().name) : QString("module"), bj::framework::exception::ExceptionBuilder::print(ex).c_str() });
             delete adapter;
         }
         catch(const std::exception& ex)
         {
             LOG_E(QString("Module is not loaded: ").append(ex.what()));
+            notLoaded.push_back({ adapter != nullptr ? QString(adapter->info().name) : QString("module"), ex.what() });
             delete adapter;
         }
         catch(...)
         {
             LOG_E("Module is not loaded: unknown error !");
+            notLoaded.push_back({ adapter != nullptr ? QString(adapter->info().name) : QString("module"), "unknown error !" });
             delete adapter;
         }
     }

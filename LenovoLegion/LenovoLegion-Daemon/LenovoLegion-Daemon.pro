@@ -28,7 +28,8 @@ SOURCES +=  \
 # Data providers of the framework
 SOURCES += \
         DataProviders/DataProviderDaemonSettings.cpp \
-        DataProviders/DataProviderProfiles.cpp
+        DataProviders/DataProviderProfiles.cpp \
+        DataProviders/DataProviderModules.cpp
 
 # Daemon modules framework sources
 SOURCES +=  \
@@ -54,7 +55,8 @@ HEADERS += \
 # Data providers of the framework
 HEADERS += \
         DataProviders/DataProviderDaemonSettings.h \
-        DataProviders/DataProviderProfiles.h
+        DataProviders/DataProviderProfiles.h \
+        DataProviders/DataProviderModules.h
 
 HEADERS +=  \
         Modules/ModuleDataProviderAdapter.h \

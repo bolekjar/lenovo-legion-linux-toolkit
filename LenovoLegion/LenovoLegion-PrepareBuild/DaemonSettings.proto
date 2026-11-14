@@ -21,3 +21,27 @@ message DaemonSettings
     // Set to true to trigger save, daemon will reset it after saving
     bool save_now = 5;
 }
+
+
+// Data providers of the daemon (DataType MODULES): daemon modules (.so) and providers of the framework, and the module
+// files which were not loaded. The GUI shows a data type without a running provider as not available (no request).
+message ModuleList
+{
+    message Module
+    {
+        enum State {
+            STATE_RUNNING     = 0;    // provides its data type
+            STATE_FAILED      = 1;    // loaded, its initialization failed (error)
+            STATE_NOT_LOADED  = 2;    // module file not loaded (untrusted, not a module, duplicate name; error)
+        }
+
+        string   name        = 1;     // module name ("NvidiaNvml"), framework provider ("DAEMON_SETTINGS") or the file
+        uint32   data_type   = 2;     // DataType it provides, not set for a module not loaded
+        string   version     = 3;
+        State    state       = 4;
+        string   error       = 5;     // reason of STATE_FAILED / STATE_NOT_LOADED
+        bool     framework   = 6;     // provider of the framework (not a module)
+    }
+
+    repeated Module modules = 1;
+}

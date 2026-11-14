@@ -33,7 +33,7 @@ Section {
         Layout.fillWidth: true
 
         visible: !power.available
-        text: "Requires the Lenovo Legion kernel driver"
+        text: power.moduleError.length > 0 ? power.moduleError : "Requires the Lenovo Legion kernel driver"
         color: theme.modified
         font.bold: true
         wrapMode: Text.Wrap

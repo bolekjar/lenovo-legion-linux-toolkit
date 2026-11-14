@@ -53,6 +53,10 @@ GroupBox {
         if (typeof appState !== "undefined" && appState !== null && !appState.connected)
             return "Not connected to the daemon"
 
+        // Daemon module of the data not installed, not loaded or failed
+        if (source.moduleError.length > 0)
+            return source.moduleError
+
         if (source.platform === "lenovo")
             return "Requires the Lenovo Legion kernel driver (lenovo_legion)"
 

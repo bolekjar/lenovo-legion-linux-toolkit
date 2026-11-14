@@ -8,6 +8,7 @@
 #pragma once
 
 #include <QFuture>
+#include <QHash>
 #include <QObject>
 #include <QSet>
 #include <QStringList>
@@ -66,6 +67,12 @@ class DataSource : public QObject
      */
     Q_PROPERTY(QString platform  READ platform                     NOTIFY dataTypeChanged)
     Q_PROPERTY(QString lastError READ lastError                    NOTIFY lastErrorChanged)
+
+    /*
+     * Why the daemon module of the data type does not run (not installed, not loaded, failed), empty otherwise:
+     * shown instead of the other reasons (e.g. "Requires the Lenovo Legion kernel driver")
+     */
+    Q_PROPERTY(QString moduleError READ moduleError                NOTIFY lastErrorChanged)
 
     /*
      * Incremented on every change of the message, bindings with value() depend on it ("source.revision, source.value(...)")
@@ -128,6 +135,7 @@ public:
     bool    available() const;
     QString platform() const;
     QString lastError() const;
+    QString moduleError() const;
     int     revision() const;
 
     Q_INVOKABLE void reload();
@@ -259,6 +267,17 @@ private:
     bool skipNotConnected();
 
     /*
+     * No running data provider of the daemon for the data type (list of the data providers, DataType MODULES): not
+     * available with the reason without a request, true then. False without the list (older daemon).
+     */
+    bool skipNotProvided();
+
+    /*
+     * List of the data providers of the daemon, read on connection
+     */
+    static void loadProviders();
+
+    /*
      * Failed request in the log: an error the first time, the same error again only as debug (periodic reloads)
      */
     void logFailure(const QString& what,const QString& error) const;
@@ -290,6 +309,14 @@ private:
     static bool               s_connected;
     static QSet<DataSource*>  s_dataSources;
 
+    /*
+     * Data providers of the daemon by the data type: empty reason = running, otherwise why the data type is not
+     * provided (failed module); s_providersKnown false without the list (older daemon, not connected)
+     */
+    static QHash<int,QString>     s_providers;
+    static QHash<QString,QString> s_notLoaded;          // module files not loaded by the daemon -> reason
+    static bool                   s_providersKnown;
+
     QString                                      m_dataType;
     int                                          m_dataTypeValue;
     bool                                         m_autoApply;
@@ -312,6 +339,8 @@ private:
     QString                                      m_platform  = "generic";
     QString                                      m_availableFrom;        // (legion.ui.available_from) of the data type
     QString                                      m_unavailableReason;    // (legion.ui.unavailable_reason) of the data type
+    QString                                      m_module;               // (legion.ui.module) of the data type
+    QString                                      m_moduleError;          // see moduleError
     int                                          m_revision = 0;
 
     std::unique_ptr<google::protobuf::Message>   m_message;    // state from the daemon

@@ -87,6 +87,17 @@ QString PageSources::reason() const
         return {};
     }
 
+    /*
+     * Daemon module of the data not installed, not loaded or failed (list of the data providers)
+     */
+    for(const auto& source : m_sources)
+    {
+        if(source != nullptr && !source->moduleError().isEmpty())
+        {
+            return source->moduleError();
+        }
+    }
+
     if(platform() == "lenovo")
     {
         return "Requires the Lenovo Legion kernel driver";

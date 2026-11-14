@@ -116,6 +116,10 @@ Data types that change together with a written data type. The daemon blocks the 
 
 A module that runs but has no hardware answers with data without its main field: `NVIDIA_NWML` without an NVIDIA GPU (or without the NVIDIA driver) has no `name`. Such data are not available: the groups hide their fields and presets and show `unavailable_reason`, the page is grayed out with the same reason (`PageSources.reason`), the Help check reports it. It is a state, not an error of a request: `lastError` is set without `failed` (no notification on every load, the HW monitor polls NVML) and the daemon does not log an error on every poll.
 
+### 3.3.5 Daemon module not running (`(legion.ui.module)` on the values of `DataType`, data type `MODULES`)
+
+On connection `DataSource` reads the list of the data providers of the daemon (`MODULES`, `ModuleList`). A data type without a running provider is not requested; it is not available with `moduleError`, which names the module from `(legion.ui.module)`: "Daemon module NvidiaNvml is not installed (libDaemonModuleNvidiaNvml.so is missing …)", "… is not loaded: <reason of the loader>" or "… failed: <reason of init>". `moduleError` comes before the other reasons (also before "Requires the Lenovo Legion kernel driver") in the groups (`Section.unavailableReason`), on the pages and tabs (`PageSources.reason`), in the power profile panel and in the Help check, which lists all modules after a click on "Daemon modules". A daemon without `MODULES` (older version) is used as before.
+
 ### 3.4 Platform (`(legion.ui.platform)` on the values of `DataType`)
 
 `PLATFORM_GENERIC` (default): standard Linux interfaces (cpufreq, intel_pstate, NVML, `legion-intel-msr`), works on any notebook. `PLATFORM_LENOVO`: needs the Lenovo Legion driver (`legion`): power profiles, fans, power limits, touchpad, Win key, GPU switch, RGB. `HW_MONITORING` and `BATTERY` are mixed and stay generic (temperatures and fans are missing without the driver, their groups are hidden).

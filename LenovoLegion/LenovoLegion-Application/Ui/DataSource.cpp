@@ -11,6 +11,7 @@
 
 #include "../DataProvider.h"
 
+#include "../LenovoLegion-PrepareBuild/DaemonSettings.pb.h"
 #include "../LenovoLegion-PrepareBuild/MessageRegistry.pb.h"
 #include "../LenovoLegion-PrepareBuild/Notification.pb.h"
 #include "../LenovoLegion-PrepareBuild/UiOptions.pb.h"
@@ -68,6 +69,9 @@ void completeAtomic(const Message& state,Message& changes)
 DataProvider*     DataSource::s_dataProvider = nullptr;
 bool              DataSource::s_connected    = true;
 QSet<DataSource*> DataSource::s_dataSources;
+QHash<int,QString>     DataSource::s_providers;
+QHash<QString,QString> DataSource::s_notLoaded;
+bool                   DataSource::s_providersKnown = false;
 
 DataSource::DataSource(QObject *parent) :
     QObject(parent),
@@ -178,6 +182,7 @@ void DataSource::setDataType(const QString &dataType)
     m_platform      = "generic";
     m_availableFrom.clear();
     m_unavailableReason.clear();
+    m_module.clear();
 
     for(auto& [path,field] : m_fields)
     {
@@ -214,6 +219,7 @@ void DataSource::setDataType(const QString &dataType)
             m_platform      = value->options().GetExtension(legion::ui::platform) == legion::ui::PLATFORM_LENOVO ? "lenovo" : "generic";
             m_availableFrom     = QString::fromStdString(value->options().GetExtension(legion::ui::available_from));
             m_unavailableReason = QString::fromStdString(value->options().GetExtension(legion::ui::unavailable_reason));
+            m_module            = QString::fromStdString(value->options().GetExtension(legion::ui::module));
             m_message.reset(prototype->New());
             m_changes.reset(prototype->New());
         }
@@ -305,6 +311,11 @@ QString DataSource::platform() const
     return m_platform;
 }
 
+QString DataSource::moduleError() const
+{
+    return m_moduleError;
+}
+
 QString DataSource::lastError() const
 {
     return m_lastError;
@@ -318,6 +329,138 @@ int DataSource::revision() const
 void DataSource::setConnected(bool connected)
 {
     s_connected = connected;
+
+    if(connected)
+    {
+        loadProviders();
+    }
+    else
+    {
+        s_providers.clear();
+        s_notLoaded.clear();
+        s_providersKnown = false;
+    }
+}
+
+void DataSource::loadProviders()
+{
+    s_providers.clear();
+    s_notLoaded.clear();
+    s_providersKnown = false;
+
+    if(s_dataProvider == nullptr)
+    {
+        return;
+    }
+
+    legion::messages::ModuleList list;
+
+    try {
+        const QByteArray data = s_dataProvider->getData(static_cast<quint8>(legion::messages::DataType::MODULES));
+
+        if(!list.ParseFromArray(data.constData(),static_cast<int>(data.size())))
+        {
+            LOG_W("DataSource: invalid list of the data providers of the daemon, all data types are requested");
+            return;
+        }
+    }
+    catch(const std::exception& ex)
+    {
+        /*
+         * Older daemon without the list: every data type is requested as before
+         */
+        LOG_D(QString("DataSource: no list of the data providers of the daemon (").append(ex.what()).append("), all data types are requested"));
+        return;
+    }
+
+    for(const auto& module : list.modules())
+    {
+        if(module.state() == legion::messages::ModuleList::Module::STATE_NOT_LOADED)
+        {
+            s_notLoaded.insert(QString::fromStdString(std::string(module.name())),QString::fromStdString(std::string(module.error())));
+            continue;
+        }
+
+        if(!module.has_data_type())
+        {
+            continue;
+        }
+
+        const int     dataType = static_cast<int>(module.data_type());
+        const QString name     = QString::fromStdString(std::string(module.name()));
+
+        if(module.state() == legion::messages::ModuleList::Module::STATE_RUNNING)
+        {
+            s_providers.insert(dataType,QString());
+        }
+        else if(!s_providers.contains(dataType))
+        {
+            s_providers.insert(dataType,QString("Daemon module ").append(name).append(" failed: ").append(QString::fromStdString(std::string(module.error()))));
+        }
+    }
+
+    s_providersKnown = true;
+
+    LOG_D(QString("DataSource: daemon provides ").append(QString::number(s_providers.size())).append(" data types"));
+}
+
+bool DataSource::skipNotProvided()
+{
+    if(!s_providersKnown || m_dataTypeValue == legion::messages::DataType::MODULES)
+    {
+        return false;
+    }
+
+    const auto it     = s_providers.constFind(m_dataTypeValue);
+    QString    reason = it != s_providers.constEnd() ? it.value() : QString();
+
+    /*
+     * Not in the list: the module file is missing or was not loaded ((legion.ui.module) names the module)
+     */
+    if(it == s_providers.constEnd())
+    {
+        const QString file = QString("libDaemonModule").append(m_module).append(".so");
+
+        if(m_module.isEmpty())
+        {
+            reason = "No daemon module provides these data";
+        }
+        else if(s_notLoaded.contains(file))
+        {
+            reason = QString("Daemon module ").append(m_module).append(" is not loaded: ").append(s_notLoaded.value(file));
+        }
+        else
+        {
+            reason = QString("Daemon module ").append(m_module).append(" is not installed (").append(file).append(" is missing in the modules directory of the daemon)");
+        }
+    }
+
+    if(reason.isEmpty())
+    {
+        if(!m_moduleError.isEmpty())
+        {
+            m_moduleError.clear();
+            emit lastErrorChanged();
+        }
+
+        return false;
+    }
+
+    /*
+     * Quietly (no failed signal, no log on every period), the same as not connected
+     */
+    if(m_available || m_lastError != reason || m_moduleError != reason)
+    {
+        m_available   = false;
+        m_lastError   = reason;
+        m_moduleError = reason;
+        emit lastErrorChanged();
+
+        ++m_revision;
+        emit messageChanged();
+    }
+
+    return true;
 }
 
 bool DataSource::skipNotConnected()
@@ -361,7 +504,7 @@ void DataSource::logFailure(const QString &what, const QString &error) const
 
 void DataSource::reload()
 {
-    if(s_dataProvider == nullptr || m_message == nullptr || skipNotConnected())
+    if(s_dataProvider == nullptr || m_message == nullptr || skipNotConnected() || skipNotProvided())
     {
         return;
     }
@@ -382,7 +525,7 @@ void DataSource::reload()
 
 void DataSource::reloadAsync()
 {
-    if(s_dataProvider == nullptr || m_message == nullptr || m_reloading || skipNotConnected())
+    if(s_dataProvider == nullptr || m_message == nullptr || m_reloading || skipNotConnected() || skipNotProvided())
     {
         return;
     }

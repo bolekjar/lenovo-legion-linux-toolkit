@@ -12,6 +12,8 @@
 #include <QFileInfo>
 #include <QString>
 
+#include <vector>
+
 namespace LenovoLegionDaemon {
 
 class DataProviderManager;
@@ -29,9 +31,19 @@ class ModuleLoader
 public:
 
     /*
-     * Returns number of registered modules
+     * Module file (or module) which was not loaded and why (list of the data providers, DataProviderModules)
      */
-    static int loadModules(bj::framework::ApplicationModulesHandler& modules,SysFsDriverManager* sysFsDriverManager,DataProviderManager* dataProviderManager);
+    struct NotLoaded
+    {
+        QString m_name;
+        QString m_reason;
+    };
+
+    /*
+     * Returns number of registered modules, notLoaded gets the modules which were not loaded
+     */
+    static int loadModules(bj::framework::ApplicationModulesHandler& modules,SysFsDriverManager* sysFsDriverManager,DataProviderManager* dataProviderManager,
+                           std::vector<NotLoaded>& notLoaded);
 
     /*
      * Security check of a module file or of the modules directory

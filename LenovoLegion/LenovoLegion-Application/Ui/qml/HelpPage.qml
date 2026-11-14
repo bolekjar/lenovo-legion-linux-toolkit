@@ -49,32 +49,61 @@ SettingsPage {
 
     readonly property bool keyboardFound: rgbCheck.available && rgbCheck.value("britness.max", rgbCheck.revision) > 0
 
-    readonly property bool daemonConnected: daemonCheck.available
+    // Data providers of the daemon: modules (state 0 running, 1 failed, 2 not loaded) and providers of the framework
+    DataSource {
+        id: modulesCheck
+
+        dataType: "MODULES"
+    }
+
+    readonly property var modules: modulesCheck.data("modules", modulesCheck.revision) ?? []
+    readonly property var brokenModules: modules.filter(module => module.state !== 0)
+
+    // Connection of the GUI (a missing module of the data of daemonCheck is not a missing connection)
+    readonly property bool daemonConnected: typeof appState !== "undefined" && appState !== null ? appState.connected : daemonCheck.available
+
+    // Reason of a failed check: the daemon module of the source when it does not run, otherwise the hint of the check
+    function failReason(source, text) {
+        return source.moduleError.length > 0 ? source.moduleError : text
+    }
 
     readonly property var checks: [
-        { name: "Daemon", ok: daemonCheck.available, required: true,
+        { name: "Daemon", ok: page.daemonConnected, required: true,
           okText: "Connected",
           failText: "Not connected. Start the service: sudo systemctl enable --now lenovo-legion-daemon.service. "
                   + "Your user must be in the group legion (log in again after adding it)." },
         { name: "Lenovo Legion driver", ok: lenovoCheck.available, required: true,
           okText: "lenovo_legion loaded",
-          failText: page.daemonConnected ? "Kernel module lenovo_legion is not loaded or the notebook is not supported. "
-                                         + "Check the output of: sudo dmesg | grep lenovo-legion"
+          failText: page.daemonConnected ? page.failReason(lenovoCheck, "Kernel module lenovo_legion is not loaded or the notebook is not supported. "
+                                                                    + "Check the output of: sudo dmesg | grep lenovo-legion")
                                          : "Unknown, the daemon is not connected." },
         { name: "Intel CPU voltage", ok: msrCheck.available, required: false,
           okText: "legion_intel_msr loaded",
-          failText: page.daemonConnected ? "Kernel module legion_intel_msr is not loaded (Intel CPUs only). "
-                                         + "It is loaded by /etc/modules-load.d/lenovo-legion.conf."
+          failText: page.daemonConnected ? page.failReason(msrCheck, "Kernel module legion_intel_msr is not loaded (Intel CPUs only). "
+                                                                 + "It is loaded by /etc/modules-load.d/lenovo-legion.conf.")
                                          : "Unknown, the daemon is not connected." },
         { name: "NVIDIA GPU", ok: nvidiaCheck.available, required: false,
           // the module answers also without a GPU: available only with the GPU name ((legion.ui.available_from))
           okText: nvidiaCheck.value("name", nvidiaCheck.revision) + " (NVML)",
-          failText: page.daemonConnected ? "No NVIDIA GPU or the proprietary NVIDIA driver (NVML) is not installed."
+          failText: page.daemonConnected ? page.failReason(nvidiaCheck, "No NVIDIA GPU or the proprietary NVIDIA driver (NVML) is not installed.")
                                          : "Unknown, the daemon is not connected." },
         { name: "RGB keyboard", ok: page.keyboardFound, required: false,
           okText: "Keyboard found",
-          failText: page.daemonConnected ? "No supported RGB keyboard (USB 048d:c197, 048d:c9xx) was found."
-                                         : "Unknown, the daemon is not connected." }
+          failText: page.daemonConnected ? page.failReason(rgbCheck, "No supported RGB keyboard (USB 048d:c197, 048d:c9xx) was found.")
+                                         : "Unknown, the daemon is not connected." },
+        { name: "Daemon modules", ok: modulesCheck.available && page.brokenModules.length === 0, required: false,
+          // list of the modules after a click on the row
+          details: page.modules.map(module => ({
+              name: module.name,
+              state: module.state,
+              text: (module.framework ? "daemon " : "") + (module.version.length > 0 ? "v" + module.version : "")
+                    + (module.state === 1 ? " – failed: " + module.error : module.state === 2 ? "not loaded: " + module.error : "")
+          })),
+          okText: page.modules.filter(module => !module.framework).length + " modules running",
+          failText: !page.daemonConnected ? "Unknown, the daemon is not connected."
+                  : !modulesCheck.available ? "The daemon does not report its modules (older version of the daemon)."
+                  : page.brokenModules.map(module => module.name + (module.state === 1 ? " failed: " : " not loaded: ") + module.error).join("\n")
+                    + "\nDetails are in the log of the daemon." }
     ]
 
     // Topics of the help (Markdown)
@@ -417,6 +446,7 @@ Source code, issues and releases: [github.com/bolekjar/lenovo-legion-linux-toolk
                                 msrCheck.reload()
                                 nvidiaCheck.reload()
                                 rgbCheck.reload()
+                                modulesCheck.reload()
                             }
                         }
                     }
@@ -430,60 +460,128 @@ Source code, issues and releases: [github.com/bolekjar/lenovo-legion-linux-toolk
                             required property var modelData
 
                             Layout.fillWidth: true
-                            implicitHeight: checkLayout.implicitHeight + 8
+                            implicitHeight: checkColumnLayout.implicitHeight + 8
                             radius: theme.inputRadius
                             color: checkHover.hovered ? theme.itemHoverBackground : "transparent"
 
                             // Missing required part: red, missing optional part: gray
                             readonly property color stateColor: modelData.ok ? "#3fb950" : modelData.required ? "#e5534b" : theme.disabledText
 
+                            // Row with details (Daemon modules): opened / closed by a click
+                            readonly property bool hasDetails: modelData.details !== undefined && modelData.details.length > 0
+                            property bool expanded: false
+
                             HoverHandler {
                                 id: checkHover
+
+                                cursorShape: checkRow.hasDetails ? Qt.PointingHandCursor : Qt.ArrowCursor
                             }
 
-                            RowLayout {
-                                id: checkLayout
+                            TapHandler {
+                                enabled: checkRow.hasDetails
+                                onTapped: checkRow.expanded = !checkRow.expanded
+                            }
+
+                            ColumnLayout {
+                                id: checkColumnLayout
 
                                 anchors.fill: parent
                                 anchors.leftMargin: 6
                                 anchors.rightMargin: 6
-                                spacing: 10
+                                spacing: 4
 
-                                // State: check mark / cross in a circle
-                                Rectangle {
-                                    Layout.alignment: Qt.AlignTop
-                                    Layout.topMargin: 2
-                                    implicitWidth: 18
-                                    implicitHeight: 18
-                                    radius: 9
-                                    color: Qt.rgba(checkRow.stateColor.r, checkRow.stateColor.g, checkRow.stateColor.b, 0.18)
-                                    border.width: 1.5
-                                    border.color: checkRow.stateColor
+                                RowLayout {
+                                    id: checkLayout
 
-                                    Text {
-                                        anchors.centerIn: parent
-                                        text: checkRow.modelData.ok ? "✓" : "✕"
-                                        font.pixelSize: 11
+                                    Layout.fillWidth: true
+                                    spacing: 10
+
+                                    // State: check mark / cross in a circle
+                                    Rectangle {
+                                        Layout.alignment: Qt.AlignTop
+                                        Layout.topMargin: 2
+                                        implicitWidth: 18
+                                        implicitHeight: 18
+                                        radius: 9
+                                        color: Qt.rgba(checkRow.stateColor.r, checkRow.stateColor.g, checkRow.stateColor.b, 0.18)
+                                        border.width: 1.5
+                                        border.color: checkRow.stateColor
+
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: checkRow.modelData.ok ? "✓" : "✕"
+                                            font.pixelSize: 11
+                                            font.bold: true
+                                            color: checkRow.stateColor
+                                        }
+                                    }
+
+                                    Label {
+                                        Layout.alignment: Qt.AlignTop
+                                        Layout.preferredWidth: 150
+                                        text: checkRow.modelData.name
                                         font.bold: true
-                                        color: checkRow.stateColor
+                                        color: checkHover.hovered ? theme.itemHoverText : theme.text
+                                    }
+
+                                    Label {
+                                        Layout.fillWidth: true
+                                        Layout.alignment: Qt.AlignTop
+                                        text: checkRow.modelData.ok ? checkRow.modelData.okText : checkRow.modelData.failText
+                                        color: checkRow.modelData.ok ? (checkHover.hovered ? theme.itemHoverText : theme.disabledText)
+                                                                     : (checkHover.hovered ? theme.itemHoverText : theme.text)
+                                        wrapMode: Text.Wrap
+                                    }
+
+                                    // Open / closed details
+                                    Label {
+                                        Layout.alignment: Qt.AlignTop
+                                        visible: checkRow.hasDetails
+                                        text: checkRow.expanded ? "▾" : "▸"
+                                        color: checkHover.hovered ? theme.itemHoverText : theme.disabledText
                                     }
                                 }
 
-                                Label {
-                                    Layout.alignment: Qt.AlignTop
-                                    Layout.preferredWidth: 150
-                                    text: checkRow.modelData.name
-                                    font.bold: true
-                                    color: checkHover.hovered ? theme.itemHoverText : theme.text
-                                }
+                                // Details: name, state mark, version / reason
+                                Repeater {
+                                    model: checkRow.expanded ? checkRow.modelData.details : []
 
-                                Label {
-                                    Layout.fillWidth: true
-                                    Layout.alignment: Qt.AlignTop
-                                    text: checkRow.modelData.ok ? checkRow.modelData.okText : checkRow.modelData.failText
-                                    color: checkRow.modelData.ok ? (checkHover.hovered ? theme.itemHoverText : theme.disabledText)
-                                                                 : (checkHover.hovered ? theme.itemHoverText : theme.text)
-                                    wrapMode: Text.Wrap
+                                    delegate: RowLayout {
+                                        id: detailRow
+
+                                        required property var modelData
+
+                                        Layout.fillWidth: true
+                                        Layout.leftMargin: 28
+                                        spacing: 10
+
+                                        readonly property color detailColor: modelData.state === 0 ? "#3fb950" : "#e5534b"
+
+                                        Text {
+                                            Layout.alignment: Qt.AlignTop
+                                            text: detailRow.modelData.state === 0 ? "✓" : "✕"
+                                            font.pixelSize: 11
+                                            font.bold: true
+                                            color: detailRow.detailColor
+                                        }
+
+                                        Label {
+                                            Layout.alignment: Qt.AlignTop
+                                            Layout.preferredWidth: 132
+                                            text: detailRow.modelData.name
+                                            elide: Text.ElideRight
+                                            color: checkHover.hovered ? theme.itemHoverText : theme.text
+                                        }
+
+                                        Label {
+                                            Layout.fillWidth: true
+                                            Layout.alignment: Qt.AlignTop
+                                            text: detailRow.modelData.text
+                                            color: detailRow.modelData.state === 0 ? (checkHover.hovered ? theme.itemHoverText : theme.disabledText)
+                                                                                   : (checkHover.hovered ? theme.itemHoverText : theme.text)
+                                            wrapMode: Text.Wrap
+                                        }
+                                    }
                                 }
                             }
                         }
