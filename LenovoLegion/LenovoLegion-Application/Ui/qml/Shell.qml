@@ -57,9 +57,9 @@ Control {
                 return
 
             if (notification.special_key === "CAMERAON")
-                hardwareNotifications.notify("Camera", "Camera shutter is open", "info")
+                hardwareNotifications.notify("Camera", "Camera shutter is open", "info", "camera-shutter")
             else if (notification.special_key === "CAMERAOFF")
-                hardwareNotifications.notify("Camera", "Camera shutter is closed", "info")
+                hardwareNotifications.notify("Camera", "Camera shutter is closed", "info", "camera-shutter")
         }
     }
 

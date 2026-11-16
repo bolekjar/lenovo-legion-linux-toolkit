@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0
 // Notifications at the bottom right over the page: errors (failed requests of the groups, default) and information
 // (kind "info", e.g. "Copied"): icon, title, message, hidden after timeout (errors) / infoTimeout ms or by the close
-// button; the same message again only restarts its time
+// button; the same message again only restarts its time. A notification of a state (key, e.g. the camera shutter)
+// replaces the previous one of the same key: always a new notification of the current state.
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -12,17 +13,21 @@ Item {
     property int timeout: 10000
     property int infoTimeout: 3000
 
-    function notify(title, message, kind) {
+    function notify(title, message, kind, key) {
         const info = kind === "info"
+        const stateKey = key ?? ""
 
-        for (let i = 0; i < messages.count; ++i) {
-            if (messages.get(i).title === title && messages.get(i).message === message) {
+        for (let i = messages.count - 1; i >= 0; --i) {
+            if (stateKey.length > 0) {
+                if (messages.get(i).key === stateKey)
+                    messages.remove(i)
+            } else if (messages.get(i).title === title && messages.get(i).message === message) {
                 messages.setProperty(i, "stamp", Date.now())
                 return
             }
         }
 
-        messages.append({ title: title, message: message, info: info, stamp: Date.now() })
+        messages.append({ title: title, message: message, info: info, stamp: Date.now(), key: stateKey })
     }
 
     ListModel {
