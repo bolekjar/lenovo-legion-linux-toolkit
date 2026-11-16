@@ -63,6 +63,34 @@ Control {
         }
     }
 
+    // State of the RGB keyboard for the navigation (the same test as KeyboardPage: the module answers also without a
+    // keyboard, the brightness range is 0 then), only the brightness range is requested
+    DataSource {
+        id: keyboardState
+
+        dataType: "RGB_CONTROLLER"
+        request: ({ "request_flags": 0x020 })
+    }
+
+    // Navigation of a page without data: grayed with the reason in the tool tip (the same as the tabs of HomePage),
+    // without the connection the pages show the card "Not connected" instead
+    function pageAvailable(name) {
+        if (name !== "Keyboard" || !appState.connected)
+            return true
+
+        return keyboardState.available && keyboardState.value("britness.max", keyboardState.revision) > 0
+    }
+
+    function pageReason(name) {
+        if (name !== "Keyboard")
+            return ""
+
+        if (keyboardState.moduleError.length > 0)
+            return keyboardState.moduleError
+
+        return keyboardState.available ? "No supported RGB keyboard (USB 048d:c197, 048d:c9xx) was found" : keyboardState.lastError
+    }
+
     // Button of the navigation: icon and name, the current page with the light bar of the accent (like the view
     // switcher of the keyboard)
     component NavButton: AbstractButton {
@@ -70,6 +98,11 @@ Control {
 
         property string iconName
         property bool   current: false
+
+        // Page without data: grayed, but selectable (the page shows the reason), the reason in the tool tip
+        property bool   available: true
+        property string reason
+        readonly property bool grayed: !available && !current
 
         implicitHeight: 40
         implicitWidth: navRow.implicitWidth + 28
@@ -113,16 +146,23 @@ Control {
                     width: 18
                     height: 18
                     source: "qrc:/ui/icons/" + navButton.iconName + ".svg"
-                    color: navButton.current ? theme.accentHover : navButton.hovered ? theme.itemHoverText : theme.text
+                    color: navButton.current ? theme.accentHover : navButton.grayed ? theme.disabledText
+                         : navButton.hovered ? theme.itemHoverText : theme.text
                 }
 
                 Label {
                     anchors.verticalCenter: parent.verticalCenter
                     text: navButton.text
                     font.bold: navButton.current
-                    color: navButton.hovered && !navButton.current ? theme.itemHoverText : theme.text
+                    color: navButton.grayed ? theme.disabledText : navButton.hovered && !navButton.current ? theme.itemHoverText : theme.text
                 }
             }
+        }
+
+        ThemedToolTip {
+            visible: navButton.hovered && !navButton.available && navButton.reason.length > 0
+            delay: 500
+            text: navButton.reason
         }
     }
 
@@ -228,6 +268,8 @@ Control {
                         text: modelData.name
                         iconName: modelData.icon
                         current: shell.current.name === modelData.name
+                        available: shell.pageAvailable(modelData.name)
+                        reason: shell.pageReason(modelData.name)
                         onClicked: shell.currentPage = shell.pages.findIndex(page => page.name === modelData.name)
                     }
                 }
@@ -245,6 +287,8 @@ Control {
                         text: modelData.name
                         iconName: modelData.icon
                         current: shell.current.name === modelData.name
+                        available: shell.pageAvailable(modelData.name)
+                        reason: shell.pageReason(modelData.name)
                         onClicked: shell.currentPage = shell.pages.findIndex(page => page.name === modelData.name)
                     }
                 }

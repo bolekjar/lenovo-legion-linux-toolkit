@@ -39,16 +39,13 @@ SettingsPage {
 
     readonly property bool hasDevice: rgb.revision >= 0 && rgb.value("britness.max", rgb.revision) > 0
 
+    // The module answers also without a keyboard: the page is not available the same as without the module
+    contentAvailable: !rgb.available || page.hasDevice
+    contentReason: "No supported RGB keyboard (USB 048d:c197, 048d:c9xx) was found"
+
     function send(flags, values) {
         const command = Object.assign({ "set_request_flags": flags }, values)
         rgb.sendCommand(command)
-    }
-
-    Label {
-        Layout.fillWidth: true
-        visible: rgb.available && !page.hasDevice
-        text: "No RGB keyboard controller found"
-        color: theme.disabledText
     }
 
     // Keyboard with the current colors of the LEDs over the whole width

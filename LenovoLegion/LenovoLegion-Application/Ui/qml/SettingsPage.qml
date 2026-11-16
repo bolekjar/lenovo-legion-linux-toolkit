@@ -25,10 +25,15 @@ ScrollView {
 
     default property alias content: column.data
 
+    // Content of the page not available although its data sources answer (e.g. the RGB module without a keyboard):
+    // the page is shown the same as without data
+    property bool   contentAvailable: true
+    property string contentReason: ""
+
     // State of the data sources of the page (tab of the page): without data the page is shown disabled with the reason
-    readonly property bool   available: sources.available
+    readonly property bool   available: sources.available && contentAvailable
     readonly property string platform:  sources.platform
-    readonly property string reason:    sources.reason
+    readonly property string reason:    !sources.available ? sources.reason : contentReason
     readonly property string description: sources.description
 
     // "page" inside PageSources would be its own property
