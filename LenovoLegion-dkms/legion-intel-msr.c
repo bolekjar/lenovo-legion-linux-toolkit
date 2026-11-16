@@ -14,6 +14,7 @@
 #include <linux/bitops.h>
 #include <linux/delay.h>
 #include <linux/kernel.h>
+#include <linux/module.h>
 #include <linux/version.h>
 
 /*
@@ -29,6 +30,16 @@
 #define MSR_OC_MAILBOX_POLLS 100 /* 10..20 us each */
 
 #define MSR_OC_MAILBOX_CPU 0
+
+/*
+ * Status of a finished command: bits [39:32] (evaluated, logged only for now)
+ */
+#define MSR_OC_MAILBOX_STATUS(value) ((u8)(((value) >> 32) & 0xFF))
+
+static bool allow_overvolt;
+module_param(allow_overvolt, bool, 0444);
+MODULE_PARM_DESC(allow_overvolt,
+		 "Allow positive voltage offsets (overvolt) up to +150 mV (default: undervolt only)");
 
 /*
  * Offset in uV to the format of the mailbox: 11-bit signed integer in 1/1024 V units (two's complement, truncated
@@ -108,6 +119,25 @@ static int mailbox_wait_ready(u64 *value)
 }
 
 /*
+ * Status of the finished commands (bits [39:32]): logged when it changes, to find out the codes of the CPUs
+ * (e.g. the OC lock) before they are used for errors; the callers hold the lock
+ */
+static void log_status(const int plane, const u8 command, const u64 value)
+{
+	static int last_status[2] = { -1, -1 };
+	const int index = command == MSR_OC_MAILBOX_CMD_WRITE_OFFSET;
+	const u8 status = MSR_OC_MAILBOX_STATUS(value);
+
+	if (last_status[index] == status)
+		return;
+
+	last_status[index] = status;
+
+	pr_info("legion-intel-msr: status of the %s command (plane %d): %#x\n",
+		index ? "write" : "read", plane, status);
+}
+
+/*
  * One command: the previous command must be finished (one command at a time), the result is valid when the
  * mailbox clears the busy bit
  */
@@ -126,7 +156,13 @@ static int mailbox_command(const int plane, const u8 command,
 	if (err)
 		return err;
 
-	return mailbox_wait_ready(value);
+	err = mailbox_wait_ready(value);
+	if (err)
+		return err;
+
+	log_status(plane, command, *value);
+
+	return 0;
 }
 
 /*
@@ -146,7 +182,8 @@ static void read_voltage_limits(struct legion_intel_msr_private *priv)
 {
 	for (int i = 0; i < LEGION_INTEL_MSR_PLANES; i++) {
 		priv->plane_limits[i].min_uv = -LEGION_INTEL_MSR_MAX_UNDERVOLT_UV;
-		priv->plane_limits[i].max_uv = LEGION_INTEL_MSR_MAX_OVERVOLT_UV;
+		priv->plane_limits[i].max_uv =
+			allow_overvolt ? LEGION_INTEL_MSR_MAX_OVERVOLT_UV : 0;
 		priv->plane_limits[i].supported = true;
 	}
 
@@ -253,7 +290,67 @@ int legion_intel_msr_write_offset(struct legion_intel_msr_private *priv,
 		return -EIO;
 	}
 
+	priv->written[plane] = true;
+	priv->written_units[plane] = offset_encoded & 0x7FF;
+
 	return 0;
+}
+
+/**
+ * legion_intel_msr_restore_offset() - Write the offset of a plane again when it was lost
+ * @priv: State of the mailbox.
+ * @plane: The plane.
+ * @offset_uv: The restored offset in uV.
+ *
+ * After a resume: some CPUs / firmware reset the offsets of the OC mailbox (others keep them). Only a plane written
+ * by the driver is checked, its offset is written again only when it differs, and verified.
+ *
+ * Context: Takes priv->lock.
+ * Return: 1 restored, 0 nothing to do, -EIO not applied or an error of the mailbox.
+ */
+int legion_intel_msr_restore_offset(struct legion_intel_msr_private *priv,
+				    enum legion_intel_msr_plane plane,
+				    int *offset_uv)
+{
+	u64 value = 0;
+	u32 units;
+	int err;
+
+	if (plane < 0 || plane >= LEGION_INTEL_MSR_PLANES)
+		return -EINVAL;
+
+	guard(mutex)(&priv->lock);
+
+	if (!priv->written[plane] || !priv->plane_limits[plane].supported)
+		return 0;
+
+	units = priv->written_units[plane];
+
+	err = mailbox_command(plane, MSR_OC_MAILBOX_CMD_READ_OFFSET, 0, &value);
+	if (err)
+		return err;
+
+	pr_debug("legion-intel-msr: resume: plane %d written %#x, mailbox %#llx\n",
+		 plane, units, value);
+
+	if (((u32)(value >> 21) & 0x7FF) == units)
+		return 0;
+
+	err = mailbox_command(plane, MSR_OC_MAILBOX_CMD_WRITE_OFFSET, units,
+			      &value);
+	if (err)
+		return err;
+
+	err = mailbox_command(plane, MSR_OC_MAILBOX_CMD_READ_OFFSET, 0, &value);
+	if (err)
+		return err;
+
+	if (((u32)(value >> 21) & 0x7FF) != units)
+		return -EIO;
+
+	*offset_uv = msr_to_uv(units << 21);
+
+	return 1;
 }
 
 /**

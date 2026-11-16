@@ -9,6 +9,7 @@
 #define LEGION_INTEL_MSR_H_
 
 #include <linux/mutex.h>
+#include <linux/types.h>
 
 /*
  * Voltage planes of the OC mailbox (MSR 0x150)
@@ -23,8 +24,8 @@ enum legion_intel_msr_plane {
 };
 
 /*
- * Limits of the voltage offsets in uV: conservative +-150 mV for all Intel generations (12th gen to Core Ultra),
- * the BIOS allows up to +-300 mV
+ * Limits of the voltage offsets in uV: conservative -150 mV for all Intel generations (12th gen to Core Ultra), the
+ * BIOS allows up to +-300 mV; an overvolt (up to +150 mV) only with the module parameter allow_overvolt
  */
 #define LEGION_INTEL_MSR_MAX_UNDERVOLT_UV 150000
 #define LEGION_INTEL_MSR_MAX_OVERVOLT_UV 150000
@@ -49,10 +50,14 @@ struct legion_intel_msr_plane_limits {
 /**
  * struct legion_intel_msr_private - State of the OC mailbox
  * @plane_limits: Limits of the planes.
+ * @written: The offset of the plane was written by the driver (restored after a resume).
+ * @written_units: The written offset (1/1024 V units, 11 bits as in the mailbox).
  * @lock: Serializes the commands of the mailbox (one command at a time).
  */
 struct legion_intel_msr_private {
 	struct legion_intel_msr_plane_limits plane_limits[LEGION_INTEL_MSR_PLANES];
+	bool written[LEGION_INTEL_MSR_PLANES];
+	u32 written_units[LEGION_INTEL_MSR_PLANES];
 	struct mutex lock;
 };
 
@@ -62,6 +67,9 @@ int legion_intel_msr_write_offset(struct legion_intel_msr_private *priv,
 int legion_intel_msr_read_offset(struct legion_intel_msr_private *priv,
 				 enum legion_intel_msr_plane plane,
 				 int *offset_uv);
+int legion_intel_msr_restore_offset(struct legion_intel_msr_private *priv,
+				    enum legion_intel_msr_plane plane,
+				    int *offset_uv);
 
 int legion_intel_msr_init(struct legion_intel_msr_private *priv);
 void legion_intel_msr_exit(struct legion_intel_msr_private *priv);

@@ -12,6 +12,8 @@
  * lenovo_legion): /sys/class/legion-intel-msr/legion-intel-msr-0/attributes/<plane>_offset/{current_value,
  * default_value, min_value, max_value, scalar_increment, supported, type, display_name}, values in uV; a write sends
  * a uevent of the class device (EVENT_TYPE: legion_events_type of the plane, EVENT_VALUE: offset in uV).
+ *
+ * After a resume the offsets written by the driver are checked and written again when the CPU / firmware reset them.
  */
 
 #include "legion-kernel-version.h"
@@ -22,6 +24,7 @@
 #include <linux/device.h>
 #include <linux/idr.h>
 #include <linux/module.h>
+#include <linux/suspend.h>
 #include <linux/slab.h>
 #include <linux/sysfs.h>
 
@@ -217,6 +220,55 @@ static const struct attribute_group legion_intel_msr_groups[] = {
 	{ .name = "analogio_offset", .attrs = legion_intel_msr_analogio_attrs },
 };
 
+/*
+ * Events of the planes (index: enum legion_intel_msr_plane)
+ */
+static const enum legion_events_type legion_intel_msr_events[LEGION_INTEL_MSR_PLANES] = {
+	[LEGION_INTEL_MSR_CPU] = LEGION_INTEL_MSR_PLANE_CPU,
+	[LEGION_INTEL_MSR_GPU] = LEGION_INTEL_MSR_PLANE_GPU,
+	[LEGION_INTEL_MSR_CACHE] = LEGION_INTEL_MSR_PLANE_CACHE,
+	[LEGION_INTEL_MSR_UNCORE] = LEGION_INTEL_MSR_PLANE_UNCORE,
+	[LEGION_INTEL_MSR_ANALOGIO] = LEGION_INTEL_MSR_PLANE_ANALOGIO,
+};
+
+/*
+ * After a resume (suspend to RAM, hibernation): the offsets written by the driver are written again when they were
+ * reset, user space gets the uevent of a restored offset
+ */
+static int legion_intel_msr_pm_notify(struct notifier_block *nb,
+				      unsigned long action, void *data)
+{
+	struct legion_intel_msr_data *msr_data =
+		container_of(nb, struct legion_intel_msr_data, pm_notifier);
+	int offset_uv = 0;
+	int ret;
+
+	if (action != PM_POST_SUSPEND && action != PM_POST_HIBERNATION &&
+	    action != PM_POST_RESTORE)
+		return NOTIFY_DONE;
+
+	dev_dbg(msr_data->fw_attr_dev, "checking the offsets after the resume\n");
+
+	for (int plane = 0; plane < LEGION_INTEL_MSR_PLANES; plane++) {
+		ret = legion_intel_msr_restore_offset(&msr_data->msr, plane,
+						      &offset_uv);
+		if (ret < 0) {
+			dev_warn(msr_data->fw_attr_dev,
+				 "offset of plane %d was reset by the resume and can not be restored: %d\n",
+				 plane, ret);
+		} else if (ret > 0) {
+			dev_info(msr_data->fw_attr_dev,
+				 "offset %d uV of plane %d restored after the resume\n",
+				 offset_uv, plane);
+			legion_intel_msr_send_event(msr_data,
+						    legion_intel_msr_events[plane],
+						    offset_uv);
+		}
+	}
+
+	return NOTIFY_OK;
+}
+
 static const struct class legion_intel_msr_class = {
 	.name = "legion-intel-msr",
 };
@@ -316,9 +368,17 @@ static int __init legion_intel_msr_module_init(void)
 	if (err)
 		goto err_unregister_class;
 
+	data->pm_notifier.notifier_call = legion_intel_msr_pm_notify;
+	err = register_pm_notifier(&data->pm_notifier);
+	if (err)
+		goto err_fw_attr_remove;
+
 	legion_intel_msr_data = data;
 
 	return 0;
+
+err_fw_attr_remove:
+	legion_intel_msr_fw_attr_remove(data);
 
 err_unregister_class:
 	class_unregister(&legion_intel_msr_class);
@@ -333,6 +393,7 @@ static void __exit legion_intel_msr_module_exit(void)
 {
 	struct legion_intel_msr_data *data = legion_intel_msr_data;
 
+	unregister_pm_notifier(&data->pm_notifier);
 	legion_intel_msr_fw_attr_remove(data);
 	class_unregister(&legion_intel_msr_class);
 	legion_intel_msr_exit(&data->msr);
