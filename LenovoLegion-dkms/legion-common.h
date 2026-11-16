@@ -56,8 +56,13 @@ enum legion_events_type {
 	LENOVO_WMI_FAN_CURVE = 2000,
 
 	/*
-	 * 2001 - 2005: Intel MSR events of the separate module legion_intel_msr (legion-intel-msr-sysfs.h)
+	 * 2001 - 2005: voltage offsets of the separate module legion_intel_msr (EVENT_VALUE: offset in uV)
 	 */
+	LEGION_INTEL_MSR_PLANE_CPU = 2001,
+	LEGION_INTEL_MSR_PLANE_CACHE = 2002,
+	LEGION_INTEL_MSR_PLANE_GPU = 2003,
+	LEGION_INTEL_MSR_PLANE_UNCORE = 2004,
+	LEGION_INTEL_MSR_PLANE_ANALOGIO = 2005,
 
 	/*
 	 * Reserve 3000 - 3999 for the ACPI VPC2004 features (legion-acpi-vpc.c, order of its features)

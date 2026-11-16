@@ -8,7 +8,8 @@
 #pragma once
 
 /*
- * Daemon module IntelMSR - CPU voltage offsets (kernel module lenovo_legion, class legion-intel-msr).
+ * Daemon module IntelMSR - CPU voltage offsets (kernel module legion_intel_msr, class legion-intel-msr,
+ * /sys/class/legion-intel-msr/legion-intel-msr-0/attributes/<plane>_offset/).
  * Pilot module, statically linked into the daemon (see LenovoLegion-Daemon/ModulesDesign.md).
  */
 

@@ -3,7 +3,8 @@
 use std::fmt::Display;
 use crate::utils::*;
 
-static SYSFS_INTEL_MSR: &str = "/sys/class/legion-intel-msr/intel-msr-0/";
+/// Planes in attributes/<plane>_offset/{current_value, min_value, max_value, supported, ...} (values in uV)
+static SYSFS_INTEL_MSR: &str = "/sys/class/legion-intel-msr/legion-intel-msr-0/attributes/";
 
 #[derive(Debug,Default,Clone)]
 pub struct Attribute  {
@@ -38,16 +39,21 @@ impl Attribute {
         Ok(attributes)
     }
 
+    fn path(&self, file: &str) -> String {
+        format!("{}{}_offset/{}", SYSFS_INTEL_MSR, self.name, file)
+    }
+
     pub fn refresh (&mut self) -> Result<&Attribute, std::io::Error> {
-        self.offset = read_value_as_type::<i32>(format!("{}{}",SYSFS_INTEL_MSR,self.name.clone() + "_offset"))?;
-        self.supported = read_value_as_type::<u32>(format!("{}{}",SYSFS_INTEL_MSR,self.name.clone() + "_offset_ctrl_supported"))? != 0;
-        self.max_overvoltage = read_value_as_type(format!("{}{}",SYSFS_INTEL_MSR,self.name.clone() + "_max_overvolt"))?;
-        self.max_undervoltage = read_value_as_type(format!("{}{}",SYSFS_INTEL_MSR,self.name.clone() + "_max_undervolt"))?;
+        self.supported = read_value_as_type::<u32>(self.path("supported"))? != 0;
+        // min_value is the maximal undervolt (negative), max_value the maximal overvolt
+        self.max_overvoltage = read_value_as_type::<i32>(self.path("max_value"))?.max(0) as u32;
+        self.max_undervoltage = (-read_value_as_type::<i32>(self.path("min_value"))?).max(0) as u32;
+        self.offset = read_value_as_type::<i32>(self.path("current_value"))?;
         Ok(self)
     }
 
     pub fn set_offset(&self, new_offset: i32) -> Result<(),std::io::Error> {
-        write_value_as_type::<i32>(format!("{}{}",SYSFS_INTEL_MSR,self.name.clone() + "_offset"), new_offset)?;
+        write_value_as_type::<i32>(self.path("current_value"), new_offset)?;
         Ok(())
     }
 }

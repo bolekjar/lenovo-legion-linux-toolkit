@@ -12,25 +12,20 @@
 #include "legion-intel-msr.h"
 
 #include <linux/device.h>
+#include <linux/kobject.h>
 
-/*
- * Events of the changed offsets (EVENT_TYPE of the uevent), the same values as before the module was split
- * from lenovo_legion (range 2001 - 2005 of the legion events)
- */
-enum legion_intel_msr_events_type {
-	LENOVO_INTEL_MSR_PLANE_CPU = 2001,
-	LENOVO_INTEL_MSR_PLANE_CACHE = 2002,
-	LENOVO_INTEL_MSR_PLANE_GPU = 2003,
-	LENOVO_INTEL_MSR_PLANE_UNCORE = 2004,
-	LENOVO_INTEL_MSR_PLANE_ANALOGIO = 2005
-};
-
-/*
- * Data of the module (one instance, independent of the notebook)
+/**
+ * struct legion_intel_msr_data - Data of the module (one device, independent of the notebook)
+ * @msr: State of the OC mailbox.
+ * @fw_attr_dev: Device /sys/class/legion-intel-msr/legion-intel-msr-<id>.
+ * @fw_attr_kset: Directory attributes of the device.
+ * @ida_id: Number of the device.
  */
 struct legion_intel_msr_data {
-	struct legion_intel_msr_private intel_msr_private;
-	struct device *dev;
+	struct legion_intel_msr_private msr;
+	struct device *fw_attr_dev;
+	struct kset *fw_attr_kset;
+	int ida_id;
 };
 
 #endif /* LEGION_INTEL_MSR_SYSFS_H_ */

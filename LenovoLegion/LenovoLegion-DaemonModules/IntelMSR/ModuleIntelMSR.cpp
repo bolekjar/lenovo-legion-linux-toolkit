@@ -13,6 +13,7 @@
 #include <MessageRegistry.pb.h>
 #include <Notification.pb.h>
 
+#include <algorithm>
 #include <array>
 
 namespace LenovoLegionDaemon::Modules::IntelMSR {
@@ -25,7 +26,7 @@ namespace {
 /*
  * Device and kernel module
  */
-constexpr const char* SYSFS_PATH        = "/sys/class/legion-intel-msr/intel-msr-0/";
+constexpr const char* SYSFS_PATH        = "/sys/class/legion-intel-msr/legion-intel-msr-0/attributes/";
 constexpr const char* SUBSYSTEM         = "legion-intel-msr";
 constexpr const char* KERNEL_MODULE     = "legion_intel_msr";   // separate module, independent of the Lenovo driver
 
@@ -36,7 +37,7 @@ constexpr const char* MODULE_SUBSYSTEM  = "module";
  */
 struct Plane
 {
-    const char* m_name;                                                         // prefix of sysfs attributes and settings keys
+    const char* m_name;                                                         // plane: sysfs <name>_offset, settings key <name>_offset
     bool                                (CpuIntelMSR::*m_has)()      const;
     const CpuIntelMSR::VoltageSettings& (CpuIntelMSR::*m_settings)() const;
     CpuIntelMSR::VoltageSettings*       (CpuIntelMSR::*m_mutable)();
@@ -247,9 +248,12 @@ public:
 
 private:
 
-    std::filesystem::path attribute(const Plane& plane,const char* suffix) const
+    /*
+     * Attribute of the plane: attributes/<plane>_offset/<file> (the same structure as the firmware attributes)
+     */
+    std::filesystem::path attribute(const Plane& plane,const char* file) const
     {
-        return m_sysfsPath / (std::string(plane.m_name) + suffix);
+        return m_sysfsPath / (std::string(plane.m_name) + "_offset") / file;
     }
 
     void detect()
@@ -276,10 +280,11 @@ private:
         {
             CpuIntelMSR::VoltageSettings* settings = (message.*plane.m_mutable)();
 
-            settings->set_max_overvolt(SysFs::read(attribute(plane,"_max_overvolt")).toUInt());
-            settings->set_max_undervolt(SysFs::read(attribute(plane,"_max_undervolt")).toUInt());
-            settings->set_offset(SysFs::read(attribute(plane,"_offset")).toInt());
-            settings->set_supported(SysFs::read(attribute(plane,"_offset_ctrl_supported")).toUShort() == 1);
+            // limits in uV: min_value is the maximal undervolt (negative), max_value the maximal overvolt
+            settings->set_max_overvolt(static_cast<quint32>(std::max(0,SysFs::read(attribute(plane,"max_value")).toInt())));
+            settings->set_max_undervolt(static_cast<quint32>(std::max(0,-SysFs::read(attribute(plane,"min_value")).toInt())));
+            settings->set_offset(SysFs::read(attribute(plane,"current_value")).toInt());
+            settings->set_supported(SysFs::read(attribute(plane,"supported")).toUShort() == 1);
         }
 
         return message;
@@ -376,7 +381,7 @@ private:
 
             QString error;
 
-            if(!SysFs::write(attribute(plane,"_offset"),(message.*plane.m_settings)().offset(),&error))
+            if(!SysFs::write(attribute(plane,"current_value"),(message.*plane.m_settings)().offset(),&error))
             {
                 const qint32 offset = (message.*plane.m_settings)().offset();
 

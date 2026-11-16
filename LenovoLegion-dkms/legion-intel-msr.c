@@ -18,7 +18,7 @@
 
 /*
  * OC mailbox (MSR 0x150), common for the package: every command is done on CPU 0 from the process context (an IPI
- * per MSR access, no busy wait with the interrupts disabled), serialized by intel_msr_private->lock.
+ * per MSR access, no busy wait with the interrupts disabled), serialized by priv->lock.
  * [63] busy (set to start a command, cleared when done), [47:40] plane, [39:32] command,
  * [31:21] voltage offset (11-bit signed, 1/1024 V)
  */
@@ -31,15 +31,13 @@
 #define MSR_OC_MAILBOX_CPU 0
 
 /*
- * Convert microvolts offset to MSR format
- * Format: 11-bit signed integer in 1/1024 V units (two's complement), written to bits [31:21] of the mailbox
+ * Offset in uV to the format of the mailbox: 11-bit signed integer in 1/1024 V units (two's complement, truncated
+ * toward zero), written to bits [31:21]
  */
 static u32 uv_to_msr(int uv)
 {
-	// Convert uV to 1/1024V units (1 mV = 1.024 units), truncated toward zero
 	const s32 offset_units = (uv * 1024) / 1000000;
 
-	// Two's complement, 11 bits
 	return (u32)offset_units & 0x7FF;
 }
 
@@ -56,22 +54,18 @@ static int msr_to_uv(const u32 msr_value)
 }
 
 /*
- * Validate voltage offset against per-plane limits
+ * Offset within the limits of the plane
  */
-static ssize_t
-validate_offset(const struct legion_intel_msr_private *intel_msr_private,
-		const int plane, const int offset_uv)
+static int validate_offset(const struct legion_intel_msr_private *priv,
+			   enum legion_intel_msr_plane plane, int offset_uv)
 {
-	if (plane < 0 || plane >= NUM_VOLTAGE_PLANES)
+	if (plane < 0 || plane >= LEGION_INTEL_MSR_PLANES)
 		return -EINVAL;
 
-	if (offset_uv <
-	    -intel_msr_private->plane_limits[plane].max_undervolt_uv) {
+	if (offset_uv < priv->plane_limits[plane].min_uv ||
+	    offset_uv > priv->plane_limits[plane].max_uv)
 		return -EINVAL;
-	}
 
-	if (offset_uv > intel_msr_private->plane_limits[plane].max_overvolt_uv)
-		return -EINVAL;
 	return 0;
 }
 
@@ -148,25 +142,24 @@ static const struct x86_cpu_id legion_intel_msr_no_uncore_write[] = {
 	{}
 };
 
-static void
-read_voltage_limits(struct legion_intel_msr_private *intel_msr_private)
+static void read_voltage_limits(struct legion_intel_msr_private *priv)
 {
-	for (int i = 0; i < NUM_VOLTAGE_PLANES; i++)
-		intel_msr_private->plane_limits[i].write_supported = 1;
+	for (int i = 0; i < LEGION_INTEL_MSR_PLANES; i++) {
+		priv->plane_limits[i].min_uv = -LEGION_INTEL_MSR_MAX_UNDERVOLT_UV;
+		priv->plane_limits[i].max_uv = LEGION_INTEL_MSR_MAX_OVERVOLT_UV;
+		priv->plane_limits[i].supported = true;
+	}
 
 	if (x86_match_cpu(legion_intel_msr_no_uncore_write)) {
-		intel_msr_private->plane_limits[PLANE_UNCORE].write_supported =
-			0;
-		intel_msr_private->plane_limits[PLANE_ANALOGIO].write_supported =
-			0;
+		priv->plane_limits[LEGION_INTEL_MSR_UNCORE].supported = false;
+		priv->plane_limits[LEGION_INTEL_MSR_ANALOGIO].supported = false;
 	}
 }
 
 /*
  * The OC mailbox (MSR 0x150) is available on Intel CPUs only, it does not exist when its read faults
  */
-static int legion_intel_msr_check_msr_availability(
-	struct legion_intel_msr_private *intel_msr_private)
+static int check_msr_availability(void)
 {
 	u64 value = 0;
 
@@ -177,23 +170,29 @@ static int legion_intel_msr_check_msr_availability(
 	if (mailbox_read(&value))
 		return -ENODEV;
 
-	read_voltage_limits(intel_msr_private);
-
 	return 0;
 }
 
-ssize_t legion_intel_msr_offset_read_show(
-	struct legion_intel_msr_private *intel_msr_private, const int plane,
-	int *offset_uv)
+/**
+ * legion_intel_msr_read_offset() - Read the voltage offset of a plane
+ * @priv: State of the mailbox.
+ * @plane: The plane.
+ * @offset_uv: The offset in uV.
+ *
+ * Context: Takes priv->lock.
+ * Return: 0 or an error of the mailbox.
+ */
+int legion_intel_msr_read_offset(struct legion_intel_msr_private *priv,
+				 enum legion_intel_msr_plane plane,
+				 int *offset_uv)
 {
 	u64 value = 0;
 	int err;
 
-	if (plane < 0 || plane >= NUM_VOLTAGE_PLANES)
+	if (plane < 0 || plane >= LEGION_INTEL_MSR_PLANES)
 		return -EINVAL;
 
-	guard(mutex)
-		(&intel_msr_private->lock);
+	guard(mutex)(&priv->lock);
 
 	err = mailbox_command(plane, MSR_OC_MAILBOX_CMD_READ_OFFSET, 0, &value);
 	if (err)
@@ -204,29 +203,37 @@ ssize_t legion_intel_msr_offset_read_show(
 	return 0;
 }
 
-/*
- * Offset of the plane is common for the whole package (the same as intel-undervolt): one command on CPU 0.
+/**
+ * legion_intel_msr_write_offset() - Write the voltage offset of a plane and verify it
+ * @priv: State of the mailbox.
+ * @plane: The plane.
+ * @offset_uv: The offset in uV.
+ *
+ * The offset of the plane is common for the whole package (the same as intel-undervolt): one command on CPU 0.
  * The mailbox accepts the command also when the offset is locked (BIOS undervolt protection, OC lock) and
- * ignores it silently: the offset is read back, a different value is an error (-EIO).
+ * ignores it silently: the offset is read back, a different value is an error.
+ *
+ * Context: Takes priv->lock.
+ * Return: 0, -EINVAL out of the limits, -EOPNOTSUPP for a plane which can not be written, -EIO for an offset
+ * ignored by the CPU or an error of the mailbox.
  */
-ssize_t legion_intel_msr_apply_voltage_offset(
-	struct legion_intel_msr_private *intel_msr_private, const int plane,
-	const int offset_uv)
+int legion_intel_msr_write_offset(struct legion_intel_msr_private *priv,
+				  enum legion_intel_msr_plane plane,
+				  int offset_uv)
 {
 	const u32 offset_encoded = uv_to_msr(offset_uv);
 	u64 value = 0;
 	u32 read_back;
 	int err;
 
-	guard(mutex)
-		(&intel_msr_private->lock);
+	guard(mutex)(&priv->lock);
 
 	/* Validate plane first, it is used as index below */
-	err = validate_offset(intel_msr_private, plane, offset_uv);
+	err = validate_offset(priv, plane, offset_uv);
 	if (err)
 		return err;
 
-	if (!intel_msr_private->plane_limits[plane].write_supported)
+	if (!priv->plane_limits[plane].supported)
 		return -EOPNOTSUPP;
 
 	err = mailbox_command(plane, MSR_OC_MAILBOX_CMD_WRITE_OFFSET,
@@ -249,22 +256,28 @@ ssize_t legion_intel_msr_apply_voltage_offset(
 	return 0;
 }
 
-int legion_intel_msr_init(struct legion_intel_msr_private *intel_msr_private)
+/**
+ * legion_intel_msr_init() - Check the OC mailbox and set the limits of the planes
+ * @priv: State of the mailbox.
+ *
+ * Return: 0 or -ENODEV without the OC mailbox.
+ */
+int legion_intel_msr_init(struct legion_intel_msr_private *priv)
 {
-	mutex_init(&intel_msr_private->lock);
+	int err;
 
-	/* Initialize with defaults first to ensure safe reads if init fails */
-	for (int i = 0; i < NUM_VOLTAGE_PLANES; i++) {
-		intel_msr_private->plane_limits[i].max_undervolt_uv =
-			DEFAULT_MAX_UNDERVOLT_UV;
-		intel_msr_private->plane_limits[i].max_overvolt_uv =
-			DEFAULT_MAX_OVERVOLT_UV;
-	}
+	mutex_init(&priv->lock);
 
-	return legion_intel_msr_check_msr_availability(intel_msr_private);
+	read_voltage_limits(priv);
+
+	err = check_msr_availability();
+	if (err)
+		mutex_destroy(&priv->lock);
+
+	return err;
 }
 
-void legion_intel_msr_exit(struct legion_intel_msr_private *intel_msr_private)
+void legion_intel_msr_exit(struct legion_intel_msr_private *priv)
 {
-	mutex_destroy(&intel_msr_private->lock);
+	mutex_destroy(&priv->lock);
 }

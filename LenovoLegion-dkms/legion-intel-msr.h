@@ -10,39 +10,60 @@
 
 #include <linux/mutex.h>
 
-// Voltage plane offsets within MSR 0x150
-#define PLANE_CPU 0
-#define PLANE_GPU 1
-#define PLANE_CACHE 2
-#define PLANE_UNCORE 3
-#define PLANE_ANALOGIO 4
-#define NUM_VOLTAGE_PLANES 5
-
-// Default voltage offset limits in uV based on Intel documented specifications
-// Conservative limits: ±150mV for safety (Intel allows up to ±300mV in BIOS)
-// These safe values work across all Intel generations (12th gen through Core Ultra)
-#define DEFAULT_MAX_UNDERVOLT_UV 150000 // 150mV undervolt
-#define DEFAULT_MAX_OVERVOLT_UV 150000 // 150mV overvolt
-
-struct legion_intel_voltage_limits {
-	int max_undervolt_uv;
-	int max_overvolt_uv;
-	int write_supported; // Whether this plane supports voltage writes
+/*
+ * Voltage planes of the OC mailbox (MSR 0x150)
+ */
+enum legion_intel_msr_plane {
+	LEGION_INTEL_MSR_CPU = 0,
+	LEGION_INTEL_MSR_GPU = 1,
+	LEGION_INTEL_MSR_CACHE = 2,
+	LEGION_INTEL_MSR_UNCORE = 3,
+	LEGION_INTEL_MSR_ANALOGIO = 4,
+	LEGION_INTEL_MSR_PLANES
 };
 
+/*
+ * Limits of the voltage offsets in uV: conservative +-150 mV for all Intel generations (12th gen to Core Ultra),
+ * the BIOS allows up to +-300 mV
+ */
+#define LEGION_INTEL_MSR_MAX_UNDERVOLT_UV 150000
+#define LEGION_INTEL_MSR_MAX_OVERVOLT_UV 150000
+
+/*
+ * Step of the offset: 1/1024 V (977 uV)
+ */
+#define LEGION_INTEL_MSR_STEP_UV 977
+
+/**
+ * struct legion_intel_msr_plane_limits - Limits of a voltage plane
+ * @min_uv: Minimal offset in uV (maximal undervolt, negative).
+ * @max_uv: Maximal offset in uV (maximal overvolt).
+ * @supported: The offset of the plane can be written.
+ */
+struct legion_intel_msr_plane_limits {
+	int min_uv;
+	int max_uv;
+	bool supported;
+};
+
+/**
+ * struct legion_intel_msr_private - State of the OC mailbox
+ * @plane_limits: Limits of the planes.
+ * @lock: Serializes the commands of the mailbox (one command at a time).
+ */
 struct legion_intel_msr_private {
-	struct legion_intel_voltage_limits plane_limits[NUM_VOLTAGE_PLANES];
+	struct legion_intel_msr_plane_limits plane_limits[LEGION_INTEL_MSR_PLANES];
 	struct mutex lock;
 };
 
-ssize_t legion_intel_msr_apply_voltage_offset(
-	struct legion_intel_msr_private *intel_msr_private, int plane,
-	int offset_uv);
-ssize_t legion_intel_msr_offset_read_show(
-	struct legion_intel_msr_private *intel_msr_private, int plane,
-	int *offset_uv);
+int legion_intel_msr_write_offset(struct legion_intel_msr_private *priv,
+				  enum legion_intel_msr_plane plane,
+				  int offset_uv);
+int legion_intel_msr_read_offset(struct legion_intel_msr_private *priv,
+				 enum legion_intel_msr_plane plane,
+				 int *offset_uv);
 
-int legion_intel_msr_init(struct legion_intel_msr_private *intel_msr_private);
-void legion_intel_msr_exit(struct legion_intel_msr_private *intel_msr_private);
+int legion_intel_msr_init(struct legion_intel_msr_private *priv);
+void legion_intel_msr_exit(struct legion_intel_msr_private *priv);
 
 #endif /* LEGION_INTEL_MSR_H_ */
