@@ -17,7 +17,16 @@
 
 #include <hidapi.h>
 
+#include <set>
+#include <string>
+
 namespace LenovoLegionDaemon::Kit {
+
+/*
+ * HID collection of the Lenovo keyboard controllers (per-key and 4-zone, the same as OpenRGB)
+ */
+constexpr unsigned short LENOVO_USAGE_PAGE    = 0xFF89;
+constexpr unsigned short LENOVO_USAGE_PER_KEY = 0x07;
 
     DataProviderRGBController::DataProviderRGBController():DataProvider(dataType) {}
 
@@ -384,6 +393,11 @@ namespace LenovoLegionDaemon::Kit {
         | Loop through all available detectors.  If all required information matches,   |
         | run the detector                                                              |
         \*-----------------------------------------------------------------------------*/
+        /*
+         * Paths of the tried devices: no repeated requests to a device which does not answer them
+         */
+        std::set<std::string> triedPaths;
+
         for (auto &detector : hidDeviceDetectorsBlocks)
         {
             hid_device_info * hid_devices = hid_enumerate(detector.m_vid, 0);
@@ -402,22 +416,41 @@ namespace LenovoLegionDaemon::Kit {
                 try {
                     if (detector.compare(*current_hid_device)) {
 
-                        if(m_rgbController != nullptr)
+                        /*
+                         * hidapi with the usage page (Linux hidraw: one entry per top-level collection): only the per-key
+                         * collection 0xFF89:0x07 (the same as OpenRGB), e.g. 048d:c193 (0xFF89:0x08) is not opened.
+                         * Without the usage page (0, older hidapi) the length of the feature report decides.
+                         */
+                        if(current_hid_device->usage_page != 0 &&
+                           (current_hid_device->usage_page != LENOVO_USAGE_PAGE || current_hid_device->usage != LENOVO_USAGE_PER_KEY))
                         {
-                            LOG_W("RGB Controller already detected, skipping further detection attempts.");
-                            break;
+                            continue;
+                        }
+
+                        /*
+                         * Every device once (without the usage page all its collections have the same path)
+                         */
+                        if(current_hid_device->path != nullptr && !triedPaths.insert(current_hid_device->path).second)
+                        {
+                            continue;
                         }
 
                         m_rgbController.reset(detector.m_function(*current_hid_device,detector.m_name));
 
-                        LOG_T(QString("RGB Controller Detected: ").append(detector.m_name.c_str()));
+                        /*
+                         * The first usable keyboard is used, the other candidates are not tried
+                         */
+                        if(m_rgbController != nullptr)
+                        {
+                            LOG_D(QString::asprintf("RGB keyboard %04x:%04x (%s) is used",current_hid_device->vendor_id,current_hid_device->product_id,current_hid_device->path));
+                            return;
+                        }
                     }
                 } catch (const Exception& ex)
                 {
                     /*
-                     * Candidate not usable (not compatible, communication error, hid_enumerate returning a device twice):
-                     * the next candidate is tried, e.g. 048d:c193 (light bar, the same feature report as the keyboard
-                     * 048d:c197) is skipped (the same as Lenovo Legion Toolkit takes the first compatible candidate)
+                     * Candidate not usable (not compatible, communication error): the next candidate is tried (the same as
+                     * Lenovo Legion Toolkit takes the first compatible candidate)
                      */
                     LOG_W(QString::asprintf("RGB keyboard candidate %04x:%04x (%s) is not used: ",current_hid_device->vendor_id,current_hid_device->product_id,current_hid_device->path)
                           .append(ex.what()));

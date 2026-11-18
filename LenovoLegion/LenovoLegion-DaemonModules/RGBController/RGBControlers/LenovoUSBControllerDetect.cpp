@@ -192,8 +192,8 @@ RGBController * DetectLenovoLegionUSBControllersC197(const hid_device_info& info
 /*
  * Per-key keyboards by the ranges of Lenovo Legion Toolkit (Devices.GetKeyboardConfig): 048d:c9xx Legion 9 and older
  * generations (Gen 7 - 9), 048d:c1xx Legion 5 / Pro 5 / 7 / Pro 7 Gen 10 (c197, c195), 048d:c6xx Legion 5 / 7 Gen 11
- * and LOQ. Every candidate must have the per-key feature report (960 bytes) and answer the compatibility request,
- * other devices of the ranges (4-zone keyboards, e.g. the light bar 048d:c193) are skipped.
+ * and LOQ. Every candidate must be the HID collection 0xFF89:0x07, have the per-key feature report (960 bytes) and answer
+ * the compatibility request; other devices of the ranges (4-zone keyboards, 048d:c193 next to 048d:c197) are skipped.
  */
 REGISTER_HID_DETECTOR("Lenovo Laptop",   DetectLenovoLegionUSBControllersC9xx, ITE_VID, 0xC900, 0xFF00);
 REGISTER_HID_DETECTOR("Lenovo Laptop",   DetectLenovoLegionUSBControllersC197, ITE_VID, 0xC100, 0xFF00);
