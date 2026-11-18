@@ -415,13 +415,13 @@ namespace LenovoLegionDaemon::Kit {
                 } catch (const Exception& ex)
                 {
                     /*
-                     * Problem is that hid_enumerate itself is returning the same device twice in its linked list. This is a known issue with hidapi on Linux when:
-                     *   1. A device has been unplugged/replugged
-                     *   2. There's a kernel/udev issue creating duplicate entries
-                     *   3. The hidapi library has a bug
+                     * Candidate not usable (not compatible, communication error, hid_enumerate returning a device twice):
+                     * the next candidate is tried, e.g. 048d:c193 (light bar, the same feature report as the keyboard
+                     * 048d:c197) is skipped (the same as Lenovo Legion Toolkit takes the first compatible candidate)
                      */
-                    LOG_E(QString("Error during RGB Controller detection (").append(detector.m_name.c_str()).append("): ").append(ex.what()));
-                    break;
+                    LOG_W(QString::asprintf("RGB keyboard candidate %04x:%04x (%s) is not used: ",current_hid_device->vendor_id,current_hid_device->product_id,current_hid_device->path)
+                          .append(ex.what()));
+                    continue;
                 }
             }
         }

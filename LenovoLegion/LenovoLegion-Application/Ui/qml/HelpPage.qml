@@ -89,7 +89,7 @@ SettingsPage {
                                          : "Unknown, the daemon is not connected." },
         { name: "RGB keyboard", ok: page.keyboardFound, required: false,
           okText: "Keyboard found",
-          failText: page.daemonConnected ? page.failReason(rgbCheck, "No supported RGB keyboard (USB 048d:c197, 048d:c9xx) was found.")
+          failText: page.daemonConnected ? page.failReason(rgbCheck, "No supported per-key RGB keyboard (USB 048d:c1xx, c6xx, c9xx) was found (4-zone keyboards are not supported yet).")
                                          : "Unknown, the daemon is not connected." },
         { name: "Daemon modules", ok: modulesCheck.available && page.brokenModules.length === 0, required: false,
           // list of the modules after a click on the row

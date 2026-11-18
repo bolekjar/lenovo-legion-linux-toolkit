@@ -88,7 +88,7 @@ Control {
         if (keyboardState.moduleError.length > 0)
             return keyboardState.moduleError
 
-        return keyboardState.available ? "No supported RGB keyboard (USB 048d:c197, 048d:c9xx) was found" : keyboardState.lastError
+        return keyboardState.available ? "No supported per-key RGB keyboard (USB 048d:c1xx, c6xx, c9xx) was found (4-zone keyboards are not supported yet)" : keyboardState.lastError
     }
 
     // Button of the navigation: icon and name, the current page with the light bar of the accent (like the view
