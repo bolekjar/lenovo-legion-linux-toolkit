@@ -7,7 +7,9 @@
  */
 
 #include "SysFsDataProviderCPUPower.h"
+#include <Drivers/SysFsDriverLegionLegacy.h>
 #include <Drivers/SysFsDriverLegionOther.h>
+#include <LegacyLimits.h>
 
 #include <KitLog.h>
 
@@ -20,6 +22,11 @@ SysFsDataProviderCPUPower::SysFsDataProviderCPUPower(SysFsDriverManager* sysFsDr
 
 
 
+bool SysFsDataProviderCPUPower::legacy() const
+{
+    return !m_sysFsDriverManager->isLoaded(SysFsDriverLegionOther::DRIVER_NAME) && m_sysFsDriverManager->isLoaded(SysFsDriverLegionLegacyCPU::DRIVER_NAME);
+}
+
 QByteArray SysFsDataProviderCPUPower::serializeAndGetData()
 {
     legion::messages::CPUPower         cpuPower;
@@ -27,6 +34,23 @@ QByteArray SysFsDataProviderCPUPower::serializeAndGetData()
 
     LOG_T(__PRETTY_FUNCTION__);
 
+    /*
+     * Older firmware: limits of the custom mode from LENOVO_CPU_METHOD (no GPU to CPU dynamic boost, total on AC
+     * and PL1 tau there)
+     */
+    if(legacy())
+    {
+        const SysFsDriverLegionLegacy::Legacy::CPU cpu(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverLegionLegacyCPU::DRIVER_NAME));
+
+        LegacyLimits::read(cpu.m_cpu_ltp_limit,cpuPower.mutable_cpu_ltp_limit());
+        LegacyLimits::read(cpu.m_cpu_stp_limit,cpuPower.mutable_cpu_stp_limit());
+        LegacyLimits::read(cpu.m_cpu_pp_limit,cpuPower.mutable_cpu_pp_limit());
+        LegacyLimits::read(cpu.m_cpu_clp_limit,cpuPower.mutable_cpu_clp_limit());
+        LegacyLimits::read(cpu.m_apus_pptp_limit,cpuPower.mutable_apus_pptp_limit());
+        LegacyLimits::read(cpu.m_cpu_tmp_limit,cpuPower.mutable_cpu_tmp_limit());
+
+        return serializeMessage(cpuPower);
+    }
 
     try {
         SysFsDriverLegionOther::Other::CPU cpuControl(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverLegionOther::DRIVER_NAME));
@@ -201,8 +225,6 @@ QByteArray SysFsDataProviderCPUPower::serializeAndGetData()
 
 QByteArray SysFsDataProviderCPUPower::deserializeAndSetData(const QByteArray &data)
 {
-    SysFsDriverLegionOther::Other::CPU                   cpuControl(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverLegionOther::DRIVER_NAME));
-    SysFsDriverLegionOther::Other::GPU                   gpuControl(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverLegionOther::DRIVER_NAME));
     legion::messages::CPUPower                           cpuPower;
 
     LOG_T(__PRETTY_FUNCTION__);
@@ -214,6 +236,31 @@ QByteArray SysFsDataProviderCPUPower::deserializeAndSetData(const QByteArray &da
     }
 
     settable(cpuPower,Origin::REQUEST);
+
+    /*
+     * Older firmware: the order of Lenovo Legion Toolkit (long term, short term, peak, cross loading, APU sPPT,
+     * temperature), a failed write is logged and the next limits are written
+     */
+    if(legacy())
+    {
+        const SysFsDriverLegionLegacy::Legacy::CPU cpu(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverLegionLegacyCPU::DRIVER_NAME));
+
+        m_sysFsDriverManager->blockKernelEvent(SysFsDriverLegionLegacyCPU::DRIVER_NAME,true);
+        auto cleanup =  qScopeGuard([this] { m_sysFsDriverManager->blockKernelEvent(SysFsDriverLegionLegacyCPU::DRIVER_NAME,false); });
+
+        LegacyLimits::write(cpu.m_cpu_ltp_limit,cpuPower.has_cpu_ltp_limit(),cpuPower.cpu_ltp_limit());
+        LegacyLimits::write(cpu.m_cpu_stp_limit,cpuPower.has_cpu_stp_limit(),cpuPower.cpu_stp_limit());
+        LegacyLimits::write(cpu.m_cpu_pp_limit,cpuPower.has_cpu_pp_limit(),cpuPower.cpu_pp_limit());
+        LegacyLimits::write(cpu.m_cpu_clp_limit,cpuPower.has_cpu_clp_limit(),cpuPower.cpu_clp_limit());
+        LegacyLimits::write(cpu.m_apus_pptp_limit,cpuPower.has_apus_pptp_limit(),cpuPower.apus_pptp_limit());
+        LegacyLimits::write(cpu.m_cpu_tmp_limit,cpuPower.has_cpu_tmp_limit(),cpuPower.cpu_tmp_limit());
+
+        m_sysFsDriverManager->processAllUdevEvents(100);
+        return {};
+    }
+
+    SysFsDriverLegionOther::Other::CPU                   cpuControl(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverLegionOther::DRIVER_NAME));
+    SysFsDriverLegionOther::Other::GPU                   gpuControl(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverLegionOther::DRIVER_NAME));
 
     m_sysFsDriverManager->blockKernelEvent(SysFsDriverLegionOther::DRIVER_NAME,true);
     auto cleanup =  qScopeGuard([this] { m_sysFsDriverManager->blockKernelEvent(SysFsDriverLegionOther::DRIVER_NAME,false); });
@@ -262,10 +309,19 @@ void SysFsDataProviderCPUPower::settable(legion::messages::CPUPower &cpuPower, O
     const auto current = parseMessage<legion::messages::CPUPower>(serializeAndGetData());
 
     /*
-     * Not written by the daemon
+     * Peak power limit and APU sPPT: written only on the older firmware (its kernel driver registers them only when
+     * the firmware supports them), on the newer firmware they do not work (not written by the daemon)
      */
-    cpuPower.clear_apus_pptp_limit();
-    cpuPower.clear_cpu_pp_limit();
+    if(!legacy())
+    {
+        cpuPower.clear_apus_pptp_limit();
+        cpuPower.clear_cpu_pp_limit();
+    }
+    else
+    {
+        if(cpuPower.has_cpu_pp_limit()     && !settableLimit(*cpuPower.mutable_cpu_pp_limit(),current.cpu_pp_limit(),mode,origin,"cpu_pp_limit"))             cpuPower.clear_cpu_pp_limit();
+        if(cpuPower.has_apus_pptp_limit()  && !settableLimit(*cpuPower.mutable_apus_pptp_limit(),current.apus_pptp_limit(),mode,origin,"apus_pptp_limit"))    cpuPower.clear_apus_pptp_limit();
+    }
 
     if(cpuPower.has_cpu_tmp_limit()            && !settableLimit(*cpuPower.mutable_cpu_tmp_limit(),current.cpu_tmp_limit(),mode,origin,"cpu_tmp_limit"))                       cpuPower.clear_cpu_tmp_limit();
     if(cpuPower.has_cpu_clp_limit()            && !settableLimit(*cpuPower.mutable_cpu_clp_limit(),current.cpu_clp_limit(),mode,origin,"cpu_clp_limit"))                       cpuPower.clear_cpu_clp_limit();

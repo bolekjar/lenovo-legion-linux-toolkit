@@ -30,6 +30,18 @@ private:
 
     void settable(legion::messages::FanOption& fanOption,Origin origin) const;
 
+    /*
+     * Files of the fan full speed: the other mode, on the older firmware the fan mode (Fan_Get/Set_FullSpeed)
+     */
+    struct FullSpeed {
+        std::filesystem::path m_current_value;
+        std::filesystem::path m_default_value;
+        std::filesystem::path m_supported;
+        QString               m_driverName;
+    };
+
+    FullSpeed fullSpeed() const;
+
 public:
 
     static constexpr quint8  dataType = legion::messages::DataType::FAN_OPTION;

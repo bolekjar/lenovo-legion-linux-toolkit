@@ -33,10 +33,16 @@ SettingsPage {
 
             const values = {}
 
-            for (const limit of limits)
-                values[limit + ".current_value"] = source.value(limit + ".mode_descriptor_map[" + choice.value + "].default_value", source.revision)
+            // Only the defaults the hardware has (the older firmware has the custom mode only: no presets there)
+            for (const limit of limits) {
+                const path = limit + ".mode_descriptor_map[" + choice.value + "].default_value"
 
-            presets.push({ text: choice.text, apply: false, values: values })
+                if (source.present(path, source.revision))
+                    values[limit + ".current_value"] = source.value(path, source.revision)
+            }
+
+            if (Object.keys(values).length > 0)
+                presets.push({ text: choice.text, apply: false, values: values })
         }
 
         return presets
@@ -58,7 +64,8 @@ SettingsPage {
             dataType: "CPU_POWER"
         }
 
-        readonly property var limits: ["cpu_tmp_limit", "cpu_clp_limit", "cpu_stp_limit", "cpu_ltp_limit", "gpu_total_onac", "cpu_pl1_tau", "gpu_to_cpu_dynamic_boost"]
+        // cpu_pp_limit, apus_pptp_limit: older firmware only (not sent by the daemon otherwise, so not shown)
+        readonly property var limits: ["cpu_tmp_limit", "cpu_clp_limit", "cpu_stp_limit", "cpu_ltp_limit", "cpu_pp_limit", "apus_pptp_limit", "gpu_total_onac", "cpu_pl1_tau", "gpu_to_cpu_dynamic_boost"]
 
         Repeater {
             model: cpuSection.limits

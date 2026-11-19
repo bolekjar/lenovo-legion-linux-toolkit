@@ -31,6 +31,11 @@ private:
 
     void settable(legion::messages::GPUPower& gpuPower,Origin origin);
 
+    /*
+     * Older firmware: limits of SysFsDriverLegionLegacyGPU instead of the other mode
+     */
+    bool legacy() const;
+
 public:
 
     static constexpr quint8  dataType = legion::messages::DataType::GPU_POWER;

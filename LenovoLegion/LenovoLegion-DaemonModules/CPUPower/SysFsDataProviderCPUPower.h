@@ -31,6 +31,11 @@ private:
 
     void settable(legion::messages::CPUPower& cpuPower,Origin origin);
 
+    /*
+     * Older firmware: limits of SysFsDriverLegionLegacyCPU instead of the other mode
+     */
+    bool legacy() const;
+
     void setValue(const std::filesystem::path& path,std::function<void (legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value)> setter,auto map) const;
     void setValuesSteps(const std::filesystem::path& path,std::function<void (legion::messages::CPUPower::Limit::Descriptor &descriptor,const QList<QString>& values)> setter,auto map) const;
 

@@ -63,6 +63,20 @@ void SysFsDriverLegionFanMode::init()
             m_descriptor["sys_sensor_default"] = std::filesystem::path(fanCurvePath).append("sys_sensor_default");
         }
     }
+
+    /*
+     * Fan full speed of the older firmware (optional)
+     */
+    std::filesystem::path fanFullSpeedPath = std::filesystem::path(m_path).append("fan_full_speed");
+
+    if(std::filesystem::exists(fanFullSpeedPath))
+    {
+        LOG_D(QString("Found Legion Fan Mode fan full speed in path: ") + fanFullSpeedPath.c_str());
+
+        m_descriptor["fan_full_speed_current_value"] = std::filesystem::path(fanFullSpeedPath).append("current_value");
+        m_descriptor["fan_full_speed_default_value"] = std::filesystem::path(fanFullSpeedPath).append("default_value");
+        m_descriptor["fan_full_speed_supported"]     = std::filesystem::path(fanFullSpeedPath).append("supported");
+    }
 }
 
 void SysFsDriverLegionFanMode::handleKernelEvent(const KernelEvent::Event &event)

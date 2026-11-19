@@ -447,15 +447,17 @@ static const struct attribute_group legion_sysfs_fm_group_fan_full_speed = {
 };
 
 /*
- * Fan full speed is registered on the older platform only (the newer firmware has no Fan_Get_FullSpeed) and
- * only when the firmware answers (e.g. JYCN fails in the WMI method, see legion-laptop)
+ * Fan full speed is registered on the older platform only (the newer firmware has no Fan_Get_FullSpeed), not with
+ * an old BIOS (part of the custom mode) and only when the firmware answers (e.g. JYCN fails in the WMI method, see
+ * legion-laptop)
  */
 static bool legion_wmi_fm_fan_full_speed_supported(struct legion_wmi_fm_priv *priv)
 {
 	u32 value;
 	int ret;
 
-	if (!priv->legacy_platform)
+	if (!priv->legacy_platform ||
+	    !legion_wmi_legacy_bios_supported(&priv->wdev->dev))
 		return false;
 
 	ret = legion_wmi_dev_evaluate_int(priv->wdev, 0,

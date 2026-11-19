@@ -11,6 +11,8 @@
 #include "../SysFsDriver.h"
 #include "SysFsDriverLegion.h"
 
+#include <optional>
+
 
 
 namespace LenovoLegionDaemon::Kit {
@@ -40,6 +42,29 @@ public:
     virtual void init() override;
 
     virtual void handleKernelEvent(const SysFsDriver::KernelEvent::Event& event) override;
+
+    /*
+     * New thermal mode of a thermal mode event (Fn+Q or set by a client), empty for other events
+     */
+    static std::optional<int> thermalMode(const SysFsDriver::SubsystemEvent& event)
+    {
+        bool ok = false;
+
+        if(event.m_driverName != DRIVER_NAME || event.m_action != SysFsDriver::SubsystemEvent::Action::CHANGED ||
+           event.m_DriverSpecificEventType.toInt(&ok) != LEGION_WMI_EVENT_THERMAL_MODE || !ok)
+        {
+            return {};
+        }
+
+        const int mode = event.m_DriverSpecificEventValue.toInt(&ok);
+
+        return ok ? std::optional<int>(mode) : std::nullopt;
+    }
+
+    /*
+     * Thermal mode custom (PowerProfile POWER_PROFILE_CUSTOM)
+     */
+    static constexpr int THERMAL_MODE_CUSTOM = 255;
 public:
 
     /*

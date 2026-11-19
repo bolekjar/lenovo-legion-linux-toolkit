@@ -59,7 +59,19 @@ QByteArray SysFsDataProviderFanCurve::serializeAndGetData()
 
 
 
-        auto fanCurveData = getData(fanCurve.m_current_value).split(',');
+        /*
+         * Older firmware: the fan table can not be read (Fan_Get_Table has another format there), the last curve
+         * written by the daemon, otherwise the default of Lenovo Legion Toolkit (levels 1..10)
+         */
+        const QString currentValue = getData(fanCurve.m_current_value);
+        auto          fanCurveData = currentValue.split(',');
+
+        if(currentValue.isEmpty())
+        {
+            LOG_T("Fan curve can not be read from the firmware, the last written one is used");
+
+            fanCurveData = m_lastWritten.isEmpty() ? QStringList{"1","2","3","4","5","6","7","8","9","10"} : m_lastWritten;
+        }
 
         if(static_cast<size_t>(fanCurveData.size()) != 10)
         {
@@ -162,6 +174,30 @@ QByteArray SysFsDataProviderFanCurve::serializeAndGetData()
     return byteArray;
 }
 
+void SysFsDataProviderFanCurve::writeLastAgain()
+{
+    if(m_lastWritten.isEmpty())
+    {
+        return;
+    }
+
+    const SysFsDriverLegionFanMode::FanMode::FanCurve fanCurve(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverLegionFanMode::DRIVER_NAME));
+
+    if(!getData(fanCurve.m_current_value).isEmpty())
+    {
+        return;
+    }
+
+    LOG_D(QString("Fan curve of the custom mode written again: ").append(m_lastWritten.join(',')));
+
+    m_sysFsDriverManager->blockKernelEvent(SysFsDriverLegionFanMode::DRIVER_NAME,true);
+    auto cleanup =  qScopeGuard([this] { m_sysFsDriverManager->blockKernelEvent(SysFsDriverLegionFanMode::DRIVER_NAME,false); });
+
+    writeData(fanCurve.m_current_value,m_lastWritten.join(',').toUtf8());
+
+    m_sysFsDriverManager->processAllUdevEvents(100);
+}
+
 QByteArray SysFsDataProviderFanCurve::deserializeAndSetData(const QByteArray &data)
 {
     SysFsDriverLegionFanMode::FanMode::FanCurve fanCurve(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverLegionFanMode::DRIVER_NAME));
@@ -180,7 +216,7 @@ QByteArray SysFsDataProviderFanCurve::deserializeAndSetData(const QByteArray &da
     auto cleanup =  qScopeGuard([this] { m_sysFsDriverManager->blockKernelEvent(SysFsDriverLegionFanMode::DRIVER_NAME,false); });
 
     if(fanCurveMsg.has_current_value()) {
-        setData(fanCurve.m_current_value,std::vector<quint8>{
+        const std::vector<quint8> points {
                 static_cast<quint8>(fanCurveMsg.current_value().point1()),
                 static_cast<quint8>(fanCurveMsg.current_value().point2()),
                 static_cast<quint8>(fanCurveMsg.current_value().point3()),
@@ -191,7 +227,18 @@ QByteArray SysFsDataProviderFanCurve::deserializeAndSetData(const QByteArray &da
                 static_cast<quint8>(fanCurveMsg.current_value().point8()),
                 static_cast<quint8>(fanCurveMsg.current_value().point9()),
                 static_cast<quint8>(fanCurveMsg.current_value().point10())
-                });
+                };
+
+        setData(fanCurve.m_current_value,points);
+
+        /*
+         * For the older firmware (the fan table can not be read back)
+         */
+        m_lastWritten.clear();
+        for(const auto point : points)
+        {
+            m_lastWritten.append(QString::number(point));
+        }
     }
 
     m_sysFsDriverManager->processAllUdevEvents(100);

@@ -9,6 +9,7 @@
 #include "SysFsDataProviderFanOption.h"
 
 
+#include <Drivers/SysFsDriverLegionFanMode.h>
 #include <Drivers/SysFsDriverLegionOther.h>
 
 #include <FanControl.pb.h>
@@ -22,6 +23,26 @@ namespace LenovoLegionDaemon::Kit {
 SysFsDataProviderFanOption::SysFsDataProviderFanOption(SysFsDriverManager* sysFsDriverManager) : SysFsDataProvider(sysFsDriverManager,dataType) {}
 
 
+SysFsDataProviderFanOption::FullSpeed SysFsDataProviderFanOption::fullSpeed() const
+{
+    if(!m_sysFsDriverManager->isLoaded(SysFsDriverLegionOther::DRIVER_NAME) && m_sysFsDriverManager->isLoaded(SysFsDriverLegionFanMode::DRIVER_NAME))
+    {
+        const SysFsDriverLegionFanMode::FanMode fanMode(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverLegionFanMode::DRIVER_NAME));
+
+        if(fanMode.m_fanFullSpeed.exists())
+        {
+            return { fanMode.m_fanFullSpeed.m_current_value,fanMode.m_fanFullSpeed.m_default_value,fanMode.m_fanFullSpeed.m_supported,SysFsDriverLegionFanMode::DRIVER_NAME };
+        }
+    }
+
+    /*
+     * Other mode (throws DRIVER_NOT_AVAILABLE when it is not loaded)
+     */
+    const SysFsDriverLegionOther::Other other(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverLegionOther::DRIVER_NAME));
+
+    return { other.m_fan_full_speed.m_current_value,other.m_fan_full_speed.m_default_value,other.m_fan_full_speed.m_supported,SysFsDriverLegionOther::DRIVER_NAME };
+}
+
 QByteArray SysFsDataProviderFanOption::serializeAndGetData()
 {
     legion::messages::FanOption         fanOptionMsg;
@@ -31,11 +52,11 @@ QByteArray SysFsDataProviderFanOption::serializeAndGetData()
 
 
     try {
-        SysFsDriverLegionOther::Other other(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverLegionOther::DRIVER_NAME));
+        const FullSpeed full = fullSpeed();
 
-        fanOptionMsg.mutable_full_speed()->set_supported(getData(other.m_fan_full_speed.m_supported).toUShort() > 0);
-        fanOptionMsg.mutable_full_speed()->set_default_value(getData(other.m_fan_full_speed.m_default_value).toUShort() == 1);
-        fanOptionMsg.mutable_full_speed()->set_current_value(getData(other.m_fan_full_speed.m_current_value).toUShort() == 1);
+        fanOptionMsg.mutable_full_speed()->set_supported(getData(full.m_supported).toUShort() > 0);
+        fanOptionMsg.mutable_full_speed()->set_default_value(getData(full.m_default_value).toUShort() == 1);
+        fanOptionMsg.mutable_full_speed()->set_current_value(getData(full.m_current_value).toUShort() == 1);
     } catch(SysFsDriver::exception_T& ex)
     {
         /*
@@ -61,7 +82,7 @@ QByteArray SysFsDataProviderFanOption::serializeAndGetData()
 
 QByteArray SysFsDataProviderFanOption::deserializeAndSetData(const QByteArray &data)
 {
-    SysFsDriverLegionOther::Other       other(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverLegionOther::DRIVER_NAME));
+    const FullSpeed                     full = fullSpeed();
     legion::messages::FanOption         fanOptionMsg;
 
     LOG_T(__PRETTY_FUNCTION__);
@@ -73,11 +94,11 @@ QByteArray SysFsDataProviderFanOption::deserializeAndSetData(const QByteArray &d
 
     settable(fanOptionMsg,Origin::REQUEST);
 
-    m_sysFsDriverManager->blockKernelEvent(SysFsDriverLegionOther::DRIVER_NAME,true);
-    auto cleanup =  qScopeGuard([this] { m_sysFsDriverManager->blockKernelEvent(SysFsDriverLegionOther::DRIVER_NAME,false); });
+    m_sysFsDriverManager->blockKernelEvent(full.m_driverName,true);
+    auto cleanup =  qScopeGuard([this,&full] { m_sysFsDriverManager->blockKernelEvent(full.m_driverName,false); });
 
     if(fanOptionMsg.has_full_speed()) {
-        setData(other.m_fan_full_speed.m_current_value,fanOptionMsg.full_speed().current_value());
+        setData(full.m_current_value,fanOptionMsg.full_speed().current_value());
     }
 
     m_sysFsDriverManager->processAllUdevEvents(100);
@@ -106,9 +127,7 @@ void SysFsDataProviderFanOption::settable(legion::messages::FanOption &fanOption
         return;
     }
 
-    SysFsDriverLegionOther::Other other(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverLegionOther::DRIVER_NAME));
-
-    if(getData(other.m_fan_full_speed.m_supported).toUShort() == 0)
+    if(getData(fullSpeed().m_supported).toUShort() == 0)
     {
         skipField(origin,QString("fan full_speed=").append(QString::number(fanOption.full_speed().current_value())),"not supported");
         fanOption.clear_full_speed();

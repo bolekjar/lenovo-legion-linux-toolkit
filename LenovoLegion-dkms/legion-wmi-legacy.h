@@ -14,9 +14,12 @@
 #include <linux/mutex.h>
 #include <linux/types.h>
 
+#include <linux/notifier.h>
+
 struct attribute_group;
 struct device;
 struct kset;
+struct legion_hwmon;
 struct wmi_device;
 
 /* Field of a result not present */
@@ -59,12 +62,14 @@ struct legion_wmi_legacy_limit {
  * @limits: The limits.
  * @count: Number of the limits.
  * @default_method: WMI method reading the default values of the limits without them in their get method.
+ * @hwmon: Registers the hwmon of the older firmware (sensors of the game zone), one class only.
  */
 struct legion_wmi_legacy_class {
 	const char *base_path;
 	const struct legion_wmi_legacy_limit *limits;
 	size_t count;
 	u32 default_method;
+	bool hwmon;
 };
 
 /*
@@ -92,6 +97,10 @@ enum legion_wmi_legacy_field {
  * @fw_attr_kset: Directory attributes of the device.
  * @groups: Groups of the supported limits (NULL name: not supported).
  * @ida_id: Number of the device.
+ * @fw_attr: The firmware attributes are registered.
+ * @hwmon_nb: Source of the hwmon sensors.
+ * @hwmon: The hwmon device, or NULL.
+ * @sensors: Sensors answered by the game zone (bits of legion_wmi_legacy_sensors).
  */
 struct legion_wmi_legacy_priv {
 	struct wmi_device *wdev;
@@ -103,6 +112,12 @@ struct legion_wmi_legacy_priv {
 	struct kset *fw_attr_kset;
 	struct attribute_group *groups;
 	int ida_id;
+	bool fw_attr;
+
+	//HWMon
+	struct notifier_block hwmon_nb;
+	struct legion_hwmon *hwmon;
+	u8 sensors;
 };
 
 int legion_wmi_legacy_read(struct legion_wmi_legacy_priv *priv,
@@ -115,6 +130,7 @@ bool legion_wmi_legacy_supported(struct legion_wmi_legacy_priv *priv,
 				 const struct legion_wmi_legacy_limit *limit);
 
 bool legion_wmi_legacy_platform(struct device *dev, int *err);
+bool legion_wmi_legacy_bios_supported(struct device *dev);
 
 int legion_wmi_legacy_driver_init(void);
 void legion_wmi_legacy_driver_exit(void);

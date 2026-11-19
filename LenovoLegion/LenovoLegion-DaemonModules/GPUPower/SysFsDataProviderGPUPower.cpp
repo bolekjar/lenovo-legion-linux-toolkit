@@ -7,7 +7,9 @@
  */
 
 #include "SysFsDataProviderGPUPower.h"
+#include <Drivers/SysFsDriverLegionLegacy.h>
 #include <Drivers/SysFsDriverLegionOther.h>
+#include <LegacyLimits.h>
 
 #include <GPUPower.pb.h>
 
@@ -20,12 +22,31 @@ namespace LenovoLegionDaemon::Kit {
 SysFsDataProviderGPUPower::SysFsDataProviderGPUPower(SysFsDriverManager* sysFsDriverManager) : SysFsDataProvider(sysFsDriverManager,dataType) {}
 
 
+bool SysFsDataProviderGPUPower::legacy() const
+{
+    return !m_sysFsDriverManager->isLoaded(SysFsDriverLegionOther::DRIVER_NAME) && m_sysFsDriverManager->isLoaded(SysFsDriverLegionLegacyGPU::DRIVER_NAME);
+}
+
 QByteArray SysFsDataProviderGPUPower::serializeAndGetData()
 {
     legion::messages::GPUPower         power;
     QByteArray                         byteArray;
 
     LOG_T(__PRETTY_FUNCTION__);
+
+    /*
+     * Older firmware: limits of the custom mode from LENOVO_GPU_METHOD
+     */
+    if(legacy())
+    {
+        const SysFsDriverLegionLegacy::Legacy::GPU gpu(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverLegionLegacyGPU::DRIVER_NAME));
+
+        LegacyLimits::read(gpu.m_gpu_power_boost,power.mutable_gpu_power_boost());
+        LegacyLimits::read(gpu.m_gpu_configurable_tgp,power.mutable_gpu_configurable_tgp());
+        LegacyLimits::read(gpu.m_gpu_temperature_limit,power.mutable_gpu_temperature_limit());
+
+        return serializeMessage(power);
+    }
 
 
     try {
@@ -165,7 +186,6 @@ QByteArray SysFsDataProviderGPUPower::serializeAndGetData()
 
 QByteArray SysFsDataProviderGPUPower::deserializeAndSetData(const QByteArray &data)
 {
-    SysFsDriverLegionOther::Other::GPU gpuControl(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverLegionOther::DRIVER_NAME));
     legion::messages::GPUPower         power;
 
     LOG_T(__PRETTY_FUNCTION__);
@@ -177,6 +197,27 @@ QByteArray SysFsDataProviderGPUPower::deserializeAndSetData(const QByteArray &da
     }
 
     settable(power,Origin::REQUEST);
+
+    /*
+     * Older firmware: the order of Lenovo Legion Toolkit (power boost, configurable TGP, temperature), a failed
+     * write is logged and the next limits are written
+     */
+    if(legacy())
+    {
+        const SysFsDriverLegionLegacy::Legacy::GPU gpu(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverLegionLegacyGPU::DRIVER_NAME));
+
+        m_sysFsDriverManager->blockKernelEvent(SysFsDriverLegionLegacyGPU::DRIVER_NAME,true);
+        auto cleanup =  qScopeGuard([this] { m_sysFsDriverManager->blockKernelEvent(SysFsDriverLegionLegacyGPU::DRIVER_NAME,false); });
+
+        LegacyLimits::write(gpu.m_gpu_power_boost,power.has_gpu_power_boost(),power.gpu_power_boost());
+        LegacyLimits::write(gpu.m_gpu_configurable_tgp,power.has_gpu_configurable_tgp(),power.gpu_configurable_tgp());
+        LegacyLimits::write(gpu.m_gpu_temperature_limit,power.has_gpu_temperature_limit(),power.gpu_temperature_limit());
+
+        m_sysFsDriverManager->processAllUdevEvents(100);
+        return {};
+    }
+
+    SysFsDriverLegionOther::Other::GPU gpuControl(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverLegionOther::DRIVER_NAME));
 
     m_sysFsDriverManager->blockKernelEvent(SysFsDriverLegionOther::DRIVER_NAME,true);
     auto cleanup =  qScopeGuard([this] { m_sysFsDriverManager->blockKernelEvent(SysFsDriverLegionOther::DRIVER_NAME,false); });

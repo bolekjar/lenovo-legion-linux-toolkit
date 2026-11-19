@@ -184,6 +184,7 @@ public:
     Q_INVOKABLE QVariant     daemonValue(const QString& path,int revision) const    { Q_UNUSED(revision) return daemonValue(path); }
     Q_INVOKABLE QVariantList repeatedValues(const QString& path,int revision) const { Q_UNUSED(revision) return repeatedValues(path); }
     Q_INVOKABLE int          count(const QString& path,int revision) const          { Q_UNUSED(revision) return count(path); }
+    Q_INVOKABLE bool         present(const QString& path,int revision) const        { Q_UNUSED(revision) return present(path); }
     Q_INVOKABLE QVariant     data(const QString& field,int revision) const          { Q_UNUSED(revision) return data(field); }
 
     /*

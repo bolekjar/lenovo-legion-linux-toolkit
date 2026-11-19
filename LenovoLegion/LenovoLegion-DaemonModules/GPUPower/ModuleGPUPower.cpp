@@ -10,7 +10,12 @@
 #include <ModuleEntry.h>
 #include <ProviderModule.h>
 
+#include <Drivers/SysFsDriverLegionEvents.h>
+#include <Drivers/SysFsDriverLegionLegacy.h>
 #include <Drivers/SysFsDriverLegionOther.h>
+
+#include <KitLog.h>
+#include <LastRequest.h>
 
 #include <GPUPower.pb.h>
 
@@ -19,7 +24,7 @@
 namespace LenovoLegionDaemon::Kit {
 
 /*
- * GPU power limits (Legion WMI other). Owns notification POWER_CONTROL_CHANGED
+ * GPU power limits (Legion WMI other, on the older firmware the legacy GPU method). Owns notification POWER_CONTROL_CHANGED
  * for the attributes it writes (GPU power boost, configurable TGP, temperature limit).
  */
 class ModuleGPUPower : public ProviderModule
@@ -30,6 +35,8 @@ public:
         ProviderModule(host)
     {
         drivers().addDriver(std::make_unique<SysFsDriverLegionOther>());
+        drivers().addDriver(std::make_unique<SysFsDriverLegionLegacyGPU>());
+        drivers().addDriver(std::make_unique<SysFsDriverLegionEvents>());
 
         setProvider(std::make_unique<SysFsDataProviderGPUPower>(&drivers()));
     }
@@ -39,7 +46,44 @@ public:
         return { .persistent = true, .order = 50, .customOnly = true };
     }
 
+    QByteArray set(const QByteArray& request) override
+    {
+        m_lastRequest.remember(request);
+
+        return ProviderModule::set(request);
+    }
+
+    void loadSettings(const Module::ISettingsStorage& storage) override
+    {
+        m_lastRequest.remember(readSettings(storage));
+
+        ProviderModule::loadSettings(storage);
+    }
+
 protected:
+
+    /*
+     * Older firmware: the limits of the custom mode are written again when the custom mode is set (the same as God
+     * mode of Lenovo Legion Toolkit)
+     */
+    void onDriverEvent(const SysFsDriver::SubsystemEvent& event) override
+    {
+        const auto mode = SysFsDriverLegionEvents::thermalMode(event);
+
+        if(mode != SysFsDriverLegionEvents::THERMAL_MODE_CUSTOM || m_lastRequest.value().isEmpty() ||
+           drivers().isLoaded(SysFsDriverLegionOther::DRIVER_NAME) || !drivers().isLoaded(SysFsDriverLegionLegacyGPU::DRIVER_NAME))
+        {
+            return;
+        }
+
+        try {
+            provider().deserializeAndSetData(m_lastRequest.value());
+        }
+        catch(const std::exception& ex)
+        {
+            LOG_W(QString("GPU power limits of the custom mode not written again: ").append(ex.what()));
+        }
+    }
 
     std::optional<legion::messages::Notification> notificationFor(const SysFsDriver::SubsystemEvent& event) override
     {
@@ -50,6 +94,14 @@ protected:
         };
 
         if(event.m_driverName == SysFsDriverLegionOther::DRIVER_NAME && event.m_action == SysFsDriver::SubsystemEvent::Action::CHANGED && OWNED.contains(eventType(event)))
+        {
+            return notification(legion::messages::Notification::POWER_CONTROL_CHANGED);
+        }
+
+        /*
+         * Older firmware: all events of the GPU limits (legacy driver)
+         */
+        if(event.m_driverName == SysFsDriverLegionLegacyGPU::DRIVER_NAME && event.m_action == SysFsDriver::SubsystemEvent::Action::CHANGED)
         {
             return notification(legion::messages::Notification::POWER_CONTROL_CHANGED);
         }
@@ -76,6 +128,10 @@ protected:
         if (gpuPower.has_gpu_configurable_tgp())  storage.setValue("gpu_configurable_tgp", gpuPower.gpu_configurable_tgp().current_value());
         if (gpuPower.has_gpu_temperature_limit()) storage.setValue("gpu_temperature_limit", gpuPower.gpu_temperature_limit().current_value());
     }
+
+private:
+
+    LastRequest<legion::messages::GPUPower> m_lastRequest;
 };
 
 }

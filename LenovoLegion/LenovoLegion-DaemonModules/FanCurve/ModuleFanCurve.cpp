@@ -10,7 +10,10 @@
 #include <ModuleEntry.h>
 #include <ProviderModule.h>
 
+#include <Drivers/SysFsDriverLegionEvents.h>
 #include <Drivers/SysFsDriverLegionFanMode.h>
+
+#include <KitLog.h>
 
 #include <FanControl.pb.h>
 
@@ -27,8 +30,12 @@ public:
         ProviderModule(host)
     {
         drivers().addDriver(std::make_unique<SysFsDriverLegionFanMode>());
+        drivers().addDriver(std::make_unique<SysFsDriverLegionEvents>());
 
-        setProvider(std::make_unique<SysFsDataProviderFanCurve>(&drivers()));
+        auto provider = std::make_unique<SysFsDataProviderFanCurve>(&drivers());
+
+        m_fanCurve = provider.get();
+        setProvider(std::move(provider));
     }
 
     SettingsPolicy settingsPolicy() const override
@@ -38,9 +45,30 @@ public:
 
 protected:
 
+    /*
+     * Older firmware: the fan curve of the custom mode is written again when the custom mode is set (the same as
+     * God mode of Lenovo Legion Toolkit)
+     */
+    void onDriverEvent(const SysFsDriver::SubsystemEvent& event) override
+    {
+        if(SysFsDriverLegionEvents::thermalMode(event) != SysFsDriverLegionEvents::THERMAL_MODE_CUSTOM)
+        {
+            return;
+        }
+
+        try {
+            m_fanCurve->writeLastAgain();
+        }
+        catch(const std::exception& ex)
+        {
+            LOG_W(QString("Fan curve of the custom mode not written again: ").append(ex.what()));
+        }
+    }
+
     std::optional<legion::messages::Notification> notificationFor(const SysFsDriver::SubsystemEvent& event) override
     {
-        if(event.m_driverName == SysFsDriverLegionFanMode::DRIVER_NAME && event.m_action == SysFsDriver::SubsystemEvent::Action::CHANGED)
+        if(event.m_driverName == SysFsDriverLegionFanMode::DRIVER_NAME && event.m_action == SysFsDriver::SubsystemEvent::Action::CHANGED &&
+           eventType(event) == SysFsDriverLegionFanMode::LENOVO_WMI_FAN_CURVE)
         {
             return notification(legion::messages::Notification::FAN_CURVE_CHANGED);
         }
@@ -90,6 +118,10 @@ protected:
         storage.setValue("point9",  points.point9());
         storage.setValue("point10", points.point10());
     }
+
+private:
+
+    SysFsDataProviderFanCurve* m_fanCurve = nullptr;     // owned by the module (provider)
 };
 
 }

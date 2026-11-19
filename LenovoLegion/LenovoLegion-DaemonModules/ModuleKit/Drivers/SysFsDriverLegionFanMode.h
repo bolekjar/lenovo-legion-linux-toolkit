@@ -16,9 +16,11 @@ namespace LenovoLegionDaemon::Kit {
 
 class SysFsDriverLegionFanMode : public SysFsDriver
 {
+public:
 
     enum LegionVmiFanModeEventType : int {
-        LENOVO_WMI_FAN_CURVE				= 2000
+        LENOVO_WMI_FAN_CURVE				= 2000,
+        LENOVO_WMI_FAN_FULL_SPEED			= 2001
     };
 
 public:
@@ -52,12 +54,34 @@ public:
         };
 
 
+        /*
+         * Fan full speed of the older firmware (Fan_Get/Set_FullSpeed, the newer firmware has it in the other mode),
+         * the same files as of the other mode, optional
+         */
+        struct FanFullSpeed {
+
+            FanFullSpeed(const SysFsDriver::DescriptorType& descriptor) :
+                m_current_value(descriptor.value("fan_full_speed_current_value")),
+                m_default_value(descriptor.value("fan_full_speed_default_value")),
+                m_supported(descriptor.value("fan_full_speed_supported"))
+            {}
+
+            bool exists() const { return !m_current_value.empty() && !m_default_value.empty() && !m_supported.empty(); }
+
+            const std::filesystem::path m_current_value;
+            const std::filesystem::path m_default_value;
+            const std::filesystem::path m_supported;
+        };
+
+
         explicit FanMode(const SysFsDriver::DescriptorType& descriptor) :
-            m_fanCurve(descriptor)
+            m_fanCurve(descriptor),
+            m_fanFullSpeed(descriptor)
         {}
 
 
         const FanCurve         m_fanCurve;
+        const FanFullSpeed     m_fanFullSpeed;
     };
 public:
 

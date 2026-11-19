@@ -20,6 +20,8 @@
  * The firmware attributes of the limits are in legion-wmi-legacy-sysfs.c.
  */
 #include "legion-common.h"
+#include "legion-hwmon.h"
+#include "legion-wmi-capdata00.h"
 #include "legion-wmi-gamezone.h"
 #include "legion-wmi-helpers.h"
 #include "legion-wmi-legacy-sysfs.h"
@@ -90,6 +92,7 @@ static const struct legion_wmi_legacy_class legion_wmi_legacy_cpu = {
 	.limits = legion_wmi_legacy_cpu_limits,
 	.count = ARRAY_SIZE(legion_wmi_legacy_cpu_limits),
 	.default_method = 7, /* CPU_Get_Default_PowerLimit: uint32 DefaultLongTerm, DefaultShortTerm */
+	.hwmon = true,
 };
 
 static const struct legion_wmi_legacy_class legion_wmi_legacy_gpu = {
@@ -300,25 +303,17 @@ bool legion_wmi_legacy_supported(struct legion_wmi_legacy_priv *priv,
  * @dev: Device for the log messages.
  * @err: Set to -EPROBE_DEFER when the game zone does not answer yet, otherwise 0.
  *
- * Older firmware (SmartFan version 4 / 5 or LegionZone version 1 / 2) without the exceptions of old BIOS
- * versions, the same rule as GetSupportsGodModeV1Internal of Lenovo Legion Toolkit. Used by the CPU / GPU
- * limits and by the fan method (fan full speed).
+ * Older firmware: SmartFan version 4 / 5 or LegionZone version 1 / 2, the same rule as
+ * GetSupportsGodModeV1Internal of Lenovo Legion Toolkit (the old BIOS versions are checked by
+ * legion_wmi_legacy_bios_supported()). Used by the CPU / GPU limits, the hwmon and the fan method.
  *
  * Return: true on the older platform.
  */
 bool legion_wmi_legacy_platform(struct device *dev, int *err)
 {
-	static const struct {
-		const char *prefix;
-		unsigned int version;
-	} old_bios[] = {
-		{ "G9CN", 24 }, { "GKCN", 46 }, { "H1CN", 39 },
-		{ "HACN", 31 }, { "HHCN", 20 },
-	};
 	unsigned int smartfan = 0;
+	unsigned int legionzone = 0;
 	unsigned int *version = &smartfan;
-	const char *bios = dmi_get_system_info(DMI_BIOS_VERSION);
-	unsigned int bios_version;
 
 	/* The game zone answers when it is bound, until then the probe is deferred */
 	*err = legion_wmi_other_notifier_call(version,
@@ -328,36 +323,194 @@ bool legion_wmi_legacy_platform(struct device *dev, int *err)
 		return false;
 	}
 
-	if (smartfan != 4 && smartfan != 5) {
-		unsigned int legionzone = 0;
+	if (smartfan == 4 || smartfan == 5)
+		return true;
 
-		version = &legionzone;
-		/* Answered by the other mode driver, failure = not supported */
-		if (legion_wmi_other_notifier_call(version,
-						   LEGION_WMI_OM_GET_LEGIONZONE_VERSION))
-			legionzone = 0;
+	/* Answered by the other mode driver, failure = not supported */
+	version = &legionzone;
+	if (legion_wmi_other_notifier_call(version,
+					   LEGION_WMI_OM_GET_LEGIONZONE_VERSION))
+		legionzone = 0;
 
-		if (legionzone != 1 && legionzone != 2) {
-			dev_dbg(dev, "SmartFan version %u, LegionZone version %u, not the older platform\n",
-				smartfan, legionzone);
+	if (legionzone == 1 || legionzone == 2)
+		return true;
+
+	dev_dbg(dev, "SmartFan version %u, LegionZone version %u, not the older platform\n",
+		smartfan, legionzone);
+	return false;
+}
+
+/**
+ * legion_wmi_legacy_bios_supported() - Whether the BIOS supports the custom mode of the older platform
+ * @dev: Device for the log messages.
+ *
+ * Old BIOS versions without the CPU / GPU limits and the fan full speed (Lenovo Legion Toolkit: no God mode
+ * there), the sensors are not affected.
+ *
+ * Return: false for a BIOS older than the listed versions.
+ */
+bool legion_wmi_legacy_bios_supported(struct device *dev)
+{
+	static const struct {
+		const char *prefix;
+		unsigned int version;
+	} old_bios[] = {
+		{ "G9CN", 24 }, { "GKCN", 46 }, { "H1CN", 39 },
+		{ "HACN", 31 }, { "HHCN", 20 },
+	};
+	const char *bios = dmi_get_system_info(DMI_BIOS_VERSION);
+	unsigned int bios_version;
+
+	if (!bios || strlen(bios) < 6 ||
+	    kstrtouint((char[]){ bios[4], bios[5], '\0' }, 10, &bios_version))
+		return true;
+
+	for (size_t i = 0; i < ARRAY_SIZE(old_bios); i++) {
+		if (!strncmp(bios, old_bios[i].prefix, 4) &&
+		    bios_version < old_bios[i].version) {
+			dev_info(dev, "BIOS %s older than %s%u, the custom mode is not supported\n",
+				 bios, old_bios[i].prefix, old_bios[i].version);
 			return false;
 		}
 	}
 
-	if (bios && strlen(bios) >= 6 &&
-	    !kstrtouint((char[]){ bios[4], bios[5], '\0' }, 10, &bios_version)) {
-		for (size_t i = 0; i < ARRAY_SIZE(old_bios); i++) {
-			if (!strncmp(bios, old_bios[i].prefix, 4) &&
-			    bios_version < old_bios[i].version) {
-				dev_info(dev, "BIOS %s older than %s%u, the limits are not supported\n",
-					 bios, old_bios[i].prefix,
-					 old_bios[i].version);
-				return false;
-			}
+	return true;
+}
+
+/*
+ * Sensors of the hwmon: the capability IDs of the other mode answered by the game zone methods
+ */
+static const struct {
+	enum CapabilityID id;
+	enum LEGION_GAMEZONE_METHOD_ID method_id;
+} legion_wmi_legacy_sensors[] = {
+	{ CpuCurrentTemperature, GetCPUTemp },
+	{ GpuCurrentTemperature, GetGPUTemp },
+	{ CpuCurrentFanSpeed, GetFan1Speed },
+	{ GpuCurrentFanSpeed, GetFan2Speed },
+};
+
+static int legion_wmi_legacy_sensor_read(enum LEGION_GAMEZONE_METHOD_ID method_id,
+					 u32 *value)
+{
+	struct legion_wmi_gz_sensor sensor = { .method_id = method_id };
+	int err;
+
+	err = legion_wmi_other_notifier_call(&sensor, LEGION_WMI_GZ_GET_SENSOR);
+	if (err)
+		return err;
+
+	*value = sensor.value;
+	return 0;
+}
+
+static int legion_wmi_legacy_sensor_index(enum CapabilityID id)
+{
+	for (int i = 0; i < ARRAY_SIZE(legion_wmi_legacy_sensors); i++)
+		if (legion_wmi_legacy_sensors[i].id == id)
+			return i;
+
+	return -1;
+}
+
+/*
+ * Source of the hwmon sensors instead of the other mode (its capability data are missing on the older firmware)
+ */
+static int legion_wmi_legacy_hwmon_call(struct notifier_block *nb,
+					const unsigned long action, void *data)
+{
+	const struct legion_wmi_legacy_priv *priv =
+		container_of(nb, struct legion_wmi_legacy_priv, hwmon_nb);
+	const struct hwmon_capability *request = data;
+	const enum CapabilityID id =
+		request->capability_id & ~LEGION_WMI_MODE_ID_MASK;
+	const int index = legion_wmi_legacy_sensor_index(id);
+
+	switch (action) {
+	case LEGION_WMI_FM_GET_CAPABILITY_VALUE:
+		if (index < 0 || !(priv->sensors & BIT(index)))
+			return NOTIFY_BAD;
+
+		if (legion_wmi_legacy_sensor_read(legion_wmi_legacy_sensors[index].method_id,
+						  request->data))
+			return NOTIFY_BAD;
+
+		return NOTIFY_OK;
+	case LEGION_WMI_FM_GET_CAPABILITY_DATA: {
+		struct legion_wmi_capdata00 *capdata = request->data;
+
+		capdata->id = id;
+		capdata->supported = index >= 0 && (priv->sensors & BIT(index));
+		capdata->default_value = 0;
+		return NOTIFY_OK;
+	}
+	default:
+		return NOTIFY_DONE;
+	}
+}
+
+static void legion_wmi_legacy_hwmon_notifier_remove(void *data)
+{
+	legion_hwmon_other_unregister_notifier(data);
+}
+
+static void legion_wmi_legacy_hwmon_remove(void *data)
+{
+	legion_hwmon_unregister(data);
+}
+
+/**
+ * legion_wmi_legacy_hwmon_init() - Register the hwmon with the sensors of the game zone
+ * @priv: The driver data.
+ *
+ * The hwmon of the newer firmware is registered by the other mode, on the older firmware the other mode does not
+ * bind (no capability data). Only the sensors read at the probe are visible, no sensor: no hwmon. Device managed.
+ *
+ * Return: 0, or an error code.
+ */
+static int legion_wmi_legacy_hwmon_init(struct legion_wmi_legacy_priv *priv)
+{
+	struct device *dev = &priv->wdev->dev;
+	struct legion_hwmon *hwmon;
+	u32 value;
+	int err;
+
+	for (int i = 0; i < ARRAY_SIZE(legion_wmi_legacy_sensors); i++) {
+		if (legion_wmi_legacy_sensor_read(legion_wmi_legacy_sensors[i].method_id,
+						  &value)) {
+			dev_dbg(dev, "sensor %d of the game zone is not supported\n",
+				i);
+			continue;
 		}
+
+		priv->sensors |= BIT(i);
 	}
 
-	return true;
+	if (!priv->sensors)
+		return 0;
+
+	priv->hwmon_nb.notifier_call = legion_wmi_legacy_hwmon_call;
+	err = legion_hwmon_other_register_notifier(&priv->hwmon_nb);
+	if (err)
+		return err;
+
+	err = devm_add_action_or_reset(dev,
+				       legion_wmi_legacy_hwmon_notifier_remove,
+				       &priv->hwmon_nb);
+	if (err)
+		return err;
+
+	hwmon = legion_hwmon_register(dev);
+	if (IS_ERR(hwmon))
+		return PTR_ERR(hwmon);
+
+	err = devm_add_action_or_reset(dev, legion_wmi_legacy_hwmon_remove,
+				       hwmon);
+	if (err)
+		return err;
+
+	priv->hwmon = hwmon;
+	return 0;
 }
 
 static int legion_wmi_legacy_probe(struct wmi_device *wdev, const void *context)
@@ -381,12 +534,34 @@ static int legion_wmi_legacy_probe(struct wmi_device *wdev, const void *context)
 
 	dev_set_drvdata(&wdev->dev, priv);
 
-	return legion_wmi_legacy_sysfs_init(priv);
+	if (priv->wmi_class->hwmon) {
+		err = legion_wmi_legacy_hwmon_init(priv);
+		if (err)
+			return err;
+	}
+
+	/* Limits: not with an old BIOS, -ENODEV: none supported */
+	if (legion_wmi_legacy_bios_supported(&wdev->dev)) {
+		err = legion_wmi_legacy_sysfs_init(priv);
+		if (err && err != -ENODEV)
+			return err;
+
+		priv->fw_attr = !err;
+	}
+
+	if (!priv->fw_attr && !priv->hwmon)
+		return -ENODEV;
+
+	return 0;
 }
 
 static void legion_wmi_legacy_remove(struct wmi_device *wdev)
 {
-	legion_wmi_legacy_sysfs_exit(dev_get_drvdata(&wdev->dev));
+	struct legion_wmi_legacy_priv *priv = dev_get_drvdata(&wdev->dev);
+
+	/* The hwmon is device managed */
+	if (priv->fw_attr)
+		legion_wmi_legacy_sysfs_exit(priv);
 }
 
 static const struct wmi_device_id legion_wmi_legacy_cpu_id_table[] = {

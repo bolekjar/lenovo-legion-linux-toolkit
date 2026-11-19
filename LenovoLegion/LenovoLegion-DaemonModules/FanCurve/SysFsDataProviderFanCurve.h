@@ -26,9 +26,20 @@ public:
 
     QByteArray settableData(const QByteArray& data,Origin origin) override;
 
+    /*
+     * Older firmware (the fan curve can not be read back, it does not keep it): the last written fan curve is
+     * written again, nothing on the newer firmware
+     */
+    void writeLastAgain();
+
 private:
 
     static void settable(legion::messages::FanCurve& fanCurve,Origin origin);
+
+    /*
+     * Last fan curve written (levels as text), the older firmware can not read it back
+     */
+    QStringList m_lastWritten;
 
 public:
 
