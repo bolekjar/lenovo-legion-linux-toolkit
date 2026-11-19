@@ -12,6 +12,7 @@
 
 #include <linux/types.h>
 
+#define LEGION_WMI_OTHER_LEGIONZONE_VERSION_GET 8
 #define LEGION_WMI_OTHER_FEATURE_VALUE_GET 17
 #define LEGION_WMI_OTHER_FEATURE_VALUE_SET 18
 
@@ -107,6 +108,8 @@ struct legion_wmi_other_priv {
 	struct wmi_device *wdev;
 
 	struct notifier_block hwmon_nb; /* source of the hwmon sensors */
+	struct notifier_block
+		other_nb; /* LegionZone version, without the components */
 	struct legion_hwmon
 		*hwmon; /* hwmon device, while the components are bound */
 

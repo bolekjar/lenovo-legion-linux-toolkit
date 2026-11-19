@@ -54,6 +54,7 @@ enum legion_events_type {
 	 * Reserve 2000 - 2999 for WMI FAN Events
 	 */
 	LENOVO_WMI_FAN_CURVE = 2000,
+	LENOVO_WMI_FAN_FULL_SPEED = 2001,
 
 	/*
 	 * 2001 - 2005: voltage offsets of the separate module legion_intel_msr (EVENT_VALUE: offset in uV)
@@ -71,7 +72,20 @@ enum legion_events_type {
 	LEGION_ACPI_VPC_USB_CHARGING = 3001,
 	LEGION_ACPI_VPC_FN_LOCK = 3002,
 	LEGION_ACPI_VPC_CAMERA_POWER = 3003,
-	LEGION_ACPI_VPC_RAPID_CHARGE = 3004
+	LEGION_ACPI_VPC_RAPID_CHARGE = 3004,
+
+	/*
+	 * Reserve 4000 - 4999 for the limits of the older firmware (legion-wmi-legacy.c)
+	 */
+	LEGION_WMI_LEGACY_CPU_LTP = 4000,
+	LEGION_WMI_LEGACY_CPU_STP = 4001,
+	LEGION_WMI_LEGACY_CPU_PP = 4002,
+	LEGION_WMI_LEGACY_CPU_CLP = 4003,
+	LEGION_WMI_LEGACY_CPU_TMP = 4004,
+	LEGION_WMI_LEGACY_APU_SPPT = 4005,
+	LEGION_WMI_LEGACY_GPU_PB = 4010,
+	LEGION_WMI_LEGACY_GPU_TGP = 4011,
+	LEGION_WMI_LEGACY_GPU_TMP = 4012
 };
 
 #endif // LEGION_COMMON_H

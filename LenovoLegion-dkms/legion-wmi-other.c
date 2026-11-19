@@ -233,10 +233,59 @@ static const struct component_master_ops legion_wmi_om_master_ops = {
 	.unbind = legion_wmi_om_master_unbind,
 };
 
+/**
+ * legion_wmi_other_chain_call() - Answer the requests of the other drivers
+ * @nb: The notifier_block of the other mode driver.
+ * @action: The request, LEGION_WMI_OM_GET_LEGIONZONE_VERSION.
+ * @data: Pointer to the pointer of the unsigned int result.
+ *
+ * Available from the probe, also when the capability data are missing (older
+ * firmware). The LegionZone version is read in the same order as Lenovo Legion
+ * Toolkit: GetFeatureValue(LegionZoneSupportVersion), otherwise
+ * Get_Support_LegionZone_Version.
+ *
+ * Called before the game zone (higher priority), the chain returns the result of the
+ * last called block, so the request is answered with NOTIFY_STOP.
+ *
+ * Return: NOTIFY_STOP on success, NOTIFY_BAD on a failure, NOTIFY_DONE for other requests.
+ */
+static int legion_wmi_other_chain_call(struct notifier_block *nb,
+				       const unsigned long action, void *data)
+{
+	const struct legion_wmi_other_priv *priv =
+		container_of(nb, struct legion_wmi_other_priv, other_nb);
+	unsigned int **version = data;
+	struct wmi_method_args_32 args = {
+		.arg0 = LegionZoneSupportVersion,
+	};
+	u32 value = 0;
+
+	if (action != LEGION_WMI_OM_GET_LEGIONZONE_VERSION)
+		return NOTIFY_DONE;
+
+	if (!legion_wmi_dev_evaluate_int(priv->wdev, 0x0,
+					 LEGION_WMI_OTHER_FEATURE_VALUE_GET,
+					 (unsigned char *)&args, sizeof(args),
+					 &value) &&
+	    value) {
+		**version = value;
+		return NOTIFY_STOP;
+	}
+
+	if (legion_wmi_dev_evaluate_int(priv->wdev, 0x0,
+					LEGION_WMI_OTHER_LEGIONZONE_VERSION_GET,
+					NULL, 0, &value))
+		return NOTIFY_BAD;
+
+	**version = value;
+	return NOTIFY_STOP;
+}
+
 static int legion_wmi_other_probe(struct wmi_device *wdev, const void *context)
 {
 	struct component_match *master_match = NULL;
 	struct legion_wmi_other_priv *priv = NULL;
+	int ret;
 
 	priv = devm_kzalloc(&wdev->dev, sizeof(*priv), GFP_KERNEL);
 	if (!priv)
@@ -245,6 +294,13 @@ static int legion_wmi_other_probe(struct wmi_device *wdev, const void *context)
 	priv->wdev = wdev;
 
 	dev_set_drvdata(&wdev->dev, priv);
+
+	priv->other_nb.notifier_call = legion_wmi_other_chain_call;
+	priv->other_nb.priority = 1;
+	ret = devm_lenovo_wmi_other_register_notifier(&wdev->dev,
+						      &priv->other_nb);
+	if (ret)
+		return ret;
 
 	component_match_add(&wdev->dev, &master_match, legion_wmi_cd00_match,
 			    NULL);

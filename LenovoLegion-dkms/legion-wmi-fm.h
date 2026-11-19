@@ -45,6 +45,8 @@ struct legion_wmi_fm_priv {
 	struct kset *fw_attr_kset;
 	int ida_id;
 	unsigned int smart_fan_version;
+	bool legacy_platform; /* older firmware, see legion_wmi_legacy_platform() */
+	bool fan_full_speed; /* Fan_Get/Set_FullSpeed of the older firmware */
 
 	int fan_cpu_max_speed;
 	int fan_gpu_max_speed;

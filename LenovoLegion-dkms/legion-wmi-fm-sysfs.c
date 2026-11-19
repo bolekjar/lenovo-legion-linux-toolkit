@@ -12,6 +12,7 @@
 #include "legion-wmi-ftable.h"
 #include "legion-firmware-attributes-class.h"
 #include "legion-wmi-helpers.h"
+#include "legion-wmi-legacy.h"
 
 #include <linux/types.h>
 #include <linux/delay.h>
@@ -96,6 +97,13 @@ static ssize_t func_fan_curve_current_value_get(struct kobject *kobj,
 	struct legion_wmi_fan_table_read table;
 	size_t len = 0;
 	int ret;
+
+	/*
+	 * The older firmware returns another table (uint8, input FanID and SensorID), Lenovo Legion Toolkit
+	 * does not read it there and only writes the fan table
+	 */
+	if (priv->legacy_platform)
+		return -EOPNOTSUPP;
 
 	ret = legion_wmi_dev_evaluate_buffer(priv->wdev, 0,
 					     WMI_METHOD_ID_FAN_GET_TABLE, NULL,
@@ -352,6 +360,117 @@ static const struct attribute_group legion_sysfs_fm_group_v2[] = {
 	{}
 };
 
+/*
+ * Fan full speed of the older firmware (Fan_Get_FullSpeed / Fan_Set_FullSpeed), the newer firmware has it in
+ * the other mode (capability data 00 FanFullSpeed); the same files as of the other mode
+ */
+static ssize_t func_fan_full_speed_current_value_get(struct kobject *kobj,
+						     struct kobj_attribute *kattr,
+						     char *buf)
+{
+	struct legion_wmi_fm_priv *priv =
+		dev_get_drvdata(kobj_to_dev(kobj->parent));
+	u32 value = 0;
+	int ret;
+
+	ret = legion_wmi_dev_evaluate_int(priv->wdev, 0,
+					  WMI_METHOD_ID_FAN_GET_FULLSPEED, NULL,
+					  0, &value);
+	if (ret)
+		return ret;
+
+	return sysfs_emit(buf, "%u\n", value ? 1 : 0);
+}
+
+static ssize_t func_fan_full_speed_current_value_set(struct kobject *kobj,
+						     struct kobj_attribute *kattr,
+						     const char *buf,
+						     size_t count)
+{
+	struct legion_wmi_fm_priv *priv =
+		dev_get_drvdata(kobj_to_dev(kobj->parent));
+	char event_type[32];
+	char event_value[32];
+	char *envp[] = { event_type, event_value, NULL };
+	unsigned int value;
+	u8 argument;
+	int ret;
+
+	ret = kstrtouint(buf, 10, &value);
+	if (ret)
+		return ret;
+
+	if (value > 1)
+		return -EINVAL;
+
+	argument = value;
+	ret = legion_wmi_dev_evaluate_int(priv->wdev, 0,
+					  WMI_METHOD_ID_FAN_SET_FULLSPEED,
+					  &argument, sizeof(argument), NULL);
+	if (ret)
+		return ret;
+
+	snprintf(event_type, sizeof(event_type), "EVENT_TYPE=%u",
+		 (unsigned int)LENOVO_WMI_FAN_FULL_SPEED);
+	snprintf(event_value, sizeof(event_value), "EVENT_VALUE=%u", value);
+
+	if (kobject_uevent_env(&priv->wdev->dev.kobj, KOBJ_CHANGE, envp))
+		dev_err(&priv->wdev->dev,
+			"Failed to send uevent for attribute change\n");
+
+	return count;
+}
+
+static struct kobj_attribute kobj_attr_fan_full_speed_current_value =
+	LEGION_WMI_ATTR_RW(current_value, fan_full_speed_current_value);
+
+LEGION_WMI_KOBJ_ATTR_RO_STATIC_STRING(default_value, "0",
+				      fan_full_speed_default_value)
+LEGION_WMI_KOBJ_ATTR_RO_STATIC_STRING(supported, "1",
+				      fan_full_speed_supported)
+LEGION_WMI_KOBJ_ATTR_RO_STATIC_STRING(type, "boolean", fan_full_speed_type)
+LEGION_WMI_KOBJ_ATTR_RO_STATIC_STRING(display_name, "Fan Full Speed",
+				      fan_full_speed_display_name)
+
+static struct attribute *legion_sysfs_fm_fan_full_speed_attributes[] = {
+	&kobj_attr_fan_full_speed_default_value.attr,
+	&kobj_attr_fan_full_speed_supported.attr,
+	&kobj_attr_fan_full_speed_current_value.attr,
+	&kobj_attr_fan_full_speed_type.attr,
+	&kobj_attr_fan_full_speed_display_name.attr,
+	NULL
+};
+
+static const struct attribute_group legion_sysfs_fm_group_fan_full_speed = {
+	.name = "fan_full_speed",
+	.attrs = legion_sysfs_fm_fan_full_speed_attributes,
+};
+
+/*
+ * Fan full speed is registered on the older platform only (the newer firmware has no Fan_Get_FullSpeed) and
+ * only when the firmware answers (e.g. JYCN fails in the WMI method, see legion-laptop)
+ */
+static bool legion_wmi_fm_fan_full_speed_supported(struct legion_wmi_fm_priv *priv)
+{
+	u32 value;
+	int ret;
+
+	if (!priv->legacy_platform)
+		return false;
+
+	ret = legion_wmi_dev_evaluate_int(priv->wdev, 0,
+					  WMI_METHOD_ID_FAN_GET_FULLSPEED, NULL,
+					  0, &value);
+	if (ret) {
+		dev_dbg(&priv->wdev->dev,
+			"Fan_Get_FullSpeed failed (%d), fan full speed is not supported\n",
+			ret);
+		return false;
+	}
+
+	return true;
+}
+
 static int legion_wmi_fm_fw_attr_add(struct legion_wmi_fm_priv *priv)
 {
 	int i = 0;
@@ -362,6 +481,13 @@ static int legion_wmi_fm_fw_attr_add(struct legion_wmi_fm_priv *priv)
 		&priv->smart_fan_version, LEGION_WMI_GZ_GET_SMARTFAN_VERSION);
 	if (err)
 		return err;
+
+	/* Older firmware: fan full speed by the fan method, no reading of the fan table */
+	priv->legacy_platform = legion_wmi_legacy_platform(&priv->wdev->dev, &err);
+	if (err)
+		return err;
+
+	priv->fan_full_speed = legion_wmi_fm_fan_full_speed_supported(priv);
 
 	priv->ida_id = ida_alloc(&legion_wmi_fm_ida, GFP_KERNEL);
 	if (priv->ida_id < 0)
@@ -437,6 +563,14 @@ static int legion_wmi_fm_fw_attr_add(struct legion_wmi_fm_priv *priv)
 		}
 	}
 
+	/* i: number of the created fan curve groups, removed on an error */
+	if (priv->fan_full_speed) {
+		err = sysfs_create_group(&priv->fw_attr_kset->kobj,
+					 &legion_sysfs_fm_group_fan_full_speed);
+		if (err)
+			goto err_remove_groups;
+	}
+
 	return 0;
 err_remove_groups:
 	if (priv->smart_fan_version == 8)
@@ -458,6 +592,10 @@ err_free_ida:
 static void legion_wmi_fm_fw_attr_remove(struct legion_wmi_fm_priv *priv)
 {
 	/* Remove sysfs group first */
+	if (priv->fan_full_speed)
+		sysfs_remove_group(&priv->fw_attr_kset->kobj,
+				   &legion_sysfs_fm_group_fan_full_speed);
+
 	if (priv->smart_fan_version == 8)
 		for (unsigned int i = 0;
 		     i < ARRAY_SIZE(legion_sysfs_fm_group_v2) - 1; i++)

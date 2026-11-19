@@ -16,6 +16,7 @@
 #include <linux/errno.h>
 #include <linux/export.h>
 #include <linux/module.h>
+#include <linux/unaligned.h>
 #include <linux/wmi.h>
 
 /**
@@ -163,4 +164,61 @@ int legion_wmi_dev_evaluate_buffer(struct wmi_device *wdev, const u8 instance,
 	}
 
 	return 0;
+}
+
+/**
+ * legion_wmi_dev_evaluate_bytes() - Helper function for calling WMI methods that
+ * return a buffer or an integer.
+ * @wdev: Pointer to the WMI device to be called.
+ * @instance: Instance of the called method.
+ * @method_id: WMI Method ID for the method to be called.
+ * @buf: Buffer of all arguments for the given method_id.
+ * @size: Length of the buffer.
+ * @retval: Buffer for the returned data.
+ * @max_retval_size: Size of the retval buffer.
+ * @retval_len: Number of the returned bytes.
+ *
+ * Calls wmidev_evaluate_method for Lenovo WMI devices that return the output
+ * values either in an ACPI buffer, or in an ACPI integer for a short result
+ * (e.g. the older LENOVO_CPU_METHOD). A buffer is copied as it is, an integer
+ * as its 8 little endian bytes.
+ *
+ * Return: 0 on success, or an error code.
+ */
+int legion_wmi_dev_evaluate_bytes(struct wmi_device *wdev, const u8 instance,
+				  const u32 method_id, unsigned char *buf,
+				  const size_t size, u8 *retval,
+				  const size_t max_retval_size,
+				  size_t *retval_len)
+{
+	struct acpi_buffer output = { ACPI_ALLOCATE_BUFFER, NULL };
+	union acpi_object *ret_obj __free(kfree) = NULL;
+	const struct acpi_buffer input = { size, buf };
+	const acpi_status status = wmidev_evaluate_method(
+		wdev, instance, method_id, &input, &output);
+	if (ACPI_FAILURE(status))
+		return -EIO;
+
+	ret_obj = output.pointer;
+	if (!ret_obj)
+		return -ENODATA;
+
+	switch (ret_obj->type) {
+	case ACPI_TYPE_BUFFER:
+		if (ret_obj->buffer.length > max_retval_size)
+			return -EMSGSIZE;
+
+		memcpy(retval, ret_obj->buffer.pointer, ret_obj->buffer.length);
+		*retval_len = ret_obj->buffer.length;
+		return 0;
+	case ACPI_TYPE_INTEGER:
+		if (sizeof(u64) > max_retval_size)
+			return -EMSGSIZE;
+
+		put_unaligned_le64(ret_obj->integer.value, retval);
+		*retval_len = sizeof(u64);
+		return 0;
+	default:
+		return -ENXIO;
+	}
 }
