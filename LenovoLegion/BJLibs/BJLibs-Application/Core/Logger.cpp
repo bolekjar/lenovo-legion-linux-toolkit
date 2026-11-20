@@ -10,6 +10,8 @@
 
 #include <QCoreApplication>
 #include <QDateTime>
+#include <QDir>
+#include <QFileInfo>
 #include <QTextStream>
 #include <QFileDevice>
 
@@ -31,6 +33,36 @@ QMap<Logger::SEVERITY,QString>  Logger::dictonary = {
         {Logger::SEVERITY::TRACE,  " <Trace> "  }
 };
 
+/*
+ * Log of the previous start renamed to <name>-<yyyy-MM-dd-hh:mm:ss>.<suffix> (time of its last record), every start
+ * writes its own log. Only a regular file is renamed (rename() moves a symlink itself, not its target).
+ */
+static void rotateLogFile(const std::string &pathToLogFile)
+{
+    const QString path = QString::fromStdString(pathToLogFile);
+    const QFileInfo info(path);
+
+    if(info.isSymLink() || !info.isFile())
+    {
+        return;
+    }
+
+    const QString stamp = info.lastModified().toString("yyyy-MM-dd-hh:mm:ss");
+    const QString base  = info.dir().filePath(info.completeBaseName() + "-" + stamp);
+    const QString suffix = info.suffix().isEmpty() ? QString() : "." + info.suffix();
+
+    /* QFile::rename does not overwrite an existing file: a log with the same time gets a number */
+    for(int i = 0; i < 100; ++i)
+    {
+        const QString target = i == 0 ? base + suffix : base + "." + QString::number(i) + suffix;
+
+        if(!QFileInfo::exists(target) && QFile::rename(path, target))
+        {
+            return;
+        }
+    }
+}
+
 void Logger::setSeverity(const SEVERITY_BITSET& severity)
 {
     m_severity.store(severity,std::memory_order_relaxed);
@@ -44,6 +76,8 @@ void Logger::init(const std::string &pathToLogFile)
     {
         THROW_EXCEPTION(exception_T,ERROR_CODES::FILE_OPEN_ERROR,std::string("The log file engine was initialized: ").append(pathToLogFile));
     }
+
+    rotateLogFile(pathToLogFile);
 
 #ifdef Q_OS_UNIX
     /*
