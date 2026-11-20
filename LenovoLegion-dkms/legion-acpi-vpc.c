@@ -561,7 +561,7 @@ static int legion_acpi_vpc_fw_attr_add(struct legion_acpi_vpc_priv *priv)
 		goto err_free_ida;
 	}
 
-	priv->fw_attr_kset = kset_create_and_add("attributes", NULL,
+	priv->fw_attr_kset = kset_create_and_add(LEGION_FW_ATTR_KSET_NAME, NULL,
 						 &priv->fw_attr_dev->kobj);
 	if (!priv->fw_attr_kset) {
 		err = -ENOMEM;

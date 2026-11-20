@@ -21,7 +21,7 @@ obj-m := lenovo_legion.o
 lenovo_legion-y := legion-dkms.o legion-firmware-attributes-class.o \
 					  legion-wmi-helpers.o legion-wmi-events.o legion-wmi-gamezone.o legion-wmi-gamezone-sysfs.o legion-wmi-capdata01.o legion-wmi-ddata.o legion-wmi-other.o \
 					  legion-wmi-other-sysfs.o legion-hwmon.o legion-wmi-ftable.o legion-wmi-fm.o legion-wmi-fm-sysfs.o legion-wmi-capdata00.o \
-					  legion-acpi-vpc.o legion-wmi-legacy.o legion-wmi-legacy-sysfs.o
+					  legion-acpi-vpc.o legion-wmi-cpu-gpu.o legion-wmi-cpu-gpu-sysfs.o legion-wmi-platform.o
 
 # Intel CPU voltage offsets, independent of the notebook
 obj-m += legion_intel_msr.o
@@ -35,14 +35,17 @@ ifneq ($(shell grep -s -l devm_acpi_battery_hook_register $(srctree)/include/acp
 ccflags-y += -DLEGION_ACPI_BATTERY_HOOK_PREFIX
 endif
 
+# Kernel built by clang (e.g. CachyOS): the modules must be built by the same compiler (gcc does not know its flags)
+LEGION_LLVM := $(if $(shell grep -s '^CONFIG_CC_IS_CLANG=y' $(KSRC)/.config),LLVM=1)
+
 all:
-	$(MAKE) -C $(KSRC) M=$(CURDIR) LEGION_VERSION=$(LEGION_VERSION) modules
+	$(MAKE) -C $(KSRC) M=$(CURDIR) $(LEGION_LLVM) LEGION_VERSION=$(LEGION_VERSION) modules
 
 allWarn:
-	$(MAKE) -C $(KSRC) M=$(CURDIR) LEGION_VERSION=$(LEGION_VERSION) W=1 modules
+	$(MAKE) -C $(KSRC) M=$(CURDIR) $(LEGION_LLVM) LEGION_VERSION=$(LEGION_VERSION) W=1 modules
 
 clean:
-	$(MAKE) -C $(KSRC) M=$(CURDIR) clean
+	$(MAKE) -C $(KSRC) M=$(CURDIR) $(LEGION_LLVM) clean
 	# Output directory of the former build with MO= (until 2026-11), not used any more
 	rm --force --recursive $(CURDIR)/build
 

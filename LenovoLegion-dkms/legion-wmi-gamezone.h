@@ -20,9 +20,7 @@ enum gamezone_events_type {
 	LEGION_WMI_GZ_GET_SUPPORTED_THERMAL_MODES = 2,
 	LEGION_WMI_GZ_GET_SMARTFAN_VERSION = 3,
 	/* Answered by the other mode driver, not by the game zone */
-	LEGION_WMI_OM_GET_LEGIONZONE_VERSION = 4,
-	/* Sensor of the game zone (struct legion_wmi_gz_sensor), e.g. for the hwmon of the older firmware */
-	LEGION_WMI_GZ_GET_SENSOR = 5
+	LEGION_WMI_OM_GET_LEGIONZONE_VERSION = 4
 };
 
 enum LEGION_GAMEZONE_METHOD_ID {
@@ -161,16 +159,6 @@ enum LEGION_GAMEZONE_METHOD_ID {
 
 	//  Others GPU related features
 	GetDGPUHWId = 68
-};
-
-/**
- * struct legion_wmi_gz_sensor - Request LEGION_WMI_GZ_GET_SENSOR
- * @method_id: GetCPUTemp, GetGPUTemp, GetFan1Speed or GetFan2Speed.
- * @value: The value read from the firmware.
- */
-struct legion_wmi_gz_sensor {
-	enum LEGION_GAMEZONE_METHOD_ID method_id;
-	u32 value;
 };
 
 enum thermal_mode {

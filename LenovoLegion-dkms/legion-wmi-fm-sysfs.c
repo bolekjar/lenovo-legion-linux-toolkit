@@ -12,7 +12,6 @@
 #include "legion-wmi-ftable.h"
 #include "legion-firmware-attributes-class.h"
 #include "legion-wmi-helpers.h"
-#include "legion-wmi-legacy.h"
 
 #include <linux/types.h>
 #include <linux/delay.h>
@@ -26,66 +25,9 @@
 #include <linux/string.h>
 #include <linux/wmi.h>
 
-// set fan to maximal speed; dust cleaning mode
-// only works in custom power mode
-#define WMI_METHOD_ID_FAN_GET_FULLSPEED 1
-#define WMI_METHOD_ID_FAN_SET_FULLSPEED 2
-
-// max speed of fan
-#define WMI_METHOD_ID_FAN_GET_MAXSPEED 3
-#define WMI_METHOD_ID_FAN_SET_MAXSPEED 4
-
-// fan table in custom mode
-#define WMI_METHOD_ID_FAN_GET_TABLE 5
-#define WMI_METHOD_ID_FAN_SET_TABLE 6
-
-// get speed of fans
-#define WMI_METHOD_ID_FAN_GET_CURRENT_FAN_SPEED 7
-// get temperatures of CPU and GPU used for controlling cooling
-#define WMI_METHOD_ID_FAN_GET_CURRENT_SENSOR_TEMPERATURE 8
-
 #define LEGION_WMI_FM_FW_ATTR_BASE_PATH "legion-wmi-fan-mode"
 
-#define MAX_FANCURVE_SIZE 10
-#define MAX_FANCURVE_LEVEL 10
-
-enum FanTableType { CPU = 0, CPUSensor = 1, GPU = 2, SYS = 3 };
-
-enum TableType { FAN = 0, SENSOR = 1 };
-
-static const int fan_table_id_v1[] = { 1, 1, 2, 0 };
-static const int fan_sensor_id_v1[] = { 4, 1, 5, 0 };
-
-static const int fan_table_id_v2[] = { 1, 0, 2, 4 };
-static const int fan_sensor_id_v2[] = { 1, 0, 5, 4 };
-
 static DEFINE_IDA(legion_wmi_fm_ida);
-
-/*
- * Fan table of the custom mode written by WMI_METHOD_ID_FAN_SET_TABLE (packed, little endian),
- * the firmware gets a buffer of 0x20 bytes
- */
-struct legion_wmi_fan_table_write {
-	u8 fstm; /* FSMD: 1 = fan table of the custom mode */
-	u8 fsid;
-	__le32 fstl; /* FSST */
-	__le16 fss[MAX_FANCURVE_SIZE]; /* FSS0..FSS9: levels 0..MAX_FANCURVE_LEVEL */
-	u8 reserved[6];
-} __packed;
-static_assert(sizeof(struct legion_wmi_fan_table_write) == 0x20);
-
-/*
- * Fan table of the custom mode read by WMI_METHOD_ID_FAN_GET_TABLE (packed, little endian)
- */
-struct legion_wmi_fan_table_read {
-	__le32 fsfl;
-	__le32 fss[MAX_FANCURVE_SIZE]; /* FSS0..FSS9: levels 0..MAX_FANCURVE_LEVEL */
-	__le32 fssa;
-} __packed;
-static_assert(sizeof(struct legion_wmi_fan_table_read) == 0x30);
-
-/* Maximal size of the returned buffer accepted from the firmware */
-#define LEGION_WMI_FAN_TABLE_READ_MAX 176
 
 static ssize_t func_fan_curve_current_value_get(struct kobject *kobj,
 						struct kobj_attribute *kattr,
@@ -93,36 +35,15 @@ static ssize_t func_fan_curve_current_value_get(struct kobject *kobj,
 {
 	struct legion_wmi_fm_priv *priv =
 		dev_get_drvdata(kobj_to_dev(kobj->parent));
-	u8 buffer[LEGION_WMI_FAN_TABLE_READ_MAX] = {};
-	struct legion_wmi_fan_table_read table;
-	size_t len = 0;
-	int ret;
+	u32 points[MAX_FANCURVE_SIZE];
+	const int ret = legion_wmi_fm_table_get(priv, points);
 
-	/*
-	 * The older firmware returns another table (uint8, input FanID and SensorID), Lenovo Legion Toolkit
-	 * does not read it there and only writes the fan table
-	 */
-	if (priv->legacy_platform)
-		return -EOPNOTSUPP;
-
-	ret = legion_wmi_dev_evaluate_buffer(priv->wdev, 0,
-					     WMI_METHOD_ID_FAN_GET_TABLE, NULL,
-					     0, buffer, sizeof(buffer), &len);
 	if (ret)
 		return ret;
 
-	/* Fewer bytes than the fan table: not a fan table */
-	if (len < sizeof(table))
-		return -EIO;
-
-	memcpy(&table, buffer, sizeof(table));
-
-	return sysfs_emit(buf, "%u,%u,%u,%u,%u,%u,%u,%u,%u,%u\n",
-			  le32_to_cpu(table.fss[0]), le32_to_cpu(table.fss[1]),
-			  le32_to_cpu(table.fss[2]), le32_to_cpu(table.fss[3]),
-			  le32_to_cpu(table.fss[4]), le32_to_cpu(table.fss[5]),
-			  le32_to_cpu(table.fss[6]), le32_to_cpu(table.fss[7]),
-			  le32_to_cpu(table.fss[8]), le32_to_cpu(table.fss[9]));
+	return sysfs_emit(buf, "%u,%u,%u,%u,%u,%u,%u,%u,%u,%u\n", points[0],
+			  points[1], points[2], points[3], points[4], points[5],
+			  points[6], points[7], points[8], points[9]);
 }
 
 /*
@@ -168,35 +89,20 @@ static ssize_t func_fan_curve_current_value_set(struct kobject *kobj,
 						const char *buf,
 						const size_t count)
 {
-	const struct legion_wmi_fm_priv *priv =
+	struct legion_wmi_fm_priv *priv =
 		dev_get_drvdata(kobj_to_dev(kobj->parent));
 	u8 points[MAX_FANCURVE_SIZE] = { 0 };
-	struct legion_wmi_fan_table_write table = { .fstm = 1 };
 	char event_value[64] = { 0 };
 	char event_type[64] = { 0 };
 
 	char *envp[] = { event_type, event_value, NULL };
 
-	enum thermal_mode mode;
-	ssize_t ret = legion_wmi_fm_notifier_call(
-		&mode, LEGION_WMI_GZ_GET_THERMAL_MODE);
+	int ret = parse_fan_curve(buf, count, points);
+
 	if (ret)
 		return ret;
 
-	if (mode != LEGION_WMI_GZ_THERMAL_MODE_CUSTOM)
-		return -EBUSY;
-
-	ret = parse_fan_curve(buf, count, points);
-	if (ret)
-		return ret;
-
-	for (int i = 0; i < MAX_FANCURVE_SIZE; i++)
-		table.fss[i] = cpu_to_le16(points[i]);
-
-	ret = legion_wmi_dev_evaluate_buffer(priv->wdev, 0,
-					     WMI_METHOD_ID_FAN_SET_TABLE,
-					     (u8 *)&table, sizeof(table), NULL,
-					     0, NULL);
+	ret = legion_wmi_fm_table_set(priv, points);
 	if (ret)
 		return ret;
 
@@ -370,16 +276,14 @@ static ssize_t func_fan_full_speed_current_value_get(struct kobject *kobj,
 {
 	struct legion_wmi_fm_priv *priv =
 		dev_get_drvdata(kobj_to_dev(kobj->parent));
-	u32 value = 0;
+	bool on;
 	int ret;
 
-	ret = legion_wmi_dev_evaluate_int(priv->wdev, 0,
-					  WMI_METHOD_ID_FAN_GET_FULLSPEED, NULL,
-					  0, &value);
+	ret = legion_wmi_fm_full_speed_get(priv, &on);
 	if (ret)
 		return ret;
 
-	return sysfs_emit(buf, "%u\n", value ? 1 : 0);
+	return sysfs_emit(buf, "%u\n", on ? 1 : 0);
 }
 
 static ssize_t func_fan_full_speed_current_value_set(struct kobject *kobj,
@@ -393,7 +297,6 @@ static ssize_t func_fan_full_speed_current_value_set(struct kobject *kobj,
 	char event_value[32];
 	char *envp[] = { event_type, event_value, NULL };
 	unsigned int value;
-	u8 argument;
 	int ret;
 
 	ret = kstrtouint(buf, 10, &value);
@@ -403,10 +306,7 @@ static ssize_t func_fan_full_speed_current_value_set(struct kobject *kobj,
 	if (value > 1)
 		return -EINVAL;
 
-	argument = value;
-	ret = legion_wmi_dev_evaluate_int(priv->wdev, 0,
-					  WMI_METHOD_ID_FAN_SET_FULLSPEED,
-					  &argument, sizeof(argument), NULL);
+	ret = legion_wmi_fm_full_speed_set(priv, value);
 	if (ret)
 		return ret;
 
@@ -446,50 +346,10 @@ static const struct attribute_group legion_sysfs_fm_group_fan_full_speed = {
 	.attrs = legion_sysfs_fm_fan_full_speed_attributes,
 };
 
-/*
- * Fan full speed is registered on the older platform only (the newer firmware has no Fan_Get_FullSpeed), not with
- * an old BIOS (part of the custom mode) and only when the firmware answers (e.g. JYCN fails in the WMI method, see
- * legion-laptop)
- */
-static bool legion_wmi_fm_fan_full_speed_supported(struct legion_wmi_fm_priv *priv)
-{
-	u32 value;
-	int ret;
-
-	if (!priv->legacy_platform ||
-	    !legion_wmi_legacy_bios_supported(&priv->wdev->dev))
-		return false;
-
-	ret = legion_wmi_dev_evaluate_int(priv->wdev, 0,
-					  WMI_METHOD_ID_FAN_GET_FULLSPEED, NULL,
-					  0, &value);
-	if (ret) {
-		dev_dbg(&priv->wdev->dev,
-			"Fan_Get_FullSpeed failed (%d), fan full speed is not supported\n",
-			ret);
-		return false;
-	}
-
-	return true;
-}
-
 static int legion_wmi_fm_fw_attr_add(struct legion_wmi_fm_priv *priv)
 {
 	int i = 0;
-	/*
-	 * Read SmartFan version
-	 */
-	int err = legion_wmi_fm_notifier_call(
-		&priv->smart_fan_version, LEGION_WMI_GZ_GET_SMARTFAN_VERSION);
-	if (err)
-		return err;
-
-	/* Older firmware: fan full speed by the fan method, no reading of the fan table */
-	priv->legacy_platform = legion_wmi_legacy_platform(&priv->wdev->dev, &err);
-	if (err)
-		return err;
-
-	priv->fan_full_speed = legion_wmi_fm_fan_full_speed_supported(priv);
+	int err;
 
 	priv->ida_id = ida_alloc(&legion_wmi_fm_ida, GFP_KERNEL);
 	if (priv->ida_id < 0)
@@ -504,7 +364,7 @@ static int legion_wmi_fm_fw_attr_add(struct legion_wmi_fm_priv *priv)
 		goto err_free_ida;
 	}
 
-	priv->fw_attr_kset = kset_create_and_add("attributes", NULL,
+	priv->fw_attr_kset = kset_create_and_add(LEGION_FW_ATTR_KSET_NAME, NULL,
 						 &priv->fw_attr_dev->kobj);
 	if (!priv->fw_attr_kset) {
 		err = -ENOMEM;
@@ -518,50 +378,12 @@ static int legion_wmi_fm_fw_attr_add(struct legion_wmi_fm_priv *priv)
 			if (err)
 				goto err_remove_groups;
 		}
-
-		for (int i = 0; i < FAN_MAX; ++i) {
-			if (priv->fan_max_speeds[i].fan_id ==
-				    fan_table_id_v2[CPU] &&
-			    priv->fan_max_speeds[i].sensor_id ==
-				    fan_sensor_id_v2[CPU]) {
-				priv->fan_cpu_max_speed =
-					priv->fan_max_speeds[i].max_speed;
-			} else if (priv->fan_max_speeds[i].fan_id ==
-					   fan_table_id_v2[GPU] &&
-				   priv->fan_max_speeds[i].sensor_id ==
-					   fan_sensor_id_v2[GPU]) {
-				priv->fan_gpu_max_speed =
-					priv->fan_max_speeds[i].max_speed;
-			} else if (priv->fan_max_speeds[i].fan_id ==
-					   fan_table_id_v2[SYS] &&
-				   priv->fan_max_speeds[i].sensor_id ==
-					   fan_sensor_id_v2[SYS]) {
-				priv->fan_sys_max_speed =
-					priv->fan_max_speeds[i].max_speed;
-			}
-		}
 	} else {
 		for (i = 0; i < ARRAY_SIZE(legion_sysfs_fm_group_v1) - 1; i++) {
 			err = sysfs_create_group(&priv->fw_attr_kset->kobj,
 						 &legion_sysfs_fm_group_v1[i]);
 			if (err)
 				goto err_remove_groups;
-		}
-
-		for (int i = 0; i < FAN_MAX; ++i) {
-			if (priv->fan_max_speeds[i].fan_id ==
-				    fan_table_id_v1[CPU] &&
-			    priv->fan_max_speeds[i].sensor_id ==
-				    fan_sensor_id_v1[CPU]) {
-				priv->fan_cpu_max_speed =
-					priv->fan_max_speeds[i].max_speed;
-			} else if (priv->fan_max_speeds[i].fan_id ==
-					   fan_table_id_v1[GPU] &&
-				   priv->fan_max_speeds[i].sensor_id ==
-					   fan_sensor_id_v1[GPU]) {
-				priv->fan_gpu_max_speed =
-					priv->fan_max_speeds[i].max_speed;
-			}
 		}
 	}
 

@@ -16,7 +16,7 @@
  */
 #include "legion-kernel-version.h"
 #include "legion-acpi-vpc.h"
-#include "legion-wmi-legacy.h"
+#include "legion-wmi-cpu-gpu.h"
 #include "legion-firmware-attributes-class.h"
 #include "legion-wmi-capdata00.h"
 #include "legion-wmi-capdata01.h"
@@ -111,8 +111,8 @@ static const struct legion_driver legion_drivers[] = {
 	{ "fan method", legion_wmi_fm_driver_init, legion_wmi_fm_driver_exit },
 	{ "ACPI VPC", legion_acpi_vpc_driver_init,
 	  legion_acpi_vpc_driver_exit },
-	{ "legacy CPU / GPU method", legion_wmi_legacy_driver_init,
-	  legion_wmi_legacy_driver_exit },
+	{ "CPU / GPU method", legion_wmi_cpu_gpu_driver_init,
+	  legion_wmi_cpu_gpu_driver_exit },
 };
 
 static void legion_drivers_exit(size_t count)

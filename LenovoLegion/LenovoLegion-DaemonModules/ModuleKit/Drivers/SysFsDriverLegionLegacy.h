@@ -14,7 +14,7 @@
 namespace LenovoLegionDaemon::Kit {
 
 /*
- * CPU and GPU power limits of the older Legion firmware (lenovo_legion legion-wmi-legacy.c, SmartFan 4 / 5 or
+ * CPU and GPU power limits of the older Legion firmware (lenovo_legion legion-wmi-cpu-gpu.c, SmartFan 4 / 5 or
  * LegionZone 1 / 2): firmware attributes legion-wmi-cpu-0 / legion-wmi-gpu-0 instead of the other mode. A limit is
  * present only when the firmware supports it, its values are single values of the custom mode (not per mode).
  */

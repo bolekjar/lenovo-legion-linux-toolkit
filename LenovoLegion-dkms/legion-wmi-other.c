@@ -16,6 +16,7 @@
 #include "legion-wmi-other-sysfs.h"
 #include "legion-wmi-gamezone.h"
 #include "legion-hwmon.h"
+#include "legion-wmi-platform.h"
 #include "legion-wmi-helpers.h"
 
 #include <linux/module.h>
@@ -179,23 +180,23 @@ static int legion_wmi_om_master_bind(struct device *dev)
 	if (ret)
 		goto sysfs_err;
 
+	/*
+	 * Source of the sensors and owner of the hwmon, not on the older platform (the fan method provides the
+	 * sensors there, the same as Lenovo Legion Toolkit)
+	 */
 	priv->hwmon_nb.notifier_call = legion_wmi_other_call;
-	ret = legion_hwmon_other_register_notifier(&priv->hwmon_nb);
-	if (ret)
-		goto notifier_err;
-
-	priv->hwmon = legion_hwmon_register(dev);
-	if (IS_ERR(priv->hwmon)) {
-		ret = PTR_ERR(priv->hwmon);
-		priv->hwmon = NULL;
-		goto hwmon_err;
+	if (!legion_wmi_platform_legacy(dev, &ret)) {
+		priv->hwmon = legion_hwmon_register(dev, &priv->hwmon_nb);
+		if (IS_ERR(priv->hwmon)) {
+			ret = PTR_ERR(priv->hwmon);
+			priv->hwmon = NULL;
+			goto hwmon_err;
+		}
 	}
 
 	return 0;
 
 hwmon_err:
-	legion_hwmon_other_unregister_notifier(&priv->hwmon_nb);
-notifier_err:
 	legion_wmi_other_sysfs_exit(priv);
 sysfs_err:
 	component_unbind_all(dev, NULL);
@@ -216,7 +217,6 @@ static void legion_wmi_om_master_unbind(struct device *dev)
 
 	legion_hwmon_unregister(priv->hwmon);
 	priv->hwmon = NULL;
-	legion_hwmon_other_unregister_notifier(&priv->hwmon_nb);
 
 	legion_wmi_other_sysfs_exit(priv);
 

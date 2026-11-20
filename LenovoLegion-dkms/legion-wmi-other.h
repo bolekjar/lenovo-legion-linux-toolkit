@@ -108,10 +108,10 @@ struct legion_wmi_other_priv {
 	struct wmi_device *wdev;
 
 	struct notifier_block hwmon_nb; /* source of the hwmon sensors */
-	struct notifier_block
-		other_nb; /* LegionZone version, without the components */
 	struct legion_hwmon
 		*hwmon; /* hwmon device, while the components are bound */
+	struct notifier_block
+		other_nb; /* LegionZone version, without the components */
 
 	//SysFs
 	struct device *fw_attr_dev;

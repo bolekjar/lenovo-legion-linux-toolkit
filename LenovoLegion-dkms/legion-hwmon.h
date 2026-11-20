@@ -25,20 +25,19 @@ struct device;
 struct notifier_block;
 
 /*
- * Sources of the sensors: the other mode (temperatures, fan speeds, capability data 00) and the fan method (maximal
- * fan speeds) register their notifiers while their components are bound (not device managed: bind/unbind may repeat)
- */
-int legion_hwmon_other_register_notifier(struct notifier_block *nb);
-void legion_hwmon_other_unregister_notifier(struct notifier_block *nb);
-int legion_hwmon_fm_register_notifier(struct notifier_block *nb);
-void legion_hwmon_fm_unregister_notifier(struct notifier_block *nb);
-
-/*
- * hwmon device "legion" of the other mode device (registered when its components are bound, ERR_PTR on error)
+ * hwmon device "legion" of the source of the sensors (temperatures, fan speeds, capability data 00), kept by the
+ * source: the other mode on the newer firmware, the fan method on the older one (ERR_PTR on error)
  */
 struct legion_hwmon;
 
-struct legion_hwmon *legion_hwmon_register(struct device *parent);
+struct legion_hwmon *legion_hwmon_register(struct device *parent,
+					   struct notifier_block *source);
 void legion_hwmon_unregister(struct legion_hwmon *hwmon);
+
+/*
+ * Maximal fan speeds: the fan method registers its notifier while its components are bound
+ */
+int legion_hwmon_fm_register_notifier(struct notifier_block *nb);
+void legion_hwmon_fm_unregister_notifier(struct notifier_block *nb);
 
 #endif // LEGION_HWMON_H

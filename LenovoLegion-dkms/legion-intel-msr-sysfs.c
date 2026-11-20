@@ -297,7 +297,7 @@ static int legion_intel_msr_fw_attr_add(struct legion_intel_msr_data *data)
 		goto err_free_ida;
 	}
 
-	data->fw_attr_kset = kset_create_and_add("attributes", NULL,
+	data->fw_attr_kset = kset_create_and_add(LEGION_FW_ATTR_KSET_NAME, NULL,
 						 &data->fw_attr_dev->kobj);
 	if (!data->fw_attr_kset) {
 		err = -ENOMEM;

@@ -10,6 +10,12 @@
 #define LEGION_COMMON_H
 
 /*
+ * Name of the kset of the attributes under each class device (/sys/class/<class>/<device>/attributes/<attribute>),
+ * the same as the firmware-attributes class of the kernel
+ */
+#define LEGION_FW_ATTR_KSET_NAME "attributes"
+
+/*
  * Event types of the kernel uevents (EVENT_TYPE) and of the notifier chains of the driver
  */
 enum legion_events_type {
@@ -75,17 +81,17 @@ enum legion_events_type {
 	LEGION_ACPI_VPC_RAPID_CHARGE = 3004,
 
 	/*
-	 * Reserve 4000 - 4999 for the limits of the older firmware (legion-wmi-legacy.c)
+	 * Reserve 4000 - 4999 for the limits of the older firmware (legion-wmi-cpu-gpu.c)
 	 */
-	LEGION_WMI_LEGACY_CPU_LTP = 4000,
-	LEGION_WMI_LEGACY_CPU_STP = 4001,
-	LEGION_WMI_LEGACY_CPU_PP = 4002,
-	LEGION_WMI_LEGACY_CPU_CLP = 4003,
-	LEGION_WMI_LEGACY_CPU_TMP = 4004,
-	LEGION_WMI_LEGACY_APU_SPPT = 4005,
-	LEGION_WMI_LEGACY_GPU_PB = 4010,
-	LEGION_WMI_LEGACY_GPU_TGP = 4011,
-	LEGION_WMI_LEGACY_GPU_TMP = 4012
+	LEGION_WMI_CPU_LTP = 4000,
+	LEGION_WMI_CPU_STP = 4001,
+	LEGION_WMI_CPU_PP = 4002,
+	LEGION_WMI_CPU_CLP = 4003,
+	LEGION_WMI_CPU_TMP = 4004,
+	LEGION_WMI_CPU_APU_SPPT = 4005,
+	LEGION_WMI_GPU_PB = 4010,
+	LEGION_WMI_GPU_TGP = 4011,
+	LEGION_WMI_GPU_TMP = 4012
 };
 
 #endif // LEGION_COMMON_H

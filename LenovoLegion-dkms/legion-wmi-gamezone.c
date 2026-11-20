@@ -164,25 +164,6 @@ static int legion_wmi_gz_call(struct lenovo_wmi_gz_priv *priv,
 		}
 	}
 		return NOTIFY_OK;
-	case LEGION_WMI_GZ_GET_SENSOR: {
-		struct legion_wmi_gz_sensor **sensor = data;
-
-		/* Only the reading methods of the sensors */
-		switch ((*sensor)->method_id) {
-		case GetCPUTemp:
-		case GetGPUTemp:
-		case GetFan1Speed:
-		case GetFan2Speed:
-			break;
-		default:
-			return NOTIFY_BAD;
-		}
-
-		if (legion_wmi_gz_get(priv->wdev, (*sensor)->method_id,
-				      &(*sensor)->value))
-			return NOTIFY_BAD;
-	}
-		return NOTIFY_OK;
 
 	default:
 		return NOTIFY_DONE;
@@ -325,6 +306,8 @@ static int legion_wmi_gz_event_call(struct notifier_block *nb,
 
 	switch (cmd) {
 	case LEGION_WMI_EVENT_THERMAL_MODE: {
+		dev_dbg(&priv->wdev->dev, "thermal mode event %d\n",
+			*(enum thermal_mode *)data);
 		legion_modify_current_mode(priv, *(enum thermal_mode *)data);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 14, 0)
 		platform_profile_notify(priv->ppdev);

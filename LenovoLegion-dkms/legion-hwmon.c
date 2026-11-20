@@ -21,41 +21,17 @@
 #include <linux/err.h>
 #include <linux/slab.h>
 
-static BLOCKING_NOTIFIER_HEAD(legion_hwmon_chain_head);
 static BLOCKING_NOTIFIER_HEAD(legion_hwmon_fm_chain_head);
 
-int legion_hwmon_other_register_notifier(struct notifier_block *nb)
+/*
+ * Request to the source of the sensors of the hwmon (its notifier block is called directly, no chain: one source)
+ */
+static int legion_hwmon_source_call(struct notifier_block *source,
+				    unsigned long action,
+				    enum CapabilityID capability_id, void *data)
 {
-	return blocking_notifier_chain_register(&legion_hwmon_chain_head, nb);
-}
-
-void legion_hwmon_other_unregister_notifier(struct notifier_block *nb)
-{
-	blocking_notifier_chain_unregister(&legion_hwmon_chain_head, nb);
-}
-
-static ssize_t legion_hwmon_other_notifier_call(void *data,
-						enum CapabilityID capability_id)
-{
-	struct hwmon_capability req_data = { capability_id, data };
-	const int ret = blocking_notifier_call_chain(
-		&legion_hwmon_chain_head, LEGION_WMI_FM_GET_CAPABILITY_VALUE,
-		&req_data);
-
-	if ((ret & ~NOTIFY_STOP_MASK) != NOTIFY_OK)
-		return -EINVAL;
-
-	return 0;
-}
-
-static int
-legion_hwmon_other_data00_notifier_call(void *data,
-					enum CapabilityID capability_id)
-{
-	struct hwmon_capability req_data = { capability_id, data };
-	const int ret = blocking_notifier_call_chain(
-		&legion_hwmon_chain_head, LEGION_WMI_FM_GET_CAPABILITY_DATA,
-		&req_data);
+	struct hwmon_capability request = { capability_id, data };
+	const int ret = source->notifier_call(source, action, &request);
 
 	if ((ret & ~NOTIFY_STOP_MASK) != NOTIFY_OK)
 		return -EINVAL;
@@ -94,6 +70,7 @@ static int legion_hwmon_fm_notifier_call(void *data,
 
 struct legion_hwmon {
 	struct device *dev;
+	struct notifier_block *source; /* source of the sensors, owner of the hwmon */
 	u8 temperatures; /* supported temperature channels (bits) */
 	u8 fans; /* supported fan channels (bits) */
 };
@@ -141,6 +118,7 @@ static umode_t legion_hwmon_is_visible(const void *drvdata,
 static int legion_hwmon_read(struct device *dev, enum hwmon_sensor_types type,
 			     u32 attr, int channel, long *val)
 {
+	const struct legion_hwmon *hwmon = dev_get_drvdata(dev);
 	u32 value = 0;
 
 	switch (type) {
@@ -148,8 +126,9 @@ static int legion_hwmon_read(struct device *dev, enum hwmon_sensor_types type,
 		if (attr != hwmon_temp_input)
 			return -EOPNOTSUPP;
 
-		if (legion_hwmon_other_notifier_call(&value,
-						     temperature_ids[channel]))
+		if (legion_hwmon_source_call(hwmon->source,
+					     LEGION_WMI_FM_GET_CAPABILITY_VALUE,
+					     temperature_ids[channel], &value))
 			return -EIO;
 
 		*val = (long)value * 1000; /* millidegree Celsius */
@@ -158,8 +137,10 @@ static int legion_hwmon_read(struct device *dev, enum hwmon_sensor_types type,
 	case hwmon_fan:
 		switch (attr) {
 		case hwmon_fan_input:
-			if (legion_hwmon_other_notifier_call(&value,
-							     fan_ids[channel]))
+			if (legion_hwmon_source_call(
+				    hwmon->source,
+				    LEGION_WMI_FM_GET_CAPABILITY_VALUE,
+				    fan_ids[channel], &value))
 				return -EIO;
 			break;
 		case hwmon_fan_min:
@@ -223,14 +204,16 @@ static const struct hwmon_chip_info legion_hwmon_chip_info = {
 /*
  * Bit of the channel when the sensor is supported (capability data 00)
  */
-static int legion_hwmon_supported(const enum CapabilityID ids[], u8 *mask)
+static int legion_hwmon_supported(struct notifier_block *source,
+				  const enum CapabilityID ids[], u8 *mask)
 {
 	*mask = 0;
 
 	for (int channel = 0; channel < LEGION_HWMON_CHANNELS; ++channel) {
 		struct legion_wmi_capdata00 cap_data00 = { 0, 0, 0 };
-		const int err = legion_hwmon_other_data00_notifier_call(
-			&cap_data00, ids[channel]);
+		const int err = legion_hwmon_source_call(
+			source, LEGION_WMI_FM_GET_CAPABILITY_DATA, ids[channel],
+			&cap_data00);
 
 		if (err)
 			return err;
@@ -242,11 +225,19 @@ static int legion_hwmon_supported(const enum CapabilityID ids[], u8 *mask)
 	return 0;
 }
 
-/*
- * Registered by the other mode when its components are bound, unregistered before they are unbound (not device
- * managed: bind/unbind may repeat while the other mode device stays)
+/**
+ * legion_hwmon_register() - Create the hwmon device "legion" of a source of the sensors
+ * @parent: Device of the source (owner of the hwmon), parent of the hwmon device.
+ * @source: Notifier of the source (LEGION_WMI_FM_GET_CAPABILITY_VALUE, LEGION_WMI_FM_GET_CAPABILITY_DATA), called
+ *          directly by the hwmon.
+ *
+ * The owner keeps the hwmon (registered while its components are bound, not device managed: bind/unbind may
+ * repeat). The maximal fan speeds come from the fan method (legion_hwmon_fm_register_notifier).
+ *
+ * Return: The hwmon, or ERR_PTR on an error.
  */
-struct legion_hwmon *legion_hwmon_register(struct device *parent)
+struct legion_hwmon *legion_hwmon_register(struct device *parent,
+					   struct notifier_block *source)
 {
 	struct legion_hwmon *hwmon;
 	int err;
@@ -255,11 +246,14 @@ struct legion_hwmon *legion_hwmon_register(struct device *parent)
 	if (!hwmon)
 		return ERR_PTR(-ENOMEM);
 
-	err = legion_hwmon_supported(temperature_ids, &hwmon->temperatures);
+	hwmon->source = source;
+
+	err = legion_hwmon_supported(source, temperature_ids,
+				     &hwmon->temperatures);
 	if (err)
 		goto err_free;
 
-	err = legion_hwmon_supported(fan_ids, &hwmon->fans);
+	err = legion_hwmon_supported(source, fan_ids, &hwmon->fans);
 	if (err)
 		goto err_free;
 
@@ -277,6 +271,10 @@ err_free:
 	return ERR_PTR(err);
 }
 
+/**
+ * legion_hwmon_unregister() - Remove the hwmon device of a source
+ * @hwmon: The hwmon (NULL or ERR_PTR: nothing).
+ */
 void legion_hwmon_unregister(struct legion_hwmon *hwmon)
 {
 	if (IS_ERR_OR_NULL(hwmon))
