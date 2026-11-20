@@ -34,6 +34,12 @@ class PageSources : public QObject
     Q_PROPERTY(QString  reason    READ reason                  NOTIFY stateChanged)
 
     /*
+     * Every data source of the page answered at least once (data, an error or not connected): until then
+     * "not available" only means "not loaded yet"
+     */
+    Q_PROPERTY(bool     answered  READ answered                NOTIFY stateChanged)
+
+    /*
      * What controls the page (tool tip of the tab): the Lenovo Legion kernel driver or standard interfaces
      */
     Q_PROPERTY(QString  description READ description           NOTIFY stateChanged)
@@ -53,6 +59,7 @@ public:
     bool     available() const;
     QString  platform() const;
     QString  reason() const;
+    bool     answered() const;
     QString  description() const;
     int      changeCount() const;
 

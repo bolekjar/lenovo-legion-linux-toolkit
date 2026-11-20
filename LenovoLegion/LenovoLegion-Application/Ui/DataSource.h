@@ -133,6 +133,7 @@ public:
     bool    valid() const;
     int     changeCount() const;
     bool    available() const;
+    bool    answered() const;   // the daemon answered at least once (data, an error or not connected)
     QString platform() const;
     QString lastError() const;
     QString moduleError() const;

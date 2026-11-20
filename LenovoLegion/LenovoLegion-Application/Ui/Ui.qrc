@@ -52,6 +52,7 @@
         <file alias="ThemedScrollBar.qml">qml/ThemedScrollBar.qml</file>
         <file alias="ThemedSlider.qml">qml/ThemedSlider.qml</file>
         <file alias="TintedIcon.qml">qml/TintedIcon.qml</file>
+        <file alias="UnavailableCard.qml">qml/UnavailableCard.qml</file>
         <file alias="ThemedTabBar.qml">qml/ThemedTabBar.qml</file>
         <file alias="ThemedTabButton.qml">qml/ThemedTabButton.qml</file>
         <file alias="ThemedTextField.qml">qml/ThemedTextField.qml</file>

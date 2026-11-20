@@ -67,6 +67,19 @@ bool PageSources::available() const
     return false;
 }
 
+bool PageSources::answered() const
+{
+    for(const auto& source : m_sources)
+    {
+        if(source != nullptr && !source->answered())
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 QString PageSources::platform() const
 {
     for(const auto& source : m_sources)

@@ -306,6 +306,11 @@ bool DataSource::available() const
     return m_available;
 }
 
+bool DataSource::answered() const
+{
+    return m_revision > 0;
+}
+
 QString DataSource::platform() const
 {
     return m_platform;

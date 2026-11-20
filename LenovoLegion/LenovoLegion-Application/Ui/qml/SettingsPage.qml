@@ -29,11 +29,15 @@ ScrollView {
     // the page is shown the same as without data
     property bool   contentAvailable: true
     property string contentReason: ""
+    // Icon of the card of the page without data
+    property url    unavailableIcon: "qrc:/ui/icons/plug.svg"
 
     // State of the data sources of the page (tab of the page): without data the page is shown disabled with the reason
     readonly property bool   available: sources.available && contentAvailable
     readonly property string platform:  sources.platform
     readonly property string reason:    !sources.available ? sources.reason : contentReason
+    // Not available after the daemon answered (not only not loaded yet): the card instead of the content
+    readonly property bool   unavailableShown: !available && sources.answered
     readonly property string description: sources.description
 
     // "page" inside PageSources would be its own property
@@ -150,14 +154,19 @@ ScrollView {
             font.pixelSize: 18
         }
 
-        Label {
+        // Page without data: the card with the reason instead of the content (the same as without the daemon)
+        Item {
             Layout.fillWidth: true
+            Layout.topMargin: 24
+            implicitHeight: unavailableCard.implicitHeight
+            visible: page.unavailableShown
 
-            visible: !page.available
-            text: page.reason
-            color: theme.modified
-            font.bold: true
-            wrapMode: Text.Wrap
+            UnavailableCard {
+                id: unavailableCard
+
+                icon: page.unavailableIcon
+                text: page.reason
+            }
         }
 
         // Groups below each other, on a wide page in columns (columnWidth: minimum width of a column, 0 = one column)
@@ -169,6 +178,7 @@ ScrollView {
             columns: page.columnWidth > 0 ? Math.max(1, Math.floor((width + columnSpacing) / (page.columnWidth + columnSpacing))) : 1
             rowSpacing: 12
             columnSpacing: 12
+            visible: !page.unavailableShown
             enabled: page.available
         }
     }

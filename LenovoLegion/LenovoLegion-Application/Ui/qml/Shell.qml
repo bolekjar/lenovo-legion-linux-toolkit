@@ -342,72 +342,21 @@ Control {
                 anchors.fill: parent
                 visible: !shell.pageShown
 
-                Rectangle {
-                    anchors.centerIn: parent
-                    width: Math.min(560, parent.width - 40)
-                    implicitHeight: offlineColumn.implicitHeight + 48
-                    radius: theme.radius
-                    color: theme.groupBackground
-                    border.width: theme.styled ? 2 : 1
-                    border.color: theme.groupBorder
+                UnavailableCard {
+                    icon: "qrc:/ui/icons/plug.svg"
+                    iconColor: "#e5534b"
+                    title: "Not connected to the daemon"
+                    text: "The page " + shell.current.name + " needs LenovoLegion-Daemon. Check that the service runs "
+                        + "(systemctl status lenovo-legion-daemon.service) and that your user is in the group legion."
 
-                    ColumnLayout {
-                        id: offlineColumn
+                    ThemedButton {
+                        text: "Reconnect"
+                        onClicked: appState.reconnect()
+                    }
 
-                        anchors.fill: parent
-                        anchors.margins: 24
-                        spacing: 12
-
-                        Rectangle {
-                            Layout.alignment: Qt.AlignHCenter
-                            implicitWidth: 56
-                            implicitHeight: 56
-                            radius: 28
-                            color: Qt.rgba(0.9, 0.33, 0.29, 0.14)
-                            border.width: 2
-                            border.color: "#e5534b"
-
-                            TintedIcon {
-                                anchors.centerIn: parent
-                                width: 26
-                                height: 26
-                                source: "qrc:/ui/icons/plug.svg"
-                                color: "#e5534b"
-                            }
-                        }
-
-                        Label {
-                            Layout.alignment: Qt.AlignHCenter
-                            text: "Not connected to the daemon"
-                            font.bold: true
-                            font.pixelSize: theme.fontPixelSize + 6
-                            color: theme.text
-                        }
-
-                        Label {
-                            Layout.fillWidth: true
-                            text: "The page " + shell.current.name + " needs LenovoLegion-Daemon. Check that the service runs "
-                                + "(systemctl status lenovo-legion-daemon.service) and that your user is in the group legion."
-                            horizontalAlignment: Text.AlignHCenter
-                            wrapMode: Text.Wrap
-                            color: theme.disabledText
-                        }
-
-                        RowLayout {
-                            Layout.alignment: Qt.AlignHCenter
-                            Layout.topMargin: 6
-                            spacing: 8
-
-                            ThemedButton {
-                                text: "Reconnect"
-                                onClicked: appState.reconnect()
-                            }
-
-                            ThemedButton {
-                                text: "Open Help"
-                                onClicked: shell.currentPage = shell.pages.findIndex(page => page.name === "Help")
-                            }
-                        }
+                    ThemedButton {
+                        text: "Open Help"
+                        onClicked: shell.currentPage = shell.pages.findIndex(page => page.name === "Help")
                     }
                 }
             }
