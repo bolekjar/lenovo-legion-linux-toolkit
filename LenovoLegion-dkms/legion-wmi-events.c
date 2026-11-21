@@ -12,11 +12,14 @@
 #include "legion-common.h"
 #include "legion-wmi-events.h"
 #include "legion-wmi-gamezone.h"
+#include "legion-wmi-other.h"
 
 #include <linux/acpi.h>
+#include <linux/lockdep.h>
 #include <linux/module.h>
 #include <linux/mutex.h>
 #include <linux/notifier.h>
+#include <linux/suspend.h>
 #include <linux/types.h>
 #include <linux/wmi.h>
 
@@ -45,6 +48,8 @@ struct legion_wmi_events_priv {
 	 * thermal mode event; a later event reads the firmware after the store and the uevent of the earlier one
 	 */
 	struct mutex lock;
+	/* Thermal mode event device: the effective thermal mode again after a resume */
+	struct notifier_block pm_nb;
 };
 
 /**
@@ -186,15 +191,37 @@ static void legion_wmi_events_power_charge_mode(struct wmi_device *wdev,
  * EVENT_VALUE). EVENT_VALUE of the thermal mode is the effective thermal mode after the game zone (255 for the
  * custom mode also on the older firmware), the other events carry the value of the firmware.
  */
+/*
+ * uevent of an event (EVENT_TYPE, EVENT_VALUE), not for the unknown events
+ */
+static void legion_wmi_events_uevent(struct legion_wmi_events_priv *priv,
+				     bool integer, u64 value)
+{
+	char event_type[64] = { 0 };
+	char event_value[64] = { 0 };
+	char *envp[] = { event_type, event_value, NULL };
+
+	lockdep_assert_held(&priv->lock);
+
+	if (priv->type == LEGION_WMI_EVENT_UNKNOWN)
+		return;
+
+	snprintf(event_type, sizeof(event_type), "EVENT_TYPE=%d", priv->type);
+	if (integer)
+		snprintf(event_value, sizeof(event_value), "EVENT_VALUE=%llu",
+			 value);
+	else
+		snprintf(event_value, sizeof(event_value), "EVENT_VALUE=N/A");
+
+	kobject_uevent_env(&priv->wdev->dev.kobj, KOBJ_CHANGE, envp);
+}
+
 static void legion_wmi_events_notify(struct wmi_device *wdev,
 				     union acpi_object *obj)
 {
 	struct legion_wmi_events_priv *priv = dev_get_drvdata(&wdev->dev);
 	const bool integer = obj->type == ACPI_TYPE_INTEGER;
 	u64 value = integer ? obj->integer.value : 0;
-	char event_type[64] = { 0 };
-	char event_value[64] = { 0 };
-	char *envp[] = { event_type, event_value, NULL };
 
 	/* The chain (game zone) and the uevent of one event before the next one */
 	guard(mutex)(&priv->lock);
@@ -212,17 +239,42 @@ static void legion_wmi_events_notify(struct wmi_device *wdev,
 		}
 	}
 
-	if (priv->type == LEGION_WMI_EVENT_UNKNOWN)
-		return;
+	legion_wmi_events_uevent(priv, integer, value);
+}
 
-	snprintf(event_type, sizeof(event_type), "EVENT_TYPE=%d", priv->type);
-	if (integer)
-		snprintf(event_value, sizeof(event_value), "EVENT_VALUE=%llu",
-			 value);
-	else
-		snprintf(event_value, sizeof(event_value), "EVENT_VALUE=N/A");
+/*
+ * After a resume the thermal mode event again, the same way as from the firmware: the mode stored by the game zone
+ * for the current power source, corrected by the game zone (older firmware: read from the firmware), and its
+ * uevent (the daemon writes the limits and the fan curve of the custom mode again, the same as Lenovo Legion
+ * Toolkit after a resume). After the resume of all devices, the WMI methods and the user space are available.
+ */
+static int legion_wmi_events_pm_notify(struct notifier_block *nb,
+				       unsigned long action, void *data)
+{
+	struct legion_wmi_events_priv *priv =
+		container_of(nb, struct legion_wmi_events_priv, pm_nb);
+	enum thermal_mode mode;
+	u64 value;
 
-	kobject_uevent_env(&wdev->dev.kobj, KOBJ_CHANGE, envp);
+	if (action != PM_POST_SUSPEND && action != PM_POST_HIBERNATION)
+		return NOTIFY_DONE;
+
+	if (legion_wmi_other_notifier_call(&mode,
+					   LEGION_WMI_GZ_GET_THERMAL_MODE))
+		return NOTIFY_DONE;
+
+	guard(mutex)(&priv->lock);
+
+	value = legion_wmi_events_thermal_mode(priv->wdev, mode);
+	dev_dbg(&priv->wdev->dev, "thermal mode %llu after the resume\n", value);
+	legion_wmi_events_uevent(priv, true, value);
+
+	return NOTIFY_OK;
+}
+
+static void legion_wmi_events_pm_unregister(void *data)
+{
+	unregister_pm_notifier(data);
 }
 
 static int legion_wmi_events_probe(struct wmi_device *wdev, const void *context)
@@ -238,14 +290,25 @@ static int legion_wmi_events_probe(struct wmi_device *wdev, const void *context)
 	priv->wdev = wdev;
 	priv->type = *(enum legion_events_type *)context;
 
-	const int ret = devm_mutex_init(&wdev->dev, &priv->lock);
+	int ret = devm_mutex_init(&wdev->dev, &priv->lock);
 
 	if (ret)
 		return ret;
 
 	dev_set_drvdata(&wdev->dev, priv);
 
-	return 0;
+	if (priv->type != LEGION_WMI_EVENT_THERMAL_MODE)
+		return 0;
+
+	/* Unregistered before the mutex is destroyed (devm in the reverse order), waits for a running callback */
+	priv->pm_nb.notifier_call = legion_wmi_events_pm_notify;
+	ret = register_pm_notifier(&priv->pm_nb);
+	if (ret)
+		return ret;
+
+	return devm_add_action_or_reset(&wdev->dev,
+					legion_wmi_events_pm_unregister,
+					&priv->pm_nb);
 }
 
 static const struct wmi_device_id legion_wmi_events_id_table[] = {

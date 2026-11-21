@@ -24,7 +24,10 @@ enum legion_events_type {
 	 * Reserve 0 - 999 for WMI EVENTS directly from HW
 	 */
 	LENOVO_WMI_EVENT_UTILITY = 0,
-	/* EVENT_VALUE: effective thermal mode, 255 for the custom mode also on the older firmware */
+	/*
+	 * EVENT_VALUE: effective thermal mode, 255 for the custom mode also on the older firmware; sent also after a
+	 * resume (the current mode)
+	 */
 	LEGION_WMI_EVENT_THERMAL_MODE = 1,
 	LEGION_WMI_EVENT_POWER_CHARGE_MODE = 2,
 	LEGION_WMI_EVENT_SMART_FAN_MODE = 3,
