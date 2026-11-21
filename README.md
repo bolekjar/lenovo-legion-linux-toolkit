@@ -320,6 +320,11 @@ The firmware accepts the write but ignores it when undervolting is locked in the
 "undervolt protection"). The application shows an error and `dmesg` contains
 `legion-intel-msr: offset … was not applied`.
 
+**GPU temperature limit shows 135 °C (older firmware, e.g. Legion 5 15IAH7H)**
+The firmware starts with the value `0x87` (135) instead of 87 (`0x57`, its default and maximum). It is only the
+reported value, the GPU gets the limit when it is set: the value of the custom mode replaces it until the next
+reboot.
+
 **NVIDIA GPU values are missing**
 The NVIDIA proprietary driver with NVML (`nvidia-utils`) is needed. A suspended GPU (hybrid mode, idle) is not
 queried, its values appear when it wakes up.

@@ -93,29 +93,35 @@ QByteArray SysFsDataProviderFanCurve::serializeAndGetData()
 
 
         /*
-         * Default values
+         * Default values of the modes (not on the older firmware: its fan table has no mode)
          */
-        setValuesSteps(fanCurve.m_cpu_fan_default,[&](legion::messages::FanCurve::Default &defaultValues,const QList<QString>& values){
-            for (const auto& val : values) {
-                defaultValues.add_fan(val.toUInt());
-            }
-        },fanCurveMsg.mutable_cpu_default());
-        setValuesSteps(fanCurve.m_cpu_sensor_default,[&](legion::messages::FanCurve::Default &defaultValues,const QList<QString>& values){
-            for (const auto& val : values) {
-                defaultValues.add_sensors(val.toUInt());
-            }
-        },fanCurveMsg.mutable_cpu_default());
+        if(!fanCurve.m_cpu_fan_default.empty() && !fanCurve.m_cpu_sensor_default.empty())
+        {
+            setValuesSteps(fanCurve.m_cpu_fan_default,[&](legion::messages::FanCurve::Default &defaultValues,const QList<QString>& values){
+                for (const auto& val : values) {
+                    defaultValues.add_fan(val.toUInt());
+                }
+            },fanCurveMsg.mutable_cpu_default());
+            setValuesSteps(fanCurve.m_cpu_sensor_default,[&](legion::messages::FanCurve::Default &defaultValues,const QList<QString>& values){
+                for (const auto& val : values) {
+                    defaultValues.add_sensors(val.toUInt());
+                }
+            },fanCurveMsg.mutable_cpu_default());
+        }
 
-        setValuesSteps(fanCurve.m_gpu_fan_default,[&](legion::messages::FanCurve::Default &defaultValues,const QList<QString>& values){
-            for (const auto& val : values) {
-                defaultValues.add_fan(val.toUInt());
-            }
-        },fanCurveMsg.mutable_gpu_default());
-        setValuesSteps(fanCurve.m_gpu_sensor_default,[&](legion::messages::FanCurve::Default &defaultValues,const QList<QString>& values){
-            for (const auto& val : values) {
-                defaultValues.add_sensors(val.toUInt());
-            }
-        },fanCurveMsg.mutable_gpu_default());
+        if(!fanCurve.m_gpu_fan_default.empty() && !fanCurve.m_gpu_sensor_default.empty())
+        {
+            setValuesSteps(fanCurve.m_gpu_fan_default,[&](legion::messages::FanCurve::Default &defaultValues,const QList<QString>& values){
+                for (const auto& val : values) {
+                    defaultValues.add_fan(val.toUInt());
+                }
+            },fanCurveMsg.mutable_gpu_default());
+            setValuesSteps(fanCurve.m_gpu_sensor_default,[&](legion::messages::FanCurve::Default &defaultValues,const QList<QString>& values){
+                for (const auto& val : values) {
+                    defaultValues.add_sensors(val.toUInt());
+                }
+            },fanCurveMsg.mutable_gpu_default());
+        }
 
 
 

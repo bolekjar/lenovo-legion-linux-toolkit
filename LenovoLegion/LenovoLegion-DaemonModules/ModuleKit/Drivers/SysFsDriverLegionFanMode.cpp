@@ -32,10 +32,22 @@ void SysFsDriverLegionFanMode::init()
 
 
 
-        m_descriptor["cpu_fan_default"] = std::filesystem::path(fanCurvePath).append("cpu_fan_default");
-        m_descriptor["cpu_sensor_default"] = std::filesystem::path(fanCurvePath).append("cpu_sensor_default");
-        m_descriptor["gpu_fan_default"] = std::filesystem::path(fanCurvePath).append("gpu_fan_default");
-        m_descriptor["gpu_sensor_default"] = std::filesystem::path(fanCurvePath).append("gpu_sensor_default");
+        /*
+         * Default tables of the modes, not on the older firmware (its fan table has no mode)
+         */
+        if(std::filesystem::exists(std::filesystem::path(fanCurvePath).append("cpu_fan_default")) &&
+           std::filesystem::exists(std::filesystem::path(fanCurvePath).append("cpu_sensor_default")))
+        {
+            m_descriptor["cpu_fan_default"] = std::filesystem::path(fanCurvePath).append("cpu_fan_default");
+            m_descriptor["cpu_sensor_default"] = std::filesystem::path(fanCurvePath).append("cpu_sensor_default");
+        }
+
+        if(std::filesystem::exists(std::filesystem::path(fanCurvePath).append("gpu_fan_default")) &&
+           std::filesystem::exists(std::filesystem::path(fanCurvePath).append("gpu_sensor_default")))
+        {
+            m_descriptor["gpu_fan_default"] = std::filesystem::path(fanCurvePath).append("gpu_fan_default");
+            m_descriptor["gpu_sensor_default"] = std::filesystem::path(fanCurvePath).append("gpu_sensor_default");
+        }
 
         m_descriptor["current_value"] = std::filesystem::path(fanCurvePath).append("current_value");
         m_descriptor["display_name"] = std::filesystem::path(fanCurvePath).append("display_name");
