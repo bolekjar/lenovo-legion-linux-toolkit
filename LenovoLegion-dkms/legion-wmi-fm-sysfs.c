@@ -267,6 +267,35 @@ static const struct attribute_group legion_sysfs_fm_group_v2[] = {
 };
 
 /*
+ * Older firmware: the fan curve is only written (Fan_Get_Table is not in its ASL, the same as Lenovo Legion
+ * Toolkit), its fan table has no mode, so no default tables of the modes
+ */
+static struct attribute *legion_sysfs_fm_fan_curve_attributes_legacy[] = {
+	&kobj_attr_fan_curve_current_value.attr,
+	&kobj_attr_fan_curve_display_name.attr,
+	NULL
+};
+
+static const struct attribute_group legion_sysfs_fm_group_legacy[] = {
+	{ .name = "fan_curve",
+	  .attrs = legion_sysfs_fm_fan_curve_attributes_legacy },
+	{}
+};
+
+/*
+ * Groups of the fan curve of the firmware (terminated by an empty group)
+ */
+static const struct attribute_group *
+legion_wmi_fm_fan_curve_groups(const struct legion_wmi_fm_priv *priv)
+{
+	if (priv->legacy_platform)
+		return legion_sysfs_fm_group_legacy;
+
+	return priv->smart_fan_version == 8 ? legion_sysfs_fm_group_v2 :
+					      legion_sysfs_fm_group_v1;
+}
+
+/*
  * Fan full speed of the older firmware (Fan_Get_FullSpeed / Fan_Set_FullSpeed), the newer firmware has it in
  * the other mode (capability data 00 FanFullSpeed); the same files as of the other mode
  */
@@ -348,6 +377,8 @@ static const struct attribute_group legion_sysfs_fm_group_fan_full_speed = {
 
 static int legion_wmi_fm_fw_attr_add(struct legion_wmi_fm_priv *priv)
 {
+	const struct attribute_group *groups =
+		legion_wmi_fm_fan_curve_groups(priv);
 	int i = 0;
 	int err;
 
@@ -371,20 +402,10 @@ static int legion_wmi_fm_fw_attr_add(struct legion_wmi_fm_priv *priv)
 		goto err_unregister_fw_attr_dev;
 	}
 
-	if (priv->smart_fan_version == 8) {
-		for (i = 0; i < ARRAY_SIZE(legion_sysfs_fm_group_v2) - 1; i++) {
-			err = sysfs_create_group(&priv->fw_attr_kset->kobj,
-						 &legion_sysfs_fm_group_v2[i]);
-			if (err)
-				goto err_remove_groups;
-		}
-	} else {
-		for (i = 0; i < ARRAY_SIZE(legion_sysfs_fm_group_v1) - 1; i++) {
-			err = sysfs_create_group(&priv->fw_attr_kset->kobj,
-						 &legion_sysfs_fm_group_v1[i]);
-			if (err)
-				goto err_remove_groups;
-		}
+	for (i = 0; groups[i].attrs; i++) {
+		err = sysfs_create_group(&priv->fw_attr_kset->kobj, &groups[i]);
+		if (err)
+			goto err_remove_groups;
 	}
 
 	/* i: number of the created fan curve groups, removed on an error */
@@ -397,14 +418,8 @@ static int legion_wmi_fm_fw_attr_add(struct legion_wmi_fm_priv *priv)
 
 	return 0;
 err_remove_groups:
-	if (priv->smart_fan_version == 8)
-		while (i--)
-			sysfs_remove_group(&priv->fw_attr_kset->kobj,
-					   &legion_sysfs_fm_group_v2[i]);
-	else
-		while (i--)
-			sysfs_remove_group(&priv->fw_attr_kset->kobj,
-					   &legion_sysfs_fm_group_v1[i]);
+	while (i--)
+		sysfs_remove_group(&priv->fw_attr_kset->kobj, &groups[i]);
 	kset_unregister(priv->fw_attr_kset);
 err_unregister_fw_attr_dev:
 	device_unregister(priv->fw_attr_dev);
@@ -415,21 +430,16 @@ err_free_ida:
 
 static void legion_wmi_fm_fw_attr_remove(struct legion_wmi_fm_priv *priv)
 {
+	const struct attribute_group *groups =
+		legion_wmi_fm_fan_curve_groups(priv);
+
 	/* Remove sysfs group first */
 	if (priv->fan_full_speed)
 		sysfs_remove_group(&priv->fw_attr_kset->kobj,
 				   &legion_sysfs_fm_group_fan_full_speed);
 
-	if (priv->smart_fan_version == 8)
-		for (unsigned int i = 0;
-		     i < ARRAY_SIZE(legion_sysfs_fm_group_v2) - 1; i++)
-			sysfs_remove_group(&priv->fw_attr_kset->kobj,
-					   &legion_sysfs_fm_group_v2[i]);
-	else
-		for (unsigned int i = 0;
-		     i < ARRAY_SIZE(legion_sysfs_fm_group_v1) - 1; i++)
-			sysfs_remove_group(&priv->fw_attr_kset->kobj,
-					   &legion_sysfs_fm_group_v1[i]);
+	for (unsigned int i = 0; groups[i].attrs; i++)
+		sysfs_remove_group(&priv->fw_attr_kset->kobj, &groups[i]);
 
 	/* Unregister kset before device since kset is child of device's kobj */
 	kset_unregister(priv->fw_attr_kset);

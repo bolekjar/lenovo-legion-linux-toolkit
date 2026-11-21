@@ -13,6 +13,7 @@
 #include "legion-wmi-ftable.h"
 #include "legion-common.h"
 #include "legion-wmi-fm.h"
+#include "legion-wmi-platform.h"
 
 #include <linux/acpi.h>
 #include <linux/cleanup.h>
@@ -41,6 +42,17 @@ struct legion_wmi_ftable_list {
 	struct legion_wmi_ftable data[];
 };
 
+/*
+ * Fan of a row: the newer firmware has uint16 Mode and uint16 Fan_Id, the older firmware uint32 Fan_Id and no
+ * mode (binary MOF of LENOVO_FAN_TABLE_DATA); the rest of the row up to the sensor table is the same, so the fan
+ * of the older firmware is the low half of Fan_Id read as the mode (little endian)
+ */
+static u16 legion_wmi_ftable_fan_id(const struct legion_wmi_ftable *row,
+				    bool legacy)
+{
+	return legacy ? row->mode : row->fanId;
+}
+
 /**
  * legion_wmi_ftable_component_bind() - Bind component to master device.
  * @ftable_dev: Pointer to the lenovo-wmi-ftable driver parent device.
@@ -58,9 +70,16 @@ static int legion_wmi_ftable_component_bind(struct device *ftable_dev,
 {
 	struct legion_wmi_ftable_priv *priv = dev_get_drvdata(ftable_dev);
 	struct legion_wmi_fm_priv **fm_priv = data;
+	bool legacy;
+	int err;
 
 	if (!priv || !priv->list || !fm_priv || !(*fm_priv))
 		return -ENODEV;
+
+	/* Layout of the rows of the firmware (legion_wmi_ftable_fan_id()), known once the other mode is probed */
+	legacy = legion_wmi_platform_legacy(&err);
+	if (err)
+		return err;
 
 	/*
 	 * Initialize
@@ -75,7 +94,7 @@ static int legion_wmi_ftable_component_bind(struct device *ftable_dev,
 	for (int idx = 0; idx < priv->list->count; idx++) {
 		for (int i = 0; i < FAN_MAX; ++i) {
 			if ((*fm_priv)->fan_max_speeds[i].fan_id ==
-				    priv->list->data[idx].fanId &&
+				    legion_wmi_ftable_fan_id(&priv->list->data[idx], legacy) &&
 			    (*fm_priv)->fan_max_speeds[i].sensor_id ==
 				    priv->list->data[idx].sensorId) {
 				(*fm_priv)->fan_max_speeds[i].max_speed = max(
@@ -93,7 +112,7 @@ static int legion_wmi_ftable_component_bind(struct device *ftable_dev,
 				   (*fm_priv)->fan_max_speeds[i].sensor_id ==
 					   -1) {
 				(*fm_priv)->fan_max_speeds[i].fan_id =
-					priv->list->data[idx].fanId;
+					legion_wmi_ftable_fan_id(&priv->list->data[idx], legacy);
 				(*fm_priv)->fan_max_speeds[i].sensor_id =
 					priv->list->data[idx].sensorId;
 				(*fm_priv)->fan_max_speeds[i].max_speed =
