@@ -31,6 +31,8 @@
 
 #define LEGION_CAPABILITY_FTABLE_GUID "87fb2a6d-d802-48e7-9208-4576c5f5c8d8"
 
+static_assert(sizeof(struct legion_wmi_ftable) == 0x38);
+
 struct legion_wmi_ftable_priv {
 	struct wmi_device *wdev;
 	struct legion_wmi_ftable_list *list;
@@ -173,16 +175,22 @@ int legion_wmi_ftable_get_data(struct legion_wmi_ftable_list *list,
 /**
  * legion_wmi_ftable_cache() - Cache all WMI data block information
  * @priv: lenovo-wmi-ftable driver data.
+ * @instances: Number of the WMI data block instances.
  *
- * Loop through each WMI data block and cache the data.
+ * Loop through each WMI data block and cache the data. Only the valid rows are
+ * kept (a buffer of the row, MAX_FANCURVE_SIZE points of both tables), an
+ * empty row would be taken for a fan with the ID 0.
  *
  * Return: 0 on success, or an error.
  */
-static int legion_wmi_ftable_cache(const struct legion_wmi_ftable_priv *priv)
+static int legion_wmi_ftable_cache(const struct legion_wmi_ftable_priv *priv,
+				   int instances)
 {
 	guard(mutex)
 		(&priv->list->list_mutex);
-	for (int idx = 0; idx < priv->list->count; idx++) {
+	for (int idx = 0; idx < instances; idx++) {
+		struct legion_wmi_ftable *row =
+			&priv->list->data[priv->list->count];
 		union acpi_object *ret_obj __free(kfree) = NULL;
 
 		ret_obj = wmidev_block_query(priv->wdev, idx);
@@ -190,12 +198,19 @@ static int legion_wmi_ftable_cache(const struct legion_wmi_ftable_priv *priv)
 			return -ENODEV;
 
 		if (ret_obj->type != ACPI_TYPE_BUFFER ||
-		    ret_obj->buffer.length < sizeof(priv->list->data[idx]))
+		    ret_obj->buffer.length < sizeof(*row))
 			continue;
 
-		memcpy(&priv->list->data[idx], ret_obj->buffer.pointer,
-		       min(ret_obj->buffer.length,
-			   sizeof(priv->list->data[idx])));
+		memcpy(row, ret_obj->buffer.pointer, sizeof(*row));
+		if (row->lengthFanTable != MAX_FANCURVE_SIZE ||
+		    row->lengthSensorTable != MAX_FANCURVE_SIZE) {
+			dev_dbg(&priv->wdev->dev,
+				"row %d skipped, table lengths %u / %u\n", idx,
+				row->lengthFanTable, row->lengthSensorTable);
+			continue;
+		}
+
+		priv->list->count++;
 	}
 
 	return 0;
@@ -208,7 +223,7 @@ static int legion_wmi_ftable_cache(const struct legion_wmi_ftable_priv *priv)
  * Allocate a ftable_list struct large enough to contain data from all WMI data
  * blocks provided by the interface.
  *
- * Return: 0 on success, or an error.
+ * Return: The number of the WMI data block instances, or an error.
  */
 static int legion_wmi_ftable_alloc(struct legion_wmi_ftable_priv *priv)
 {
@@ -226,10 +241,9 @@ static int legion_wmi_ftable_alloc(struct legion_wmi_ftable_priv *priv)
 	if (ret)
 		return ret;
 
-	list->count = count;
 	priv->list = list;
 
-	return 0;
+	return count;
 }
 
 /**
@@ -246,10 +260,10 @@ static int legion_wmi_ftable_setup(struct legion_wmi_ftable_priv *priv)
 {
 	const int ret = legion_wmi_ftable_alloc(priv);
 
-	if (ret)
+	if (ret < 0)
 		return ret;
 
-	return legion_wmi_ftable_cache(priv);
+	return legion_wmi_ftable_cache(priv, ret);
 }
 
 static int legion_wmi_ftable_probe(struct wmi_device *wdev, const void *context)
