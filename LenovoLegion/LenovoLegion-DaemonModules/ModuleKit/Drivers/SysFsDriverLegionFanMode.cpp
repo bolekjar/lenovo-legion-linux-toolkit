@@ -52,6 +52,16 @@ void SysFsDriverLegionFanMode::init()
         m_descriptor["current_value"] = std::filesystem::path(fanCurvePath).append("current_value");
         m_descriptor["display_name"] = std::filesystem::path(fanCurvePath).append("display_name");
 
+        /*
+         * Limits of the points of the firmware (optional, older kernel module without them)
+         */
+        if(std::filesystem::exists(std::filesystem::path(fanCurvePath).append("min_value")) &&
+           std::filesystem::exists(std::filesystem::path(fanCurvePath).append("max_value")))
+        {
+            m_descriptor["min_value"] = std::filesystem::path(fanCurvePath).append("min_value");
+            m_descriptor["max_value"] = std::filesystem::path(fanCurvePath).append("max_value");
+        }
+
 
         /*
          * Optional values for cpusen fan mode

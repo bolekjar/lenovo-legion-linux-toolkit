@@ -20,20 +20,22 @@ message FanOption
 
 message FanCurve
 {
-    // Point n is at least n (point10 at least 9) the same as FanControl of the widget pages, the curve is monotonic
-    // (FanCurveEditor), the daemon accepts the levels 0..10
+    // Levels of the points (index level - 1 of the fan speeds of the default tables), the curve is monotonic
+    // (FanCurveEditor). The limits of the points are of the firmware (min_value / max_value), min / max here only
+    // without them (older kernel module). The editor labels the points by the sensor temperatures of the default
+    // tables, the labels here only without them (older firmware).
     message Points
     {
         uint32 point1   =  1 [(legion.ui.field) = { label: "Low", widget: SLIDER, min: "1", max: "10" }];
-        uint32 point2   =  2 [(legion.ui.field) = { label: "20%", widget: SLIDER, min: "2", max: "10" }];
-        uint32 point3   =  3 [(legion.ui.field) = { label: "30%", widget: SLIDER, min: "3", max: "10" }];
-        uint32 point4   =  4 [(legion.ui.field) = { label: "40%", widget: SLIDER, min: "4", max: "10" }];
-        uint32 point5   =  5 [(legion.ui.field) = { label: "50%", widget: SLIDER, min: "5", max: "10" }];
-        uint32 point6   =  6 [(legion.ui.field) = { label: "60%", widget: SLIDER, min: "6", max: "10" }];
-        uint32 point7   =  7 [(legion.ui.field) = { label: "70%", widget: SLIDER, min: "7", max: "10" }];
-        uint32 point8   =  8 [(legion.ui.field) = { label: "80%", widget: SLIDER, min: "8", max: "10" }];
-        uint32 point9   =  9 [(legion.ui.field) = { label: "90%", widget: SLIDER, min: "9", max: "10" }];
-        uint32 point10  =  10 [(legion.ui.field) = { label: "High", widget: SLIDER, min: "9", max: "10" }];
+        uint32 point2   =  2 [(legion.ui.field) = { label: "20%", widget: SLIDER, min: "1", max: "10" }];
+        uint32 point3   =  3 [(legion.ui.field) = { label: "30%", widget: SLIDER, min: "1", max: "10" }];
+        uint32 point4   =  4 [(legion.ui.field) = { label: "40%", widget: SLIDER, min: "1", max: "10" }];
+        uint32 point5   =  5 [(legion.ui.field) = { label: "50%", widget: SLIDER, min: "1", max: "10" }];
+        uint32 point6   =  6 [(legion.ui.field) = { label: "60%", widget: SLIDER, min: "1", max: "10" }];
+        uint32 point7   =  7 [(legion.ui.field) = { label: "70%", widget: SLIDER, min: "1", max: "10" }];
+        uint32 point8   =  8 [(legion.ui.field) = { label: "80%", widget: SLIDER, min: "1", max: "10" }];
+        uint32 point9   =  9 [(legion.ui.field) = { label: "90%", widget: SLIDER, min: "1", max: "10" }];
+        uint32 point10  =  10 [(legion.ui.field) = { label: "High", widget: SLIDER, min: "1", max: "10" }];
     }
 
     message Default
@@ -56,5 +58,13 @@ message FanCurve
      */
     map<uint32, Default>  cpusen_default = 4 [(legion.ui.field) = { widget: HIDDEN }];
     map<uint32, Default>  sys_default    = 5 [(legion.ui.field) = { widget: HIDDEN }];
+
+    /*
+     * Limits of the levels of the points of the firmware (fan table data: the points of the adjust ranges may only
+     * be raised / lowered from the default curve 1..10), the EC does not check them: a curve under them runs
+     * the fans at the minimal speed under load (measured on Legion Pro 7 16IAX10H). Not set by an older kernel module.
+     */
+    repeated uint32       min_value      = 6 [(legion.ui.field) = { widget: HIDDEN }];
+    repeated uint32       max_value      = 7 [(legion.ui.field) = { widget: HIDDEN }];
 
 }

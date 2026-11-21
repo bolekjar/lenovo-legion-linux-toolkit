@@ -31,7 +31,7 @@
 
 #define LEGION_CAPABILITY_FTABLE_GUID "87fb2a6d-d802-48e7-9208-4576c5f5c8d8"
 
-static_assert(sizeof(struct legion_wmi_ftable) == 0x38);
+static_assert(sizeof(struct legion_wmi_ftable) == 0x3e);
 
 struct legion_wmi_ftable_priv {
 	struct wmi_device *wdev;
@@ -170,6 +170,75 @@ int legion_wmi_ftable_get_data(struct legion_wmi_ftable_list *list,
 	};
 
 	return -EINVAL;
+}
+
+/*
+ * Points [start, end) of the fan curve may only be raised (upward) or lowered
+ * from their default level, the default fan curve has the level n at the
+ * point n (Fan_Get_Table default 1..10, the same as Lenovo Legion Toolkit).
+ * An empty or invalid range (e.g. 7..0) is ignored.
+ */
+static void legion_wmi_ftable_curve_range(u8 start, u8 end, bool upward,
+					  u8 limit[MAX_FANCURVE_SIZE])
+{
+	if (start >= end || end > MAX_FANCURVE_SIZE)
+		return;
+
+	for (u8 point = start; point < end; point++) {
+		const u8 level = point + 1;
+
+		limit[point] = upward ? max(limit[point], level) :
+					min(limit[point], level);
+	}
+}
+
+/**
+ * legion_wmi_ftable_curve_limits() - Limits of the points of the fan curve
+ * @list: The fan table.
+ * @dev: Device of the messages.
+ * @legacy: Older firmware (the rows have no mode, all rows are used).
+ * @min: Minimal level of every point.
+ * @max: Maximal level of every point.
+ *
+ * The firmware has one fan curve of the custom mode for all fans: the limits of
+ * all rows of the custom mode are combined (the strictest one). The EC does not
+ * check them, a curve under them runs the fans at the minimal speed under load
+ * (measured on Legion Pro 7 16IAX10H), Lenovo Legion Space keeps them.
+ *
+ * Return: 0, or -ENODEV without the fan table.
+ */
+int legion_wmi_ftable_curve_limits(struct legion_wmi_ftable_list *list,
+				   struct device *dev, bool legacy,
+				   u8 min[MAX_FANCURVE_SIZE],
+				   u8 max[MAX_FANCURVE_SIZE])
+{
+	for (int point = 0; point < MAX_FANCURVE_SIZE; point++) {
+		min[point] = MIN_FANCURVE_LEVEL;
+		max[point] = MAX_FANCURVE_LEVEL;
+	}
+
+	if (!list)
+		return -ENODEV;
+
+	guard(mutex)(&list->list_mutex);
+	for (u8 idx = 0; idx < list->count; idx++) {
+		const struct legion_wmi_ftable *row = &list->data[idx];
+
+		if (!legacy && row->mode != LEGION_WMI_GZ_THERMAL_MODE_CUSTOM)
+			continue;
+
+		dev_dbg(dev,
+			"fan table row %u: upward %u..%u, downward %u..%u\n",
+			idx, row->startUpward, row->endUpward,
+			row->startDownward, row->endDownward);
+
+		legion_wmi_ftable_curve_range(row->startUpward, row->endUpward,
+					      true, min);
+		legion_wmi_ftable_curve_range(row->startDownward,
+					      row->endDownward, false, max);
+	}
+
+	return 0;
 }
 
 /**

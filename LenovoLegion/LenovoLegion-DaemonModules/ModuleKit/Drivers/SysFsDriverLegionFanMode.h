@@ -38,7 +38,9 @@ public:
                 m_sys_fan_default(descriptor["sys_fan_default"]),
                 m_sys_sensor_default(descriptor["sys_sensor_default"]),
                 m_gpu_fan_default(descriptor["gpu_fan_default"])    ,
-                m_gpu_sensor_default(descriptor["gpu_sensor_default"])
+                m_gpu_sensor_default(descriptor["gpu_sensor_default"]),
+                m_min_value(descriptor.value("min_value")),
+                m_max_value(descriptor.value("max_value"))
             {}
 
             const std::filesystem::path m_cpu_fan_default;
@@ -51,6 +53,12 @@ public:
             const std::filesystem::path m_sys_sensor_default;
             const std::filesystem::path m_gpu_fan_default;
             const std::filesystem::path m_gpu_sensor_default;
+
+            /*
+             * Limits of the levels of the points of the firmware, optional (older kernel module)
+             */
+            const std::filesystem::path m_min_value;
+            const std::filesystem::path m_max_value;
         };
 
 

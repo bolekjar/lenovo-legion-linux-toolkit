@@ -34,7 +34,17 @@ public:
 
 private:
 
-    static void settable(legion::messages::FanCurve& fanCurve,Origin origin);
+    void settable(legion::messages::FanCurve& fanCurve,Origin origin) const;
+
+    /*
+     * Limits of the levels of the points: of the firmware, 0..10 without them (older kernel module)
+     */
+    struct Limits {
+        QList<quint32> min;
+        QList<quint32> max;
+    };
+
+    Limits limits() const;
 
     /*
      * Last fan curve written (levels as text), the older firmware can not read it back

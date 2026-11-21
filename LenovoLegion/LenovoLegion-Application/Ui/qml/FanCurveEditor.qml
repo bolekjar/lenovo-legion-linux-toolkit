@@ -1,10 +1,15 @@
 // SPDX-License-Identifier: GPL-2.0
 // Fan curve the same as FanControl of the widget pages:
 //  - Maximum / Custom: fan full speed (FanOption), only in the custom thermal mode when supported,
-//  - 10 points, level 1..10, point n is at least n, point10 at least 9 (min of FanControl.proto), a point dragged
+//  - 10 points, level 1..10 in the limits of the firmware (min_value / max_value of FanCurve, without them min / max
+//    of FanControl.proto), a point dragged
 //    under its limit stays at the limit, the curve stays monotonic when a point is moved,
 //  - stretched to the size of the page (sliders over the whole height, points over the whole width),
 //  - edited only in the custom thermal mode with Custom, otherwise shown: 1..10 (not custom mode), all 10 (Maximum),
+//  - axes of the firmware: a point is labeled by the sensor temperatures of the default tables of the power profile
+//    (the tables complement each other, 16IAX10H: points 1..4 by the SYS sensor, 5..10 by the CPU and GPU),
+//    the label of FanControl.proto without them,
+//    the fan speed axis shows the levels (the fan speeds are not linear and differ by the fan),
 //  - tool tip of a point: temperatures of the sensors at the point (default tables of the power profile, 127 = N/A)
 //    and the fan speeds of its level (the firmware runs all fans at the level of the point, fan table index level - 1),
 //  - Apply sends the whole curve (atomic in FanControl.proto).
@@ -41,12 +46,29 @@ ColumnLayout {
         return curve.field("current_value." + points[index], curve.revision)
     }
 
+    // Limits of the firmware (the EC does not check them, the default curve 1..10 may only be raised), otherwise
+    // min / max of the field
+    readonly property var minLevels: (curve.repeatedValues("min_value", curve.revision))
+    readonly property var maxLevels: (curve.repeatedValues("max_value", curve.revision))
+
+    function minLevel(index) {
+        return minLevels.length === points.length ? minLevels[index] : pointModel(index).min
+    }
+
+    function maxLevel(index) {
+        return maxLevels.length === points.length ? maxLevels[index] : pointModel(index).max
+    }
+
+    function clampLevel(index, value) {
+        return Math.max(minLevel(index), Math.min(maxLevel(index), value))
+    }
+
     /*
-     * Monotonic curve: later points are raised to the value, earlier points are lowered to it (normalizeCurrentFanCurveControlData)
+     * Monotonic curve: later points are raised to the value, earlier points are lowered to it (normalizeCurrentFanCurveControlData),
+     * every point stays in its limits
      */
     function setPoint(index, value) {
-        const field = pointModel(index)
-        const level = Math.max(field.min, Math.min(field.max, value))
+        const level = clampLevel(index, value)
 
         curve.beginChanges()   // one notification for all points
 
@@ -57,20 +79,60 @@ ColumnLayout {
             if (i === index)
                 model.value = level
             else if (i > index && current < level)
-                model.value = level
+                model.value = clampLevel(i, level)
             else if (i < index && current > level)
-                model.value = level
+                model.value = clampLevel(i, level)
         }
 
         curve.endChanges()
     }
 
+    // Default tables (fan speeds, sensor temperatures) of the tool tip and the labels of the points
+    readonly property var defaultCurves: [["cpu_default", "CPU"], ["gpu_default", "GPU"], ["sys_default", "SYS"], ["cpusen_default", "CPU sensor"]]
+
+    /*
+     * Label of a point: temperatures of the sensors of the default tables of the power profile (127 = N/A), one line
+     * each. The label of the field without the tables (older firmware).
+     */
+    function pointLabel(index) {
+        const lines = []
+
+        for (const [map, name] of defaultCurves) {
+            const sensors = curve.repeatedValues(map + "[" + profile + "].sensors", curve.revision)
+
+            if (sensors.length === points.length)
+                lines.push(name + " " + (sensors[index] === 127 ? "N/A" : sensors[index] + " ℃"))
+        }
+
+        if (lines.length === 0) {
+            const field = pointModel(index)
+            return field !== null ? field.label : ""
+        }
+
+        return lines.join("\n")
+    }
+
+    // Lines of the longest label: all labels have its height, the sliders of the points stay aligned with the axis
+    readonly property int labelLines: {
+        let lines = 1
+
+        for (let i = 0; i < points.length; ++i)
+            lines = Math.max(lines, pointLabel(i).split("\n").length)
+
+        return lines
+    }
+
+    FontMetrics {
+        id: labelMetrics
+
+        font.pixelSize: theme.fontPixelSize   // font of the labels (SettingsPage)
+    }
+
     function pointToolTip(index, level) {
-        const curves = [["cpu_default", "CPU"], ["gpu_default", "GPU"], ["sys_default", "SYS"], ["cpusen_default", "CPU sensor"]]
         const temperatures = []
         const speeds = []
 
-        for (const [map, name] of curves) {
+        for (const [map, name] of defaultCurves) {
             const sensors = (curve.repeatedValues(map + "[" + profile + "].sensors", curve.revision))
             const fans    = curve.repeatedValues(map + "[" + profile + "].fan", curve.revision)
 
@@ -139,7 +201,7 @@ ColumnLayout {
             Layout.fillHeight: true
             spacing: 12
 
-            // Fan speed axis: labels at the levels of the handles of the sliders (top 100 %, bottom 0 %)
+            // Fan speed axis: levels at the handles of the sliders (top 10, bottom 1)
             Item {
                 id: axis
 
@@ -151,21 +213,22 @@ ColumnLayout {
                 TextMetrics {
                     id: axisMetrics
 
-                    text: "100 %"
+                    text: "10"
                 }
 
                 Repeater {
-                    model: ["100 %", "75 %", "50 %", "25 %", "0 %"]
+                    model: [10, 7, 4, 1]
 
                     delegate: Label {
-                        required property string modelData
-                        required property int    index
+                        required property int modelData
 
                         readonly property real handle: 22   // handle of ThemedSlider
 
                         visible: axis.track !== null
                         y: axis.track === null ? 0
-                         : axis.track.topPadding + handle / 2 + index / 4 * (axis.track.availableHeight - handle) - height / 2
+                         : axis.track.topPadding + handle / 2 + (10 - modelData) / 9 * (axis.track.availableHeight - handle) - height / 2
+                        width: axis.width
+                        horizontalAlignment: Text.AlignRight
                         text: modelData
                         color: axis.enabled ? theme.text : theme.disabledText
                     }
@@ -234,7 +297,11 @@ ColumnLayout {
 
                         Layout.alignment: Qt.AlignHCenter
 
-                        text: point.pointField !== null ? point.pointField.label : ""
+                        Layout.preferredHeight: labelMetrics.lineSpacing * editor.labelLines
+
+                        text: editor.pointLabel(point.index)
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignTop
                         color: !editor.editable ? theme.disabledText
                              : point.pointField !== null && point.pointField.modified ? theme.modified : theme.text
 

@@ -230,7 +230,7 @@ struct legion_wmi_fan_table_write {
 	u8 fstm; /* FSMD: 1 = fan table of the custom mode */
 	u8 fsid;
 	__le32 fstl; /* FSST */
-	__le16 fss[MAX_FANCURVE_SIZE]; /* FSS0..FSS9: levels 0..MAX_FANCURVE_LEVEL */
+	__le16 fss[MAX_FANCURVE_SIZE]; /* FSS0..FSS9: levels of the points */
 	u8 reserved[38];
 } __packed;
 static_assert(sizeof(struct legion_wmi_fan_table_write) == 64);
@@ -308,7 +308,8 @@ int legion_wmi_fm_table_get(struct legion_wmi_fm_priv *priv,
 /**
  * legion_wmi_fm_table_set() - Write the fan table of the custom mode (Fan_Set_Table)
  * @priv: The fan method driver data.
- * @points: Points of the fan table, levels 0..MAX_FANCURVE_LEVEL.
+ * @points: Points of the fan table, levels in the limits of the firmware
+ *          (fan_curve_min / fan_curve_max).
  *
  * The firmware uses the fan table in the custom mode only.
  *
@@ -329,7 +330,8 @@ int legion_wmi_fm_table_set(struct legion_wmi_fm_priv *priv,
 		return -EBUSY;
 
 	for (int i = 0; i < MAX_FANCURVE_SIZE; i++) {
-		if (points[i] > MAX_FANCURVE_LEVEL)
+		if (points[i] < priv->fan_curve_min[i] ||
+		    points[i] > priv->fan_curve_max[i])
 			return -EINVAL;
 
 		table.fss[i] = cpu_to_le16(points[i]);
@@ -474,6 +476,12 @@ static int legion_wmi_fm_detect(struct legion_wmi_fm_priv *priv)
 
 	priv->fan_full_speed = legion_wmi_fm_full_speed_supported(priv);
 	legion_wmi_fm_max_speeds(priv);
+
+	/* Without the fan table the levels MIN_FANCURVE_LEVEL..MAX_FANCURVE_LEVEL only */
+	legion_wmi_ftable_curve_limits(priv->ft_list, &priv->wdev->dev,
+				       priv->legacy_platform,
+				       priv->fan_curve_min,
+				       priv->fan_curve_max);
 
 	return 0;
 }

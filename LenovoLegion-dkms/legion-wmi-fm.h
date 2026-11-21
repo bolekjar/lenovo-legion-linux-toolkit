@@ -19,8 +19,14 @@ struct kset;
 
 #define FAN_MAX 20
 
-/* Fan table of the custom mode: points, every point is a level 0..MAX_FANCURVE_LEVEL */
+/*
+ * Fan table of the custom mode: points, every point is a level
+ * MIN_FANCURVE_LEVEL..MAX_FANCURVE_LEVEL (the index level - 1 of the fan speeds
+ * of the fan table data), limited by the firmware
+ * (legion_wmi_ftable_curve_limits())
+ */
 #define MAX_FANCURVE_SIZE 10
+#define MIN_FANCURVE_LEVEL 1
 #define MAX_FANCURVE_LEVEL 10
 
 /*
@@ -101,6 +107,10 @@ struct legion_wmi_fm_priv {
 	unsigned int smart_fan_version;
 	bool legacy_platform; /* older firmware, see legion_wmi_platform_legacy() */
 	bool fan_full_speed; /* Fan_Get/Set_FullSpeed of the older firmware */
+
+	/* Limits of the points of the fan curve (legion_wmi_ftable_curve_limits()) */
+	u8 fan_curve_min[MAX_FANCURVE_SIZE];
+	u8 fan_curve_max[MAX_FANCURVE_SIZE];
 
 	int fan_cpu_max_speed;
 	int fan_gpu_max_speed;

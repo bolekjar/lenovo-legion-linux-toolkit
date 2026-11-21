@@ -93,6 +93,25 @@ QByteArray SysFsDataProviderFanCurve::serializeAndGetData()
 
 
         /*
+         * Limits of the points of the firmware (the GUI keeps the points in them)
+         */
+        if(!fanCurve.m_min_value.empty() && !fanCurve.m_max_value.empty())
+        {
+            const Limits curveLimits = limits();
+
+            for(const auto value : curveLimits.min)
+            {
+                fanCurveMsg.add_min_value(value);
+            }
+
+            for(const auto value : curveLimits.max)
+            {
+                fanCurveMsg.add_max_value(value);
+            }
+        }
+
+
+        /*
          * Default values of the modes (not on the older firmware: its fan table has no mode)
          */
         if(!fanCurve.m_cpu_fan_default.empty() && !fanCurve.m_cpu_sensor_default.empty())
@@ -254,20 +273,60 @@ QByteArray SysFsDataProviderFanCurve::deserializeAndSetData(const QByteArray &da
 
 QByteArray SysFsDataProviderFanCurve::settableData(const QByteArray &data, Origin origin)
 {
-    return settableMessage<legion::messages::FanCurve>(data,[origin](legion::messages::FanCurve& fanCurve) { settable(fanCurve,origin); });
+    return settableMessage<legion::messages::FanCurve>(data,[this,origin](legion::messages::FanCurve& fanCurve) { settable(fanCurve,origin); });
 }
 
-void SysFsDataProviderFanCurve::settable(legion::messages::FanCurve &fanCurve, Origin origin)
+SysFsDataProviderFanCurve::Limits SysFsDataProviderFanCurve::limits() const
+{
+    static constexpr quint32 MAX_LEVEL = 10;
+    static constexpr int     POINTS    = 10;
+
+    Limits result { QList<quint32>(POINTS,0), QList<quint32>(POINTS,MAX_LEVEL) };
+
+    try {
+        const SysFsDriverLegionFanMode::FanMode::FanCurve fanCurve(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverLegionFanMode::DRIVER_NAME));
+
+        if(fanCurve.m_min_value.empty() || fanCurve.m_max_value.empty())
+        {
+            return result;
+        }
+
+        const QStringList min = getData(fanCurve.m_min_value).trimmed().split(',');
+        const QStringList max = getData(fanCurve.m_max_value).trimmed().split(',');
+
+        if(min.size() != POINTS || max.size() != POINTS)
+        {
+            LOG_W(QString("Invalid limits of the fan curve: ").append(min.join(',')).append(" / ").append(max.join(',')));
+            return result;
+        }
+
+        for(int i = 0; i < POINTS; ++i)
+        {
+            result.min[i] = min.at(i).toUInt();
+            result.max[i] = max.at(i).toUInt();
+        }
+    } catch(SysFsDriver::exception_T&)
+    {
+        /*
+         * Kernel driver not loaded: the curve can not be written anyway
+         */
+    }
+
+    return result;
+}
+
+void SysFsDataProviderFanCurve::settable(legion::messages::FanCurve &fanCurve, Origin origin) const
 {
     /*
-     * Kernel accepts only the whole curve, 10 points with level 0..10 (fan curve is set only in the custom thermal mode, kernel returns -EBUSY otherwise)
+     * Kernel accepts only the whole curve, 10 points in the limits of the firmware (fan_curve min_value / max_value,
+     * the EC does not check them), fan curve is set only in the custom thermal mode (kernel returns -EBUSY otherwise)
      */
-    static constexpr quint32 MAX_LEVEL = 10;
-
     fanCurve.clear_cpu_default();
     fanCurve.clear_gpu_default();
     fanCurve.clear_cpusen_default();
     fanCurve.clear_sys_default();
+    fanCurve.clear_min_value();
+    fanCurve.clear_max_value();
 
     if(!fanCurve.has_current_value())
     {
@@ -283,15 +342,19 @@ void SysFsDataProviderFanCurve::settable(legion::messages::FanCurve &fanCurve, O
         {points.has_point10(),points.point10()}
     };
 
+    const Limits curveLimits = limits();
+
     QStringList curve;
 
     bool complete = true;
     bool inRange  = true;
 
-    for(const auto& [has,value] : values)
+    for(int i = 0; i < static_cast<int>(std::size(values)); ++i)
     {
+        const auto& [has,value] = values[i];
+
         complete = complete && has;
-        inRange  = inRange && value <= MAX_LEVEL;
+        inRange  = inRange && value >= curveLimits.min.at(i) && value <= curveLimits.max.at(i);
         curve.append(has ? QString::number(value) : QString("-"));
     }
 
@@ -302,7 +365,17 @@ void SysFsDataProviderFanCurve::settable(legion::messages::FanCurve &fanCurve, O
     }
     else if(!inRange)
     {
-        skipField(origin,QString("fan curve=").append(curve.join(',')),"level range <0,10>");
+        QStringList min;
+        QStringList max;
+
+        for(int i = 0; i < curveLimits.min.size(); ++i)
+        {
+            min.append(QString::number(curveLimits.min.at(i)));
+            max.append(QString::number(curveLimits.max.at(i)));
+        }
+
+        skipField(origin,QString("fan curve=").append(curve.join(',')),
+                  QString("levels of the points out of the limits of the firmware <").append(min.join(',')).append("> .. <").append(max.join(',')).append('>'));
         fanCurve.clear_current_value();
     }
 }

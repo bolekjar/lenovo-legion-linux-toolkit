@@ -47,7 +47,7 @@ static ssize_t func_fan_curve_current_value_get(struct kobject *kobj,
 }
 
 /*
- * Parse "p1,p2,...,p10", every point is a level 0..MAX_FANCURVE_LEVEL.
+ * Parse "p1,p2,...,p10", the levels are checked by legion_wmi_fm_table_set().
  * Each point is converted by kstrtou8, out of range value is an error (sscanf("%hhu") truncates 266 to 10).
  */
 static int parse_fan_curve(const char *buf, const size_t count,
@@ -74,9 +74,6 @@ static int parse_fan_curve(const char *buf, const size_t count,
 		ret = kstrtou8(strim(token), 10, &points[size]);
 		if (ret)
 			return ret;
-
-		if (points[size] > MAX_FANCURVE_LEVEL)
-			return -EINVAL;
 
 		size++;
 	}
@@ -121,6 +118,43 @@ static ssize_t func_fan_curve_current_value_set(struct kobject *kobj,
 
 	return (ssize_t)count;
 }
+
+/*
+ * Limits of the points of the fan curve of the firmware, the same format as current_value
+ */
+static ssize_t legion_wmi_fm_emit_points(char *buf,
+					 const u8 points[MAX_FANCURVE_SIZE])
+{
+	return sysfs_emit(buf, "%u,%u,%u,%u,%u,%u,%u,%u,%u,%u\n", points[0],
+			  points[1], points[2], points[3], points[4], points[5],
+			  points[6], points[7], points[8], points[9]);
+}
+
+static ssize_t func_fan_curve_min_value_show(struct kobject *kobj,
+					     struct kobj_attribute *kattr,
+					     char *buf)
+{
+	const struct legion_wmi_fm_priv *priv =
+		dev_get_drvdata(kobj_to_dev(kobj->parent));
+
+	return legion_wmi_fm_emit_points(buf, priv->fan_curve_min);
+}
+
+static ssize_t func_fan_curve_max_value_show(struct kobject *kobj,
+					     struct kobj_attribute *kattr,
+					     char *buf)
+{
+	const struct legion_wmi_fm_priv *priv =
+		dev_get_drvdata(kobj_to_dev(kobj->parent));
+
+	return legion_wmi_fm_emit_points(buf, priv->fan_curve_max);
+}
+
+static struct kobj_attribute kobj_attr_fan_curve_min_value =
+	LEGION_WMI_ATTR_RO(min_value, fan_curve_min_value);
+
+static struct kobj_attribute kobj_attr_fan_curve_max_value =
+	LEGION_WMI_ATTR_RO(max_value, fan_curve_max_value);
 
 #define LEGION_WMI_DEFAULT_TABLES(_attribute, _func, _fan_id, _sensor_id,          \
 				  _table)                                          \
@@ -236,6 +270,8 @@ LEGION_WMI_KOBJ_ATTR_RO_STATIC_STRING(display_name,
 
 static struct attribute *legion_sysfs_fm_fan_curve_attributes_v1[] = {
 	&kobj_attr_fan_curve_current_value.attr,
+	&kobj_attr_fan_curve_min_value.attr,
+	&kobj_attr_fan_curve_max_value.attr,
 	&kobj_attr_cpu_fan_default_v1_value.attr,
 	&kobj_attr_cpu_sensor_default_v1_value.attr,
 	&kobj_attr_cpusen_fan_default_v1_value.attr,
@@ -254,6 +290,8 @@ static const struct attribute_group legion_sysfs_fm_group_v1[] = {
 
 static struct attribute *legion_sysfs_fm_fan_curve_attributes_v2[] = {
 	&kobj_attr_fan_curve_current_value.attr,
+	&kobj_attr_fan_curve_min_value.attr,
+	&kobj_attr_fan_curve_max_value.attr,
 	&kobj_attr_cpu_fan_default_v2_value.attr,
 	&kobj_attr_cpu_sensor_default_v2_value.attr,
 	&kobj_attr_gpu_fan_default_v2_value.attr,
@@ -276,6 +314,8 @@ static const struct attribute_group legion_sysfs_fm_group_v2[] = {
  */
 static struct attribute *legion_sysfs_fm_fan_curve_attributes_legacy[] = {
 	&kobj_attr_fan_curve_current_value.attr,
+	&kobj_attr_fan_curve_min_value.attr,
+	&kobj_attr_fan_curve_max_value.attr,
 	&kobj_attr_fan_curve_display_name.attr,
 	NULL
 };
