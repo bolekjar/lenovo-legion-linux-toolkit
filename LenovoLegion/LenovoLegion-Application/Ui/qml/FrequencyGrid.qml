@@ -18,6 +18,7 @@ Section {
 
     title: "CPU Frequency Control"
     applyBar: true
+    stretchContent: true   // the cells scroll in ScrollArea, the controls stay visible
 
     source: DataSource {
         id: frequency
@@ -299,104 +300,106 @@ Section {
     }
 
     // Cells column by column, P and E threads in their own columns, columns by the width (up to 4)
-    GridLayout {
-        id: cells
+    ScrollArea {
+        GridLayout {
+            id: cells
 
-        readonly property int cellColumns: Math.max(1, Math.min(4, Math.floor((width + columnSpacing) / (grid.cellWidth + columnSpacing))))
+            readonly property int cellColumns: Math.max(1, Math.min(4, Math.floor((width + columnSpacing) / (grid.cellWidth + columnSpacing))))
 
-        // P and E threads strictly in their own columns
-        readonly property var placement: CellLayout.place([grid.performance, grid.efficient], cellColumns)
+            // P and E threads strictly in their own columns
+            readonly property var placement: CellLayout.place([grid.performance, grid.efficient], cellColumns)
 
-        Layout.fillWidth: true
+            Layout.fillWidth: true
 
-        rowSpacing: 6
-        columnSpacing: 6
+            rowSpacing: 6
+            columnSpacing: 6
 
-        Repeater {
-            model: grid.threads
+            Repeater {
+                model: grid.threads
 
-            // Cell of a thread: group with the title tab like ThreadFrequencyControl (QGroupBox, background by the kind)
-            delegate: Section {
-                id: thread
+                // Cell of a thread: group with the title tab like ThreadFrequencyControl (QGroupBox, background by the kind)
+                delegate: Section {
+                    id: thread
 
-                required property int modelData
+                    required property int modelData
 
-                readonly property int        cpu:      modelData
-                readonly property FieldModel minModel: (grid.minField(cpu))
-                readonly property FieldModel maxModel: (grid.maxField(cpu))
+                    readonly property int        cpu:      modelData
+                    readonly property FieldModel minModel: (grid.minField(cpu))
+                    readonly property FieldModel maxModel: (grid.maxField(cpu))
 
-                readonly property var position: cells.placement.positions[cpu] !== undefined ? cells.placement.positions[cpu] : [0, 0]
+                    readonly property var position: cells.placement.positions[cpu] !== undefined ? cells.placement.positions[cpu] : [0, 0]
 
-                Layout.row: position[0]
-                Layout.column: position[1]
-                Layout.fillWidth: true
-                Layout.preferredWidth: grid.cellWidth
-
-                title: grid.kindName[grid.kind(cpu)] + ": " + cpu
-                       + ", CoreId: " + (frequency.daemonValue("cpus[" + cpu + "].core_id", frequency.revision))
-                       + ", DieId: " + frequency.daemonValue("cpus[" + cpu + "].die_id", frequency.revision)
-                backgroundColor: grid.kindBackground[grid.kind(cpu)]
-
-                // Min and Max of the thread in one range slider (Min raises Max, Max lowers Min: setThreadMin/Max)
-                RowLayout {
+                    Layout.row: position[0]
+                    Layout.column: position[1]
                     Layout.fillWidth: true
-                    spacing: 12
+                    Layout.preferredWidth: grid.cellWidth
 
-                    ThemedRangeSlider {
-                        id: range
+                    title: grid.kindName[grid.kind(cpu)] + ": " + cpu
+                           + ", CoreId: " + (frequency.daemonValue("cpus[" + cpu + "].core_id", frequency.revision))
+                           + ", DieId: " + frequency.daemonValue("cpus[" + cpu + "].die_id", frequency.revision)
+                    backgroundColor: grid.kindBackground[grid.kind(cpu)]
 
+                    // Min and Max of the thread in one range slider (Min raises Max, Max lowers Min: setThreadMin/Max)
+                    RowLayout {
                         Layout.fillWidth: true
-                        enabled: thread.minModel !== null && thread.maxModel !== null
-                        from: thread.minModel !== null ? thread.minModel.min : 0
-                        to: thread.maxModel !== null ? thread.maxModel.max : 1
-                        stepSize: 1
-                        snapMode: RangeSlider.SnapAlways
-                        first.value: thread.minModel !== null ? thread.minModel.value : 0
-                        second.value: thread.maxModel !== null ? thread.maxModel.value : 1
+                        spacing: 12
 
-                        // The model values are shown again after the limits and the coupling (the binding is restored)
-                        first.onMoved: {
-                            grid.setThreadMin(thread.cpu, Math.round(first.value))
-                            first.value = Qt.binding(() => thread.minModel !== null ? thread.minModel.value : 0)
-                        }
-                        second.onMoved: {
-                            grid.setThreadMax(thread.cpu, Math.round(second.value))
-                            second.value = Qt.binding(() => thread.maxModel !== null ? thread.maxModel.value : 1)
-                        }
-                    }
+                        ThemedRangeSlider {
+                            id: range
 
-                    // "Min – Max MHz", a changed value not applied yet in the change color; the width of the longest
-                    // text and the mark reserved always: the slider does not change its width with the values
-                    Row {
-                        Layout.preferredWidth: rangeText.advanceWidth
+                            Layout.fillWidth: true
+                            enabled: thread.minModel !== null && thread.maxModel !== null
+                            from: thread.minModel !== null ? thread.minModel.min : 0
+                            to: thread.maxModel !== null ? thread.maxModel.max : 1
+                            stepSize: 1
+                            snapMode: RangeSlider.SnapAlways
+                            first.value: thread.minModel !== null ? thread.minModel.value : 0
+                            second.value: thread.maxModel !== null ? thread.maxModel.value : 1
 
-                        TextMetrics {
-                            id: rangeText
-
-                            font.pixelSize: theme.fontPixelSize
-                            text: "● " + grid.rangeMax + " – " + grid.rangeMax + " MHz"
+                            // The model values are shown again after the limits and the coupling (the binding is restored)
+                            first.onMoved: {
+                                grid.setThreadMin(thread.cpu, Math.round(first.value))
+                                first.value = Qt.binding(() => thread.minModel !== null ? thread.minModel.value : 0)
+                            }
+                            second.onMoved: {
+                                grid.setThreadMax(thread.cpu, Math.round(second.value))
+                                second.value = Qt.binding(() => thread.maxModel !== null ? thread.maxModel.value : 1)
+                            }
                         }
 
-                        // Mark of a changed value (besides the color)
-                        Label {
-                            text: "● "
-                            color: theme.modified
-                            opacity: (thread.minModel !== null && thread.minModel.modified) || (thread.maxModel !== null && thread.maxModel.modified) ? 1 : 0
-                        }
+                        // "Min – Max MHz", a changed value not applied yet in the change color; the width of the longest
+                        // text and the mark reserved always: the slider does not change its width with the values
+                        Row {
+                            Layout.preferredWidth: rangeText.advanceWidth
 
-                        Label {
-                            text: thread.minModel !== null ? thread.minModel.value : ""
-                            color: thread.minModel !== null && thread.minModel.modified ? theme.modified : "#e0e0e0"
-                        }
+                            TextMetrics {
+                                id: rangeText
 
-                        Label {
-                            text: " – "
-                            color: "#e0e0e0"
-                        }
+                                font.pixelSize: theme.fontPixelSize
+                                text: "● " + grid.rangeMax + " – " + grid.rangeMax + " MHz"
+                            }
 
-                        Label {
-                            text: thread.maxModel !== null ? thread.maxModel.value + " MHz" : ""
-                            color: thread.maxModel !== null && thread.maxModel.modified ? theme.modified : "#e0e0e0"
+                            // Mark of a changed value (besides the color)
+                            Label {
+                                text: "● "
+                                color: theme.modified
+                                opacity: (thread.minModel !== null && thread.minModel.modified) || (thread.maxModel !== null && thread.maxModel.modified) ? 1 : 0
+                            }
+
+                            Label {
+                                text: thread.minModel !== null ? thread.minModel.value : ""
+                                color: thread.minModel !== null && thread.minModel.modified ? theme.modified : "#e0e0e0"
+                            }
+
+                            Label {
+                                text: " – "
+                                color: "#e0e0e0"
+                            }
+
+                            Label {
+                                text: thread.maxModel !== null ? thread.maxModel.value + " MHz" : ""
+                                color: thread.maxModel !== null && thread.maxModel.modified ? theme.modified : "#e0e0e0"
+                            }
                         }
                     }
                 }

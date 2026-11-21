@@ -36,6 +36,7 @@
         <file alias="ProfilesPage.qml">qml/ProfilesPage.qml</file>
         <file alias="HomePage.qml">qml/HomePage.qml</file>
         <file alias="SavedProfilesPanel.qml">qml/SavedProfilesPanel.qml</file>
+        <file alias="ScrollArea.qml">qml/ScrollArea.qml</file>
         <file alias="Section.qml">qml/Section.qml</file>
         <file alias="SettingsPage.qml">qml/SettingsPage.qml</file>
         <file alias="Shell.qml">qml/Shell.qml</file>

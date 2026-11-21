@@ -1,10 +1,14 @@
 // SPDX-License-Identifier: GPL-2.0
 // Page of the generic GUI (standard interfaces): CPU threads and SMT, the same data as CPUControl of the widget pages (UiDesign.md)
 import QtQuick
+import QtQuick.Layouts
 import LenovoLegion.Ui 1.0
 
 SettingsPage {
     title: "CPU Control"
+
+    // The thread cells scroll in the group (CpuGrid), the controls above them stay visible
+    fillHeight: true
 
     DataSource {
         id: cpuTopology
@@ -19,6 +23,8 @@ SettingsPage {
     }
 
     CpuGrid {
+        Layout.fillHeight: true
+
         topology: cpuTopology
         smt: smtSource
     }
