@@ -5,7 +5,8 @@
 //    under its limit stays at the limit, the curve stays monotonic when a point is moved,
 //  - stretched to the size of the page (sliders over the whole height, points over the whole width),
 //  - edited only in the custom thermal mode with Custom, otherwise shown: 1..10 (not custom mode), all 10 (Maximum),
-//  - tool tip of a point: temperatures and fan speeds of the default curves of the power profile (127 = N/A),
+//  - tool tip of a point: temperatures of the sensors at the point (default tables of the power profile, 127 = N/A)
+//    and the fan speeds of its level (the firmware runs all fans at the level of the point, fan table index level - 1),
 //  - Apply sends the whole curve (atomic in FanControl.proto).
 import QtQuick
 import QtQuick.Controls
@@ -64,7 +65,7 @@ ColumnLayout {
         curve.endChanges()
     }
 
-    function pointToolTip(index) {
+    function pointToolTip(index, level) {
         const curves = [["cpu_default", "CPU"], ["gpu_default", "GPU"], ["sys_default", "SYS"], ["cpusen_default", "CPU sensor"]]
         const temperatures = []
         const speeds = []
@@ -75,8 +76,8 @@ ColumnLayout {
 
             if (sensors.length > index)
                 temperatures.push(name + " temp: " + (sensors[index] === 127 ? "N/A" : sensors[index]) + " ℃")
-            if (fans.length > index)
-                speeds.push(name + " fan speed: " + fans[index] + " rpm")
+            if (level >= 1 && fans.length >= level)
+                speeds.push(name + " fan speed: " + fans[level - 1] + " rpm")
         }
 
         return temperatures.concat(speeds).join("\n")
@@ -224,7 +225,7 @@ ColumnLayout {
                         ThemedToolTip {
                             visible: pointHover.hovered && text.length > 0
                             delay: 300
-                            text: editor.pointToolTip(point.index)
+                            text: editor.pointToolTip(point.index, point.shown)
                         }
                     }
 

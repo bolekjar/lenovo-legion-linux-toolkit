@@ -195,8 +195,11 @@ static struct kobj_attribute kobj_attr_fan_curve_current_value =
 	LEGION_WMI_ATTR_RW(current_value, fan_curve_current_value);
 
 /*
- * Default Table values: the fan and the sensor table of a fan come from the same
- * row of the fan table data (the temperatures the firmware controls the fan by)
+ * Default Table values: the fan tables of the fans and the sensor tables named
+ * by the sensor, not by the row of the fan table data. The firmware has one
+ * curve: the point is chosen by the temperatures of the sensors and all fans run
+ * at its level (Legion Pro 7 16IAX10H: the row of the system fan has the CPU
+ * sensor 4, the CPU fan row the sensor 1).
  */
 
 LEGION_WMI_DEFAULT_TABLES(cpu_fan_default, cpu_fan_default_v1,
@@ -217,7 +220,7 @@ LEGION_WMI_DEFAULT_TABLES(gpu_sensor_default, gpu_sensor_default_v1,
 LEGION_WMI_DEFAULT_TABLES(cpu_fan_default, cpu_fan_default_v2,
 			  fan_table_id_v2[CPU], fan_sensor_id_v2[CPU], FAN);
 LEGION_WMI_DEFAULT_TABLES(cpu_sensor_default, cpu_sensor_default_v2,
-			  fan_table_id_v2[CPU], fan_sensor_id_v2[CPU], SENSOR);
+			  fan_table_id_v2[SYS], fan_sensor_id_v2[SYS], SENSOR);
 LEGION_WMI_DEFAULT_TABLES(gpu_fan_default, gpu_fan_default_v2,
 			  fan_table_id_v2[GPU], fan_sensor_id_v2[GPU], FAN);
 LEGION_WMI_DEFAULT_TABLES(gpu_sensor_default, gpu_sensor_default_v2,
@@ -225,7 +228,7 @@ LEGION_WMI_DEFAULT_TABLES(gpu_sensor_default, gpu_sensor_default_v2,
 LEGION_WMI_DEFAULT_TABLES(sys_fan_default, sys_fan_default_v2,
 			  fan_table_id_v2[SYS], fan_sensor_id_v2[SYS], FAN);
 LEGION_WMI_DEFAULT_TABLES(sys_sensor_default, sys_sensor_default_v2,
-			  fan_table_id_v2[SYS], fan_sensor_id_v2[SYS], SENSOR);
+			  fan_table_id_v2[CPU], fan_sensor_id_v2[CPU], SENSOR);
 
 LEGION_WMI_KOBJ_ATTR_RO_STATIC_STRING(display_name,
 				      "FAN curve related settings",
