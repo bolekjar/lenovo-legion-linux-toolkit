@@ -19,6 +19,7 @@
 
 #include <linux/acpi.h>
 #include <linux/dmi.h>
+#include <linux/lockdep.h>
 #include <linux/module.h>
 #include <linux/types.h>
 #include <linux/wmi.h>
@@ -78,18 +79,25 @@ legion_current_mode(const struct lenovo_wmi_gz_priv *priv)
 	return priv->current_mode_on_battery;
 }
 
+/*
+ * Store the mode of the current power source, gz_mode_lock held
+ */
+static void legion_store_current_mode(struct lenovo_wmi_gz_priv *priv,
+				      const enum thermal_mode mode)
+{
+	lockdep_assert_held(&priv->gz_mode_lock);
+
+	if (legion_is_ac_connected(priv->current_adapter_status))
+		priv->current_mode_on_ac = mode;
+	else
+		priv->current_mode_on_battery = mode;
+}
+
 static void legion_modify_current_mode(struct lenovo_wmi_gz_priv *priv,
 				       const enum thermal_mode mode)
 {
-	guard(spinlock)
-		(&priv->gz_mode_lock);
-
-	if (legion_is_ac_connected(priv->current_adapter_status)) {
-		priv->current_mode_on_ac = mode;
-		return;
-	}
-
-	priv->current_mode_on_battery = mode;
+	guard(spinlock)(&priv->gz_mode_lock);
+	legion_store_current_mode(priv, mode);
 }
 
 int legion_wmi_gz_get(struct wmi_device *wdev,
@@ -153,6 +161,22 @@ static int legion_wmi_gz_call(struct lenovo_wmi_gz_priv *priv,
 			} else {
 				(*mode)[4] = LEGION_WMI_GZ_THERMAL_MODE_END;
 			}
+		}
+	}
+		return NOTIFY_OK;
+	case LEGION_WMI_GZ_GET_LEGACY_PLATFORM: {
+		bool **legacy = data;
+
+		scoped_guard(spinlock, &priv->gz_mode_lock) {
+			**legacy = priv->legacy_platform;
+		}
+	}
+		return NOTIFY_OK;
+	case LEGION_WMI_GZ_SET_LEGACY_PLATFORM: {
+		bool **legacy = data;
+
+		scoped_guard(spinlock, &priv->gz_mode_lock) {
+			priv->legacy_platform = **legacy;
 		}
 	}
 		return NOTIFY_OK;
@@ -286,6 +310,48 @@ int legion_wmi_gz_thermal_mode_set(struct lenovo_wmi_gz_priv *priv,
 	return 0;
 }
 
+/*
+ * Effective thermal mode of the older firmware for its thermal mode event:
+ * - the event reports the custom mode as performance (_WED: 3 when CTMD is set),
+ * - GetSmartFanMode returns 255 for the active custom mode and for the custom mode kept while it is left on the
+ *   battery or a low wattage adapter (CTPA), with the full AC adapter the firmware sets the kept custom mode again
+ *   (_Q37, the event may be read before or after it).
+ * With the full AC adapter the mode of GetSmartFanMode is the effective mode, otherwise the mode of the event.
+ * The power source is read from the firmware too (the events of the power source and of the thermal mode may be
+ * handled in any order).
+ *
+ * WMI methods in the event: only on the older firmware, no lock held; the firmware methods wait for its EC mutex
+ * (LFCM) held only shortly by the EC query of the power source.
+ *
+ * Return: true when the power source was read (status set).
+ */
+static bool legion_wmi_gz_legacy_mode(struct lenovo_wmi_gz_priv *priv,
+				      enum thermal_mode *mode,
+				      enum power_adapter_status *status)
+{
+	enum thermal_mode firmware;
+
+	if (legion_wmi_gz_charging_mode_get(priv->wdev, status))
+		return false;
+
+	if (*status != LEGION_WMI_GZ_AC_CONNECTED ||
+	    legion_wmi_gz_thermal_mode_get(priv->wdev, &firmware))
+		return true;
+
+	switch (firmware) {
+	case LEGION_WMI_GZ_THERMAL_MODE_QUIET:
+	case LEGION_WMI_GZ_THERMAL_MODE_BALANCED:
+	case LEGION_WMI_GZ_THERMAL_MODE_PERFORMANCE:
+	case LEGION_WMI_GZ_THERMAL_MODE_CUSTOM:
+		*mode = firmware;
+		break;
+	default:
+		break;
+	}
+
+	return true;
+}
+
 /**
  * legion_wmi_gz_event_call() - Call method for lenovo-wmi-events driver notifier.
  * block call chain.
@@ -306,9 +372,30 @@ static int legion_wmi_gz_event_call(struct notifier_block *nb,
 
 	switch (cmd) {
 	case LEGION_WMI_EVENT_THERMAL_MODE: {
-		dev_dbg(&priv->wdev->dev, "thermal mode event %d\n",
-			*(enum thermal_mode *)data);
-		legion_modify_current_mode(priv, *(enum thermal_mode *)data);
+		enum thermal_mode *mode = data;
+		const enum thermal_mode reported = *mode;
+		enum power_adapter_status status;
+		bool status_read = false;
+		bool legacy;
+
+		scoped_guard(spinlock, &priv->gz_mode_lock) {
+			legacy = priv->legacy_platform;
+		}
+
+		/* Older firmware: the effective mode from the firmware (WMI calls, not under the lock) */
+		if (legacy)
+			status_read = legion_wmi_gz_legacy_mode(priv, mode,
+								&status);
+
+		scoped_guard(spinlock, &priv->gz_mode_lock) {
+			if (status_read)
+				priv->current_adapter_status = status;
+
+			legion_store_current_mode(priv, *mode);
+		}
+
+		dev_dbg(&priv->wdev->dev, "thermal mode event %d, effective %d\n",
+			reported, *mode);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 14, 0)
 		platform_profile_notify(priv->ppdev);
 #else
@@ -319,12 +406,15 @@ static int legion_wmi_gz_event_call(struct notifier_block *nb,
 	case LEGION_WMI_EVENT_POWER_CHARGE_MODE: {
 		/* Just update the adapter status and notify user space.
 		 * Do NOT call WMI methods from within event callbacks as this
-		 * can cause deadlocks or freezes. The thermal mode will be
-		 * applied when user space requests a profile change.
+		 * can cause deadlocks or freezes (the only exception: the thermal
+		 * mode event of the older firmware, see legion_wmi_gz_legacy_mode()).
+		 * The thermal mode will be applied when user space requests a
+		 * profile change.
 		 */
+		const enum power_adapter_status *status = data;
+
 		scoped_guard(spinlock, &priv->gz_mode_lock) {
-			priv->current_adapter_status =
-				*(enum power_adapter_status *)data;
+			priv->current_adapter_status = *status;
 		}
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 14, 0)
@@ -619,6 +709,10 @@ static int legion_wmi_gz_probe(struct wmi_device *wdev, const void *context)
 
 	priv->extreme_supported = legion_wmi_gz_extreme_supported(
 		priv->preloaded_values.IsSupportSmartFan);
+
+	/* Preliminary: SmartFan version only, the other mode adds the LegionZone version when it is probed */
+	priv->legacy_platform = priv->preloaded_values.IsSupportSmartFan == 4 ||
+				priv->preloaded_values.IsSupportSmartFan == 5;
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 14, 0)
 	priv->ppdev = devm_platform_profile_register(

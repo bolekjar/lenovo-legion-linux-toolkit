@@ -185,7 +185,7 @@ static int legion_wmi_om_master_bind(struct device *dev)
 	 * sensors there, the same as Lenovo Legion Toolkit)
 	 */
 	priv->hwmon_nb.notifier_call = legion_wmi_other_call;
-	if (!legion_wmi_platform_legacy(dev, &ret)) {
+	if (!legion_wmi_platform_legacy(&ret)) {
 		priv->hwmon = legion_hwmon_register(dev, &priv->hwmon_nb);
 		if (IS_ERR(priv->hwmon)) {
 			ret = PTR_ERR(priv->hwmon);
@@ -285,6 +285,7 @@ static int legion_wmi_other_probe(struct wmi_device *wdev, const void *context)
 {
 	struct component_match *master_match = NULL;
 	struct legion_wmi_other_priv *priv = NULL;
+	bool legacy;
 	int ret;
 
 	priv = devm_kzalloc(&wdev->dev, sizeof(*priv), GFP_KERNEL);
@@ -301,6 +302,15 @@ static int legion_wmi_other_probe(struct wmi_device *wdev, const void *context)
 						      &priv->other_nb);
 	if (ret)
 		return ret;
+
+	/*
+	 * Older platform detected once, now that the LegionZone version is answered, and kept by the game zone for
+	 * all drivers (probed after the game zone and before the fan method and the CPU / GPU method)
+	 */
+	legacy = legion_wmi_platform_detect(&wdev->dev, &ret);
+	if (!ret && legion_wmi_other_notifier_call(&legacy,
+						   LEGION_WMI_GZ_SET_LEGACY_PLATFORM))
+		dev_warn(&wdev->dev, "Older platform not passed to the game zone\n");
 
 	component_match_add(&wdev->dev, &master_match, legion_wmi_cd00_match,
 			    NULL);

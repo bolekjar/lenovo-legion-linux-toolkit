@@ -20,7 +20,10 @@ enum gamezone_events_type {
 	LEGION_WMI_GZ_GET_SUPPORTED_THERMAL_MODES = 2,
 	LEGION_WMI_GZ_GET_SMARTFAN_VERSION = 3,
 	/* Answered by the other mode driver, not by the game zone */
-	LEGION_WMI_OM_GET_LEGIONZONE_VERSION = 4
+	LEGION_WMI_OM_GET_LEGIONZONE_VERSION = 4,
+	/* Older platform (legion_wmi_platform_legacy()), set by the other mode when it is probed */
+	LEGION_WMI_GZ_GET_LEGACY_PLATFORM = 5,
+	LEGION_WMI_GZ_SET_LEGACY_PLATFORM = 6
 };
 
 enum LEGION_GAMEZONE_METHOD_ID {
@@ -202,6 +205,11 @@ struct lenovo_wmi_gz_priv {
 
 	enum power_adapter_status current_adapter_status;
 	bool extreme_supported;
+	/*
+	 * Older platform: SmartFan version 4 / 5 from the probe, the whole detection (with the LegionZone version)
+	 * set by the other mode when it is probed (legion_wmi_platform_detect())
+	 */
+	bool legacy_platform;
 
 	struct notifier_block event_nb;
 	struct notifier_block other_nb;

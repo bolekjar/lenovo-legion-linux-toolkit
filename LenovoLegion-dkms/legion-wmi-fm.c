@@ -468,8 +468,7 @@ static int legion_wmi_fm_detect(struct legion_wmi_fm_priv *priv)
 		return err;
 
 	/* Older firmware: fan full speed and sensors by the fan method, no reading of the fan table */
-	priv->legacy_platform =
-		legion_wmi_platform_legacy(&priv->wdev->dev, &err);
+	priv->legacy_platform = legion_wmi_platform_legacy(&err);
 	if (err)
 		return err;
 

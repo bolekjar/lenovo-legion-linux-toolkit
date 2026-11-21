@@ -18,17 +18,19 @@
 #include <linux/string.h>
 
 /**
- * legion_wmi_platform_legacy() - Whether the firmware is the older platform
+ * legion_wmi_platform_detect() - Detect whether the firmware is the older platform
  * @dev: Device for the log messages.
  * @err: Set to -EPROBE_DEFER when the game zone does not answer yet, otherwise 0.
  *
  * Older firmware: SmartFan version 4 / 5 or LegionZone version 1 / 2, the same rule as
  * GetSupportsGodModeV1Internal of Lenovo Legion Toolkit (the old BIOS versions are checked by
- * legion_wmi_platform_bios_supported()). Used by the CPU / GPU method, the fan method and the other mode.
+ * legion_wmi_platform_bios_supported()). Called once by the other mode when it is probed (it answers the
+ * LegionZone version), the result is kept by the game zone (LEGION_WMI_GZ_SET_LEGACY_PLATFORM). Calls the WMI
+ * methods.
  *
  * Return: true on the older platform.
  */
-bool legion_wmi_platform_legacy(struct device *dev, int *err)
+bool legion_wmi_platform_detect(struct device *dev, int *err)
 {
 	unsigned int smartfan = 0;
 	unsigned int legionzone = 0;
@@ -57,6 +59,31 @@ bool legion_wmi_platform_legacy(struct device *dev, int *err)
 	dev_dbg(dev, "SmartFan version %u, LegionZone version %u, not the older platform\n",
 		smartfan, legionzone);
 	return false;
+}
+
+/**
+ * legion_wmi_platform_legacy() - Whether the firmware is the older platform
+ * @err: Set to -EPROBE_DEFER when the game zone does not answer yet, otherwise 0.
+ *
+ * The result of legion_wmi_platform_detect() kept by the game zone (without the other mode only its SmartFan
+ * version). Used by the CPU / GPU method, the fan method and the other mode, no WMI method is called.
+ *
+ * Return: true on the older platform.
+ */
+bool legion_wmi_platform_legacy(int *err)
+{
+	bool legacy = false;
+	bool *value = &legacy;
+
+	/* The game zone answers when it is bound, until then the probe is deferred */
+	*err = legion_wmi_other_notifier_call(value,
+					      LEGION_WMI_GZ_GET_LEGACY_PLATFORM);
+	if (*err) {
+		*err = -EPROBE_DEFER;
+		return false;
+	}
+
+	return legacy;
 }
 
 /**

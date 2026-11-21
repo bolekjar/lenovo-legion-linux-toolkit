@@ -307,7 +307,7 @@ static int legion_wmi_cpu_gpu_probe(struct wmi_device *wdev, const void *context
 	struct legion_wmi_cpu_gpu_priv *priv;
 	int err = 0;
 
-	if (!legion_wmi_platform_legacy(&wdev->dev, &err))
+	if (!legion_wmi_platform_legacy(&err))
 		return err ? err : -ENODEV;
 
 	priv = devm_kzalloc(&wdev->dev, sizeof(*priv), GFP_KERNEL);

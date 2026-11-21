@@ -93,7 +93,9 @@ struct legion_driver {
 };
 
 /*
- * Components before their masters, so the masters bind at once
+ * Components before their masters, so the masters bind at once. The game zone before the other mode (its probe
+ * detects the older platform by the game zone and keeps it there), both before the fan method and the CPU / GPU
+ * method (they read it).
  */
 static const struct legion_driver legion_drivers[] = {
 	{ "capability data 00", legion_wmi_cd00_driver_init,

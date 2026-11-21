@@ -15,6 +15,7 @@
 
 #include <linux/acpi.h>
 #include <linux/module.h>
+#include <linux/mutex.h>
 #include <linux/notifier.h>
 #include <linux/types.h>
 #include <linux/wmi.h>
@@ -38,6 +39,12 @@ static BLOCKING_NOTIFIER_HEAD(events_chain_head);
 struct legion_wmi_events_priv {
 	struct wmi_device *wdev;
 	enum legion_events_type type;
+	/*
+	 * Serializes the events of the device: the kernel runs the ACPI notifications in parallel (kacpi_notify
+	 * workqueue per CPU, the WMI core takes notify_lock for reading), the game zone reads the firmware for the
+	 * thermal mode event; a later event reads the firmware after the store and the uevent of the earlier one
+	 */
+	struct mutex lock;
 };
 
 /**
@@ -110,93 +117,112 @@ int devm_legion_wmi_events_register_notifier(struct device *dev,
 		dev, devm_legion_wmi_events_unregister_notifier, nb);
 }
 
+/*
+ * Thermal mode event to the game zone first: the effective mode (the game zone corrects the custom mode which the
+ * older firmware reports as performance), the value as it is for an invalid mode
+ */
+static u64 legion_wmi_events_thermal_mode(struct wmi_device *wdev, u64 value)
+{
+	enum thermal_mode mode;
+
+	switch (value) {
+	case LEGION_WMI_GZ_THERMAL_MODE_QUIET:
+	case LEGION_WMI_GZ_THERMAL_MODE_BALANCED:
+	case LEGION_WMI_GZ_THERMAL_MODE_PERFORMANCE:
+	case LEGION_WMI_GZ_THERMAL_MODE_EXTREME:
+	case LEGION_WMI_GZ_THERMAL_MODE_CUSTOM:
+		break;
+	default:
+		dev_err(&wdev->dev, "Got invalid thermal mode: %llx\n", value);
+		return value;
+	}
+
+	/* Converted by value: the chain gets the type which the game zone reads and writes */
+	mode = value;
+	if (blocking_notifier_call_chain(&events_chain_head,
+					 LEGION_WMI_EVENT_THERMAL_MODE,
+					 &mode) == NOTIFY_BAD)
+		dev_err(&wdev->dev,
+			"Failed to send notification to call chain for WMI Events\n");
+
+	return mode;
+}
+
+/*
+ * Power charge mode event (AC adapter) to the game zone
+ */
+static void legion_wmi_events_power_charge_mode(struct wmi_device *wdev,
+						u64 value)
+{
+	enum power_adapter_status status;
+	int ret;
+
+	switch (value) {
+	case LEGION_WMI_GZ_AC_CONNECTED:
+	case LEGION_WMI_GZ_AC_CONNECTED_LOW_WATTAGE:
+	case LEGION_WMI_GZ_AC_DISCONNECTED:
+		break;
+	default:
+		dev_err(&wdev->dev, "Got invalid power charge mode: %llx\n",
+			value);
+		return;
+	}
+
+	status = value;
+	ret = blocking_notifier_call_chain(&events_chain_head,
+					   LEGION_WMI_EVENT_POWER_CHARGE_MODE,
+					   &status);
+	if (ret == NOTIFY_BAD)
+		dev_err(&wdev->dev,
+			"Failed to send notification to call chain for WMI Events\n");
+}
+
 /**
  * legion_wmi_events_notify() - Call functions for the notifier call chain.
  * @wdev: The parent WMI device of the driver.
  * @obj: ACPI object passed by the registered WMI Event.
  *
- * Validate WMI event data and notify all registered drivers of the event and
- * its output.
- *
- * Return: 0 on success, or an error code.
+ * Validate WMI event data, notify all registered drivers of the event and send a uevent (EVENT_TYPE,
+ * EVENT_VALUE). EVENT_VALUE of the thermal mode is the effective thermal mode after the game zone (255 for the
+ * custom mode also on the older firmware), the other events carry the value of the firmware.
  */
 static void legion_wmi_events_notify(struct wmi_device *wdev,
 				     union acpi_object *obj)
 {
-	const struct legion_wmi_events_priv *priv = dev_get_drvdata(&wdev->dev);
+	struct legion_wmi_events_priv *priv = dev_get_drvdata(&wdev->dev);
+	const bool integer = obj->type == ACPI_TYPE_INTEGER;
+	u64 value = integer ? obj->integer.value : 0;
 	char event_type[64] = { 0 };
 	char event_value[64] = { 0 };
 	char *envp[] = { event_type, event_value, NULL };
 
-	if (priv->type != LEGION_WMI_EVENT_UNKNOWN) {
-		snprintf(event_type, sizeof(event_type), "EVENT_TYPE=%d",
-			 priv->type);
-		if (obj->type == ACPI_TYPE_INTEGER) {
-			snprintf(event_value, sizeof(event_value),
-				 "EVENT_VALUE=%llu", obj->integer.value);
-		} else {
-			snprintf(event_value, sizeof(event_value),
-				 "EVENT_VALUE=N/A");
-		}
+	/* The chain (game zone) and the uevent of one event before the next one */
+	guard(mutex)(&priv->lock);
 
-		kobject_uevent_env(&wdev->dev.kobj, KOBJ_CHANGE, envp);
-	}
-
-	switch (priv->type) {
-	case LEGION_WMI_EVENT_THERMAL_MODE: {
-		if (obj->type != ACPI_TYPE_INTEGER)
-			return;
-
-		u64 sel_prof = obj->integer.value;
-
-		switch (sel_prof) {
-		case LEGION_WMI_GZ_THERMAL_MODE_QUIET:
-		case LEGION_WMI_GZ_THERMAL_MODE_BALANCED:
-		case LEGION_WMI_GZ_THERMAL_MODE_PERFORMANCE:
-		case LEGION_WMI_GZ_THERMAL_MODE_EXTREME:
-		case LEGION_WMI_GZ_THERMAL_MODE_CUSTOM: {
-			const int ret = blocking_notifier_call_chain(
-				&events_chain_head,
-				LEGION_WMI_EVENT_THERMAL_MODE, &sel_prof);
-			if (ret == NOTIFY_BAD)
-				dev_err(&wdev->dev,
-					"Failed to send notification to call chain for WMI Events\n");
-			return;
-		}
+	if (integer) {
+		switch (priv->type) {
+		case LEGION_WMI_EVENT_THERMAL_MODE:
+			value = legion_wmi_events_thermal_mode(wdev, value);
+			break;
+		case LEGION_WMI_EVENT_POWER_CHARGE_MODE:
+			legion_wmi_events_power_charge_mode(wdev, value);
+			break;
 		default:
-			dev_err(&wdev->dev, "Got invalid thermal mode: %llx\n",
-				sel_prof);
-			return;
+			break;
 		}
 	}
-	case LEGION_WMI_EVENT_POWER_CHARGE_MODE: {
-		if (obj->type != ACPI_TYPE_INTEGER)
-			return;
 
-		u64 sel_prof = obj->integer.value;
+	if (priv->type == LEGION_WMI_EVENT_UNKNOWN)
+		return;
 
-		switch (sel_prof) {
-		case LEGION_WMI_GZ_AC_CONNECTED:
-		case LEGION_WMI_GZ_AC_CONNECTED_LOW_WATTAGE:
-		case LEGION_WMI_GZ_AC_DISCONNECTED: {
-			const int ret = blocking_notifier_call_chain(
-				&events_chain_head,
-				LEGION_WMI_EVENT_POWER_CHARGE_MODE, &sel_prof);
-			if (ret == NOTIFY_BAD)
-				dev_err(&wdev->dev,
-					"Failed to send notification to call chain for WMI Events\n");
-			return;
-		}
-		default:
-			dev_err(&wdev->dev,
-				"Got invalid power charge mode: %llx\n",
-				sel_prof);
-		}
-		break;
-	}
-	default:
-		break;
-	}
+	snprintf(event_type, sizeof(event_type), "EVENT_TYPE=%d", priv->type);
+	if (integer)
+		snprintf(event_value, sizeof(event_value), "EVENT_VALUE=%llu",
+			 value);
+	else
+		snprintf(event_value, sizeof(event_value), "EVENT_VALUE=N/A");
+
+	kobject_uevent_env(&wdev->dev.kobj, KOBJ_CHANGE, envp);
 }
 
 static int legion_wmi_events_probe(struct wmi_device *wdev, const void *context)
@@ -211,6 +237,12 @@ static int legion_wmi_events_probe(struct wmi_device *wdev, const void *context)
 
 	priv->wdev = wdev;
 	priv->type = *(enum legion_events_type *)context;
+
+	const int ret = devm_mutex_init(&wdev->dev, &priv->lock);
+
+	if (ret)
+		return ret;
+
 	dev_set_drvdata(&wdev->dev, priv);
 
 	return 0;
