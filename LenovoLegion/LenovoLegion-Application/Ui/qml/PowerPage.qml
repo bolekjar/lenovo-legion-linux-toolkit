@@ -33,7 +33,7 @@ SettingsPage {
 
             const values = {}
 
-            // Only the defaults the hardware has (the older firmware has the custom mode only: no presets there)
+            // Only the defaults the hardware has (the older firmware: from LENOVO_DEFAULT_VALUE_IN_DIFFERENT_MODE_DATA)
             for (const limit of limits) {
                 const path = limit + ".mode_descriptor_map[" + choice.value + "].default_value"
 

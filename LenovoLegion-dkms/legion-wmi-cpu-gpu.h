@@ -10,6 +10,7 @@
 #define LEGION_WMI_CPU_GPU_H_
 
 #include "legion-common.h"
+#include "legion-wmi-mode-defaults.h"
 
 #include <linux/mutex.h>
 #include <linux/types.h>
@@ -38,6 +39,8 @@ struct wmi_device;
  * @default_method_index: Index of the default value in the result of the default method of the class (uint32 values),
  *                        or LEGION_WMI_CPU_GPU_NONE.
  * @event: EVENT_TYPE of the uevent after a write.
+ * @mode_default: Default value of the power modes (LENOVO_DEFAULT_VALUE_IN_DIFFERENT_MODE_DATA), or
+ *                LEGION_WMI_MODE_DEFAULT_NONE.
  */
 struct legion_wmi_cpu_gpu_limit {
 	const char *name;
@@ -52,6 +55,7 @@ struct legion_wmi_cpu_gpu_limit {
 	s8 max_index;
 	s8 default_method_index;
 	enum legion_events_type event;
+	enum legion_wmi_mode_default mode_default;
 };
 
 /**
@@ -114,6 +118,9 @@ int legion_wmi_cpu_gpu_read(struct legion_wmi_cpu_gpu_priv *priv,
 int legion_wmi_cpu_gpu_write(struct legion_wmi_cpu_gpu_priv *priv,
 			    const struct legion_wmi_cpu_gpu_limit *limit,
 			    u32 value);
+int legion_wmi_cpu_gpu_mode_default(struct legion_wmi_cpu_gpu_priv *priv,
+				    const struct legion_wmi_cpu_gpu_limit *limit,
+				    u32 mode, u32 *value);
 bool legion_wmi_cpu_gpu_supported(struct legion_wmi_cpu_gpu_priv *priv,
 				 const struct legion_wmi_cpu_gpu_limit *limit);
 

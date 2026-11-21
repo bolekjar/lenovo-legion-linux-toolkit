@@ -22,6 +22,7 @@
 #include "legion-common.h"
 #include "legion-wmi-gamezone.h"
 #include "legion-wmi-helpers.h"
+#include "legion-wmi-mode-defaults.h"
 #include "legion-wmi-cpu-gpu-sysfs.h"
 #include "legion-wmi-cpu-gpu.h"
 #include "legion-wmi-other.h"
@@ -41,49 +42,50 @@
 #define LEGION_WMI_CPU_GPU_RESULT_SIZE 32
 
 /* Layouts of the get methods: uint32 Current, step, Min, Max / uint32 Current, Default, step, Min, Max */
-#define CPU_GPU_LIMIT_4(_name, _label, _get, _set, _def, _event)                       \
+#define CPU_GPU_LIMIT_4(_name, _label, _get, _set, _def, _event, _mode_default)        \
 	{ .name = _name, .display_name = _label, .get_id = _get, .set_id = _set,        \
 	  .item_size = 4, .current_index = 0, .default_index = LEGION_WMI_CPU_GPU_NONE,   \
 	  .step_index = 1, .min_index = 2, .max_index = 3,                              \
-	  .default_method_index = _def, .event = _event }
+	  .default_method_index = _def, .event = _event, .mode_default = _mode_default }
 
-#define CPU_GPU_LIMIT_5(_name, _label, _get, _set, _size, _event)                      \
+#define CPU_GPU_LIMIT_5(_name, _label, _get, _set, _size, _event, _mode_default)       \
 	{ .name = _name, .display_name = _label, .get_id = _get, .set_id = _set,        \
 	  .item_size = _size, .current_index = 0, .default_index = 1,                   \
 	  .step_index = 2, .min_index = 3, .max_index = 4,                              \
-	  .default_method_index = LEGION_WMI_CPU_GPU_NONE, .event = _event }
+	  .default_method_index = LEGION_WMI_CPU_GPU_NONE, .event = _event,             \
+	  .mode_default = _mode_default }
 
 static const struct legion_wmi_cpu_gpu_limit legion_wmi_cpu_gpu_cpu_limits[] = {
 	/* CPU_Get_LongTerm_PowerLimit (5) / CPU_Set_LongTerm_PowerLimit (6), default: CPU_Get_Default_PowerLimit [0] */
 	CPU_GPU_LIMIT_4("cpu_ltp_limit", "Set the CPU long term power limit", 5, 6, 0,
-		       LEGION_WMI_CPU_LTP),
+		       LEGION_WMI_CPU_LTP, LEGION_WMI_MODE_DEFAULT_CPU_LTP),
 	/* CPU_Get_ShortTerm_PowerLimit (3) / CPU_Set_ShortTerm_PowerLimit (4), default: CPU_Get_Default_PowerLimit [1] */
 	CPU_GPU_LIMIT_4("cpu_stp_limit", "Set the CPU short term power limit", 3, 4, 1,
-		       LEGION_WMI_CPU_STP),
+		       LEGION_WMI_CPU_STP, LEGION_WMI_MODE_DEFAULT_CPU_STP),
 	/* CPU_Get_Peak_PowerLimit (8) / CPU_Set_Peak_PowerLimit (9) */
 	CPU_GPU_LIMIT_5("cpu_pp_limit", "Set the CPU peak power limit", 8, 9, 4,
-		       LEGION_WMI_CPU_PP),
+		       LEGION_WMI_CPU_PP, LEGION_WMI_MODE_DEFAULT_NONE),
 	/* CPU_Get_Cross_Loading_PowerLimit (16) / CPU_Set_Cross_Loading_PowerLimit (17) */
 	CPU_GPU_LIMIT_5("cpu_clp_limit", "Set the CPU cross loading power limit", 16, 17, 4,
-		       LEGION_WMI_CPU_CLP),
+		       LEGION_WMI_CPU_CLP, LEGION_WMI_MODE_DEFAULT_CPU_CLP),
 	/* CPU_Get_Temperature_Control (10) / CPU_Set_Temperature_Control (11), uint8 */
 	CPU_GPU_LIMIT_5("cpu_tmp_limit", "Set the CPU temperature limit", 10, 11, 1,
-		       LEGION_WMI_CPU_TMP),
+		       LEGION_WMI_CPU_TMP, LEGION_WMI_MODE_DEFAULT_CPU_TMP),
 	/* Get_APU_sPPT_PowerLimit (12) / Set_APU_sPPT_PowerLimit (13) */
 	CPU_GPU_LIMIT_5("apus_pptp_limit", "Set the APU sPPT power limit", 12, 13, 4,
-		       LEGION_WMI_CPU_APU_SPPT),
+		       LEGION_WMI_CPU_APU_SPPT, LEGION_WMI_MODE_DEFAULT_NONE),
 };
 
 static const struct legion_wmi_cpu_gpu_limit legion_wmi_cpu_gpu_gpu_limits[] = {
 	/* GPU_Get_PPAB_PowerLimit (3) / GPU_Set_PPAB_PowerLimit (4), default: GPU_Get_Default_PPAB_cTGP_PowerLimit [0] */
 	CPU_GPU_LIMIT_4("gpu_power_boost", "Set the GPU power boost (Dynamic Boost)", 3, 4, 0,
-		       LEGION_WMI_GPU_PB),
+		       LEGION_WMI_GPU_PB, LEGION_WMI_MODE_DEFAULT_GPU_PPAB),
 	/* GPU_Get_cTGP_PowerLimit (5) / GPU_Set_cTGP_PowerLimit (6), default: GPU_Get_Default_PPAB_cTGP_PowerLimit [1] */
 	CPU_GPU_LIMIT_4("gpu_configurable_tgp", "Set the GPU configurable TGP", 5, 6, 1,
-		       LEGION_WMI_GPU_TGP),
+		       LEGION_WMI_GPU_TGP, LEGION_WMI_MODE_DEFAULT_GPU_CTGP),
 	/* GPU_Get_Temperature_Limit (8) / GPU_Set_Temperature_Limit (9), uint8 */
 	CPU_GPU_LIMIT_5("gpu_temperature_limit", "Set the GPU temperature limit", 8, 9, 1,
-		       LEGION_WMI_GPU_TMP),
+		       LEGION_WMI_GPU_TMP, LEGION_WMI_MODE_DEFAULT_GPU_TMP),
 };
 
 /* Own numbers of the devices of each class (legion-wmi-cpu-0, legion-wmi-gpu-0) */
@@ -210,6 +212,31 @@ int legion_wmi_cpu_gpu_read(struct legion_wmi_cpu_gpu_priv *priv,
 				       value) ?
 		       0 :
 		       -ENODATA;
+}
+
+/**
+ * legion_wmi_cpu_gpu_mode_default() - Default value of a limit in a power mode
+ * @priv: The driver data.
+ * @limit: The limit.
+ * @mode: The power mode: 1 quiet, 2 balanced, 3 performance (LENOVO_DEFAULT_VALUE_IN_DIFFERENT_MODE_DATA) or
+ *        255 custom (the default of the get method or of the default method of the class).
+ * @value: The default value.
+ *
+ * Context: Caller holds priv->lock.
+ * Return: 0, -ENODATA when the firmware does not provide the value, or an error of the WMI method.
+ */
+int legion_wmi_cpu_gpu_mode_default(struct legion_wmi_cpu_gpu_priv *priv,
+				    const struct legion_wmi_cpu_gpu_limit *limit,
+				    u32 mode, u32 *value)
+{
+	if (mode == LEGION_WMI_GZ_THERMAL_MODE_CUSTOM)
+		return legion_wmi_cpu_gpu_read(priv, limit, CPU_GPU_FIELD_DEFAULT,
+					      value);
+
+	if (limit->mode_default == LEGION_WMI_MODE_DEFAULT_NONE)
+		return -ENODATA;
+
+	return legion_wmi_mode_default_get(mode, limit->mode_default, value);
 }
 
 /**

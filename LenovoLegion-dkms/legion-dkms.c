@@ -25,6 +25,7 @@
 #include "legion-wmi-fm.h"
 #include "legion-wmi-ftable.h"
 #include "legion-wmi-gamezone.h"
+#include "legion-wmi-mode-defaults.h"
 #include "legion-wmi-other.h"
 
 #include <linux/dmi.h>
@@ -95,7 +96,8 @@ struct legion_driver {
 /*
  * Components before their masters, so the masters bind at once. The game zone before the other mode (its probe
  * detects the older platform by the game zone and keeps it there), both before the fan method and the CPU / GPU
- * method (they read it).
+ * method (they read it). The default values of the modes before the CPU / GPU method (its default_value files are
+ * created by them).
  */
 static const struct legion_driver legion_drivers[] = {
 	{ "capability data 00", legion_wmi_cd00_driver_init,
@@ -113,6 +115,8 @@ static const struct legion_driver legion_drivers[] = {
 	{ "fan method", legion_wmi_fm_driver_init, legion_wmi_fm_driver_exit },
 	{ "ACPI VPC", legion_acpi_vpc_driver_init,
 	  legion_acpi_vpc_driver_exit },
+	{ "default values of the modes", legion_wmi_mode_defaults_driver_init,
+	  legion_wmi_mode_defaults_driver_exit },
 	{ "CPU / GPU method", legion_wmi_cpu_gpu_driver_init,
 	  legion_wmi_cpu_gpu_driver_exit },
 };

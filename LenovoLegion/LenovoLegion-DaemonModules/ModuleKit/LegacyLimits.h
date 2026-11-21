@@ -37,15 +37,44 @@ void read(const SysFsDriverLegionLegacy::Legacy::Limit& paths,Limit* limit)
 
     limit->set_current_value(SysFsDataProvider::getData(paths.m_current_value).toUInt());
 
-    if(!paths.m_default_value.empty())
-    {
-        descriptor.set_default_value(SysFsDataProvider::getData(paths.m_default_value).toUInt());
-    }
-
     descriptor.set_min_value(SysFsDataProvider::getData(paths.m_min_value).toUInt());
     descriptor.set_max_value(SysFsDataProvider::getData(paths.m_max_value).toUInt());
     descriptor.set_scalar_increment(SysFsDataProvider::getData(paths.m_scalar_increment).toUInt());
     descriptor.set_supported(SysFsDataProvider::getData(paths.m_supported).toUInt());
+
+    /*
+     * Default values "<mode>=<value>,..." (power modes of the firmware and the custom mode, the same as the other mode),
+     * a single value (older kernel module) is the default of the custom mode
+     */
+    if(!paths.m_default_value.empty())
+    {
+        const QString defaults = SysFsDataProvider::getData(paths.m_default_value);
+
+        if(!defaults.contains('='))
+        {
+            descriptor.set_default_value(defaults.toUInt());
+        }
+
+        for(const QString& pair : defaults.split(',',Qt::SkipEmptyParts))
+        {
+            const auto modeValue = pair.split('=');
+            bool       modeOk    = false;
+            bool       valueOk   = false;
+
+            if(modeValue.size() != 2)
+            {
+                continue;
+            }
+
+            const int  mode  = modeValue.at(0).trimmed().toInt(&modeOk);
+            const uint value = modeValue.at(1).trimmed().toUInt(&valueOk);
+
+            if(modeOk && valueOk)
+            {
+                (*limit->mutable_mode_descriptor_map())[mode].set_default_value(value);
+            }
+        }
+    }
 }
 
 /*

@@ -14,6 +14,7 @@
 #include "legion-firmware-attributes-class.h"
 #include "legion-wmi-cpu-gpu-sysfs.h"
 #include "legion-wmi-cpu-gpu.h"
+#include "legion-wmi-gamezone.h"
 
 #include <linux/device.h>
 #include <linux/idr.h>
@@ -64,6 +65,46 @@ static void legion_wmi_cpu_gpu_send_event(struct legion_wmi_cpu_gpu_priv *priv,
 			"Failed to send uevent for attribute change\n");
 }
 
+/* Power modes of default_value: the modes of LENOVO_DEFAULT_VALUE_IN_DIFFERENT_MODE_DATA and the custom mode */
+static const u32 legion_wmi_cpu_gpu_default_modes[] = {
+	LEGION_WMI_GZ_THERMAL_MODE_QUIET,
+	LEGION_WMI_GZ_THERMAL_MODE_BALANCED,
+	LEGION_WMI_GZ_THERMAL_MODE_PERFORMANCE,
+	LEGION_WMI_GZ_THERMAL_MODE_CUSTOM,
+};
+
+/*
+ * default_value: "<mode>=<value>,..." of the power modes the firmware provides (the same format as the other mode),
+ * the length; without buf only the number of the modes with a default value (0: no default_value file)
+ */
+static ssize_t legion_wmi_cpu_gpu_show_default(struct legion_wmi_cpu_gpu_priv *priv,
+					       const struct legion_wmi_cpu_gpu_limit *limit,
+					       char *buf)
+{
+	ssize_t len = 0;
+	u32 value;
+
+	guard(mutex)(&priv->lock);
+
+	for (size_t i = 0; i < ARRAY_SIZE(legion_wmi_cpu_gpu_default_modes); i++) {
+		const u32 mode = legion_wmi_cpu_gpu_default_modes[i];
+
+		if (legion_wmi_cpu_gpu_mode_default(priv, limit, mode, &value))
+			continue;
+
+		if (buf)
+			len += sysfs_emit_at(buf, len, "%s%u=%u", len ? "," : "",
+					     mode, value);
+		else
+			len++;
+	}
+
+	if (buf && len)
+		len += sysfs_emit_at(buf, len, "\n");
+
+	return len;
+}
+
 static ssize_t legion_wmi_cpu_gpu_show(struct kobject *kobj,
 				      struct kobj_attribute *kattr, char *buf)
 {
@@ -79,6 +120,13 @@ static ssize_t legion_wmi_cpu_gpu_show(struct kobject *kobj,
 		return sysfs_emit(buf, "integer\n");
 	case CPU_GPU_FIELD_DISPLAY_NAME:
 		return sysfs_emit(buf, "%s\n", attr->limit->display_name);
+	case CPU_GPU_FIELD_DEFAULT: {
+		const ssize_t len = legion_wmi_cpu_gpu_show_default(attr->priv,
+								    attr->limit,
+								    buf);
+
+		return len ? len : -ENODATA;
+	}
 	default:
 		break;
 	}
@@ -125,22 +173,20 @@ static int legion_wmi_cpu_gpu_build_group(struct legion_wmi_cpu_gpu_priv *priv,
 	struct legion_wmi_cpu_gpu_attr *attrs;
 	struct attribute **list;
 	unsigned int count = 0;
-	u32 value;
-	int err;
+	ssize_t defaults;
 
 	attrs = devm_kcalloc(dev, CPU_GPU_FIELDS, sizeof(*attrs), GFP_KERNEL);
 	list = devm_kcalloc(dev, CPU_GPU_FIELDS + 1, sizeof(*list), GFP_KERNEL);
 	if (!attrs || !list)
 		return -ENOMEM;
 
-	scoped_guard(mutex, &priv->lock)
-		err = legion_wmi_cpu_gpu_read(priv, limit, CPU_GPU_FIELD_DEFAULT,
-					     &value);
+	/* Number of the power modes with a default value */
+	defaults = legion_wmi_cpu_gpu_show_default(priv, limit, NULL);
 
 	for (int field = 0; field < CPU_GPU_FIELDS; field++) {
 		struct legion_wmi_cpu_gpu_attr *attr = &attrs[count];
 
-		if (field == CPU_GPU_FIELD_DEFAULT && err)
+		if (field == CPU_GPU_FIELD_DEFAULT && !defaults)
 			continue;
 
 		sysfs_attr_init(&attr->kattr.attr);
