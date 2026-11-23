@@ -41,6 +41,9 @@ struct legion_wmi_ftable {
 int legion_wmi_ftable_get_data(struct legion_wmi_ftable_list *list, u16 mode,
 			       u16 fanId, u16 sensorId,
 			       struct legion_wmi_ftable *output);
+int legion_wmi_ftable_get_data_legacy(struct legion_wmi_ftable_list *list,
+				      u16 fanId, u16 sensorId,
+				      struct legion_wmi_ftable *output);
 int legion_wmi_ftable_curve_limits(struct legion_wmi_ftable_list *list,
 				   struct device *dev, bool legacy,
 				   u8 min[MAX_FANCURVE_SIZE],

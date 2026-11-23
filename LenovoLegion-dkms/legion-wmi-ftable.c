@@ -242,6 +242,37 @@ int legion_wmi_ftable_curve_limits(struct legion_wmi_ftable_list *list,
 }
 
 /**
+ * legion_wmi_ftable_get_data_legacy() - Row of the fan table of the older firmware
+ * @list: The fan table.
+ * @fanId: The fan (low half of the uint32 Fan_Id, legion_wmi_ftable_fan_id()).
+ * @sensorId: The sensor.
+ * @output: The row.
+ *
+ * The rows of the older firmware have no mode, they are the fan tables of the
+ * custom mode.
+ *
+ * Return: 0 on success, -ENODEV without the fan table, -EINVAL without the row.
+ */
+int legion_wmi_ftable_get_data_legacy(struct legion_wmi_ftable_list *list,
+				      u16 fanId, u16 sensorId,
+				      struct legion_wmi_ftable *output)
+{
+	if (!list)
+		return -ENODEV;
+
+	guard(mutex)(&list->list_mutex);
+	for (u8 idx = 0; idx < list->count; idx++) {
+		if (legion_wmi_ftable_fan_id(&list->data[idx], true) == fanId &&
+		    list->data[idx].sensorId == sensorId) {
+			memcpy(output, &list->data[idx], sizeof(*output));
+			return 0;
+		}
+	}
+
+	return -EINVAL;
+}
+
+/**
  * legion_wmi_ftable_cache() - Cache all WMI data block information
  * @priv: lenovo-wmi-ftable driver data.
  * @instances: Number of the WMI data block instances.

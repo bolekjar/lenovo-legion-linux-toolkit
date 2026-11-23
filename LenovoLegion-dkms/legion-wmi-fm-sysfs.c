@@ -156,6 +156,24 @@ static struct kobj_attribute kobj_attr_fan_curve_min_value =
 static struct kobj_attribute kobj_attr_fan_curve_max_value =
 	LEGION_WMI_ATTR_RO(max_value, fan_curve_max_value);
 
+/*
+ * Fan or sensor table of a row "a|b|...", appended to buf at len
+ */
+static int legion_wmi_fm_emit_table(char *buf, int len,
+				    const struct legion_wmi_ftable *ftable,
+				    enum TableType table)
+{
+	for (int j = 0; j < MAX_FANCURVE_SIZE; j++) {
+		len += sysfs_emit_at(buf, len, "%u",
+				     table == FAN ? ftable->fanTableData[j] :
+						    ftable->sensorTableData[j]);
+		if (j + 1 != MAX_FANCURVE_SIZE)
+			len += sysfs_emit_at(buf, len, "|");
+	}
+
+	return len;
+}
+
 #define LEGION_WMI_DEFAULT_TABLES(_attribute, _func, _fan_id, _sensor_id,          \
 				  _table)                                          \
 	static ssize_t func_##_func##_show(                                        \
@@ -185,9 +203,6 @@ static struct kobj_attribute kobj_attr_fan_curve_max_value =
 		for (int i = 0; (i < THERMAL_MODES_SIZE) &&                        \
 				(modes[i] != LEGION_WMI_GZ_THERMAL_MODE_END);      \
 		     i++) {                                                        \
-			u16 *table = NULL;                                         \
-			int table_len = 0;                                         \
-										   \
 			len += sysfs_emit_at(buf, len, "%u=", modes[i]);           \
 										   \
 			ret = legion_wmi_ftable_get_data(priv->ft_list,            \
@@ -197,23 +212,7 @@ static struct kobj_attribute kobj_attr_fan_curve_max_value =
 				return ret;                                        \
 			}                                                          \
 										   \
-			if (_table == FAN) {                                       \
-				table = ftable.fanTableData;                       \
-				table_len = sizeof(ftable.fanTableData) /          \
-					    sizeof(ftable.fanTableData[0]);        \
-			} else if (_table == SENSOR) {                             \
-				table = ftable.sensorTableData;                    \
-				table_len = sizeof(ftable.sensorTableData) /       \
-					    sizeof(ftable.sensorTableData[0]);     \
-			} else                                                     \
-				return -EINVAL;                                    \
-										   \
-			for (int j = 0; j < table_len; j++) {                      \
-				len += sysfs_emit_at(buf, len, "%u",               \
-						     table[j]);                    \
-				if ((j + 1) != table_len)                          \
-					len += sysfs_emit_at(buf, len, "|");       \
-			}                                                          \
+			len = legion_wmi_fm_emit_table(buf, len, &ftable, _table); \
 										   \
 			if (modes[i + 1] != LEGION_WMI_GZ_THERMAL_MODE_END)        \
 				len += sysfs_emit_at(buf, len, ",");               \
@@ -264,6 +263,52 @@ LEGION_WMI_DEFAULT_TABLES(sys_fan_default, sys_fan_default_v2,
 LEGION_WMI_DEFAULT_TABLES(sys_sensor_default, sys_sensor_default_v2,
 			  fan_table_id_v2[CPU], fan_sensor_id_v2[CPU], SENSOR);
 
+/*
+ * Older firmware: the rows of the fan table have no mode, they are the tables of
+ * the custom mode ("255=a|b|..."); empty without the row
+ */
+#define LEGION_WMI_LEGACY_DEFAULT_TABLES(_attribute, _func, _fan_id,             \
+					 _sensor_id, _table)                     \
+	static ssize_t func_##_func##_show(                                      \
+		struct kobject *kobj, struct kobj_attribute *kattr, char *buf)   \
+	{                                                                        \
+		struct legion_wmi_fm_priv *priv =                                \
+			dev_get_drvdata(kobj_to_dev(kobj->parent));              \
+		struct legion_wmi_ftable ftable;                                 \
+		int len = 0;                                                     \
+										 \
+		if (!legion_wmi_ftable_get_data_legacy(priv->ft_list, _fan_id,   \
+						       _sensor_id, &ftable)) {   \
+			len += sysfs_emit_at(buf, len, "%u=",                    \
+					     LEGION_WMI_GZ_THERMAL_MODE_CUSTOM); \
+			len = legion_wmi_fm_emit_table(buf, len, &ftable,        \
+						       _table);                  \
+		}                                                                \
+										 \
+		len += sysfs_emit_at(buf, len, "\n");                            \
+		return len;                                                      \
+	}                                                                        \
+	static struct kobj_attribute kobj_attr_##_func##_value =                 \
+		LEGION_WMI_ATTR_RO(_attribute, _func)
+
+/*
+ * Rows of the older firmware (the same as the hwmon maximal fan speeds and Lenovo
+ * Legion Toolkit): CPU fan 0 with the CPU sensor 3, GPU fan 1 with the GPU
+ * sensor 4, the CPU fan with the sensor 0 (the lower points, "CPU sensor")
+ */
+LEGION_WMI_LEGACY_DEFAULT_TABLES(cpu_fan_default, cpu_fan_default_legacy, 0, 3,
+				 FAN);
+LEGION_WMI_LEGACY_DEFAULT_TABLES(cpu_sensor_default, cpu_sensor_default_legacy,
+				 0, 3, SENSOR);
+LEGION_WMI_LEGACY_DEFAULT_TABLES(gpu_fan_default, gpu_fan_default_legacy, 1, 4,
+				 FAN);
+LEGION_WMI_LEGACY_DEFAULT_TABLES(gpu_sensor_default, gpu_sensor_default_legacy,
+				 1, 4, SENSOR);
+LEGION_WMI_LEGACY_DEFAULT_TABLES(cpusen_fan_default, cpusen_fan_default_legacy,
+				 0, 0, FAN);
+LEGION_WMI_LEGACY_DEFAULT_TABLES(cpusen_sensor_default,
+				 cpusen_sensor_default_legacy, 0, 0, SENSOR);
+
 LEGION_WMI_KOBJ_ATTR_RO_STATIC_STRING(display_name,
 				      "FAN curve related settings",
 				      fan_curve_display_name)
@@ -310,12 +355,18 @@ static const struct attribute_group legion_sysfs_fm_group_v2[] = {
 
 /*
  * Older firmware: the fan curve is only written (Fan_Get_Table is not in its ASL, the same as Lenovo Legion
- * Toolkit), its fan table has no mode, so no default tables of the modes
+ * Toolkit), its fan table has no mode: the default tables of the custom mode only
  */
 static struct attribute *legion_sysfs_fm_fan_curve_attributes_legacy[] = {
 	&kobj_attr_fan_curve_current_value.attr,
 	&kobj_attr_fan_curve_min_value.attr,
 	&kobj_attr_fan_curve_max_value.attr,
+	&kobj_attr_cpu_fan_default_legacy_value.attr,
+	&kobj_attr_cpu_sensor_default_legacy_value.attr,
+	&kobj_attr_gpu_fan_default_legacy_value.attr,
+	&kobj_attr_gpu_sensor_default_legacy_value.attr,
+	&kobj_attr_cpusen_fan_default_legacy_value.attr,
+	&kobj_attr_cpusen_sensor_default_legacy_value.attr,
 	&kobj_attr_fan_curve_display_name.attr,
 	NULL
 };

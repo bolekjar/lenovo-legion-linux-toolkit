@@ -42,6 +42,10 @@ ColumnLayout {
     readonly property bool editable:           custom && !fullSpeed
     readonly property int  profile:            profileSource !== null && profileSource.revision >= 0 ? profileSource.value("current_value", profileSource.revision) : 0
 
+    // Mode of the default tables: of the power profile, the custom mode when the firmware has the tables of the custom
+    // mode only (older firmware: the rows of its fan table have no mode); the edited curve is the one of the custom mode
+    readonly property int  tableMode:          curve.repeatedValues("cpu_default[" + profile + "].sensors", curve.revision).length > 0 ? profile : 255
+
     function pointModel(index) {
         return curve.field("current_value." + points[index], curve.revision)
     }
@@ -98,7 +102,7 @@ ColumnLayout {
         const lines = []
 
         for (const [map, name] of defaultCurves) {
-            const sensors = curve.repeatedValues(map + "[" + profile + "].sensors", curve.revision)
+            const sensors = curve.repeatedValues(map + "[" + tableMode + "].sensors", curve.revision)
 
             if (sensors.length === points.length)
                 lines.push(name + " " + (sensors[index] === 127 ? "N/A" : sensors[index] + " ℃"))
@@ -133,8 +137,8 @@ ColumnLayout {
         const speeds = []
 
         for (const [map, name] of defaultCurves) {
-            const sensors = (curve.repeatedValues(map + "[" + profile + "].sensors", curve.revision))
-            const fans    = curve.repeatedValues(map + "[" + profile + "].fan", curve.revision)
+            const sensors = (curve.repeatedValues(map + "[" + tableMode + "].sensors", curve.revision))
+            const fans    = curve.repeatedValues(map + "[" + tableMode + "].fan", curve.revision)
 
             if (sensors.length > index)
                 temperatures.push(name + " temp: " + (sensors[index] === 127 ? "N/A" : sensors[index]) + " ℃")
