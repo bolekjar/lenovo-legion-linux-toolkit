@@ -30,6 +30,16 @@ const int fan_sensor_id_v1[] = { 4, 1, 5, 0 };
 const int fan_table_id_v2[] = { 1, 0, 2, 4 };
 const int fan_sensor_id_v2[] = { 1, 0, 5, 4 };
 
+/*
+ * The firmware limits the points of the fan curve (legion_wmi_ftable_curve_limits()),
+ * the EC does not check them: a lower curve works, but may run the fans at the
+ * minimal speed under load
+ */
+static bool allow_low_fan_curve;
+module_param(allow_low_fan_curve, bool, 0444);
+MODULE_PARM_DESC(allow_low_fan_curve,
+		 "Allow the level 1 for all points of the fan curve, under the limits of the firmware (default: the limits of the firmware)");
+
 static BLOCKING_NOTIFIER_HEAD(legion_fm_chain_head);
 
 /**
@@ -482,6 +492,14 @@ static int legion_wmi_fm_detect(struct legion_wmi_fm_priv *priv)
 				       priv->legacy_platform,
 				       priv->fan_curve_min,
 				       priv->fan_curve_max);
+
+	if (allow_low_fan_curve) {
+		dev_warn(&priv->wdev->dev,
+			 "fan curve under the limits of the firmware allowed, the fans may run slowly under load\n");
+
+		for (int point = 0; point < MAX_FANCURVE_SIZE; point++)
+			priv->fan_curve_min[point] = MIN_FANCURVE_LEVEL;
+	}
 
 	return 0;
 }
