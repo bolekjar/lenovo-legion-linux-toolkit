@@ -14,7 +14,7 @@
 #include <Drivers/SysFsDriverIntelPowercapRapl.h>
 #include <Drivers/SysFsDriverLegionEvents.h>
 #include <Drivers/SysFsDriverLegionGameZone.h>
-#include <Drivers/SysFsDriverLegionLegacy.h>
+#include <Drivers/SysFsDriverLegionCpuGpu.h>
 #include <Drivers/SysFsDriverLegionOther.h>
 
 #include <KitLog.h>
@@ -29,7 +29,7 @@
 namespace LenovoLegionDaemon::Kit {
 
 /*
- * CPU power limits (Legion WMI other, on the older firmware the legacy CPU method). Owns notification
+ * CPU power limits (Legion WMI other, on the older firmware the CPU method legion_wmi_cpu). Owns notification
  * POWER_CONTROL_CHANGED for the attributes it writes (CPU limits, APU PPT, GPU total on AC).
  * Writes the CPU power limits of the thermal mode to the RAPL of the kernel (RaplPowerLimits).
  */
@@ -41,7 +41,7 @@ public:
         ProviderModule(host)
     {
         drivers().addDriver(std::make_unique<SysFsDriverLegionOther>());
-        drivers().addDriver(std::make_unique<SysFsDriverLegionLegacyCPU>());
+        drivers().addDriver(std::make_unique<SysFsDriverLegionCpu>());
         drivers().addDriver(std::make_unique<SysFsDriverLegionGameZone>());
         drivers().addDriver(std::make_unique<SysFsDriverLegionEvents>());
         drivers().addDriver(std::make_unique<SysFsDriverIntelPowercapRapl>());
@@ -125,7 +125,7 @@ protected:
 
     bool legacy()
     {
-        return !drivers().isLoaded(SysFsDriverLegionOther::DRIVER_NAME) && drivers().isLoaded(SysFsDriverLegionLegacyCPU::DRIVER_NAME);
+        return !drivers().isLoaded(SysFsDriverLegionOther::DRIVER_NAME) && drivers().isLoaded(SysFsDriverLegionCpu::DRIVER_NAME);
     }
 
     std::optional<legion::messages::Notification> notificationFor(const SysFsDriver::SubsystemEvent& event) override
@@ -143,9 +143,9 @@ protected:
         }
 
         /*
-         * Older firmware: all events of the CPU limits (legacy driver)
+         * Older firmware: all events of the CPU limits (SysFsDriverLegionCpu)
          */
-        if(event.m_driverName == SysFsDriverLegionLegacyCPU::DRIVER_NAME && event.m_action == SysFsDriver::SubsystemEvent::Action::CHANGED)
+        if(event.m_driverName == SysFsDriverLegionCpu::DRIVER_NAME && event.m_action == SysFsDriver::SubsystemEvent::Action::CHANGED)
         {
             return notification(legion::messages::Notification::POWER_CONTROL_CHANGED);
         }

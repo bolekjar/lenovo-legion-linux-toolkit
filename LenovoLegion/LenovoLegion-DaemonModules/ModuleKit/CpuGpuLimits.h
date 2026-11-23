@@ -7,15 +7,15 @@
  */
 #pragma once
 /*
- * Power limits of the older Legion firmware (SysFsDriverLegionLegacy) in the messages of the newer firmware
+ * Power limits of the older Legion firmware (SysFsDriverLegionCpuGpu) in the messages of the newer firmware
  * (CPUPower.Limit, GPUPower.Limit): the firmware has the values of the custom mode only, so the limit has
  * the descriptor of the custom mode only (the GUI shows the limits in the custom mode, the same as God mode of
  * Lenovo Legion Toolkit).
  */
 #include "SysFsDataProvider.h"
-#include "Drivers/SysFsDriverLegionLegacy.h"
+#include "Drivers/SysFsDriverLegionCpuGpu.h"
 
-namespace LenovoLegionDaemon::Kit::LegacyLimits {
+namespace LenovoLegionDaemon::Kit::CpuGpuLimits {
 
 /*
  * Power mode of the descriptor (PowerProfile POWER_PROFILE_CUSTOM)
@@ -26,7 +26,7 @@ inline constexpr int THERMAL_MODE_CUSTOM = 255;
  * Limit read from the firmware, not set when the firmware does not support it
  */
 template<class Limit>
-void read(const SysFsDriverLegionLegacy::Legacy::Limit& paths,Limit* limit)
+void read(const SysFsDriverLegionCpuGpu::CpuGpu::Limit& paths,Limit* limit)
 {
     if(!paths.exists())
     {
@@ -81,7 +81,7 @@ void read(const SysFsDriverLegionLegacy::Legacy::Limit& paths,Limit* limit)
  * Write of a limit of the request (only a limit the firmware supports, the request was checked by settable)
  */
 template<class Limit>
-void write(const SysFsDriverLegionLegacy::Legacy::Limit& paths,bool has,const Limit& limit)
+void write(const SysFsDriverLegionCpuGpu::CpuGpu::Limit& paths,bool has,const Limit& limit)
 {
     if(has && paths.exists())
     {

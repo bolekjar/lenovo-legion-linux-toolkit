@@ -4,9 +4,17 @@
  *
  * Author(s):
  *   Jaroslav Bolek <jaroslav.bolek@gmail.com>
+ *
+ * Intel CPU voltage offsets (OC mailbox MSR 0x150), a module independent of the
+ * notebook (loaded by /etc/modules-load.d/lenovo-legion.conf), refused on a CPU
+ * without the OC mailbox. The attributes are in legion-intel-msr-sysfs.c.
+ *
+ * After a resume the offsets written by the driver are checked and written again
+ * when the CPU / firmware reset them.
  */
 
 #include "legion-intel-msr.h"
+#include "legion-intel-msr-sysfs.h"
 
 #include <asm/cpu_device_id.h>
 #include <asm/intel-family.h>
@@ -14,7 +22,10 @@
 #include <linux/bitops.h>
 #include <linux/delay.h>
 #include <linux/kernel.h>
+#include <linux/device.h>
 #include <linux/module.h>
+#include <linux/slab.h>
+#include <linux/suspend.h>
 #include <linux/version.h>
 
 /*
@@ -378,3 +389,104 @@ void legion_intel_msr_exit(struct legion_intel_msr_private *priv)
 {
 	mutex_destroy(&priv->lock);
 }
+
+/*
+ * After a resume (suspend to RAM, hibernation): the offsets written by the driver
+ * are written again when they were reset, user space gets the uevent of a
+ * restored offset
+ */
+static int legion_intel_msr_pm_notify(struct notifier_block *nb,
+				      unsigned long action, void *data)
+{
+	struct legion_intel_msr_data *msr_data =
+		container_of(nb, struct legion_intel_msr_data, pm_notifier);
+	int offset_uv = 0;
+	int ret;
+
+	if (action != PM_POST_SUSPEND && action != PM_POST_HIBERNATION &&
+	    action != PM_POST_RESTORE)
+		return NOTIFY_DONE;
+
+	dev_dbg(msr_data->fw_attr_dev, "checking the offsets after the resume\n");
+
+	for (int plane = 0; plane < LEGION_INTEL_MSR_PLANES; plane++) {
+		ret = legion_intel_msr_restore_offset(&msr_data->msr, plane,
+						      &offset_uv);
+		if (ret < 0) {
+			dev_warn(msr_data->fw_attr_dev,
+				 "offset of plane %d was reset by the resume and can not be restored: %d\n",
+				 plane, ret);
+		} else if (ret > 0) {
+			dev_info(msr_data->fw_attr_dev,
+				 "offset %d uV of plane %d restored after the resume\n",
+				 offset_uv, plane);
+			legion_intel_msr_sysfs_offset_restored(msr_data, plane,
+							       offset_uv);
+		}
+	}
+
+	return NOTIFY_OK;
+}
+
+/*
+ * Data of the module: one instance (a module without a device), found by
+ * legion_intel_msr_module_exit()
+ */
+static struct legion_intel_msr_data *legion_intel_msr_data;
+
+static int __init legion_intel_msr_module_init(void)
+{
+	struct legion_intel_msr_data *data;
+	int err;
+
+	data = kzalloc(sizeof(*data), GFP_KERNEL);
+	if (!data)
+		return -ENOMEM;
+
+	err = legion_intel_msr_init(&data->msr);
+	if (err) {
+		pr_info("legion-intel-msr: Intel OC mailbox (MSR 0x150) not available: %d\n",
+			err);
+		goto err_free;
+	}
+
+	err = legion_intel_msr_sysfs_init(data);
+	if (err)
+		goto err_msr_exit;
+
+	data->pm_notifier.notifier_call = legion_intel_msr_pm_notify;
+	err = register_pm_notifier(&data->pm_notifier);
+	if (err)
+		goto err_sysfs_exit;
+
+	legion_intel_msr_data = data;
+
+	return 0;
+
+err_sysfs_exit:
+	legion_intel_msr_sysfs_exit(data);
+err_msr_exit:
+	legion_intel_msr_exit(&data->msr);
+err_free:
+	kfree(data);
+	return err;
+}
+
+static void __exit legion_intel_msr_module_exit(void)
+{
+	struct legion_intel_msr_data *data = legion_intel_msr_data;
+
+	unregister_pm_notifier(&data->pm_notifier);
+	legion_intel_msr_sysfs_exit(data);
+	legion_intel_msr_exit(&data->msr);
+	kfree(data);
+}
+
+module_init(legion_intel_msr_module_init);
+module_exit(legion_intel_msr_module_exit);
+
+MODULE_LICENSE("GPL");
+MODULE_AUTHOR("Jaroslav Bolek");
+MODULE_DESCRIPTION(
+	"Intel CPU voltage offsets (OC mailbox MSR 0x150), part of Lenovo Legion Linux Toolkit");
+MODULE_VERSION(LEGION_VERSION);

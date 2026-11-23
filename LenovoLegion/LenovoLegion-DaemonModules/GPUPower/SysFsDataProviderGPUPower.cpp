@@ -7,9 +7,9 @@
  */
 
 #include "SysFsDataProviderGPUPower.h"
-#include <Drivers/SysFsDriverLegionLegacy.h>
+#include <Drivers/SysFsDriverLegionCpuGpu.h>
 #include <Drivers/SysFsDriverLegionOther.h>
-#include <LegacyLimits.h>
+#include <CpuGpuLimits.h>
 
 #include <GPUPower.pb.h>
 
@@ -24,7 +24,7 @@ SysFsDataProviderGPUPower::SysFsDataProviderGPUPower(SysFsDriverManager* sysFsDr
 
 bool SysFsDataProviderGPUPower::legacy() const
 {
-    return !m_sysFsDriverManager->isLoaded(SysFsDriverLegionOther::DRIVER_NAME) && m_sysFsDriverManager->isLoaded(SysFsDriverLegionLegacyGPU::DRIVER_NAME);
+    return !m_sysFsDriverManager->isLoaded(SysFsDriverLegionOther::DRIVER_NAME) && m_sysFsDriverManager->isLoaded(SysFsDriverLegionGpu::DRIVER_NAME);
 }
 
 QByteArray SysFsDataProviderGPUPower::serializeAndGetData()
@@ -39,11 +39,11 @@ QByteArray SysFsDataProviderGPUPower::serializeAndGetData()
      */
     if(legacy())
     {
-        const SysFsDriverLegionLegacy::Legacy::GPU gpu(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverLegionLegacyGPU::DRIVER_NAME));
+        const SysFsDriverLegionCpuGpu::CpuGpu::GPU gpu(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverLegionGpu::DRIVER_NAME));
 
-        LegacyLimits::read(gpu.m_gpu_power_boost,power.mutable_gpu_power_boost());
-        LegacyLimits::read(gpu.m_gpu_configurable_tgp,power.mutable_gpu_configurable_tgp());
-        LegacyLimits::read(gpu.m_gpu_temperature_limit,power.mutable_gpu_temperature_limit());
+        CpuGpuLimits::read(gpu.m_gpu_power_boost,power.mutable_gpu_power_boost());
+        CpuGpuLimits::read(gpu.m_gpu_configurable_tgp,power.mutable_gpu_configurable_tgp());
+        CpuGpuLimits::read(gpu.m_gpu_temperature_limit,power.mutable_gpu_temperature_limit());
 
         return serializeMessage(power);
     }
@@ -204,14 +204,14 @@ QByteArray SysFsDataProviderGPUPower::deserializeAndSetData(const QByteArray &da
      */
     if(legacy())
     {
-        const SysFsDriverLegionLegacy::Legacy::GPU gpu(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverLegionLegacyGPU::DRIVER_NAME));
+        const SysFsDriverLegionCpuGpu::CpuGpu::GPU gpu(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverLegionGpu::DRIVER_NAME));
 
-        m_sysFsDriverManager->blockKernelEvent(SysFsDriverLegionLegacyGPU::DRIVER_NAME,true);
-        auto cleanup =  qScopeGuard([this] { m_sysFsDriverManager->blockKernelEvent(SysFsDriverLegionLegacyGPU::DRIVER_NAME,false); });
+        m_sysFsDriverManager->blockKernelEvent(SysFsDriverLegionGpu::DRIVER_NAME,true);
+        auto cleanup =  qScopeGuard([this] { m_sysFsDriverManager->blockKernelEvent(SysFsDriverLegionGpu::DRIVER_NAME,false); });
 
-        LegacyLimits::write(gpu.m_gpu_power_boost,power.has_gpu_power_boost(),power.gpu_power_boost());
-        LegacyLimits::write(gpu.m_gpu_configurable_tgp,power.has_gpu_configurable_tgp(),power.gpu_configurable_tgp());
-        LegacyLimits::write(gpu.m_gpu_temperature_limit,power.has_gpu_temperature_limit(),power.gpu_temperature_limit());
+        CpuGpuLimits::write(gpu.m_gpu_power_boost,power.has_gpu_power_boost(),power.gpu_power_boost());
+        CpuGpuLimits::write(gpu.m_gpu_configurable_tgp,power.has_gpu_configurable_tgp(),power.gpu_configurable_tgp());
+        CpuGpuLimits::write(gpu.m_gpu_temperature_limit,power.has_gpu_temperature_limit(),power.gpu_temperature_limit());
 
         m_sysFsDriverManager->processAllUdevEvents(100);
         return {};

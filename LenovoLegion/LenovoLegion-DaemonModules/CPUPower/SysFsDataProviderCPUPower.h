@@ -32,7 +32,7 @@ private:
     void settable(legion::messages::CPUPower& cpuPower,Origin origin);
 
     /*
-     * Older firmware: limits of SysFsDriverLegionLegacyCPU instead of the other mode
+     * Older firmware: limits of SysFsDriverLegionCpu instead of the other mode
      */
     bool legacy() const;
 

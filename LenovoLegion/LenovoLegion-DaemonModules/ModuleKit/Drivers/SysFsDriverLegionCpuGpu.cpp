@@ -6,19 +6,19 @@
  *   Jaroslav Bolek <jaroslav.bolek@gmail.com>
  */
 
-#include "SysFsDriverLegionLegacy.h"
+#include "SysFsDriverLegionCpuGpu.h"
 
 #include "../KitLog.h"
 
 namespace LenovoLegionDaemon::Kit {
 
-SysFsDriverLegionLegacy::SysFsDriverLegionLegacy(const char* driverName,const char* sysName) :
+SysFsDriverLegionCpuGpu::SysFsDriverLegionCpuGpu(const char* driverName,const char* sysName) :
     SysFsDriver(driverName,std::filesystem::path("/sys/class/legion-firmware-attributes/").append(sysName).append("attributes/"),{SUBSYSTEM,{"EVENT_TYPE","EVENT_VALUE"}},MODULE_NAME),
     m_sysName(sysName)
 {}
 
 
-void SysFsDriverLegionLegacy::init()
+void SysFsDriverLegionCpuGpu::init()
 {
     LOG_T(__PRETTY_FUNCTION__);
 
@@ -41,7 +41,7 @@ void SysFsDriverLegionLegacy::init()
 
         const QString limit = QString::fromStdString(entry.path().filename().string());
 
-        LOG_D(QString("Found Legion legacy limit in path: ") + entry.path().c_str());
+        LOG_D(QString("Found Legion CPU / GPU method limit in path: ") + entry.path().c_str());
 
         for(const char* file : {"current_value","default_value","min_value","max_value","scalar_increment","supported"})
         {
@@ -55,7 +55,7 @@ void SysFsDriverLegionLegacy::init()
     }
 }
 
-void SysFsDriverLegionLegacy::handleKernelEvent(const KernelEvent::Event &event)
+void SysFsDriverLegionCpuGpu::handleKernelEvent(const KernelEvent::Event &event)
 {
     /*
      * The subsystem (class) is shared by all firmware attribute devices of the Lenovo driver

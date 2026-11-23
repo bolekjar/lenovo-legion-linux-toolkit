@@ -123,6 +123,14 @@ struct device;
 struct legion_hwmon;
 struct notifier_block;
 
+int legion_wmi_other_feature_get(const struct legion_wmi_other_priv *priv,
+				 u32 feature_id, u32 *value);
+int legion_wmi_other_feature_set(const struct legion_wmi_other_priv *priv,
+				 u32 feature_id, u32 value);
+int legion_wmi_other_feature_set_range(const struct legion_wmi_other_priv *priv,
+				       u32 feature_id, u32 value, u32 min,
+				       u32 max);
+
 int legion_wmi_other_notifier_call(
 	void *data, enum gamezone_events_type gamezone_events_type);
 

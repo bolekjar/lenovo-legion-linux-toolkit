@@ -18,11 +18,11 @@ namespace LenovoLegionDaemon::Kit {
  * LegionZone 1 / 2): firmware attributes legion-wmi-cpu-0 / legion-wmi-gpu-0 instead of the other mode. A limit is
  * present only when the firmware supports it, its values are single values of the custom mode (not per mode).
  */
-class SysFsDriverLegionLegacy : public SysFsDriver
+class SysFsDriverLegionCpuGpu : public SysFsDriver
 {
 public:
 
-    struct Legacy {
+    struct CpuGpu {
 
         struct Limit {
 
@@ -93,7 +93,7 @@ public:
 
 public:
 
-    ~SysFsDriverLegionLegacy() override = default;
+    ~SysFsDriverLegionCpuGpu() override = default;
 
     virtual void init() override;
 
@@ -110,26 +110,26 @@ public:
 
 protected:
 
-    SysFsDriverLegionLegacy(const char* driverName,const char* sysName);
+    SysFsDriverLegionCpuGpu(const char* driverName,const char* sysName);
 
 private:
 
     const QString m_sysName;
 };
 
-class SysFsDriverLegionLegacyCPU : public SysFsDriverLegionLegacy
+class SysFsDriverLegionCpu : public SysFsDriverLegionCpuGpu
 {
 public:
-    SysFsDriverLegionLegacyCPU() : SysFsDriverLegionLegacy(DRIVER_NAME,SYS_NAME) {}
+    SysFsDriverLegionCpu() : SysFsDriverLegionCpuGpu(DRIVER_NAME,SYS_NAME) {}
 
     static constexpr const char* DRIVER_NAME =  "legion_wmi_cpu";
     static constexpr const char* SYS_NAME    =  "legion-wmi-cpu-0";
 };
 
-class SysFsDriverLegionLegacyGPU : public SysFsDriverLegionLegacy
+class SysFsDriverLegionGpu : public SysFsDriverLegionCpuGpu
 {
 public:
-    SysFsDriverLegionLegacyGPU() : SysFsDriverLegionLegacy(DRIVER_NAME,SYS_NAME) {}
+    SysFsDriverLegionGpu() : SysFsDriverLegionCpuGpu(DRIVER_NAME,SYS_NAME) {}
 
     static constexpr const char* DRIVER_NAME =  "legion_wmi_gpu";
     static constexpr const char* SYS_NAME    =  "legion-wmi-gpu-0";

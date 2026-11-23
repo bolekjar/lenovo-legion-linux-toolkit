@@ -32,7 +32,7 @@ private:
     void settable(legion::messages::GPUPower& gpuPower,Origin origin);
 
     /*
-     * Older firmware: limits of SysFsDriverLegionLegacyGPU instead of the other mode
+     * Older firmware: limits of SysFsDriverLegionGpu instead of the other mode
      */
     bool legacy() const;
 

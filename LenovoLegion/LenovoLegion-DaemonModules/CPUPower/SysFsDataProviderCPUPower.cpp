@@ -7,9 +7,9 @@
  */
 
 #include "SysFsDataProviderCPUPower.h"
-#include <Drivers/SysFsDriverLegionLegacy.h>
+#include <Drivers/SysFsDriverLegionCpuGpu.h>
 #include <Drivers/SysFsDriverLegionOther.h>
-#include <LegacyLimits.h>
+#include <CpuGpuLimits.h>
 
 #include <KitLog.h>
 
@@ -24,7 +24,7 @@ SysFsDataProviderCPUPower::SysFsDataProviderCPUPower(SysFsDriverManager* sysFsDr
 
 bool SysFsDataProviderCPUPower::legacy() const
 {
-    return !m_sysFsDriverManager->isLoaded(SysFsDriverLegionOther::DRIVER_NAME) && m_sysFsDriverManager->isLoaded(SysFsDriverLegionLegacyCPU::DRIVER_NAME);
+    return !m_sysFsDriverManager->isLoaded(SysFsDriverLegionOther::DRIVER_NAME) && m_sysFsDriverManager->isLoaded(SysFsDriverLegionCpu::DRIVER_NAME);
 }
 
 QByteArray SysFsDataProviderCPUPower::serializeAndGetData()
@@ -40,14 +40,14 @@ QByteArray SysFsDataProviderCPUPower::serializeAndGetData()
      */
     if(legacy())
     {
-        const SysFsDriverLegionLegacy::Legacy::CPU cpu(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverLegionLegacyCPU::DRIVER_NAME));
+        const SysFsDriverLegionCpuGpu::CpuGpu::CPU cpu(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverLegionCpu::DRIVER_NAME));
 
-        LegacyLimits::read(cpu.m_cpu_ltp_limit,cpuPower.mutable_cpu_ltp_limit());
-        LegacyLimits::read(cpu.m_cpu_stp_limit,cpuPower.mutable_cpu_stp_limit());
-        LegacyLimits::read(cpu.m_cpu_pp_limit,cpuPower.mutable_cpu_pp_limit());
-        LegacyLimits::read(cpu.m_cpu_clp_limit,cpuPower.mutable_cpu_clp_limit());
-        LegacyLimits::read(cpu.m_apus_pptp_limit,cpuPower.mutable_apus_pptp_limit());
-        LegacyLimits::read(cpu.m_cpu_tmp_limit,cpuPower.mutable_cpu_tmp_limit());
+        CpuGpuLimits::read(cpu.m_cpu_ltp_limit,cpuPower.mutable_cpu_ltp_limit());
+        CpuGpuLimits::read(cpu.m_cpu_stp_limit,cpuPower.mutable_cpu_stp_limit());
+        CpuGpuLimits::read(cpu.m_cpu_pp_limit,cpuPower.mutable_cpu_pp_limit());
+        CpuGpuLimits::read(cpu.m_cpu_clp_limit,cpuPower.mutable_cpu_clp_limit());
+        CpuGpuLimits::read(cpu.m_apus_pptp_limit,cpuPower.mutable_apus_pptp_limit());
+        CpuGpuLimits::read(cpu.m_cpu_tmp_limit,cpuPower.mutable_cpu_tmp_limit());
 
         return serializeMessage(cpuPower);
     }
@@ -243,17 +243,17 @@ QByteArray SysFsDataProviderCPUPower::deserializeAndSetData(const QByteArray &da
      */
     if(legacy())
     {
-        const SysFsDriverLegionLegacy::Legacy::CPU cpu(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverLegionLegacyCPU::DRIVER_NAME));
+        const SysFsDriverLegionCpuGpu::CpuGpu::CPU cpu(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverLegionCpu::DRIVER_NAME));
 
-        m_sysFsDriverManager->blockKernelEvent(SysFsDriverLegionLegacyCPU::DRIVER_NAME,true);
-        auto cleanup =  qScopeGuard([this] { m_sysFsDriverManager->blockKernelEvent(SysFsDriverLegionLegacyCPU::DRIVER_NAME,false); });
+        m_sysFsDriverManager->blockKernelEvent(SysFsDriverLegionCpu::DRIVER_NAME,true);
+        auto cleanup =  qScopeGuard([this] { m_sysFsDriverManager->blockKernelEvent(SysFsDriverLegionCpu::DRIVER_NAME,false); });
 
-        LegacyLimits::write(cpu.m_cpu_ltp_limit,cpuPower.has_cpu_ltp_limit(),cpuPower.cpu_ltp_limit());
-        LegacyLimits::write(cpu.m_cpu_stp_limit,cpuPower.has_cpu_stp_limit(),cpuPower.cpu_stp_limit());
-        LegacyLimits::write(cpu.m_cpu_pp_limit,cpuPower.has_cpu_pp_limit(),cpuPower.cpu_pp_limit());
-        LegacyLimits::write(cpu.m_cpu_clp_limit,cpuPower.has_cpu_clp_limit(),cpuPower.cpu_clp_limit());
-        LegacyLimits::write(cpu.m_apus_pptp_limit,cpuPower.has_apus_pptp_limit(),cpuPower.apus_pptp_limit());
-        LegacyLimits::write(cpu.m_cpu_tmp_limit,cpuPower.has_cpu_tmp_limit(),cpuPower.cpu_tmp_limit());
+        CpuGpuLimits::write(cpu.m_cpu_ltp_limit,cpuPower.has_cpu_ltp_limit(),cpuPower.cpu_ltp_limit());
+        CpuGpuLimits::write(cpu.m_cpu_stp_limit,cpuPower.has_cpu_stp_limit(),cpuPower.cpu_stp_limit());
+        CpuGpuLimits::write(cpu.m_cpu_pp_limit,cpuPower.has_cpu_pp_limit(),cpuPower.cpu_pp_limit());
+        CpuGpuLimits::write(cpu.m_cpu_clp_limit,cpuPower.has_cpu_clp_limit(),cpuPower.cpu_clp_limit());
+        CpuGpuLimits::write(cpu.m_apus_pptp_limit,cpuPower.has_apus_pptp_limit(),cpuPower.apus_pptp_limit());
+        CpuGpuLimits::write(cpu.m_cpu_tmp_limit,cpuPower.has_cpu_tmp_limit(),cpuPower.cpu_tmp_limit());
 
         m_sysFsDriverManager->processAllUdevEvents(100);
         return {};

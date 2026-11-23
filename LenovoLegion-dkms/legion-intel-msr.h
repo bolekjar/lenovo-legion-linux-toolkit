@@ -9,7 +9,11 @@
 #define LEGION_INTEL_MSR_H_
 
 #include <linux/mutex.h>
+#include <linux/notifier.h>
 #include <linux/types.h>
+
+struct device;
+struct kset;
 
 /*
  * Voltage planes of the OC mailbox (MSR 0x150)
@@ -59,6 +63,22 @@ struct legion_intel_msr_private {
 	bool written[LEGION_INTEL_MSR_PLANES];
 	u32 written_units[LEGION_INTEL_MSR_PLANES];
 	struct mutex lock;
+};
+
+/**
+ * struct legion_intel_msr_data - Data of the module (one device, independent of the notebook)
+ * @msr: State of the OC mailbox.
+ * @fw_attr_dev: Device /sys/class/legion-intel-msr/legion-intel-msr-<id>.
+ * @fw_attr_kset: Directory attributes of the device.
+ * @ida_id: Number of the device.
+ * @pm_notifier: Restores the offsets after a resume.
+ */
+struct legion_intel_msr_data {
+	struct legion_intel_msr_private msr;
+	struct device *fw_attr_dev;
+	struct kset *fw_attr_kset;
+	int ida_id;
+	struct notifier_block pm_notifier;
 };
 
 int legion_intel_msr_write_offset(struct legion_intel_msr_private *priv,

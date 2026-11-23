@@ -37,7 +37,7 @@ HEADERS += \
     DataProvider.h \
     SysFsDataProvider.h \
     ProviderModule.h \
-    LegacyLimits.h \
+    CpuGpuLimits.h \
     LastRequest.h \
     Drivers/SysFsDriverLegion.h \
     Drivers/SysFsDriverCPU.h \
@@ -52,7 +52,7 @@ HEADERS += \
     Drivers/SysFsDriverLegionGameZone.h \
     Drivers/SysFsDriverLegionVpc.h \
     Drivers/SysFsDriverLegionHWMon.h \
-    Drivers/SysFsDriverLegionLegacy.h \
+    Drivers/SysFsDriverLegionCpuGpu.h \
     Drivers/SysFsDriverLegionMachineInformation.h \
     Drivers/SysFsDriverLegionOther.h \
     Drivers/SysFsDriverPowerSuplyBattery0.h
@@ -76,7 +76,7 @@ SOURCES += \
     Drivers/SysFsDriverLegionGameZone.cpp \
     Drivers/SysFsDriverLegionVpc.cpp \
     Drivers/SysFsDriverLegionHWMon.cpp \
-    Drivers/SysFsDriverLegionLegacy.cpp \
+    Drivers/SysFsDriverLegionCpuGpu.cpp \
     Drivers/SysFsDriverLegionMachineInformation.cpp \
     Drivers/SysFsDriverLegionOther.cpp \
     Drivers/SysFsDriverPowerSuplyBattery0.cpp

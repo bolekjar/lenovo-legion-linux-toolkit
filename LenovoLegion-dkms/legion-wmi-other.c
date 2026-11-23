@@ -117,6 +117,152 @@ int legion_wmi_other_notifier_call(
 	return 0;
 }
 
+/**
+ * legion_wmi_other_feature_get() - Current value of a feature (GetFeatureValue)
+ * @priv: The other mode driver data.
+ * @feature_id: Capability ID of the feature, its mode is ignored.
+ * @value: The value.
+ *
+ * Return: 0 on success, or an error code.
+ */
+int legion_wmi_other_feature_get(const struct legion_wmi_other_priv *priv,
+				 u32 feature_id, u32 *value)
+{
+	struct wmi_method_args_32 args = {
+		.arg0 = feature_id & ~LEGION_WMI_MODE_ID_MASK,
+	};
+
+	return legion_wmi_dev_evaluate_int(priv->wdev, 0x0,
+					   LEGION_WMI_OTHER_FEATURE_VALUE_GET,
+					   (unsigned char *)&args, sizeof(args),
+					   value);
+}
+
+/*
+ * Write of a checked value of a feature (SetFeatureValue)
+ */
+static int legion_wmi_other_feature_write(const struct legion_wmi_other_priv *priv,
+					  u32 feature_id, u32 value)
+{
+	struct wmi_method_args_32 args = {
+		.arg0 = feature_id & ~LEGION_WMI_MODE_ID_MASK,
+		.arg1 = value,
+	};
+
+	return legion_wmi_dev_evaluate_int(priv->wdev, 0x0,
+					   LEGION_WMI_OTHER_FEATURE_VALUE_SET,
+					   (unsigned char *)&args, sizeof(args),
+					   NULL);
+}
+
+/*
+ * Value of a feature without a range: one of the discrete values of the custom mode (discrete data)
+ */
+static int legion_wmi_other_feature_discrete(const struct legion_wmi_other_priv *priv,
+					     u32 feature_id_custom, u32 value)
+{
+	struct legion_wmi_ddata lddata[48] = { { 0, 0 } };
+	int ret;
+
+	ret = legion_wmi_dd_get_data(priv->dd_list, feature_id_custom, lddata,
+				     ARRAY_SIZE(lddata) - 1);
+	if (ret)
+		return ret;
+
+	for (int i = 0; i < ARRAY_SIZE(lddata) && lddata[i].id != 0; ++i)
+		if (lddata[i].value == value)
+			return 0;
+
+	return -EINVAL;
+}
+
+/**
+ * legion_wmi_other_feature_set() - Set a feature of the custom mode (capability data 01)
+ * @priv: The other mode driver data.
+ * @feature_id: Capability ID of the feature, its mode is ignored.
+ * @value: The value.
+ *
+ * The firmware uses the value in the custom mode only. The value is checked by
+ * the capability data 01 of the custom mode: its range, or one of the discrete
+ * values when the feature has no range.
+ *
+ * Return: 0 on success, -EBUSY out of the custom mode, -ENODEV for a feature not
+ * supported, -EINVAL for a value out of range, or an error code.
+ */
+int legion_wmi_other_feature_set(const struct legion_wmi_other_priv *priv,
+				 u32 feature_id, u32 value)
+{
+	const u32 feature_id_custom =
+		(feature_id & ~LEGION_WMI_MODE_ID_MASK) |
+		FIELD_PREP(LEGION_WMI_MODE_ID_MASK,
+			   LEGION_WMI_GZ_THERMAL_MODE_CUSTOM);
+	struct legion_wmi_capdata01 capdata;
+	enum thermal_mode mode;
+	int ret;
+
+	ret = legion_wmi_other_notifier_call(&mode,
+					     LEGION_WMI_GZ_GET_THERMAL_MODE);
+	if (ret)
+		return ret;
+
+	if (mode != LEGION_WMI_GZ_THERMAL_MODE_CUSTOM)
+		return -EBUSY;
+
+	ret = legion_wmi_cd01_get_data(priv->cd01_list, feature_id_custom,
+				       &capdata);
+	if (ret)
+		return ret;
+
+	if (capdata.supported == 0)
+		return -ENODEV;
+
+	if (capdata.max_value == 0 && capdata.min_value == 0 &&
+	    capdata.step == 0)
+		ret = legion_wmi_other_feature_discrete(priv, feature_id_custom,
+							value);
+	else if (value < capdata.min_value || value > capdata.max_value)
+		ret = -EINVAL;
+
+	if (ret)
+		return ret;
+
+	return legion_wmi_other_feature_write(priv, feature_id, value);
+}
+
+/**
+ * legion_wmi_other_feature_set_range() - Set a feature (capability data 00) in a range
+ * @priv: The other mode driver data.
+ * @feature_id: Capability ID of the feature, its mode is ignored.
+ * @value: The value.
+ * @min: Minimal value.
+ * @max: Maximal value.
+ *
+ * Return: 0 on success, -ENODEV for a feature not supported, -EINVAL for a value
+ * out of range, or an error code.
+ */
+int legion_wmi_other_feature_set_range(const struct legion_wmi_other_priv *priv,
+				       u32 feature_id, u32 value, u32 min,
+				       u32 max)
+{
+	struct legion_wmi_capdata00 capdata = { 0, 0, 0 };
+	int ret;
+
+	/* A feature not in the capability data (-EINVAL) is not supported */
+	ret = legion_wmi_cd00_get_data(priv->cd00_list,
+				       feature_id & ~LEGION_WMI_MODE_ID_MASK,
+				       &capdata);
+	if (ret && ret != -EINVAL)
+		return ret;
+
+	if (capdata.supported == 0)
+		return -ENODEV;
+
+	if (value < min || value > max)
+		return -EINVAL;
+
+	return legion_wmi_other_feature_write(priv, feature_id, value);
+}
+
 static int legion_wmi_other_call(struct notifier_block *nb,
 				 const unsigned long action, void *data)
 {
@@ -125,21 +271,12 @@ static int legion_wmi_other_call(struct notifier_block *nb,
 	const struct hwmon_capability *value = data;
 
 	switch (action) {
-	case LEGION_WMI_FM_GET_CAPABILITY_VALUE: {
-		struct wmi_method_args_32 args = {
-			.arg0 = value->capability_id &
-				(~LEGION_WMI_MODE_ID_MASK),
-		};
-
-		if (legion_wmi_dev_evaluate_int(
-			    priv->wdev, 0x0, LEGION_WMI_OTHER_FEATURE_VALUE_GET,
-			    (unsigned char *)&args, sizeof(args),
-			    value->data)) {
+	case LEGION_WMI_FM_GET_CAPABILITY_VALUE:
+		if (legion_wmi_other_feature_get(priv, value->capability_id,
+						 value->data))
 			return NOTIFY_BAD;
-		}
 
 		return NOTIFY_OK;
-	} break;
 	case LEGION_WMI_FM_GET_CAPABILITY_DATA: {
 		const int ret = legion_wmi_cd00_get_data(
 			priv->cd00_list,
@@ -255,18 +392,13 @@ static int legion_wmi_other_chain_call(struct notifier_block *nb,
 	const struct legion_wmi_other_priv *priv =
 		container_of(nb, struct legion_wmi_other_priv, other_nb);
 	unsigned int **version = data;
-	struct wmi_method_args_32 args = {
-		.arg0 = LegionZoneSupportVersion,
-	};
 	u32 value = 0;
 
 	if (action != LEGION_WMI_OM_GET_LEGIONZONE_VERSION)
 		return NOTIFY_DONE;
 
-	if (!legion_wmi_dev_evaluate_int(priv->wdev, 0x0,
-					 LEGION_WMI_OTHER_FEATURE_VALUE_GET,
-					 (unsigned char *)&args, sizeof(args),
-					 &value) &&
+	if (!legion_wmi_other_feature_get(priv, LegionZoneSupportVersion,
+					  &value) &&
 	    value) {
 		**version = value;
 		return NOTIFY_STOP;

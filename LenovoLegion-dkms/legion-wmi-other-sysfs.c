@@ -260,6 +260,26 @@ static ssize_t legion_wmi_other_cap00_attr_show(struct kobject *kobj,
 	return len;
 }
 
+/*
+ * Uevent of a written value (EVENT_TYPE, EVENT_VALUE), user space reads the attribute again
+ */
+static void legion_wmi_other_send_event(const struct legion_wmi_other_priv *priv,
+					enum legion_events_type event_type_name,
+					u32 value)
+{
+	char event_type[64] = { 0 };
+	char event_value[64] = { 0 };
+	char *envp[] = { event_type, event_value, NULL };
+
+	snprintf(event_type, sizeof(event_type), "EVENT_TYPE=%u",
+		 (unsigned int)event_type_name);
+	snprintf(event_value, sizeof(event_value), "EVENT_VALUE=%u", value);
+
+	if (kobject_uevent_env(&priv->wdev->dev.kobj, KOBJ_CHANGE, envp))
+		dev_err(&priv->wdev->dev,
+			"Failed to send uevent for attribute change\n");
+}
+
 /**
  * legion_wmi_attr_current_value_store() - Set the current value of the given attribute
  * @kobj: Pointer to the driver object.
@@ -268,12 +288,9 @@ static ssize_t legion_wmi_other_cap00_attr_show(struct kobject *kobj,
  * @count: Required by sysfs attribute macros, pass in from the callee attr.
  * @tunable_attr: The attribute to be stored.
  *
- * Sets the value of the given attribute when operating under the "custom"
- * smartfan profile. The current smartfan profile is retrieved from the
- * lenovo-wmi-gamezone driver and error is returned if the result is not
- * "custom". This function is intended to be generic so it can be called from
- * any integer attribute's "_store" function. The integer to be sent to the WMI
- * method is range checked and an error code is returned if out of range.
+ * Parses the value and sets it by legion_wmi_other_feature_set() (custom mode
+ * only, checked by the capability data). This function is intended to be
+ * generic so it can be called from any integer attribute's "_store" function.
  *
  * If the value is valid and WMI is success, then the sysfs attribute is
  * notified.
@@ -287,89 +304,18 @@ static ssize_t legion_wmi_attr_current_value_store(
 {
 	const struct legion_wmi_other_priv *priv =
 		dev_get_drvdata(kobj_to_dev(kobj->parent));
-	const u32 attribute_id_raw = attribute_id & (~LEGION_WMI_MODE_ID_MASK);
-
-	struct wmi_method_args_32 args = {};
-	struct legion_wmi_capdata01 capdata;
-	enum thermal_mode mode;
-	char event_type[64] = { 0 };
-	char event_value[64] = { 0 };
-	char *envp[] = { event_type, event_value, NULL };
-
 	u32 value = 0;
-
-	int ret = legion_wmi_other_notifier_call(
-		&mode, LEGION_WMI_GZ_GET_THERMAL_MODE);
-	if (ret)
-		return ret;
-
-	if (mode != LEGION_WMI_GZ_THERMAL_MODE_CUSTOM)
-		return -EBUSY;
-
-	ret = legion_wmi_cd01_get_data(
-		priv->cd01_list,
-		attribute_id_raw |
-			FIELD_PREP(LEGION_WMI_MODE_ID_MASK,
-				   LEGION_WMI_GZ_THERMAL_MODE_CUSTOM),
-		&capdata);
-	if (ret)
-		return ret;
+	int ret;
 
 	ret = kstrtouint(buf, 10, &value);
 	if (ret)
 		return ret;
 
-	if (capdata.supported == 0)
-		return -ENODEV;
-
-	if (capdata.max_value == 0 && capdata.min_value == 0 &&
-	    capdata.step == 0) {
-		struct legion_wmi_ddata lddata[48] = { { 0, 0 } };
-		bool contains_value = false;
-
-		ret = legion_wmi_dd_get_data(
-			priv->dd_list,
-			attribute_id_raw |
-				FIELD_PREP(LEGION_WMI_MODE_ID_MASK,
-					   LEGION_WMI_GZ_THERMAL_MODE_CUSTOM),
-			lddata, ARRAY_SIZE(lddata) - 1);
-		if (ret)
-			return ret;
-
-		for (int i = 0; i < ARRAY_SIZE(lddata) && lddata[i].id != 0;
-		     ++i) {
-			if (lddata[i].value == value) {
-				contains_value = true;
-				break;
-			}
-		}
-
-		/* Discrete values (steps of the discrete data): only one of them */
-		if (!contains_value)
-			return -EINVAL;
-	} else {
-		if (value < capdata.min_value || value > capdata.max_value)
-			return -EINVAL;
-	}
-
-	args.arg0 = attribute_id_raw;
-	args.arg1 = value;
-
-	ret = legion_wmi_dev_evaluate_int(priv->wdev, 0x0,
-					  LEGION_WMI_OTHER_FEATURE_VALUE_SET,
-					  (unsigned char *)&args, sizeof(args),
-					  NULL);
+	ret = legion_wmi_other_feature_set(priv, attribute_id, value);
 	if (ret)
 		return ret;
 
-	snprintf(event_type, sizeof(event_type), "EVENT_TYPE=%u",
-		 (unsigned int)event_type_name);
-	snprintf(event_value, sizeof(event_value), "EVENT_VALUE=%u", value);
-
-	if (kobject_uevent_env(&priv->wdev->dev.kobj, KOBJ_CHANGE, envp)) {
-		dev_err(&priv->wdev->dev,
-			"Failed to send uevent for attribute change\n");
-	}
+	legion_wmi_other_send_event(priv, event_type_name, value);
 
 	return (ssize_t)count;
 };
@@ -381,48 +327,19 @@ static ssize_t legion_wmi_attr_current_value_store_min_max(
 {
 	const struct legion_wmi_other_priv *priv =
 		dev_get_drvdata(kobj_to_dev(kobj->parent));
-	const u32 attribute_id_raw = attribute_id & (~LEGION_WMI_MODE_ID_MASK);
-	char event_type[64] = { 0 };
-	char event_value[64] = { 0 };
-	char *envp[] = { event_type, event_value, NULL };
-
-	struct wmi_method_args_32 args = {};
-	struct legion_wmi_capdata00 capdata = { 0, 0, 0 };
 	u32 value = 0;
-
-	int ret = legion_wmi_cd00_get_data(priv->cd00_list, attribute_id_raw,
-					   &capdata);
-	if (ret && ret != -EINVAL)
-		return ret;
+	int ret;
 
 	ret = kstrtouint(buf, 10, &value);
 	if (ret)
 		return ret;
 
-	if (capdata.supported == 0)
-		return -ENODEV;
-
-	if (value < min || value > max)
-		return -EINVAL;
-
-	args.arg0 = attribute_id_raw;
-	args.arg1 = value;
-
-	ret = legion_wmi_dev_evaluate_int(priv->wdev, 0x0,
-					  LEGION_WMI_OTHER_FEATURE_VALUE_SET,
-					  (unsigned char *)&args, sizeof(args),
-					  NULL);
+	ret = legion_wmi_other_feature_set_range(priv, attribute_id, value, min,
+						 max);
 	if (ret)
 		return ret;
 
-	snprintf(event_type, sizeof(event_type), "EVENT_TYPE=%u",
-		 (unsigned int)event_type_name);
-	snprintf(event_value, sizeof(event_value), "EVENT_VALUE=%u", value);
-
-	if (kobject_uevent_env(&priv->wdev->dev.kobj, KOBJ_CHANGE, envp)) {
-		dev_err(&priv->wdev->dev,
-			"Failed to send uevent for attribute change\n");
-	}
+	legion_wmi_other_send_event(priv, event_type_name, value);
 
 	return (ssize_t)count;
 };
@@ -450,15 +367,9 @@ static ssize_t legion_wmi_attr_current_value_show(struct kobject *kobj,
 {
 	const struct legion_wmi_other_priv *priv =
 		dev_get_drvdata(kobj_to_dev(kobj->parent));
-	const u32 attribute_id_raw = attribute_id & (~LEGION_WMI_MODE_ID_MASK);
-	struct wmi_method_args_32 args = {};
 	u32 retval;
+	const int ret = legion_wmi_other_feature_get(priv, attribute_id, &retval);
 
-	args.arg0 = attribute_id_raw;
-
-	const int ret = legion_wmi_dev_evaluate_int(
-		priv->wdev, 0x0, LEGION_WMI_OTHER_FEATURE_VALUE_GET,
-		(unsigned char *)&args, sizeof(args), &retval);
 	if (ret)
 		return ret;
 
@@ -585,19 +496,12 @@ static ssize_t legion_wmi_attr_current_value_show(struct kobject *kobj,
 	{                                                                      \
 		struct legion_wmi_other_priv *priv =                           \
 			dev_get_drvdata(kobj_to_dev(kobj->parent));            \
-									       \
-		struct wmi_method_args_32 args = {};                           \
-		int ret;                                                       \
 		u32 retval;                                                    \
+		int ret;                                                       \
 									       \
-		args.arg0 = _attr_id;                                          \
-									       \
-		ret = legion_wmi_dev_evaluate_int(                             \
-			priv->wdev, 0x0, LEGION_WMI_OTHER_FEATURE_VALUE_GET,   \
-			(unsigned char *)&args, sizeof(args), &retval);        \
-		if (ret) {                                                     \
+		ret = legion_wmi_other_feature_get(priv, _attr_id, &retval);   \
+		if (ret)                                                       \
 			return ret;                                            \
-		}                                                              \
 									       \
 		return sysfs_emit(buf, "%u\n", retval);                        \
 	}                                                                      \

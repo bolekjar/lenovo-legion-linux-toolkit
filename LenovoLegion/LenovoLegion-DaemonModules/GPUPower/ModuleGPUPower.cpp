@@ -11,7 +11,7 @@
 #include <ProviderModule.h>
 
 #include <Drivers/SysFsDriverLegionEvents.h>
-#include <Drivers/SysFsDriverLegionLegacy.h>
+#include <Drivers/SysFsDriverLegionCpuGpu.h>
 #include <Drivers/SysFsDriverLegionOther.h>
 
 #include <KitLog.h>
@@ -24,7 +24,7 @@
 namespace LenovoLegionDaemon::Kit {
 
 /*
- * GPU power limits (Legion WMI other, on the older firmware the legacy GPU method). Owns notification POWER_CONTROL_CHANGED
+ * GPU power limits (Legion WMI other, on the older firmware the GPU method legion_wmi_gpu). Owns notification POWER_CONTROL_CHANGED
  * for the attributes it writes (GPU power boost, configurable TGP, temperature limit).
  */
 class ModuleGPUPower : public ProviderModule
@@ -35,7 +35,7 @@ public:
         ProviderModule(host)
     {
         drivers().addDriver(std::make_unique<SysFsDriverLegionOther>());
-        drivers().addDriver(std::make_unique<SysFsDriverLegionLegacyGPU>());
+        drivers().addDriver(std::make_unique<SysFsDriverLegionGpu>());
         drivers().addDriver(std::make_unique<SysFsDriverLegionEvents>());
 
         setProvider(std::make_unique<SysFsDataProviderGPUPower>(&drivers()));
@@ -71,7 +71,7 @@ protected:
         const auto mode = SysFsDriverLegionEvents::thermalMode(event);
 
         if(mode != SysFsDriverLegionEvents::THERMAL_MODE_CUSTOM || m_lastRequest.value().isEmpty() ||
-           drivers().isLoaded(SysFsDriverLegionOther::DRIVER_NAME) || !drivers().isLoaded(SysFsDriverLegionLegacyGPU::DRIVER_NAME))
+           drivers().isLoaded(SysFsDriverLegionOther::DRIVER_NAME) || !drivers().isLoaded(SysFsDriverLegionGpu::DRIVER_NAME))
         {
             return;
         }
@@ -99,9 +99,9 @@ protected:
         }
 
         /*
-         * Older firmware: all events of the GPU limits (legacy driver)
+         * Older firmware: all events of the GPU limits (SysFsDriverLegionGpu)
          */
-        if(event.m_driverName == SysFsDriverLegionLegacyGPU::DRIVER_NAME && event.m_action == SysFsDriver::SubsystemEvent::Action::CHANGED)
+        if(event.m_driverName == SysFsDriverLegionGpu::DRIVER_NAME && event.m_action == SysFsDriver::SubsystemEvent::Action::CHANGED)
         {
             return notification(legion::messages::Notification::POWER_CONTROL_CHANGED);
         }
