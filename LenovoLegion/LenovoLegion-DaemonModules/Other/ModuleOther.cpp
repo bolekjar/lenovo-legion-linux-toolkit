@@ -93,13 +93,17 @@ protected:
         if (storage.contains("disable_touchpad")) otherSettings.mutable_touch_pad()->set_current(storage.value("disable_touchpad").toBool());
         if (storage.contains("disable_win_key"))  otherSettings.mutable_win_key()->set_current(storage.value("disable_win_key").toBool());
 
-        // ACPI device VPC2004, camera power is not saved (privacy switch, the state of the firmware wins). The features
-        // of the other mode (instant boot, flip to start, overdrive) are not saved: the firmware keeps them itself
-        // (also set in the BIOS setup, the daemon would override it)
+        // ACPI device VPC2004, camera power is not saved (privacy switch, the state of the firmware wins)
         if (storage.contains("conservation_mode")) otherSettings.mutable_conservation_mode()->set_current(storage.value("conservation_mode").toBool());
         if (storage.contains("rapid_charge"))      otherSettings.mutable_rapid_charge()->set_current(storage.value("rapid_charge").toBool());
         if (storage.contains("usb_charging"))      otherSettings.mutable_usb_charging()->set_current(storage.value("usb_charging").toBool());
         if (storage.contains("fn_lock"))           otherSettings.mutable_fn_lock()->set_current(storage.value("fn_lock").toBool());
+
+        // Legion WMI other mode (the firmware keeps them as well, the saved value wins the same as the other settings)
+        if (storage.contains("instant_boot_ac"))     otherSettings.mutable_instant_boot_ac()->set_current(storage.value("instant_boot_ac").toBool());
+        if (storage.contains("instant_boot_usb_pd")) otherSettings.mutable_instant_boot_usb_pd()->set_current(storage.value("instant_boot_usb_pd").toBool());
+        if (storage.contains("flip_to_start"))       otherSettings.mutable_flip_to_start()->set_current(storage.value("flip_to_start").toBool());
+        if (storage.contains("over_drive"))          otherSettings.mutable_over_drive()->set_current(storage.value("over_drive").toBool());
 
         return serialize(otherSettings);
     }
@@ -115,6 +119,11 @@ protected:
         if (otherSettings.has_rapid_charge() && otherSettings.rapid_charge().has_current())           storage.setValue("rapid_charge", otherSettings.rapid_charge().current());
         if (otherSettings.has_usb_charging() && otherSettings.usb_charging().has_current())           storage.setValue("usb_charging", otherSettings.usb_charging().current());
         if (otherSettings.has_fn_lock() && otherSettings.fn_lock().has_current())                     storage.setValue("fn_lock", otherSettings.fn_lock().current());
+
+        if (otherSettings.has_instant_boot_ac() && otherSettings.instant_boot_ac().has_current())         storage.setValue("instant_boot_ac", otherSettings.instant_boot_ac().current());
+        if (otherSettings.has_instant_boot_usb_pd() && otherSettings.instant_boot_usb_pd().has_current()) storage.setValue("instant_boot_usb_pd", otherSettings.instant_boot_usb_pd().current());
+        if (otherSettings.has_flip_to_start() && otherSettings.flip_to_start().has_current())             storage.setValue("flip_to_start", otherSettings.flip_to_start().current());
+        if (otherSettings.has_over_drive() && otherSettings.over_drive().has_current())                   storage.setValue("over_drive", otherSettings.over_drive().current());
     }
 };
 
