@@ -528,6 +528,52 @@ static struct attribute *legion_sysfs_other_attributes[] = {
 
 ////////////////// Other related   //////////////////////////////////////
 
+/*
+ * Methods of the older firmware only: the binary MOF of the newer firmware (e.g. 16IAX10H) has no
+ * GetIRTemp (1), GetFanCount (7), GetFan1/2Speed (8, 9), GetFanMaxSpeed (10),
+ * GetTriggerTemperatureValue (17), GetGPUPow / OCPow / OCType (27 - 29), Get/SetIntelligentSubMode
+ * (57, 58) and GetLearningProfileCount (61); its ASL returns 0 for them. Their attributes are shown
+ * on the older firmware only (legion_wmi_platform_legacy()), not by the returned value; the newer
+ * firmware has the fan speeds and the temperatures in the other mode (hwmon).
+ */
+static bool legion_wmi_gz_legacy_platform(struct kobject *kobj)
+{
+	struct lenovo_wmi_gz_priv *priv =
+		dev_get_drvdata(kobj_to_dev(kobj->parent));
+
+	guard(spinlock)(&priv->gz_mode_lock);
+	return priv->legacy_platform;
+}
+
+static bool legion_wmi_gz_fans_group_visible(struct kobject *kobj)
+{
+	return legion_wmi_gz_legacy_platform(kobj);
+}
+DEFINE_SIMPLE_SYSFS_GROUP_VISIBLE(legion_wmi_gz_fans);
+
+static const struct attribute *const legion_wmi_gz_legacy_attributes[] = {
+	&kobj_attr_gpu_pow.attr,
+	&kobj_attr_gpu_oc_pow.attr,
+	&kobj_attr_gpu_oc_type.attr,
+	&kobj_attr_get_ir_temp.attr,
+	&kobj_attr_get_trigger_temperature_value.attr,
+	&kobj_attr_get_intelligent_sub_mode.attr,
+	&kobj_attr_get_learning_profile_count.attr,
+};
+
+static umode_t legion_wmi_gz_attr_visible(struct kobject *kobj,
+					  struct attribute *attr, int n)
+{
+	if (legion_wmi_gz_legacy_platform(kobj))
+		return attr->mode;
+
+	for (size_t i = 0; i < ARRAY_SIZE(legion_wmi_gz_legacy_attributes); i++)
+		if (attr == legion_wmi_gz_legacy_attributes[i])
+			return 0;
+
+	return attr->mode;
+}
+
 static const struct attribute_group legion_sysfs_gz_group[] = {
 	{ .name = "smart_fan", .attrs = legion_sysfs_smart_fan_attributes },
 	{ .name = "igpu_mode", .attrs = legion_sysfs_igpu_mode_attributes },
@@ -536,11 +582,17 @@ static const struct attribute_group legion_sysfs_gz_group[] = {
 	{ .name = "disable_tp", .attrs = legion_sysfs_disable_tp_attributes },
 	{ .name = "gsync", .attrs = legion_sysfs_gsync_attributes },
 	{ .name = "over_drive", .attrs = legion_sysfs_over_drive_attributes },
-	{ .name = "fans", .attrs = legion_sysfs_fans_attributes },
-	{ .name = "gpu", .attrs = legion_sysfs_gpu_attributes },
+	{ .name = "fans",
+	  .attrs = legion_sysfs_fans_attributes,
+	  .is_visible = SYSFS_GROUP_VISIBLE(legion_wmi_gz_fans) },
+	{ .name = "gpu",
+	  .attrs = legion_sysfs_gpu_attributes,
+	  .is_visible = legion_wmi_gz_attr_visible },
 	{ .name = "cpu", .attrs = legion_sysfs_cpu_attributes },
 	{ .name = "macro_key", .attrs = legion_sysfs_macro_key_attributes },
-	{ .name = "other", .attrs = legion_sysfs_other_attributes },
+	{ .name = "other",
+	  .attrs = legion_sysfs_other_attributes,
+	  .is_visible = legion_wmi_gz_attr_visible },
 	{}
 };
 /**
@@ -622,4 +674,21 @@ int legion_wmi_gamezone_sysfs_init(struct lenovo_wmi_gz_priv *priv)
 void legion_wmi_gamezone_sysfs_exit(struct lenovo_wmi_gz_priv *priv)
 {
 	legion_wmi_gz_fw_attr_remove(priv);
+}
+
+/**
+ * legion_wmi_gamezone_sysfs_update() - Show the attributes of the platform again
+ * @priv: The game zone driver data.
+ *
+ * The attributes of the older firmware are shown by legacy_platform, the other
+ * mode sets it when it is probed (after the sysfs of the game zone exists).
+ */
+void legion_wmi_gamezone_sysfs_update(struct lenovo_wmi_gz_priv *priv)
+{
+	for (unsigned int i = 0; i < ARRAY_SIZE(legion_sysfs_gz_group) - 1; i++)
+		if (sysfs_update_group(&priv->fw_attr_kset->kobj,
+				       &legion_sysfs_gz_group[i]))
+			dev_warn(&priv->wdev->dev,
+				 "Failed to update the attributes %s\n",
+				 legion_sysfs_gz_group[i].name);
 }

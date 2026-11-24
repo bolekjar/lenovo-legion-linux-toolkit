@@ -174,10 +174,16 @@ static int legion_wmi_gz_call(struct lenovo_wmi_gz_priv *priv,
 		return NOTIFY_OK;
 	case LEGION_WMI_GZ_SET_LEGACY_PLATFORM: {
 		bool **legacy = data;
+		bool changed;
 
 		scoped_guard(spinlock, &priv->gz_mode_lock) {
+			changed = priv->legacy_platform != **legacy;
 			priv->legacy_platform = **legacy;
 		}
+
+		/* Attributes of the older firmware (other mode probed after the sysfs) */
+		if (changed && priv->fw_attr_kset)
+			legion_wmi_gamezone_sysfs_update(priv);
 	}
 		return NOTIFY_OK;
 	case LEGION_WMI_GZ_GET_SMARTFAN_VERSION: {
