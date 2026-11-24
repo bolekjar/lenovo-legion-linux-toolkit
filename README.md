@@ -41,12 +41,15 @@
 **Power and thermals**
 - Power profiles Quiet, Balanced, Performance, Extreme and Custom, switched in the application or by Fn+Q.
 - CPU power limits (short term, long term, peak, cross loading, PL1 tau, temperature) and GPU power limits
-  (configurable TGP, power boost, temperature, GPU to CPU dynamic boost) in the Custom profile.
+  (configurable TGP, power boost, temperature, GPU to CPU dynamic boost) in the Custom profile, with the default
+  values of every power profile from the firmware.
 - The CPU power limits of the active profile are applied to the kernel powercap (RAPL), also after Fn+Q.
 - `platform_profile` support, so other tools (e.g. power-profiles-daemon) see the power profile as well.
 
 **Fans**
-- Custom fan curve with 10 points, editable in the Custom profile.
+- Custom fan curve with 10 points, editable in the Custom profile. The points are kept in the limits of the firmware
+  (the default curve may only be raised) and labeled by the sensor temperatures of the firmware, the tool tip shows
+  the fan speeds of a point.
 - Fan full speed (Maximum).
 
 **CPU**
@@ -130,6 +133,10 @@ Features that need the Lenovo kernel module are grayed out with the reason when 
 Tested:
 - Legion Pro 7 16IRX9H (Gen 9)
 - Legion Pro 7 16IAX10H (Gen 10)
+
+Tested by users, feedback welcome:
+- Legion 5 15IAH7H (Gen 7, older firmware): power profiles with Custom, CPU and GPU power limits, fan curve, fan full
+  speed, temperatures and fan speeds.
 
 The kernel module is loaded on the Legion models of its DMI table (the product family contains e.g. `16IRX9`,
 `16IAX10`, `16ARX8`, `17ACH`, …, see `legion_models` in
