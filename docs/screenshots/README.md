@@ -7,6 +7,7 @@ Images used by the main [README](../../README.md). Keep the file names, the READ
 | `home.png` | Home page: HW monitor charts, power profiles panel and the tabs (also the large image on the top) |
 | `power.png` | Home → Power: CPU / GPU power limits, GPU clock offsets, voltage offsets (Custom profile) |
 | `fan-curve.png` | Home → Fan Curve in the Custom profile |
+| `device.png` | Home → Device controls |
 | `cpu-control.png` | Home → CPU Control: thread grid, SMT, governors |
 | `cpu-frequency.png` | Home → CPU Freq Control: per thread frequency limits |
 | `cpu-details.png` | CPU Details window |
