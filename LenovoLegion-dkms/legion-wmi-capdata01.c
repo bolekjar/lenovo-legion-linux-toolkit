@@ -42,13 +42,13 @@ struct legion_wmi_cd01_list {
 
 /**
  * legion_wmi_cd01_component_bind() - Bind component to master device.
- * @cd01_dev: Pointer to the lenovo-wmi-capdata01 driver parent device.
- * @om_dev: Pointer to the lenovo-wmi-other driver parent device.
- * @data: capdata01_list object pointer used to return the capability data.
+ * @cd01_dev: Pointer to the capability data 01 driver parent device.
+ * @om_dev: Pointer to the other mode driver parent device.
+ * @data: Other mode driver data, receives the capability data 01 list.
  *
- * On lenovo-wmi-other's master bind, provide a pointer to the local capdata01
- * list. This is used to call lwmi_cd01_get_data to look up attribute data
- * from the lenovo-wmi-other driver.
+ * On the master bind of the other mode, provide a pointer to the local
+ * capability data 01 list. This is used to call legion_wmi_cd01_get_data() to
+ * look up attribute data from the other mode driver.
  *
  * Return: 0
  */
@@ -71,15 +71,15 @@ static const struct component_ops legion_wmi_cd01_component_ops = {
 };
 
 /**
- * legion_wmi_cd01_get_data - Get the data of the specified attribute
- * @list: The lenovo-wmi-capdata01 pointer to its cd01_list struct.
- * @attribute_id: The capdata attribute ID to be found.
+ * legion_wmi_cd01_get_data() - Get the data of the specified attribute
+ * @list: The capability data 01 list.
+ * @attribute_id: The capdata attribute ID to be found (with the power mode).
  * @output: Pointer to a capdata01 struct to return the data.
  *
- * Retrieves the capability data 01 struct pointer for the given
- * attribute for its specified thermal mode.
+ * Retrieves the capability data 01 of the given attribute in its power mode,
+ * the first one when the firmware has the ID twice.
  *
- * Return: 0 on success, or -EINVAL.
+ * Return: 0 on success, -ENODEV without the list, or -EINVAL.
  */
 int legion_wmi_cd01_get_data(struct legion_wmi_cd01_list *list,
 			     u32 attribute_id,
@@ -103,30 +103,34 @@ int legion_wmi_cd01_get_data(struct legion_wmi_cd01_list *list,
 
 /**
  * legion_wmi_cd01_cache() - Cache all WMI data block information
- * @priv: lenovo-wmi-capdata01 driver data.
+ * @priv: Capability data 01 driver data.
+ * @instances: Number of the WMI data block instances.
  *
- * Loop through each WMI data block and cache the data.
+ * Loop through each WMI data block and cache the data. Only the valid
+ * instances are kept (a buffer of the size of the data), an empty one would be
+ * a feature with the ID 0.
  *
- * Return: 0 on success, or an error.
+ * Return: 0.
  */
-static int legion_wmi_cd01_cache(struct legion_wmi_cd01_priv *priv)
+static int legion_wmi_cd01_cache(struct legion_wmi_cd01_priv *priv,
+				 int instances)
 {
 	guard(mutex)
 		(&priv->list->list_mutex);
-	for (u8 idx = 0; idx < priv->list->count; idx++) {
+	for (int idx = 0; idx < instances; idx++) {
+		struct legion_wmi_capdata01 *data =
+			&priv->list->data[priv->list->count];
 		union acpi_object *ret_obj __free(kfree) = NULL;
 
 		ret_obj = wmidev_block_query(priv->wdev, idx);
-		if (!ret_obj)
-			return -ENODEV;
-
-		if (ret_obj->type != ACPI_TYPE_BUFFER ||
-		    ret_obj->buffer.length < sizeof(priv->list->data[idx]))
+		if (!ret_obj || ret_obj->type != ACPI_TYPE_BUFFER ||
+		    ret_obj->buffer.length < sizeof(*data)) {
+			dev_dbg(&priv->wdev->dev, "instance %d skipped\n", idx);
 			continue;
+		}
 
-		memcpy(&priv->list->data[idx], ret_obj->buffer.pointer,
-		       min(ret_obj->buffer.length,
-			   sizeof(priv->list->data[idx])));
+		memcpy(data, ret_obj->buffer.pointer, sizeof(*data));
+		priv->list->count++;
 	}
 
 	return 0;
@@ -134,12 +138,12 @@ static int legion_wmi_cd01_cache(struct legion_wmi_cd01_priv *priv)
 
 /**
  * legion_wmi_cd01_alloc() - Allocate a cd01_list struct in drvdata
- * @priv: lenovo-wmi-capdata01 driver data.
+ * @priv: Capability data 01 driver data.
  *
  * Allocate a cd01_list struct large enough to contain data from all WMI data
  * blocks provided by the interface.
  *
- * Return: 0 on success, or an error.
+ * Return: The number of the WMI data block instances, or an error.
  */
 static int legion_wmi_cd01_alloc(struct legion_wmi_cd01_priv *priv)
 {
@@ -156,15 +160,14 @@ static int legion_wmi_cd01_alloc(struct legion_wmi_cd01_priv *priv)
 	if (ret)
 		return ret;
 
-	list->count = count;
 	priv->list = list;
 
-	return 0;
+	return count;
 }
 
 /**
  * legion_wmi_cd01_setup() - Cache all WMI data block information
- * @priv: lenovo-wmi-capdata01 driver data.
+ * @priv: Capability data 01 driver data.
  *
  * Allocate a cd01_list struct large enough to contain data from all WMI data
  * blocks provided by the interface. Then loop through each data block and
@@ -176,10 +179,10 @@ static int legion_wmi_cd01_setup(struct legion_wmi_cd01_priv *priv)
 {
 	const int ret = legion_wmi_cd01_alloc(priv);
 
-	if (ret)
+	if (ret < 0)
 		return ret;
 
-	return legion_wmi_cd01_cache(priv);
+	return legion_wmi_cd01_cache(priv, ret);
 }
 
 static int legion_wmi_cd01_probe(struct wmi_device *wdev, const void *context)
@@ -226,7 +229,7 @@ static struct wmi_driver legion_wmi_cd01_driver = {
 };
 
 /**
- * lwmi_cd01_match() - Match rule for the master driver.
+ * legion_wmi_cd01_match() - Match rule for the master driver.
  * @dev: Pointer to the capability data 01 parent device.
  * @data: Unused void pointer for passing match criteria.
  *
