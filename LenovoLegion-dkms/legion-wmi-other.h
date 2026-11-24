@@ -12,6 +12,15 @@
 
 #include <linux/types.h>
 
+/*
+ * Methods of LENOVO_OTHER_METHOD (binary MOF of the firmware):
+ * - 8 Get_Support_LegionZone_Version([out] uint32): the older firmware only (e.g. 15IAH7H, methods
+ *   1 - 12), used when GetFeatureValue of LegionZoneSupportVersion is not available,
+ * - 17 GetFeatureValue([in] uint32 IDs, [out] uint32 value), 18 SetFeatureValue([in] uint32 IDs,
+ *   [in] uint32 value): the newer firmware only (e.g. 16IAX10H, ASL WMAE); the ASL compares the ID
+ *   without the mode (byte 3: the device, 0 other, 1 CPU, 2 GPU), the get method compares the whole
+ *   argument (ToInteger), so its second value is 0.
+ */
 #define LEGION_WMI_OTHER_LEGIONZONE_VERSION_GET 8
 #define LEGION_WMI_OTHER_FEATURE_VALUE_GET 17
 #define LEGION_WMI_OTHER_FEATURE_VALUE_SET 18
