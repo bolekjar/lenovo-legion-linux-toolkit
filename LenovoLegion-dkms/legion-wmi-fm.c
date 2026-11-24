@@ -246,12 +246,14 @@ struct legion_wmi_fan_table_write {
 static_assert(sizeof(struct legion_wmi_fan_table_write) == 64);
 
 /*
- * Fan table of the custom mode read by WMI_METHOD_ID_FAN_GET_TABLE (packed, little endian)
+ * Fan table of the custom mode read by WMI_METHOD_ID_FAN_GET_TABLE (packed, little
+ * endian): the start of the result of the MOF (FanTableSize, FanTable[], SensorTableSize,
+ * SensorTable[]), ASL WMAB returns 0x58 bytes, its sensor table is empty (zeros)
  */
 struct legion_wmi_fan_table_read {
-	__le32 fsfl;
-	__le32 fss[MAX_FANCURVE_SIZE]; /* FSS0..FSS9: levels 0..MAX_FANCURVE_LEVEL */
-	__le32 fssa;
+	__le32 fsfl; /* FanTableSize (LFFL, 10) */
+	__le32 fss[MAX_FANCURVE_SIZE]; /* FSS0..FSS9: levels of the EC (F9F0..F9F9) */
+	__le32 fssa; /* SensorTableSize (LFFA, 10) */
 } __packed;
 static_assert(sizeof(struct legion_wmi_fan_table_read) == 0x30);
 
@@ -283,7 +285,8 @@ int legion_wmi_fm_table_get(struct legion_wmi_fm_priv *priv,
 	u8 buffer[LEGION_WMI_FAN_TABLE_READ_MAX] = {};
 	/*
 	 * Input of the MOF: the newer firmware ignores it (ASL returns the one fan table of the custom mode),
-	 * passed for a firmware which reads it
+	 * passed for a firmware which reads it. With ODV1 4 (the power mode of the EC, probably
+	 * extreme) the ASL returns the default curve 1..10 instead of the curve of the EC.
 	 */
 	struct legion_wmi_fan_table_read_input input = {
 		.fan_id = 0,
