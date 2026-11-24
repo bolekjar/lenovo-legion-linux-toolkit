@@ -92,11 +92,12 @@
 | | |
 |:---:|:---:|
 | <img src="docs/screenshots/home.png" width="440" alt="Home"><br>**Home** – HW monitor, power profiles, tabs | <img src="docs/screenshots/power.png" width="440" alt="Power"><br>**Power** – power limits, GPU, voltage offsets |
-| <img src="docs/screenshots/fan-curve.png" width="440" alt="Fan curve"><br>**Fan curve** | <img src="docs/screenshots/cpu-control.png" width="440" alt="CPU control"><br>**CPU control** – threads, SMT, governors |
-| <img src="docs/screenshots/cpu-frequency.png" width="440" alt="CPU frequency"><br>**CPU frequency** – per thread limits | <img src="docs/screenshots/cpu-details.png" width="440" alt="CPU details"><br>**CPU details** |
-| <img src="docs/screenshots/gpu-details.png" width="440" alt="GPU details"><br>**GPU details** | <img src="docs/screenshots/keyboard.png" width="440" alt="Keyboard"><br>**RGB keyboard** – effects and LEDs |
-| <img src="docs/screenshots/keyboard-back.png" width="440" alt="Keyboard rear light bar"><br>**RGB keyboard** – rear light bar | <img src="docs/screenshots/profiles.png" width="440" alt="Profiles"><br>**Profiles** |
-| <img src="docs/screenshots/information.png" width="440" alt="Information"><br>**Information** | <img src="docs/screenshots/help.png" width="440" alt="Help"><br>**Help** – system check |
+| <img src="docs/screenshots/fan-curve.png" width="440" alt="Fan curve"><br>**Fan curve** | <img src="docs/screenshots/device.png" width="440" alt="Device"><br>**Device** – touchpad, keys, charging, power on, GPU mode |
+| <img src="docs/screenshots/cpu-control.png" width="440" alt="CPU control"><br>**CPU control** – threads, SMT, governors | <img src="docs/screenshots/cpu-frequency.png" width="440" alt="CPU frequency"><br>**CPU frequency** – per thread limits |
+| <img src="docs/screenshots/cpu-details.png" width="440" alt="CPU details"><br>**CPU details** | <img src="docs/screenshots/gpu-details.png" width="440" alt="GPU details"><br>**GPU details** |
+| <img src="docs/screenshots/keyboard.png" width="440" alt="Keyboard"><br>**RGB keyboard** – effects and LEDs | <img src="docs/screenshots/keyboard-back.png" width="440" alt="Keyboard rear light bar"><br>**RGB keyboard** – rear light bar |
+| <img src="docs/screenshots/profiles.png" width="440" alt="Profiles"><br>**Profiles** | <img src="docs/screenshots/information.png" width="440" alt="Information"><br>**Information** |
+| <img src="docs/screenshots/help.png" width="440" alt="Help"><br>**Help** – system check |  |
 
 ## How it works
 
