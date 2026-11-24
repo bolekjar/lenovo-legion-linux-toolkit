@@ -187,7 +187,8 @@ static int legion_wmi_other_feature_discrete(const struct legion_wmi_other_priv 
  * values when the feature has no range.
  *
  * Return: 0 on success, -EBUSY out of the custom mode, -ENODEV for a feature not
- * supported, -EINVAL for a value out of range, or an error code.
+ * supported, -EOPNOTSUPP for a feature not writable, -EINVAL for a value out of
+ * range, or an error code.
  */
 int legion_wmi_other_feature_set(const struct legion_wmi_other_priv *priv,
 				 u32 feature_id, u32 value)
@@ -213,8 +214,12 @@ int legion_wmi_other_feature_set(const struct legion_wmi_other_priv *priv,
 	if (ret)
 		return ret;
 
-	if (capdata.supported == 0)
+	if (!(capdata.supported & LEGION_WMI_SUPP_VALID))
 		return -ENODEV;
+
+	/* Not writable by the firmware (in the custom mode) */
+	if (!(capdata.supported & LEGION_WMI_SUPP_SET))
+		return -EOPNOTSUPP;
 
 	if (capdata.max_value == 0 && capdata.min_value == 0 &&
 	    capdata.step == 0)
@@ -237,8 +242,8 @@ int legion_wmi_other_feature_set(const struct legion_wmi_other_priv *priv,
  * @min: Minimal value.
  * @max: Maximal value.
  *
- * Return: 0 on success, -ENODEV for a feature not supported, -EINVAL for a value
- * out of range, or an error code.
+ * Return: 0 on success, -ENODEV for a feature not supported, -EOPNOTSUPP for a
+ * feature not writable, -EINVAL for a value out of range, or an error code.
  */
 int legion_wmi_other_feature_set_range(const struct legion_wmi_other_priv *priv,
 				       u32 feature_id, u32 value, u32 min,
@@ -254,8 +259,11 @@ int legion_wmi_other_feature_set_range(const struct legion_wmi_other_priv *priv,
 	if (ret && ret != -EINVAL)
 		return ret;
 
-	if (capdata.supported == 0)
+	if (!(capdata.supported & LEGION_WMI_SUPP_VALID))
 		return -ENODEV;
+
+	if (!(capdata.supported & LEGION_WMI_SUPP_SET))
+		return -EOPNOTSUPP;
 
 	if (value < min || value > max)
 		return -EINVAL;
