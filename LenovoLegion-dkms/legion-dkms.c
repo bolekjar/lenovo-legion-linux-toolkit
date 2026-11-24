@@ -6,7 +6,8 @@
  *   Jaroslav Bolek <jaroslav.bolek@gmail.com>
  *
  * Lenovo Legion notebooks: WMI game zone (thermal mode, platform_profile), other mode (power limits and features),
- * capability data, fan curve, events (uevents), hwmon (under the other mode device).
+ * capability data, fan curve, events (uevents), hwmon (under the other mode device),
+ * lighting data (logged only).
  *
  * The module has no device of its own: module_init checks the model by DMI and registers the WMI drivers, the
  * component drivers (capability data, discrete data, fan table) before their masters (other mode, fan method).
@@ -25,6 +26,7 @@
 #include "legion-wmi-fm.h"
 #include "legion-wmi-ftable.h"
 #include "legion-wmi-gamezone.h"
+#include "legion-wmi-lighting.h"
 #include "legion-wmi-mode-defaults.h"
 #include "legion-wmi-other.h"
 
@@ -119,6 +121,8 @@ static const struct legion_driver legion_drivers[] = {
 	  legion_wmi_mode_defaults_driver_exit },
 	{ "CPU / GPU method", legion_wmi_cpu_gpu_driver_init,
 	  legion_wmi_cpu_gpu_driver_exit },
+	{ "lighting data", legion_wmi_lighting_data_driver_init,
+	  legion_wmi_lighting_data_driver_exit },
 };
 
 static void legion_drivers_exit(size_t count)
