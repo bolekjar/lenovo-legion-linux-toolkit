@@ -75,7 +75,9 @@
 - Battery state, health, power and cycles.
 
 **Other**
-- Disable the touchpad and the Windows key, Fn lock, camera power.
+- Disable the touchpad and the Windows key, Fn lock, camera power, display overdrive.
+- Instant Boot (turn on when the charger or a USB-C power delivery charger is connected) and Flip to Start (turn on
+  when the lid is opened), when the firmware provides them.
 - Battery conservation mode (charging stops at about 80 %), rapid charge and USB charging when the notebook is off;
   since kernel 6.16 the charge mode is also `charge_types` of the battery (battery settings of KDE / GNOME).
 - Profiles: save the whole configuration under a name and load it later.

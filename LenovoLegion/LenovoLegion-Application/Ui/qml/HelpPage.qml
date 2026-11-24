@@ -163,7 +163,7 @@ shown separately on hybrid Intel CPUs
 - **Power** – CPU and GPU power limits and temperature limits of the current power profile
 - **Fan Curve** – fan curve with 10 points (drag the points, the curve stays rising and in the limits of the \
 firmware), labeled by the sensor temperatures of the points; fan full speed
-- **Device** – touchpad, Windows key, Fn lock, camera power, battery conservation mode (charging stops at about 80 %), rapid charge, USB charging when off and the GPU mode (hybrid, iGPU only, dGPU only; needs a restart)
+- **Device** – touchpad, Windows key, Fn lock, camera power, display overdrive, battery conservation mode (charging stops at about 80 %), rapid charge, USB charging when off, turning the notebook on (Instant Boot by the charger or USB-C, Flip to Start by opening the lid) and the GPU mode (hybrid, iGPU only, dGPU only; needs a restart)
 
 Tabs with the Lenovo icon need the Lenovo Legion kernel driver; without it they are shown grayed with the reason." },
 
