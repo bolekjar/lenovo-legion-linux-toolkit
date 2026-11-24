@@ -21,15 +21,26 @@
 #include <linux/notifier.h>
 #include <linux/suspend.h>
 #include <linux/types.h>
+#include <linux/unaligned.h>
 #include <linux/wmi.h>
 
+/*
+ * Events of the firmware (binary MOF, data of ASL _WED on 16IAX10H):
+ * - thermal mode (notify 0xE7): uint32 mode,
+ * - power charge mode (0xE5): uint32 mode,
+ * - light profile change (0xE6, Fn+Space): uint32 EventId (always 1), no uevent yet,
+ * - smart fan setting (GUID 41E1): uint32 mode, not in _WDG of 16IAX10H, no uevent,
+ * - smart fan mode (0xE3): uint32 mode and uint32 version (of Fn+Q): a package of both,
+ * - key lock status (0xE2): uint32 KeyLockState,
+ * - utility key (0xD0): uint32 PressTypeDataVal.
+ */
 #define THERMAL_MODE_EVENT_GUID "D320289E-8FEA-41E0-86F9-911D83151B5F"
 #define CHARGE_MODE_EVENT_GUID "D320289E-8FEA-41E0-86F9-711D83151B5F"
-#define UNKNOWN_EVENT_GUID "D320289E-8FEA-41E0-86F9-811D83151B5F"
-#define UNKNOWN_EVENT2_GUID "D320289E-8FEA-41E1-86F9-611D83151B5F"
+#define LIGHT_PROFILE_CHANGE_EVENT_GUID "D320289E-8FEA-41E0-86F9-811D83151B5F"
+#define SMART_FAN_SETTING_EVENT_GUID "D320289E-8FEA-41E1-86F9-611D83151B5F"
 #define SMART_FAN_MODE_GUID "D320289E-8FEA-41E0-86F9-611D83151B5F"
 #define KEYLOCK_STATUS_GUID "10AFC6D9-EA8B-4590-A2E7-1CD3C84BB4B1"
-#define UTILITY_GUID "8fc0de0c-b4e4-43fd-b0f3-8871711c1294"
+#define UTILITY_GUID "8FC0DE0C-B4E4-43FD-B0F3-8871711C1294"
 
 #define LEGION_WMI_EVENT_DEVICE(guid, type)                          \
 	.guid_string = (guid), .context = &(enum legion_events_type) \
@@ -216,12 +227,36 @@ static void legion_wmi_events_uevent(struct legion_wmi_events_priv *priv,
 	kobject_uevent_env(&priv->wdev->dev.kobj, KOBJ_CHANGE, envp);
 }
 
+/*
+ * Value of an event: an integer, or the first uint32 of an event with more values (smart fan mode:
+ * the mode and the version of Fn+Q). ASL _WED returns them as a package, the WMI core passes it as
+ * a buffer by the binary MOF (8 bytes, little endian, measured on 16IAX10H); a package is accepted
+ * as well.
+ */
+static bool legion_wmi_events_value(const union acpi_object *obj, u64 *value)
+{
+	if (obj->type == ACPI_TYPE_BUFFER && obj->buffer.length >= sizeof(u32)) {
+		*value = get_unaligned_le32(obj->buffer.pointer);
+		return true;
+	}
+
+	if (obj->type == ACPI_TYPE_PACKAGE && obj->package.count > 0)
+		obj = &obj->package.elements[0];
+
+	if (obj->type != ACPI_TYPE_INTEGER)
+		return false;
+
+	*value = obj->integer.value;
+	return true;
+}
+
 static void legion_wmi_events_notify(struct wmi_device *wdev,
 				     union acpi_object *obj)
 {
 	struct legion_wmi_events_priv *priv = dev_get_drvdata(&wdev->dev);
-	const bool integer = obj->type == ACPI_TYPE_INTEGER;
-	u64 value = integer ? obj->integer.value : 0;
+	u64 value = 0;
+	const bool integer = legion_wmi_events_value(obj, &value);
+
 
 	/* The chain (game zone) and the uevent of one event before the next one */
 	guard(mutex)(&priv->lock);
@@ -316,9 +351,9 @@ static const struct wmi_device_id legion_wmi_events_id_table[] = {
 				  LEGION_WMI_EVENT_THERMAL_MODE) },
 	{ LEGION_WMI_EVENT_DEVICE(CHARGE_MODE_EVENT_GUID,
 				  LEGION_WMI_EVENT_POWER_CHARGE_MODE) },
-	{ LEGION_WMI_EVENT_DEVICE(UNKNOWN_EVENT_GUID,
+	{ LEGION_WMI_EVENT_DEVICE(LIGHT_PROFILE_CHANGE_EVENT_GUID,
 				  LEGION_WMI_EVENT_UNKNOWN) },
-	{ LEGION_WMI_EVENT_DEVICE(UNKNOWN_EVENT2_GUID,
+	{ LEGION_WMI_EVENT_DEVICE(SMART_FAN_SETTING_EVENT_GUID,
 				  LEGION_WMI_EVENT_UNKNOWN) },
 	{ LEGION_WMI_EVENT_DEVICE(SMART_FAN_MODE_GUID,
 				  LEGION_WMI_EVENT_SMART_FAN_MODE) },

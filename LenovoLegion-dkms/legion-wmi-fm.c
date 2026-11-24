@@ -285,8 +285,8 @@ int legion_wmi_fm_table_get(struct legion_wmi_fm_priv *priv,
 	u8 buffer[LEGION_WMI_FAN_TABLE_READ_MAX] = {};
 	/*
 	 * Input of the MOF: the newer firmware ignores it (ASL returns the one fan table of the custom mode),
-	 * passed for a firmware which reads it. With ODV1 4 (the power mode of the EC, probably
-	 * extreme) the ASL returns the default curve 1..10 instead of the curve of the EC.
+	 * passed for a firmware which reads it. With ODV1 4 (the power mode of the EC: extreme, see
+	 * ASL _WED 0xE7) the ASL returns the default curve 1..10 instead of the curve of the EC.
 	 */
 	struct legion_wmi_fan_table_read_input input = {
 		.fan_id = 0,
