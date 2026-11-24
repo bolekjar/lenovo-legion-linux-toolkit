@@ -128,7 +128,11 @@ public:
             m_cpu(descriptor),
             m_gpu(descriptor),
             m_fan_full_speed(descriptor,"fan_full_speed"),
-            m_god_mode_fnq_switchable(descriptor,"god_mode_fnq_switchable")
+            m_god_mode_fnq_switchable(descriptor,"god_mode_fnq_switchable"),
+            m_instant_boot_ac(descriptor,"instant_boot_ac"),
+            m_instant_boot_usb_power_delivery(descriptor,"instant_boot_usb_power_delivery"),
+            m_flip_to_start(descriptor,"flip_to_start"),
+            m_over_drive(descriptor,"over_drive")
         {}
 
 
@@ -136,6 +140,14 @@ public:
         const GPU                          m_gpu;
         const StandardAttributesCapData00  m_fan_full_speed;
         const StandardAttributesCapData00  m_god_mode_fnq_switchable;
+
+        /*
+         * Features of the notebook (OtherSettings), optional
+         */
+        const StandardAttributesCapData00  m_instant_boot_ac;
+        const StandardAttributesCapData00  m_instant_boot_usb_power_delivery;
+        const StandardAttributesCapData00  m_flip_to_start;
+        const StandardAttributesCapData00  m_over_drive;
     };
 public:
 

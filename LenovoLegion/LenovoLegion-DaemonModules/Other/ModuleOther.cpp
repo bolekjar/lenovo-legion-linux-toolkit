@@ -12,6 +12,7 @@
 
 #include <Drivers/SysFsDriverLegionEvents.h>
 #include <Drivers/SysFsDriverLegionGameZone.h>
+#include <Drivers/SysFsDriverLegionOther.h>
 #include <Drivers/SysFsDriverLegionVpc.h>
 
 #include <Other.pb.h>
@@ -20,7 +21,8 @@ namespace LenovoLegionDaemon::Kit {
 
 /*
  * Other settings (touchpad, Win key, Legion WMI gamezone; conservation mode, rapid charge, USB charging, Fn lock, camera power,
- * ACPI device VPC2004). Owns notifications KEYLOCK_STATUS_CHANGE (Legion WMI event) and VPC_FEATURE_CHANGED.
+ * ACPI device VPC2004; instant boot, flip to start, display overdrive, Legion WMI other mode). Owns notifications
+ * KEYLOCK_STATUS_CHANGE (Legion WMI event), VPC_FEATURE_CHANGED and OTHER_FEATURE_CHANGED.
  */
 class ModuleOther : public ProviderModule
 {
@@ -32,6 +34,7 @@ public:
         drivers().addDriver(std::make_unique<SysFsDriverLegionEvents>());
         drivers().addDriver(std::make_unique<SysFsDriverLegionGameZone>());
         drivers().addDriver(std::make_unique<SysFsDriverLegionVpc>());
+        drivers().addDriver(std::make_unique<SysFsDriverLegionOther>());
 
         setProvider(std::make_unique<SysFsDataProviderOther>(&drivers()));
     }
@@ -63,6 +66,23 @@ protected:
             return notification(legion::messages::Notification::VPC_FEATURE_CHANGED);
         }
 
+        /*
+         * Features of the other mode of this module only (the power limits of the other mode belong to the power modules)
+         */
+        if(event.m_driverName == SysFsDriverLegionOther::DRIVER_NAME && event.m_action == SysFsDriver::SubsystemEvent::Action::CHANGED)
+        {
+            switch(event.m_DriverSpecificEventType.toInt())
+            {
+            case SysFsDriverLegionOther::LENOVO_WMI_OTHER_IB_AC:
+            case SysFsDriverLegionOther::LENOVO_WMI_OTHER_IB_UPD:
+            case SysFsDriverLegionOther::LENOVO_WMI_OTHER_FL_ST:
+            case SysFsDriverLegionOther::LENOVO_WMI_OTHER_OD:
+                return notification(legion::messages::Notification::OTHER_FEATURE_CHANGED);
+            default:
+                break;
+            }
+        }
+
         return {};
     }
 
@@ -73,7 +93,9 @@ protected:
         if (storage.contains("disable_touchpad")) otherSettings.mutable_touch_pad()->set_current(storage.value("disable_touchpad").toBool());
         if (storage.contains("disable_win_key"))  otherSettings.mutable_win_key()->set_current(storage.value("disable_win_key").toBool());
 
-        // ACPI device VPC2004, camera power is not saved (privacy switch, the state of the firmware wins)
+        // ACPI device VPC2004, camera power is not saved (privacy switch, the state of the firmware wins). The features
+        // of the other mode (instant boot, flip to start, overdrive) are not saved: the firmware keeps them itself
+        // (also set in the BIOS setup, the daemon would override it)
         if (storage.contains("conservation_mode")) otherSettings.mutable_conservation_mode()->set_current(storage.value("conservation_mode").toBool());
         if (storage.contains("rapid_charge"))      otherSettings.mutable_rapid_charge()->set_current(storage.value("rapid_charge").toBool());
         if (storage.contains("usb_charging"))      otherSettings.mutable_usb_charging()->set_current(storage.value("usb_charging").toBool());

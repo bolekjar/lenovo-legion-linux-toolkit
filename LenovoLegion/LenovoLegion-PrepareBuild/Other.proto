@@ -22,6 +22,12 @@ message OtherSettings
     EnableDisableValue usb_charging      = 4 [(legion.ui.field) = { label: "USB Charging When Off",     tooltip: "The USB port charges devices also when the notebook is off or sleeping", supported_from: "usb_charging.supported" }];
     EnableDisableValue fn_lock           = 5 [(legion.ui.field) = { label: "Fn Lock",                   tooltip: "F1 - F12 work as function keys without Fn (the same as Fn+Esc)", supported_from: "fn_lock.supported" }];
     EnableDisableValue camera_power      = 6 [(legion.ui.field) = { label: "Camera Power",              tooltip: "Turns the camera on or off", supported_from: "camera_power.supported" }];
+
+    // Legion WMI other mode (capability data 00), only when the firmware marks the feature writable
+    EnableDisableValue instant_boot_ac     = 8  [(legion.ui.field) = { label: "Instant Boot (Charger)", tooltip: "The notebook turns on when the charger is connected", supported_from: "instant_boot_ac.supported" }];
+    EnableDisableValue instant_boot_usb_pd = 9  [(legion.ui.field) = { label: "Instant Boot (USB-C)",   tooltip: "The notebook turns on when a USB-C power delivery charger is connected", supported_from: "instant_boot_usb_pd.supported" }];
+    EnableDisableValue flip_to_start       = 10 [(legion.ui.field) = { label: "Flip to Start",          tooltip: "The notebook turns on when the lid is opened", supported_from: "flip_to_start.supported" }];
+    EnableDisableValue over_drive          = 11 [(legion.ui.field) = { label: "Display Overdrive",      tooltip: "Faster response of the display (less motion blur)", supported_from: "over_drive.supported" }];
 }
 
 

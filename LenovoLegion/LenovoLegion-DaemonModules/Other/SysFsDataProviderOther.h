@@ -8,6 +8,7 @@
 #pragma once
 
 #include <SysFsDataProvider.h>
+#include <Drivers/SysFsDriverLegionOther.h>
 #include <Drivers/SysFsDriverLegionVpc.h>
 
 #include <MessageRegistry.pb.h>
@@ -37,6 +38,12 @@ private:
      * Features of the ACPI device VPC2004, empty without the driver (not on every model)
      */
     std::optional<SysFsDriverLegionVpc::Vpc> vpc() const;
+
+    /*
+     * Features of the Legion WMI other mode (instant boot, flip to start, overdrive), empty without the driver
+     * (the older firmware has no other mode)
+     */
+    std::optional<SysFsDriverLegionOther::Other> other() const;
 
 public:
 

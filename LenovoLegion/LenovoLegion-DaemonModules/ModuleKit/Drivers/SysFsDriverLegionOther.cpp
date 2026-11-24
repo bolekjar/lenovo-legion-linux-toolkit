@@ -65,7 +65,8 @@ void SysFsDriverLegionOther::init()
     };
 
 
-    std::vector<QString> standardSttributesCapData00 = {"fan_full_speed","god_mode_fnq_switchable"};
+    std::vector<QString> standardSttributesCapData00 = {"fan_full_speed","god_mode_fnq_switchable","instant_boot_ac",
+                                                        "instant_boot_usb_power_delivery","flip_to_start","over_drive"};
     for (const auto& attr : standardSttributesCapData00)
     {
         std::filesystem::path path = std::filesystem::path(m_path).append(attr.toStdString().c_str());

@@ -24,6 +24,21 @@ SettingsPage {
         // ACPI device VPC2004 (hidden by supported_from when the model or the driver does not provide them)
         Field { source: other; path: "fn_lock.current" }
         Field { source: other; path: "camera_power.current" }
+        // Legion WMI other mode (hidden when the firmware does not provide it)
+        Field { source: other; path: "over_drive.current" }
+    }
+
+    // Turning the notebook on (Legion WMI other mode, the firmware keeps the settings)
+    Section {
+        title: "Power On"
+        source: other
+        visible: other.value("instant_boot_ac.supported", other.revision) === true
+                 || other.value("instant_boot_usb_pd.supported", other.revision) === true
+                 || other.value("flip_to_start.supported", other.revision) === true
+
+        Field { source: other; path: "instant_boot_ac.current" }
+        Field { source: other; path: "instant_boot_usb_pd.current" }
+        Field { source: other; path: "flip_to_start.current" }
     }
 
     // Charging of the battery and of the USB devices (ACPI device VPC2004)

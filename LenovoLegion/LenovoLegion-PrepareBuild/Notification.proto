@@ -62,6 +62,7 @@ message Notification
         CPU_FREQUENCY_CHANGED                   = 10 [(legion.ui.reload) = "CPU_FREQUENCY"];
         CPU_PSTATE_CHANGED                      = 11 [(legion.ui.reload) = "CPU_PSTATE,CPU_OPTIONS,CPU_FREQUENCY"];
         VPC_FEATURE_CHANGED                     = 12 [(legion.ui.reload) = "OTHER"];   // conservation mode, USB charging, Fn lock, camera power (written by another client)
+        OTHER_FEATURE_CHANGED                   = 13 [(legion.ui.reload) = "OTHER"];   // instant boot, flip to start, overdrive of the other mode (written by another client)
     }
 
 

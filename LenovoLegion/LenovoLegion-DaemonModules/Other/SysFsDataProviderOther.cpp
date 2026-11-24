@@ -53,6 +53,38 @@ static const std::vector<std::pair<legion::messages::OtherSettings::EnableDisabl
 };
 
 
+std::optional<SysFsDriverLegionOther::Other> SysFsDataProviderOther::other() const
+{
+    if(!m_sysFsDriverManager->isLoaded(SysFsDriverLegionOther::DRIVER_NAME))
+    {
+        return std::nullopt;
+    }
+
+    return SysFsDriverLegionOther::Other(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverLegionOther::DRIVER_NAME));
+}
+
+/*
+ * Fields of the features of the other mode in the message
+ */
+static const std::vector<std::pair<legion::messages::OtherSettings::EnableDisableValue* (legion::messages::OtherSettings::*)(),
+                                   const SysFsDriverLegionOther::Other::StandardAttributesCapData00 SysFsDriverLegionOther::Other::*>> OTHER_FIELDS = {
+    { &legion::messages::OtherSettings::mutable_instant_boot_ac,     &SysFsDriverLegionOther::Other::m_instant_boot_ac                 },
+    { &legion::messages::OtherSettings::mutable_instant_boot_usb_pd, &SysFsDriverLegionOther::Other::m_instant_boot_usb_power_delivery },
+    { &legion::messages::OtherSettings::mutable_flip_to_start,       &SysFsDriverLegionOther::Other::m_flip_to_start                   },
+    { &legion::messages::OtherSettings::mutable_over_drive,          &SysFsDriverLegionOther::Other::m_over_drive                      },
+};
+
+/*
+ * A feature of the other mode is offered when the firmware marks it supported and writable (capability bits
+ * valid = 1, set = 4 of the capability data 00, e.g. 7)
+ */
+static bool otherFeatureWritable(const QString& supported)
+{
+    const uint capability = supported.toUInt();
+
+    return (capability & 0x1) && (capability & 0x4);
+}
+
 QByteArray SysFsDataProviderOther::serializeAndGetData()
 {
     legion::messages::OtherSettings     otherSettingsMsg;
@@ -73,6 +105,27 @@ QByteArray SysFsDataProviderOther::serializeAndGetData()
         // Note: disable_win_key current_value = 1 means win key is DISABLED
         otherSettingsMsg.mutable_win_key()->set_current(getData(gameZone.m_disableWinKey.m_current_value).toUShort() == 1);
         otherSettingsMsg.mutable_win_key()->set_supported(getData(gameZone.m_disableWinKey.m_supported).toUShort() == 1);
+
+        // Legion WMI other mode: instant boot, flip to start, overdrive
+        if(const auto features = other())
+        {
+            for(const auto& [field,member] : OTHER_FIELDS)
+            {
+                const auto& feature = (*features).*member;
+
+                if(!feature.m_supported.empty())
+                {
+                    auto* value = (otherSettingsMsg.*field)();
+
+                    value->set_supported(otherFeatureWritable(getData(feature.m_supported)));
+
+                    if(value->supported())
+                    {
+                        value->set_current(getData(feature.m_current_value).toUShort() == 1);
+                    }
+                }
+            }
+        }
 
         // ACPI device VPC2004: an unsupported feature has no current value (the read fails)
         if(const auto features = vpc())
@@ -145,6 +198,29 @@ QByteArray SysFsDataProviderOther::deserializeAndSetData(const QByteArray &data)
     if(otherSettingsMsg.has_win_key() && otherSettingsMsg.win_key().has_current()) {
         setData(gameZone.m_disableWinKey.m_current_value, otherSettingsMsg.win_key().current());
         LOG_D(QString("Setting disable win key to: ").append(QString::number(otherSettingsMsg.win_key().current())));
+    }
+
+    // Legion WMI other mode (settable() removed the fields without the driver or support), own uevents blocked
+    if(const auto features = other())
+    {
+        m_sysFsDriverManager->blockKernelEvent(SysFsDriverLegionOther::DRIVER_NAME,true);
+        auto cleanupOther =  qScopeGuard([this] { m_sysFsDriverManager->blockKernelEvent(SysFsDriverLegionOther::DRIVER_NAME,false); });
+
+        for(const auto& [field,member] : OTHER_FIELDS)
+        {
+            const auto* value = (otherSettingsMsg.*field)();
+
+            if(value->has_current())
+            {
+                const auto& feature = (*features).*member;
+
+                setData(feature.m_current_value, value->current());
+                LOG_D(QString("Setting other mode feature ").append(feature.m_current_value.parent_path().filename().c_str())
+                      .append(" to: ").append(QString::number(value->current())));
+            }
+        }
+
+        m_sysFsDriverManager->processAllUdevEvents(100);
     }
 
     // ACPI device VPC2004 (settable() removed the fields without the driver or support), own uevents blocked
@@ -248,6 +324,58 @@ void SysFsDataProviderOther::settable(legion::messages::OtherSettings &settings,
         if(!check(settings.has_win_key(),settings.mutable_win_key(),gameZone.m_disableWinKey.m_supported,"disable win key"))
         {
             settings.clear_win_key();
+        }
+    }
+
+    /*
+     * Legion WMI other mode: without the driver or a writable feature the field is skipped
+     */
+    if(settings.has_instant_boot_ac() || settings.has_instant_boot_usb_pd() || settings.has_flip_to_start() || settings.has_over_drive())
+    {
+        const auto features = other();
+
+        auto checkOther = [&](legion::messages::OtherSettings::EnableDisableValue* value,
+                              const SysFsDriverLegionOther::Other::StandardAttributesCapData00 SysFsDriverLegionOther::Other::* member,
+                              const char* field) {
+            value->clear_supported();
+
+            if(!value->has_current())
+            {
+                return false;
+            }
+
+            if(!features.has_value() || ((*features).*member).m_supported.empty() ||
+               !otherFeatureWritable(getData(((*features).*member).m_supported)))
+            {
+                skipField(origin,QString(field).append('=').append(QString::number(value->current())),"not supported");
+                return false;
+            }
+
+            return true;
+        };
+
+        if(settings.has_instant_boot_ac() &&
+           !checkOther(settings.mutable_instant_boot_ac(),&SysFsDriverLegionOther::Other::m_instant_boot_ac,"instant boot (charger)"))
+        {
+            settings.clear_instant_boot_ac();
+        }
+
+        if(settings.has_instant_boot_usb_pd() &&
+           !checkOther(settings.mutable_instant_boot_usb_pd(),&SysFsDriverLegionOther::Other::m_instant_boot_usb_power_delivery,"instant boot (USB-C)"))
+        {
+            settings.clear_instant_boot_usb_pd();
+        }
+
+        if(settings.has_flip_to_start() &&
+           !checkOther(settings.mutable_flip_to_start(),&SysFsDriverLegionOther::Other::m_flip_to_start,"flip to start"))
+        {
+            settings.clear_flip_to_start();
+        }
+
+        if(settings.has_over_drive() &&
+           !checkOther(settings.mutable_over_drive(),&SysFsDriverLegionOther::Other::m_over_drive,"display overdrive"))
+        {
+            settings.clear_over_drive();
         }
     }
 
