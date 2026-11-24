@@ -13,6 +13,14 @@
 struct device;
 struct legion_wmi_dd_list;
 
+/* Maximal number of the discrete values of a feature (16IAX10H: 13 values of the PL1 Tau) */
+#define LEGION_WMI_DD_MAX_VALUES 32
+
+/*
+ * Instance of LENOVO_DISCRETE_DATA (binary MOF: IDs, Value), one discrete value of a feature in a
+ * power mode; the features without a range of the capability data 01 (bit 10). The firmware fills
+ * the data block up with instances of the ID 0 (ASL WQA7), they are not kept.
+ */
 struct legion_wmi_ddata {
 	u32 id;
 	u32 value;

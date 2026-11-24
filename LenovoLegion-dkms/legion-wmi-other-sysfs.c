@@ -143,7 +143,7 @@ static ssize_t legion_wmi_other_cap01_attr_show_steps_val(
 	enum thermal_mode modes[THERMAL_MODES_SIZE], char *buf,
 	ssize_t *buf_len)
 {
-	struct legion_wmi_ddata lddata[48] = { { 0, 0 } };
+	struct legion_wmi_ddata lddata[LEGION_WMI_DD_MAX_VALUES];
 	int len = 0;
 
 	modes[THERMAL_MODES_SIZE - 1] = LEGION_WMI_GZ_THERMAL_MODE_END;
@@ -152,22 +152,17 @@ static ssize_t legion_wmi_other_cap01_attr_show_steps_val(
 	     i++) {
 		len += sysfs_emit_at(buf, len, "%d=", modes[i]);
 
-		const int ret = legion_wmi_dd_get_data(
+		/* Values of this mode only (count), the array is shared by the modes */
+		const int count = legion_wmi_dd_get_data(
 			dd_list,
 			attribute_id_raw |
 				FIELD_PREP(LEGION_WMI_MODE_ID_MASK, modes[i]),
-			lddata, ARRAY_SIZE(lddata) - 1);
-		if (ret) {
-			if (modes[i + 1] != LEGION_WMI_GZ_THERMAL_MODE_END)
-				len += sysfs_emit_at(buf, len, ",");
-			continue;
-		}
+			lddata, ARRAY_SIZE(lddata));
 
-		for (int j = 0; j < ARRAY_SIZE(lddata) && lddata[j].id != 0;
-		     ++j) {
+		for (int j = 0; j < count; ++j) {
 			len += sysfs_emit_at(buf, len, "%u", lddata[j].value);
 
-			if (lddata[j + 1].id != 0)
+			if (j + 1 < count)
 				len += sysfs_emit_at(buf, len, "|");
 		}
 

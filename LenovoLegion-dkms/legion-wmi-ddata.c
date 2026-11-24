@@ -28,9 +28,9 @@
 #include <linux/types.h>
 #include <linux/wmi.h>
 
-#define LEGION_CAPABILITY_DDATA_01_GUID "91433b17-b7b7-4640-bb40-34c67349fbec"
+#define LEGION_CAPABILITY_DDATA_01_GUID "91433B17-B7B7-4640-BB40-34C67349FBEC"
 
-struct lwmi_dd_priv {
+struct legion_wmi_dd_priv {
 	struct wmi_device *wdev;
 	struct legion_wmi_dd_list *list;
 };
@@ -43,20 +43,20 @@ struct legion_wmi_dd_list {
 
 /**
  * legion_wmi_dd_component_bind() - Bind component to master device.
- * @dd_dev: Pointer to the lenovo-wmi-ddata driver parent device.
- * @om_dev: Pointer to the lenovo-wmi-other driver parent device.
- * @data: ddata_list object pointer used to return the capability data.
+ * @dd_dev: Pointer to the discrete data driver parent device.
+ * @om_dev: Pointer to the other mode driver parent device.
+ * @data: Other mode driver data, receives the discrete data list.
  *
- * On lenovo-wmi-other's master bind, provide a pointer to the local ddata
- * list. This is used to call lwmi_dd_get_data to look up attribute data
- * from the lenovo-wmi-other driver.
+ * On the master bind of the other mode, provide a pointer to the local
+ * discrete data list. This is used to call legion_wmi_dd_get_data() to look up
+ * the discrete values from the other mode driver.
  *
  * Return: 0
  */
 static int legion_wmi_dd_component_bind(struct device *dd_dev,
 					struct device *om_dev, void *data)
 {
-	struct lwmi_dd_priv *priv = dev_get_drvdata(dd_dev);
+	struct legion_wmi_dd_priv *priv = dev_get_drvdata(dd_dev);
 	struct legion_wmi_other_priv **other_priv = data;
 
 	if (!priv || !priv->list || !other_priv || !(*other_priv))
@@ -72,15 +72,14 @@ static const struct component_ops legion_wmi_dd_component_ops = {
 };
 
 /**
- * legion_wmi_dd_get_data - Get the data of the specified attribute
- * @list: The lenovo-wmi-ddata pointer to its dd_list struct.
- * @attribute_id: The capdata attribute ID to be found.
- * @output: Pointer to a ddata struct to return the data.
+ * legion_wmi_dd_get_data() - Get the discrete values of the specified attribute
+ * @list: The discrete data list.
+ * @attribute_id: The attribute ID to be found (with the power mode).
+ * @output: Array receiving the discrete values.
+ * @output_len: Size of the array.
  *
- * Retrieves the capability data 01 struct pointer for the given
- * attribute for its specified thermal mode.
- *
- * Return: 0 on success, or -EINVAL.
+ * Return: The number of the discrete values written to output, -ENODEV without
+ * the list, -EINVAL without a value, or -E2BIG when they do not fit.
  */
 int legion_wmi_dd_get_data(struct legion_wmi_dd_list *list, u32 attribute_id,
 			   struct legion_wmi_ddata *output,
@@ -108,35 +107,40 @@ int legion_wmi_dd_get_data(struct legion_wmi_dd_list *list, u32 attribute_id,
 	if (out_idx == 0)
 		return -EINVAL;
 
-	return 0;
+	return out_idx;
 }
 
 /**
  * legion_wmi_dd_cache() - Cache all WMI data block information
- * @priv: lenovo-wmi-ddata driver data.
+ * @priv: Discrete data driver data.
+ * @instances: Number of the WMI data block instances.
  *
- * Loop through each WMI data block and cache the data.
+ * Loop through each WMI data block and cache the data. Only the valid
+ * instances are kept: a buffer of the size of the data and an ID (the firmware
+ * fills the data block up with instances of the ID 0).
  *
- * Return: 0 on success, or an error.
+ * Return: 0.
  */
-static int legion_wmi_dd_cache(const struct lwmi_dd_priv *priv)
+static int legion_wmi_dd_cache(const struct legion_wmi_dd_priv *priv,
+			       int instances)
 {
 	guard(mutex)
 		(&priv->list->list_mutex);
-	for (int idx = 0; idx < priv->list->count; idx++) {
+	for (int idx = 0; idx < instances; idx++) {
+		struct legion_wmi_ddata *data =
+			&priv->list->data[priv->list->count];
 		union acpi_object *ret_obj __free(kfree) = NULL;
 
 		ret_obj = wmidev_block_query(priv->wdev, idx);
-		if (!ret_obj)
-			return -ENODEV;
-
-		if (ret_obj->type != ACPI_TYPE_BUFFER ||
-		    ret_obj->buffer.length < sizeof(priv->list->data[idx]))
+		if (!ret_obj || ret_obj->type != ACPI_TYPE_BUFFER ||
+		    ret_obj->buffer.length < sizeof(*data)) {
+			dev_dbg(&priv->wdev->dev, "instance %d skipped\n", idx);
 			continue;
+		}
 
-		memcpy(&priv->list->data[idx], ret_obj->buffer.pointer,
-		       min(ret_obj->buffer.length,
-			   sizeof(priv->list->data[idx])));
+		memcpy(data, ret_obj->buffer.pointer, sizeof(*data));
+		if (data->id)
+			priv->list->count++;
 	}
 
 	return 0;
@@ -144,14 +148,14 @@ static int legion_wmi_dd_cache(const struct lwmi_dd_priv *priv)
 
 /**
  * legion_wmi_dd_alloc() - Allocate a dd_list struct in drvdata
- * @priv: lenovo-wmi-ddata driver data.
+ * @priv: Discrete data driver data.
  *
  * Allocate a dd_list struct large enough to contain data from all WMI data
  * blocks provided by the interface.
  *
- * Return: 0 on success, or an error.
+ * Return: The number of the WMI data block instances, or an error.
  */
-static int legion_wmi_dd_alloc(struct lwmi_dd_priv *priv)
+static int legion_wmi_dd_alloc(struct legion_wmi_dd_priv *priv)
 {
 	struct legion_wmi_dd_list *list = NULL;
 
@@ -167,15 +171,14 @@ static int legion_wmi_dd_alloc(struct lwmi_dd_priv *priv)
 	if (ret)
 		return ret;
 
-	list->count = count;
 	priv->list = list;
 
-	return 0;
+	return count;
 }
 
 /**
  * legion_wmi_dd_setup() - Cache all WMI data block information
- * @priv: lenovo-wmi-ddata driver data.
+ * @priv: Discrete data driver data.
  *
  * Allocate a dd_list struct large enough to contain data from all WMI data
  * blocks provided by the interface. Then loop through each data block and
@@ -183,20 +186,20 @@ static int legion_wmi_dd_alloc(struct lwmi_dd_priv *priv)
  *
  * Return: 0 on success, or an error code.
  */
-static int legion_wmi_dd_setup(struct lwmi_dd_priv *priv)
+static int legion_wmi_dd_setup(struct legion_wmi_dd_priv *priv)
 {
 	const int ret = legion_wmi_dd_alloc(priv);
 
-	if (ret)
+	if (ret < 0)
 		return ret;
 
-	return legion_wmi_dd_cache(priv);
+	return legion_wmi_dd_cache(priv, ret);
 }
 
 static int legion_wmi_dd_probe(struct wmi_device *wdev, const void *context)
 
 {
-	struct lwmi_dd_priv *priv = NULL;
+	struct legion_wmi_dd_priv *priv = NULL;
 
 	priv = devm_kzalloc(&wdev->dev, sizeof(*priv), GFP_KERNEL);
 	if (!priv)
@@ -236,7 +239,7 @@ static struct wmi_driver legion_wmi_dd_driver = {
 
 /**
  * legion_wmi_dd_match() - Match rule for the master driver.
- * @dev: Pointer to the capability data 01 parent device.
+ * @dev: Pointer to the discrete data parent device.
  * @data: Unused void pointer for passing match criteria.
  *
  * Return: int.

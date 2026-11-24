@@ -161,15 +161,15 @@ static int legion_wmi_other_feature_write(const struct legion_wmi_other_priv *pr
 static int legion_wmi_other_feature_discrete(const struct legion_wmi_other_priv *priv,
 					     u32 feature_id_custom, u32 value)
 {
-	struct legion_wmi_ddata lddata[48] = { { 0, 0 } };
-	int ret;
+	struct legion_wmi_ddata lddata[LEGION_WMI_DD_MAX_VALUES];
+	const int count = legion_wmi_dd_get_data(priv->dd_list,
+						 feature_id_custom, lddata,
+						 ARRAY_SIZE(lddata));
 
-	ret = legion_wmi_dd_get_data(priv->dd_list, feature_id_custom, lddata,
-				     ARRAY_SIZE(lddata) - 1);
-	if (ret)
-		return ret;
+	if (count < 0)
+		return count;
 
-	for (int i = 0; i < ARRAY_SIZE(lddata) && lddata[i].id != 0; ++i)
+	for (int i = 0; i < count; ++i)
 		if (lddata[i].value == value)
 			return 0;
 
