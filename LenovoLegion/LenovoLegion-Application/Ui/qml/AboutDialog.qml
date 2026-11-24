@@ -82,7 +82,8 @@ Popup {
             Layout.fillWidth: true
             Layout.topMargin: 4
             text: "Unofficial control application for Lenovo Legion notebooks on Linux: power profiles, power limits, "
-                + "fan curve, CPU and GPU settings, voltage offsets and the RGB keyboard. Tested on Legion Pro 7 Gen 9 and Gen 10."
+                + "fan curve, CPU and GPU settings, voltage offsets and the RGB keyboard. Tested on Legion Pro 7 Gen 9 and Gen 10, "
+                + "experimentally on the older firmware of Gen 7 (e.g. Legion 5 15IAH7H) – feedback is welcome."
             horizontalAlignment: Text.AlignHCenter
             wrapMode: Text.Wrap
             color: theme.text

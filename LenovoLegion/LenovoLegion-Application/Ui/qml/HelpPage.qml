@@ -115,6 +115,13 @@ Lenovo Legion Linux Toolkit controls the features of Lenovo Legion notebooks on 
 fan curve, CPU and GPU settings, voltage offsets and the RGB keyboard. It is an unofficial replacement of Lenovo Vantage \
 and Legion Space and it is **not affiliated with Lenovo**.
 
+### Supported notebooks
+
+Tested on Legion Pro 7 16IRX9H (Gen 9) and 16IAX10H (Gen 10). The older firmware of Legion Gen 7 (e.g. Legion 5 \
+15IAH7H) is supported **experimentally**: power profiles with Custom, power limits, fan curve and fan full speed \
+should work, tested by users. Feedback from other models is welcome – please open an issue on \
+[GitHub](" + projectUrl + ") with the output of `cat /sys/class/dmi/id/product_family /sys/class/dmi/id/product_name`.
+
 The toolbar at the top opens the pages:
 
 - **Home** – hardware monitor, power profiles and all hardware settings in tabs
@@ -154,7 +161,8 @@ shown separately on hybrid Intel CPUs
 - **CPU Power** – power state of the CPU (intel_pstate limits, turbo) and the CPU voltage offsets
 - **GPU** – NVIDIA GPU and memory clock offsets with presets
 - **Power** – CPU and GPU power limits and temperature limits of the current power profile
-- **Fan Curve** – fan curve with 10 points (drag the points, the curve stays rising), fan full speed
+- **Fan Curve** – fan curve with 10 points (drag the points, the curve stays rising and in the limits of the \
+firmware), labeled by the sensor temperatures of the points; fan full speed
 - **Device** – touchpad, Windows key, Fn lock, camera power, battery conservation mode (charging stops at about 80 %), rapid charge, USB charging when off and the GPU mode (hybrid, iGPU only, dGPU only; needs a restart)
 
 Tabs with the Lenovo icon need the Lenovo Legion kernel driver; without it they are shown grayed with the reason." },
@@ -273,8 +281,8 @@ Attach **Information → Copy All** and the output of `journalctl -u lenovo-legi
 - **Voltage offsets**: start small (e.g. −25 mV), test the stability (e.g. stress-ng, a game), go down in small steps. \
 An unstable undervolt can freeze the notebook; the offsets are not kept after a reboot unless the daemon applies \
 the saved settings.
-- **Fan curve**: quiet curves raise the temperatures and the CPU and GPU can lower their clocks; the tool tip of a \
-point shows the default curves of the power profile for comparison.
+- **Fan curve**: quiet curves raise the temperatures and the CPU and GPU can lower their clocks; the points can not \
+go below the default curve of the firmware, the tool tip of a point shows its temperatures and the fan speeds.
 - **Power limits**: lower limits mean less heat and noise with a small loss of performance; *Quiet* or *Balanced* \
 with lower limits extends the battery life.
 - **GPU clock offsets**: use the presets first, artifacts or crashes mean too high offsets.
@@ -284,7 +292,8 @@ with lower limits extends the battery life.
 "## About
 
 **Lenovo Legion Linux Toolkit** – unofficial control application for Lenovo Legion notebooks, tested on Legion Pro 7 \
-Gen 9 and Gen 10. This project is not affiliated with Lenovo in any way.
+Gen 9 and Gen 10, experimentally on the older firmware of Gen 7 (e.g. Legion 5 15IAH7H) – feedback is welcome. This \
+project is not affiliated with Lenovo in any way.
 
 License: GPL-2.0
 
