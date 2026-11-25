@@ -600,59 +600,197 @@ static struct attribute *legion_sysfs_others_attributes[] = {
 	NULL
 };
 
+/*
+ * Feature of the firmware of an attribute group: its ID and the capability data
+ */
+struct legion_wmi_other_group_feature {
+	const char *name; /* name of the group */
+	struct attribute **attrs; /* attributes of the group */
+	u32 id; /* capability ID */
+	bool cd01; /* capability data 01 (by the power modes), otherwise 00 */
+};
+
+#define LEGION_WMI_OTHER_GROUP_FEATURE(_name, _id, _cd01)                   \
+	{ .name = #_name, .attrs = legion_sysfs_##_name##_attributes, \
+	  .id = (_id), .cd01 = (_cd01) }
+
+static const struct legion_wmi_other_group_feature legion_wmi_other_group_features[] = {
+	LEGION_WMI_OTHER_GROUP_FEATURE(cpu_stp_limit, CPUShortTermPowerLimit, true),
+	LEGION_WMI_OTHER_GROUP_FEATURE(cpu_ltp_limit, CPULongTermPowerLimit, true),
+	LEGION_WMI_OTHER_GROUP_FEATURE(cpu_pp_limit, CPUPeakPowerLimit, true),
+	LEGION_WMI_OTHER_GROUP_FEATURE(cpu_clp_limit, CPUCrossLoadingPowerLimit, true),
+	LEGION_WMI_OTHER_GROUP_FEATURE(cpu_tmp_limit, CPUTemperatureLimit, true),
+	LEGION_WMI_OTHER_GROUP_FEATURE(apus_pptp_limit, APUsPPTPowerLimit, true),
+	LEGION_WMI_OTHER_GROUP_FEATURE(cpu_pl1_tau, CPUPL1Tau, true),
+	LEGION_WMI_OTHER_GROUP_FEATURE(gpu_power_boost, GPUPowerBoost, true),
+	LEGION_WMI_OTHER_GROUP_FEATURE(gpu_configurable_tgp, GPUConfigurableTGP, true),
+	LEGION_WMI_OTHER_GROUP_FEATURE(gpu_temperature_limit, GPUTemperatureLimit, true),
+	LEGION_WMI_OTHER_GROUP_FEATURE(gpu_total_onac,
+				       GPUTotalProcessingPowerTargetOnAcOffsetFromBaseline, true),
+	LEGION_WMI_OTHER_GROUP_FEATURE(gpu_to_cpu_dynamic_boost, GPUToCPUDynamicBoost, true),
+	LEGION_WMI_OTHER_GROUP_FEATURE(igpu_mode, IGPUMode, false),
+	LEGION_WMI_OTHER_GROUP_FEATURE(instant_boot_ac, InstantBootAc, false),
+	LEGION_WMI_OTHER_GROUP_FEATURE(instant_boot_usb_power_delivery,
+				       InstantBootUsbPowerDelivery, false),
+	LEGION_WMI_OTHER_GROUP_FEATURE(fan_full_speed, FanFullSpeed, false),
+	LEGION_WMI_OTHER_GROUP_FEATURE(over_drive, OverDrive, false),
+	LEGION_WMI_OTHER_GROUP_FEATURE(god_mode_fnq_switchable, GodModeFnQSwitchable, false),
+	LEGION_WMI_OTHER_GROUP_FEATURE(nvidia_gpu_dd_switching,
+				       NvidiaGPUDynamicDisplaySwitching, false),
+	LEGION_WMI_OTHER_GROUP_FEATURE(flip_to_start, FlipToStart, false),
+	LEGION_WMI_OTHER_GROUP_FEATURE(skin_temperature_tracking,
+				       AMDSkinTemperatureTracking, false),
+	LEGION_WMI_OTHER_GROUP_FEATURE(smart_shiftmode, AMDSmartShiftMode, false),
+};
+
+/* Power modes of the capability data 01 */
+static const u8 legion_wmi_other_group_modes[] = {
+	LEGION_WMI_GZ_THERMAL_MODE_QUIET,
+	LEGION_WMI_GZ_THERMAL_MODE_BALANCED,
+	LEGION_WMI_GZ_THERMAL_MODE_PERFORMANCE,
+	LEGION_WMI_GZ_THERMAL_MODE_CUSTOM,
+	LEGION_WMI_GZ_THERMAL_MODE_EXTREME,
+};
+
+/*
+ * The firmware has the feature: its capability data 00, or the capability data 01
+ * of a power mode, has the valid bit (e.g. 16IAX10H: no peak power limit and
+ * APU sPPT, capability 0 of the AMD features and overdrive)
+ */
+static bool
+legion_wmi_other_feature_present(const struct legion_wmi_other_priv *priv,
+				 const struct legion_wmi_other_group_feature *feature)
+{
+	const u32 id = feature->id & ~LEGION_WMI_MODE_ID_MASK;
+
+	if (!feature->cd01) {
+		struct legion_wmi_capdata00 capdata;
+
+		return !legion_wmi_cd00_get_data(priv->cd00_list, id, &capdata) &&
+		       (capdata.supported & LEGION_WMI_SUPP_VALID);
+	}
+
+	for (size_t i = 0; i < ARRAY_SIZE(legion_wmi_other_group_modes); i++) {
+		const u32 mode_id =
+			id | FIELD_PREP(LEGION_WMI_MODE_ID_MASK,
+					legion_wmi_other_group_modes[i]);
+		struct legion_wmi_capdata01 capdata;
+
+		if (!legion_wmi_cd01_get_data(priv->cd01_list, mode_id, &capdata) &&
+		    (capdata.supported & LEGION_WMI_SUPP_VALID))
+			return true;
+	}
+
+	return false;
+}
+
+/*
+ * A group of a feature the firmware does not have is not created (the same as
+ * the limits of the CPU / GPU method and the attributes of the game zone); the
+ * capability data do not change, decided once
+ */
+static umode_t legion_wmi_other_group_visible(struct kobject *kobj,
+					      struct attribute *attr, int n)
+{
+	const struct legion_wmi_other_priv *priv =
+		dev_get_drvdata(kobj_to_dev(kobj->parent));
+
+	if (n)
+		return attr->mode;
+
+	for (size_t i = 0; i < ARRAY_SIZE(legion_wmi_other_group_features); i++) {
+		const struct legion_wmi_other_group_feature *feature =
+			&legion_wmi_other_group_features[i];
+
+		if (feature->attrs[0] != attr)
+			continue;
+
+		if (legion_wmi_other_feature_present(priv, feature))
+			return attr->mode;
+
+		dev_dbg(&priv->wdev->dev, "%s is not supported\n",
+			feature->name);
+		return SYSFS_GROUP_INVISIBLE;
+	}
+
+	return attr->mode;
+}
+
 static const struct attribute_group legion_sysfs_other_group[] = {
 	/*
 	 * CPU CAP01
 	 */
 	{ .name = "cpu_stp_limit",
-	  .attrs = legion_sysfs_cpu_stp_limit_attributes },
+	  .attrs = legion_sysfs_cpu_stp_limit_attributes,
+	  .is_visible = legion_wmi_other_group_visible },
 	{ .name = "cpu_ltp_limit",
-	  .attrs = legion_sysfs_cpu_ltp_limit_attributes },
+	  .attrs = legion_sysfs_cpu_ltp_limit_attributes,
+	  .is_visible = legion_wmi_other_group_visible },
 	{ .name = "cpu_pp_limit",
-	  .attrs = legion_sysfs_cpu_pp_limit_attributes },
+	  .attrs = legion_sysfs_cpu_pp_limit_attributes,
+	  .is_visible = legion_wmi_other_group_visible },
 	{ .name = "cpu_clp_limit",
-	  .attrs = legion_sysfs_cpu_clp_limit_attributes },
+	  .attrs = legion_sysfs_cpu_clp_limit_attributes,
+	  .is_visible = legion_wmi_other_group_visible },
 	{ .name = "cpu_tmp_limit",
-	  .attrs = legion_sysfs_cpu_tmp_limit_attributes },
+	  .attrs = legion_sysfs_cpu_tmp_limit_attributes,
+	  .is_visible = legion_wmi_other_group_visible },
 	{ .name = "apus_pptp_limit",
-	  .attrs = legion_sysfs_apus_pptp_limit_attributes },
-	{ .name = "cpu_pl1_tau", .attrs = legion_sysfs_cpu_pl1_tau_attributes },
+	  .attrs = legion_sysfs_apus_pptp_limit_attributes,
+	  .is_visible = legion_wmi_other_group_visible },
+	{ .name = "cpu_pl1_tau", .attrs = legion_sysfs_cpu_pl1_tau_attributes,
+	  .is_visible = legion_wmi_other_group_visible },
 
 	/*
 	 * GPU CAP01
 	 */
 	{ .name = "gpu_power_boost",
-	  .attrs = legion_sysfs_gpu_power_boost_attributes },
+	  .attrs = legion_sysfs_gpu_power_boost_attributes,
+	  .is_visible = legion_wmi_other_group_visible },
 	{ .name = "gpu_configurable_tgp",
-	  .attrs = legion_sysfs_gpu_configurable_tgp_attributes },
+	  .attrs = legion_sysfs_gpu_configurable_tgp_attributes,
+	  .is_visible = legion_wmi_other_group_visible },
 	{ .name = "gpu_temperature_limit",
-	  .attrs = legion_sysfs_gpu_temperature_limit_attributes },
+	  .attrs = legion_sysfs_gpu_temperature_limit_attributes,
+	  .is_visible = legion_wmi_other_group_visible },
 	{ .name = "gpu_total_onac",
-	  .attrs = legion_sysfs_gpu_total_onac_attributes },
+	  .attrs = legion_sysfs_gpu_total_onac_attributes,
+	  .is_visible = legion_wmi_other_group_visible },
 	{ .name = "gpu_to_cpu_dynamic_boost",
-	  .attrs = legion_sysfs_gpu_to_cpu_dynamic_boost_attributes },
+	  .attrs = legion_sysfs_gpu_to_cpu_dynamic_boost_attributes,
+	  .is_visible = legion_wmi_other_group_visible },
 
 	/*
 	 * GPU CAP00
 	 */
-	{ .name = "igpu_mode", .attrs = legion_sysfs_igpu_mode_attributes },
+	{ .name = "igpu_mode", .attrs = legion_sysfs_igpu_mode_attributes,
+	  .is_visible = legion_wmi_other_group_visible },
 	{ .name = "instant_boot_ac",
-	  .attrs = legion_sysfs_instant_boot_ac_attributes },
+	  .attrs = legion_sysfs_instant_boot_ac_attributes,
+	  .is_visible = legion_wmi_other_group_visible },
 	{ .name = "instant_boot_usb_power_delivery",
-	  .attrs = legion_sysfs_instant_boot_usb_power_delivery_attributes },
+	  .attrs = legion_sysfs_instant_boot_usb_power_delivery_attributes,
+	  .is_visible = legion_wmi_other_group_visible },
 	{ .name = "fan_full_speed",
-	  .attrs = legion_sysfs_fan_full_speed_attributes },
-	{ .name = "over_drive", .attrs = legion_sysfs_over_drive_attributes },
+	  .attrs = legion_sysfs_fan_full_speed_attributes,
+	  .is_visible = legion_wmi_other_group_visible },
+	{ .name = "over_drive", .attrs = legion_sysfs_over_drive_attributes,
+	  .is_visible = legion_wmi_other_group_visible },
 	{ .name = "god_mode_fnq_switchable",
-	  .attrs = legion_sysfs_god_mode_fnq_switchable_attributes },
+	  .attrs = legion_sysfs_god_mode_fnq_switchable_attributes,
+	  .is_visible = legion_wmi_other_group_visible },
 	{ .name = "nvidia_gpu_dd_switching",
-	  .attrs = legion_sysfs_nvidia_gpu_dd_switching_attributes },
+	  .attrs = legion_sysfs_nvidia_gpu_dd_switching_attributes,
+	  .is_visible = legion_wmi_other_group_visible },
 	{ .name = "flip_to_start",
-	  .attrs = legion_sysfs_flip_to_start_attributes },
+	  .attrs = legion_sysfs_flip_to_start_attributes,
+	  .is_visible = legion_wmi_other_group_visible },
 	{ .name = "skin_temperature_tracking",
-	  .attrs = legion_sysfs_skin_temperature_tracking_attributes },
+	  .attrs = legion_sysfs_skin_temperature_tracking_attributes,
+	  .is_visible = legion_wmi_other_group_visible },
 	{ .name = "smart_shiftmode",
-	  .attrs = legion_sysfs_smart_shiftmode_attributes },
+	  .attrs = legion_sysfs_smart_shiftmode_attributes,
+	  .is_visible = legion_wmi_other_group_visible },
 
 	{ .name = "others", .attrs = legion_sysfs_others_attributes },
 	{}

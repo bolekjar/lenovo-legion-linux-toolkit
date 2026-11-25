@@ -54,9 +54,19 @@ QByteArray SysFsDataProviderFanOption::serializeAndGetData()
     try {
         const FullSpeed full = fullSpeed();
 
-        fanOptionMsg.mutable_full_speed()->set_supported(getData(full.m_supported).toUShort() > 0);
-        fanOptionMsg.mutable_full_speed()->set_default_value(getData(full.m_default_value).toUShort() == 1);
-        fanOptionMsg.mutable_full_speed()->set_current_value(getData(full.m_current_value).toUShort() == 1);
+        /*
+         * Not shown by the kernel driver when the firmware does not have it (capability data of the other mode)
+         */
+        if(full.m_supported.empty())
+        {
+            fanOptionMsg.mutable_full_speed()->set_supported(false);
+        }
+        else
+        {
+            fanOptionMsg.mutable_full_speed()->set_supported(getData(full.m_supported).toUShort() > 0);
+            fanOptionMsg.mutable_full_speed()->set_default_value(getData(full.m_default_value).toUShort() == 1);
+            fanOptionMsg.mutable_full_speed()->set_current_value(getData(full.m_current_value).toUShort() == 1);
+        }
     } catch(SysFsDriver::exception_T& ex)
     {
         /*
@@ -127,7 +137,7 @@ void SysFsDataProviderFanOption::settable(legion::messages::FanOption &fanOption
         return;
     }
 
-    if(getData(fullSpeed().m_supported).toUShort() == 0)
+    if(const auto supported = fullSpeed().m_supported; supported.empty() || getData(supported).toUShort() == 0)
     {
         skipField(origin,QString("fan full_speed=").append(QString::number(fanOption.full_speed().current_value())),"not supported");
         fanOption.clear_full_speed();

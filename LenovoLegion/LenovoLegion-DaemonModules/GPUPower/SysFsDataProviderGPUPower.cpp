@@ -106,57 +106,66 @@ QByteArray SysFsDataProviderGPUPower::serializeAndGetData()
 
 
 
-        power.mutable_gpu_power_boost()->set_current_value(static_cast<quint8>(getData(gpuControl.m_gpu_power_boost.m_current_value).toUShort()));
-        setValue(gpuControl.m_gpu_power_boost.m_default_value,[&](legion::messages::GPUPower::Limit::Descriptor &descriptor,uint value){
-            descriptor.set_default_value(value);
-        },power.mutable_gpu_power_boost()->mutable_mode_descriptor_map());
-        setValue(gpuControl.m_gpu_power_boost.m_supported,[&](legion::messages::GPUPower::Limit::Descriptor &descriptor,uint value){
-            descriptor.set_supported(value);
-        },power.mutable_gpu_power_boost()->mutable_mode_descriptor_map());
-        setValuesSteps(gpuControl.m_gpu_power_boost.m_steps,[&](legion::messages::GPUPower::Limit::Descriptor &descriptor,const QList<QString>& values){
-            for (const auto& val : values) {
-                descriptor.add_steps(val.toUInt());
-            }
-        },power.mutable_gpu_power_boost()->mutable_mode_descriptor_map());
+        if(!gpuControl.m_gpu_power_boost.m_current_value.empty())
+        {
+            power.mutable_gpu_power_boost()->set_current_value(static_cast<quint8>(getData(gpuControl.m_gpu_power_boost.m_current_value).toUShort()));
+            setValue(gpuControl.m_gpu_power_boost.m_default_value,[&](legion::messages::GPUPower::Limit::Descriptor &descriptor,uint value){
+                descriptor.set_default_value(value);
+            },power.mutable_gpu_power_boost()->mutable_mode_descriptor_map());
+            setValue(gpuControl.m_gpu_power_boost.m_supported,[&](legion::messages::GPUPower::Limit::Descriptor &descriptor,uint value){
+                descriptor.set_supported(value);
+            },power.mutable_gpu_power_boost()->mutable_mode_descriptor_map());
+            setValuesSteps(gpuControl.m_gpu_power_boost.m_steps,[&](legion::messages::GPUPower::Limit::Descriptor &descriptor,const QList<QString>& values){
+                for (const auto& val : values) {
+                    descriptor.add_steps(val.toUInt());
+                }
+            },power.mutable_gpu_power_boost()->mutable_mode_descriptor_map());
+        }
 
 
 
-        power.mutable_gpu_configurable_tgp()->set_current_value(static_cast<quint8>(getData(gpuControl.m_gpu_configurable_tgp.m_current_value).toUShort()));
-        setValue(gpuControl.m_gpu_configurable_tgp.m_default_value,[&](legion::messages::GPUPower::Limit::Descriptor &descriptor,uint value){
-            descriptor.set_default_value(value);
-        },power.mutable_gpu_configurable_tgp()->mutable_mode_descriptor_map());
-        setValue(gpuControl.m_gpu_configurable_tgp.m_supported,[&](legion::messages::GPUPower::Limit::Descriptor &descriptor,uint value){
-            descriptor.set_supported(value);
-        },power.mutable_gpu_configurable_tgp()->mutable_mode_descriptor_map());
-        setValuesSteps(gpuControl.m_gpu_configurable_tgp.m_steps,[&](legion::messages::GPUPower::Limit::Descriptor &descriptor,const QList<QString>& values){
-            for (const auto& val : values) {
-                descriptor.add_steps(val.toUInt());
-            }
-        },power.mutable_gpu_configurable_tgp()->mutable_mode_descriptor_map());
+        if(!gpuControl.m_gpu_configurable_tgp.m_current_value.empty())
+        {
+            power.mutable_gpu_configurable_tgp()->set_current_value(static_cast<quint8>(getData(gpuControl.m_gpu_configurable_tgp.m_current_value).toUShort()));
+            setValue(gpuControl.m_gpu_configurable_tgp.m_default_value,[&](legion::messages::GPUPower::Limit::Descriptor &descriptor,uint value){
+                descriptor.set_default_value(value);
+            },power.mutable_gpu_configurable_tgp()->mutable_mode_descriptor_map());
+            setValue(gpuControl.m_gpu_configurable_tgp.m_supported,[&](legion::messages::GPUPower::Limit::Descriptor &descriptor,uint value){
+                descriptor.set_supported(value);
+            },power.mutable_gpu_configurable_tgp()->mutable_mode_descriptor_map());
+            setValuesSteps(gpuControl.m_gpu_configurable_tgp.m_steps,[&](legion::messages::GPUPower::Limit::Descriptor &descriptor,const QList<QString>& values){
+                for (const auto& val : values) {
+                    descriptor.add_steps(val.toUInt());
+                }
+            },power.mutable_gpu_configurable_tgp()->mutable_mode_descriptor_map());
+        }
 
 
 
 
-        power.mutable_gpu_temperature_limit()->set_current_value(static_cast<quint8>(getData(gpuControl.m_gpu_temperature_limit.m_current_value).toUShort()));
-        setValue(gpuControl.m_gpu_temperature_limit.m_default_value,[&](legion::messages::GPUPower::Limit::Descriptor &descriptor,uint value){
-            descriptor.set_default_value(value);
-        },power.mutable_gpu_temperature_limit()->mutable_mode_descriptor_map());
+        if(!gpuControl.m_gpu_temperature_limit.m_current_value.empty())
+        {
+            power.mutable_gpu_temperature_limit()->set_current_value(static_cast<quint8>(getData(gpuControl.m_gpu_temperature_limit.m_current_value).toUShort()));
+            setValue(gpuControl.m_gpu_temperature_limit.m_default_value,[&](legion::messages::GPUPower::Limit::Descriptor &descriptor,uint value){
+                descriptor.set_default_value(value);
+            },power.mutable_gpu_temperature_limit()->mutable_mode_descriptor_map());
 
-        setValue(gpuControl.m_gpu_temperature_limit.m_max_value,[&](legion::messages::GPUPower::Limit::Descriptor &descriptor,uint value){
-            descriptor.set_max_value(value);
-        },power.mutable_gpu_temperature_limit()->mutable_mode_descriptor_map());
+            setValue(gpuControl.m_gpu_temperature_limit.m_max_value,[&](legion::messages::GPUPower::Limit::Descriptor &descriptor,uint value){
+                descriptor.set_max_value(value);
+            },power.mutable_gpu_temperature_limit()->mutable_mode_descriptor_map());
 
-        setValue(gpuControl.m_gpu_temperature_limit.m_min_value,[&](legion::messages::GPUPower::Limit::Descriptor &descriptor,uint value){
-            descriptor.set_min_value(value);
-        },power.mutable_gpu_temperature_limit()->mutable_mode_descriptor_map());
+            setValue(gpuControl.m_gpu_temperature_limit.m_min_value,[&](legion::messages::GPUPower::Limit::Descriptor &descriptor,uint value){
+                descriptor.set_min_value(value);
+            },power.mutable_gpu_temperature_limit()->mutable_mode_descriptor_map());
 
-        setValue(gpuControl.m_gpu_temperature_limit.m_scalar_increment,[&](legion::messages::GPUPower::Limit::Descriptor &descriptor,uint value){
-            descriptor.set_scalar_increment(value);
-        },power.mutable_gpu_temperature_limit()->mutable_mode_descriptor_map());
+            setValue(gpuControl.m_gpu_temperature_limit.m_scalar_increment,[&](legion::messages::GPUPower::Limit::Descriptor &descriptor,uint value){
+                descriptor.set_scalar_increment(value);
+            },power.mutable_gpu_temperature_limit()->mutable_mode_descriptor_map());
 
-        setValue(gpuControl.m_gpu_temperature_limit.m_supported,[&](legion::messages::GPUPower::Limit::Descriptor &descriptor,uint value){
-            descriptor.set_supported(value);
-        },power.mutable_gpu_temperature_limit()->mutable_mode_descriptor_map());
+            setValue(gpuControl.m_gpu_temperature_limit.m_supported,[&](legion::messages::GPUPower::Limit::Descriptor &descriptor,uint value){
+                descriptor.set_supported(value);
+            },power.mutable_gpu_temperature_limit()->mutable_mode_descriptor_map());
+        }
 
 
 

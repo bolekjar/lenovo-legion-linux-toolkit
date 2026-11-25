@@ -39,9 +39,17 @@ QByteArray SysFsDataProviderPowerProfile::serializeAndGetData()
         powerProfile.set_current_value(static_cast<legion::messages::PowerProfile::Profiles>(getData(smartFan.m_current_value).toUShort()));
         powerProfile.set_thermal_mode(static_cast<legion::messages::PowerProfile::Profiles>(getData(other.get_thermal_mode).toUShort()));
 
-        powerProfile.mutable_custom_fnq_enabled()->set_supported(getData(otherInOther.m_god_mode_fnq_switchable.m_supported).toShort() > 0);
-        powerProfile.mutable_custom_fnq_enabled()->set_current_value(getData(otherInOther.m_god_mode_fnq_switchable.m_current_value).toShort() == 1);
-        powerProfile.mutable_custom_fnq_enabled()->set_default_value(getData(otherInOther.m_god_mode_fnq_switchable.m_default_value).toShort() == 1);
+        // Not shown by the kernel driver when the firmware does not have it (capability data of the other mode)
+        if(otherInOther.m_god_mode_fnq_switchable.m_supported.empty())
+        {
+            powerProfile.mutable_custom_fnq_enabled()->set_supported(false);
+        }
+        else
+        {
+            powerProfile.mutable_custom_fnq_enabled()->set_supported(getData(otherInOther.m_god_mode_fnq_switchable.m_supported).toShort() > 0);
+            powerProfile.mutable_custom_fnq_enabled()->set_current_value(getData(otherInOther.m_god_mode_fnq_switchable.m_current_value).toShort() == 1);
+            powerProfile.mutable_custom_fnq_enabled()->set_default_value(getData(otherInOther.m_god_mode_fnq_switchable.m_default_value).toShort() == 1);
+        }
 
         for(const auto profile : supportedProfiles())
         {
@@ -151,7 +159,7 @@ void SysFsDataProviderPowerProfile::settable(legion::messages::PowerProfile &pro
         {
             profile.clear_custom_fnq_enabled();
         }
-        else if(getData(other.m_god_mode_fnq_switchable.m_supported).toShort() <= 0)
+        else if(other.m_god_mode_fnq_switchable.m_supported.empty() || getData(other.m_god_mode_fnq_switchable.m_supported).toShort() <= 0)
         {
             skipField(origin,QString("custom Fn+Q=").append(QString::number(profile.custom_fnq_enabled().current_value())),"not supported");
             profile.clear_custom_fnq_enabled();

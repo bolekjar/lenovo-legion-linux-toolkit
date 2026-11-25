@@ -59,146 +59,167 @@ QByteArray SysFsDataProviderCPUPower::serializeAndGetData()
         /*
          * STP power limit
          */
-        cpuPower.mutable_cpu_stp_limit()->set_current_value(getData(cpuControl.m_cpu_stp_limit.m_current_value).toUInt());
-        setValue(cpuControl.m_cpu_stp_limit.m_default_value,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
-            descriptor.set_default_value(value);
-        },cpuPower.mutable_cpu_stp_limit()->mutable_mode_descriptor_map());
+        if(!cpuControl.m_cpu_stp_limit.m_current_value.empty())
+        {
+            cpuPower.mutable_cpu_stp_limit()->set_current_value(getData(cpuControl.m_cpu_stp_limit.m_current_value).toUInt());
+            setValue(cpuControl.m_cpu_stp_limit.m_default_value,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
+                descriptor.set_default_value(value);
+            },cpuPower.mutable_cpu_stp_limit()->mutable_mode_descriptor_map());
 
-        setValue(cpuControl.m_cpu_stp_limit.m_max_value,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
-            descriptor.set_max_value(value);
-        },cpuPower.mutable_cpu_stp_limit()->mutable_mode_descriptor_map());
+            setValue(cpuControl.m_cpu_stp_limit.m_max_value,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
+                descriptor.set_max_value(value);
+            },cpuPower.mutable_cpu_stp_limit()->mutable_mode_descriptor_map());
 
-        setValue(cpuControl.m_cpu_stp_limit.m_min_value,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
-            descriptor.set_min_value(value);
-        },cpuPower.mutable_cpu_stp_limit()->mutable_mode_descriptor_map());
+            setValue(cpuControl.m_cpu_stp_limit.m_min_value,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
+                descriptor.set_min_value(value);
+            },cpuPower.mutable_cpu_stp_limit()->mutable_mode_descriptor_map());
 
-        setValue(cpuControl.m_cpu_stp_limit.m_scalar_increment,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
-            descriptor.set_scalar_increment(value);
-        },cpuPower.mutable_cpu_stp_limit()->mutable_mode_descriptor_map());
+            setValue(cpuControl.m_cpu_stp_limit.m_scalar_increment,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
+                descriptor.set_scalar_increment(value);
+            },cpuPower.mutable_cpu_stp_limit()->mutable_mode_descriptor_map());
 
-        setValue(cpuControl.m_cpu_stp_limit.m_supported,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
-            descriptor.set_supported(value);
-        },cpuPower.mutable_cpu_stp_limit()->mutable_mode_descriptor_map());
+            setValue(cpuControl.m_cpu_stp_limit.m_supported,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
+                descriptor.set_supported(value);
+            },cpuPower.mutable_cpu_stp_limit()->mutable_mode_descriptor_map());
+        }
 
 
         /*
          * LTP power limit
          */
-        cpuPower.mutable_cpu_ltp_limit()->set_current_value(getData(cpuControl.m_cpu_ltp_limit.m_current_value).toUInt());
-        setValue(cpuControl.m_cpu_ltp_limit.m_default_value,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
-            descriptor.set_default_value(value);
-        },cpuPower.mutable_cpu_ltp_limit()->mutable_mode_descriptor_map());
-        setValue(cpuControl.m_cpu_ltp_limit.m_max_value,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
-            descriptor.set_max_value(value);
-        },cpuPower.mutable_cpu_ltp_limit()->mutable_mode_descriptor_map());
-        setValue(cpuControl.m_cpu_ltp_limit.m_min_value,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
-            descriptor.set_min_value(value);
-        },cpuPower.mutable_cpu_ltp_limit()->mutable_mode_descriptor_map());
-        setValue(cpuControl.m_cpu_ltp_limit.m_scalar_increment,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
-            descriptor.set_scalar_increment(value);
-        },cpuPower.mutable_cpu_ltp_limit()->mutable_mode_descriptor_map());
-        setValue(cpuControl.m_cpu_ltp_limit.m_supported,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
-            descriptor.set_supported(value);
-        },cpuPower.mutable_cpu_ltp_limit()->mutable_mode_descriptor_map());
+        if(!cpuControl.m_cpu_ltp_limit.m_current_value.empty())
+        {
+            cpuPower.mutable_cpu_ltp_limit()->set_current_value(getData(cpuControl.m_cpu_ltp_limit.m_current_value).toUInt());
+            setValue(cpuControl.m_cpu_ltp_limit.m_default_value,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
+                descriptor.set_default_value(value);
+            },cpuPower.mutable_cpu_ltp_limit()->mutable_mode_descriptor_map());
+            setValue(cpuControl.m_cpu_ltp_limit.m_max_value,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
+                descriptor.set_max_value(value);
+            },cpuPower.mutable_cpu_ltp_limit()->mutable_mode_descriptor_map());
+            setValue(cpuControl.m_cpu_ltp_limit.m_min_value,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
+                descriptor.set_min_value(value);
+            },cpuPower.mutable_cpu_ltp_limit()->mutable_mode_descriptor_map());
+            setValue(cpuControl.m_cpu_ltp_limit.m_scalar_increment,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
+                descriptor.set_scalar_increment(value);
+            },cpuPower.mutable_cpu_ltp_limit()->mutable_mode_descriptor_map());
+            setValue(cpuControl.m_cpu_ltp_limit.m_supported,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
+                descriptor.set_supported(value);
+            },cpuPower.mutable_cpu_ltp_limit()->mutable_mode_descriptor_map());
+        }
 
 
 
         /*
          * CLP power limit
          */
-        cpuPower.mutable_cpu_clp_limit()->set_current_value(getData(cpuControl.m_cpu_clp_limit.m_current_value).toUInt());
-        setValue(cpuControl.m_cpu_clp_limit.m_default_value,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
-            descriptor.set_default_value(value);
-        },cpuPower.mutable_cpu_clp_limit()->mutable_mode_descriptor_map());
-        setValue(cpuControl.m_cpu_clp_limit.m_max_value,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
-            descriptor.set_max_value(value);
-        },cpuPower.mutable_cpu_clp_limit()->mutable_mode_descriptor_map());
-        setValue(cpuControl.m_cpu_clp_limit.m_min_value,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
-            descriptor.set_min_value(value);
-        },cpuPower.mutable_cpu_clp_limit()->mutable_mode_descriptor_map());
-        setValue(cpuControl.m_cpu_clp_limit.m_scalar_increment,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
-            descriptor.set_scalar_increment(value);
-        },cpuPower.mutable_cpu_clp_limit()->mutable_mode_descriptor_map());
-        setValue(cpuControl.m_cpu_clp_limit.m_supported,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
-            descriptor.set_supported(value);
-        },cpuPower.mutable_cpu_clp_limit()->mutable_mode_descriptor_map());
+        if(!cpuControl.m_cpu_clp_limit.m_current_value.empty())
+        {
+            cpuPower.mutable_cpu_clp_limit()->set_current_value(getData(cpuControl.m_cpu_clp_limit.m_current_value).toUInt());
+            setValue(cpuControl.m_cpu_clp_limit.m_default_value,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
+                descriptor.set_default_value(value);
+            },cpuPower.mutable_cpu_clp_limit()->mutable_mode_descriptor_map());
+            setValue(cpuControl.m_cpu_clp_limit.m_max_value,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
+                descriptor.set_max_value(value);
+            },cpuPower.mutable_cpu_clp_limit()->mutable_mode_descriptor_map());
+            setValue(cpuControl.m_cpu_clp_limit.m_min_value,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
+                descriptor.set_min_value(value);
+            },cpuPower.mutable_cpu_clp_limit()->mutable_mode_descriptor_map());
+            setValue(cpuControl.m_cpu_clp_limit.m_scalar_increment,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
+                descriptor.set_scalar_increment(value);
+            },cpuPower.mutable_cpu_clp_limit()->mutable_mode_descriptor_map());
+            setValue(cpuControl.m_cpu_clp_limit.m_supported,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
+                descriptor.set_supported(value);
+            },cpuPower.mutable_cpu_clp_limit()->mutable_mode_descriptor_map());
+        }
 
 
 
         /*
          * TMP power limit
          */
-        cpuPower.mutable_cpu_tmp_limit()->set_current_value(getData(cpuControl.m_cpu_tmp_limit.m_current_value).toUInt());
-        setValue(cpuControl.m_cpu_tmp_limit.m_default_value,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
-            descriptor.set_default_value(value);
-        },cpuPower.mutable_cpu_tmp_limit()->mutable_mode_descriptor_map());
-        setValue(cpuControl.m_cpu_tmp_limit.m_max_value,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
-            descriptor.set_max_value(value);
-        },cpuPower.mutable_cpu_tmp_limit()->mutable_mode_descriptor_map());
-        setValue(cpuControl.m_cpu_tmp_limit.m_min_value,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
-            descriptor.set_min_value(value);
-        },cpuPower.mutable_cpu_tmp_limit()->mutable_mode_descriptor_map());
-        setValue(cpuControl.m_cpu_tmp_limit.m_scalar_increment,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
-            descriptor.set_scalar_increment(value);
-        },cpuPower.mutable_cpu_tmp_limit()->mutable_mode_descriptor_map());
-        setValue(cpuControl.m_cpu_tmp_limit.m_supported,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
-            descriptor.set_supported(value);
-        },cpuPower.mutable_cpu_tmp_limit()->mutable_mode_descriptor_map());
+        if(!cpuControl.m_cpu_tmp_limit.m_current_value.empty())
+        {
+            cpuPower.mutable_cpu_tmp_limit()->set_current_value(getData(cpuControl.m_cpu_tmp_limit.m_current_value).toUInt());
+            setValue(cpuControl.m_cpu_tmp_limit.m_default_value,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
+                descriptor.set_default_value(value);
+            },cpuPower.mutable_cpu_tmp_limit()->mutable_mode_descriptor_map());
+            setValue(cpuControl.m_cpu_tmp_limit.m_max_value,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
+                descriptor.set_max_value(value);
+            },cpuPower.mutable_cpu_tmp_limit()->mutable_mode_descriptor_map());
+            setValue(cpuControl.m_cpu_tmp_limit.m_min_value,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
+                descriptor.set_min_value(value);
+            },cpuPower.mutable_cpu_tmp_limit()->mutable_mode_descriptor_map());
+            setValue(cpuControl.m_cpu_tmp_limit.m_scalar_increment,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
+                descriptor.set_scalar_increment(value);
+            },cpuPower.mutable_cpu_tmp_limit()->mutable_mode_descriptor_map());
+            setValue(cpuControl.m_cpu_tmp_limit.m_supported,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
+                descriptor.set_supported(value);
+            },cpuPower.mutable_cpu_tmp_limit()->mutable_mode_descriptor_map());
+        }
 
 
         /*
          * PL1 tau
          */
-        cpuPower.mutable_cpu_pl1_tau()->set_current_value(getData(cpuControl.m_cpu_pl1_tau.m_current_value).toUInt());
-        setValue(cpuControl.m_cpu_pl1_tau.m_default_value,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
-            descriptor.set_default_value(value);
-        },cpuPower.mutable_cpu_pl1_tau()->mutable_mode_descriptor_map());
-        setValue(cpuControl.m_cpu_pl1_tau.m_supported,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
-            descriptor.set_supported(value);
-        },cpuPower.mutable_cpu_pl1_tau()->mutable_mode_descriptor_map());
-        setValuesSteps(cpuControl.m_cpu_pl1_tau.m_steps,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,const QList<QString>& values){
-            for (const auto& val : values) {
-                descriptor.add_steps(val.toUInt());
-            }
-        },cpuPower.mutable_cpu_pl1_tau()->mutable_mode_descriptor_map());
+        if(!cpuControl.m_cpu_pl1_tau.m_current_value.empty())
+        {
+            cpuPower.mutable_cpu_pl1_tau()->set_current_value(getData(cpuControl.m_cpu_pl1_tau.m_current_value).toUInt());
+            setValue(cpuControl.m_cpu_pl1_tau.m_default_value,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
+                descriptor.set_default_value(value);
+            },cpuPower.mutable_cpu_pl1_tau()->mutable_mode_descriptor_map());
+            setValue(cpuControl.m_cpu_pl1_tau.m_supported,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
+                descriptor.set_supported(value);
+            },cpuPower.mutable_cpu_pl1_tau()->mutable_mode_descriptor_map());
+            setValuesSteps(cpuControl.m_cpu_pl1_tau.m_steps,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,const QList<QString>& values){
+                for (const auto& val : values) {
+                    descriptor.add_steps(val.toUInt());
+                }
+            },cpuPower.mutable_cpu_pl1_tau()->mutable_mode_descriptor_map());
+        }
 
 
         /*
          * GPU total on ac
          */
-        cpuPower.mutable_gpu_total_onac()->set_current_value(getData(gpuControl.m_gpu_total_onac.m_current_value).toUInt());
-        setValue(gpuControl.m_gpu_total_onac.m_default_value,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
-            descriptor.set_default_value(value);
-        },cpuPower.mutable_gpu_total_onac()->mutable_mode_descriptor_map());
-        setValue(gpuControl.m_gpu_total_onac.m_max_value,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
-            descriptor.set_max_value(value);
-        },cpuPower.mutable_gpu_total_onac()->mutable_mode_descriptor_map());
-        setValue(gpuControl.m_gpu_total_onac.m_min_value,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
-            descriptor.set_min_value(value);
-        },cpuPower.mutable_gpu_total_onac()->mutable_mode_descriptor_map());
-        setValue(gpuControl.m_gpu_total_onac.m_scalar_increment,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
-            descriptor.set_scalar_increment(value);
-        },cpuPower.mutable_gpu_total_onac()->mutable_mode_descriptor_map());
-        setValue(gpuControl.m_gpu_total_onac.m_supported,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
-            descriptor.set_supported(value);
-        },cpuPower.mutable_gpu_total_onac()->mutable_mode_descriptor_map());
+        if(!gpuControl.m_gpu_total_onac.m_current_value.empty())
+        {
+            cpuPower.mutable_gpu_total_onac()->set_current_value(getData(gpuControl.m_gpu_total_onac.m_current_value).toUInt());
+            setValue(gpuControl.m_gpu_total_onac.m_default_value,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
+                descriptor.set_default_value(value);
+            },cpuPower.mutable_gpu_total_onac()->mutable_mode_descriptor_map());
+            setValue(gpuControl.m_gpu_total_onac.m_max_value,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
+                descriptor.set_max_value(value);
+            },cpuPower.mutable_gpu_total_onac()->mutable_mode_descriptor_map());
+            setValue(gpuControl.m_gpu_total_onac.m_min_value,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
+                descriptor.set_min_value(value);
+            },cpuPower.mutable_gpu_total_onac()->mutable_mode_descriptor_map());
+            setValue(gpuControl.m_gpu_total_onac.m_scalar_increment,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
+                descriptor.set_scalar_increment(value);
+            },cpuPower.mutable_gpu_total_onac()->mutable_mode_descriptor_map());
+            setValue(gpuControl.m_gpu_total_onac.m_supported,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
+                descriptor.set_supported(value);
+            },cpuPower.mutable_gpu_total_onac()->mutable_mode_descriptor_map());
+        }
 
 
         /*
          * GPU to CPU dynamic boost
          */
-        cpuPower.mutable_gpu_to_cpu_dynamic_boost()->set_current_value(getData(gpuControl.m_gpu_to_cpu_dynamic_boost.m_current_value).toUInt());
-        setValue(gpuControl.m_gpu_to_cpu_dynamic_boost.m_default_value,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
-            descriptor.set_default_value(value);
-        },cpuPower.mutable_gpu_to_cpu_dynamic_boost()->mutable_mode_descriptor_map());
-        setValue(gpuControl.m_gpu_to_cpu_dynamic_boost.m_supported,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
-            descriptor.set_supported(value);
-        },cpuPower.mutable_gpu_to_cpu_dynamic_boost()->mutable_mode_descriptor_map());
-        setValuesSteps(gpuControl.m_gpu_to_cpu_dynamic_boost.m_steps,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,const QList<QString>& values){
-            for (const auto& val : values) {
-                descriptor.add_steps(val.toUInt());
-            }
-        },cpuPower.mutable_gpu_to_cpu_dynamic_boost()->mutable_mode_descriptor_map());
+        if(!gpuControl.m_gpu_to_cpu_dynamic_boost.m_current_value.empty())
+        {
+            cpuPower.mutable_gpu_to_cpu_dynamic_boost()->set_current_value(getData(gpuControl.m_gpu_to_cpu_dynamic_boost.m_current_value).toUInt());
+            setValue(gpuControl.m_gpu_to_cpu_dynamic_boost.m_default_value,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
+                descriptor.set_default_value(value);
+            },cpuPower.mutable_gpu_to_cpu_dynamic_boost()->mutable_mode_descriptor_map());
+            setValue(gpuControl.m_gpu_to_cpu_dynamic_boost.m_supported,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
+                descriptor.set_supported(value);
+            },cpuPower.mutable_gpu_to_cpu_dynamic_boost()->mutable_mode_descriptor_map());
+            setValuesSteps(gpuControl.m_gpu_to_cpu_dynamic_boost.m_steps,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,const QList<QString>& values){
+                for (const auto& val : values) {
+                    descriptor.add_steps(val.toUInt());
+                }
+            },cpuPower.mutable_gpu_to_cpu_dynamic_boost()->mutable_mode_descriptor_map());
+        }
 
     } catch(SysFsDriver::exception_T& ex)
     {
