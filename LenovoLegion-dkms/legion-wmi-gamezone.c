@@ -66,8 +66,7 @@ static const struct dmi_system_id fwbug_list[] = {
 static bool
 legion_is_ac_connected(const enum power_adapter_status adapter_status)
 {
-	return (adapter_status == LEGION_WMI_GZ_AC_CONNECTED) ||
-	       (adapter_status == LEGION_WMI_GZ_AC_CONNECTED_LOW_WATTAGE);
+	return adapter_status == LEGION_WMI_GZ_POWER_CHARGE_AC;
 }
 
 static enum thermal_mode
@@ -340,7 +339,7 @@ static bool legion_wmi_gz_legacy_mode(struct lenovo_wmi_gz_priv *priv,
 	if (legion_wmi_gz_charging_mode_get(priv->wdev, status))
 		return false;
 
-	if (*status != LEGION_WMI_GZ_AC_CONNECTED ||
+	if (*status != LEGION_WMI_GZ_POWER_CHARGE_AC ||
 	    legion_wmi_gz_thermal_mode_get(priv->wdev, &firmware))
 		return true;
 
@@ -356,6 +355,47 @@ static bool legion_wmi_gz_legacy_mode(struct lenovo_wmi_gz_priv *priv,
 	}
 
 	return true;
+}
+
+/**
+ * legion_wmi_gz_thermal_mode_effective() - The thermal mode the firmware runs now.
+ * @priv: Driver data of the Gamezone interface.
+ * @mode: Pointer to return the thermal mode with.
+ *
+ * GetSmartFanMode of the older firmware returns 255 also for the custom mode kept
+ * while it is left on the battery or a low wattage adapter (CTPA), the firmware
+ * runs the mode of its last thermal mode event then: without the full AC adapter
+ * the stored mode of the power source (legion_wmi_gz_legacy_mode()). The newer
+ * firmware: its mode.
+ *
+ * Return: 0 on success, or an error code.
+ */
+int legion_wmi_gz_thermal_mode_effective(struct lenovo_wmi_gz_priv *priv,
+					 enum thermal_mode *mode)
+{
+	enum power_adapter_status status;
+	bool legacy;
+	int ret;
+
+	ret = legion_wmi_gz_thermal_mode_get(priv->wdev, mode);
+	if (ret)
+		return ret;
+
+	scoped_guard(spinlock, &priv->gz_mode_lock) {
+		legacy = priv->legacy_platform;
+	}
+
+	if (!legacy || *mode != LEGION_WMI_GZ_THERMAL_MODE_CUSTOM ||
+	    legion_wmi_gz_charging_mode_get(priv->wdev, &status) ||
+	    status == LEGION_WMI_GZ_POWER_CHARGE_AC)
+		return 0;
+
+	scoped_guard(spinlock, &priv->gz_mode_lock) {
+		priv->current_adapter_status = status;
+		*mode = legion_current_mode(priv);
+	}
+
+	return 0;
 }
 
 /**
@@ -516,7 +556,7 @@ static int legion_wmi_gz_current_profile(struct lenovo_wmi_gz_priv *priv,
 {
 	enum thermal_mode mode;
 
-	if (legion_wmi_gz_thermal_mode_get(priv->wdev, &mode) == 0) {
+	if (legion_wmi_gz_thermal_mode_effective(priv, &mode) == 0) {
 		legion_modify_current_mode(priv, mode);
 	} else {
 		scoped_guard(spinlock, &priv->gz_mode_lock)

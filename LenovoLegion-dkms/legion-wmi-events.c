@@ -207,9 +207,8 @@ static void legion_wmi_events_power_charge_mode(struct wmi_device *wdev,
 	int ret;
 
 	switch (value) {
-	case LEGION_WMI_GZ_AC_CONNECTED:
-	case LEGION_WMI_GZ_AC_CONNECTED_LOW_WATTAGE:
-	case LEGION_WMI_GZ_AC_DISCONNECTED:
+	case LEGION_WMI_GZ_POWER_CHARGE_AC:
+	case LEGION_WMI_GZ_POWER_CHARGE_BATTERY:
 		break;
 	default:
 		dev_err(&wdev->dev, "Got invalid power charge mode: %llx\n",

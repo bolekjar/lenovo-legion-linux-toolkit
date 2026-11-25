@@ -175,10 +175,15 @@ enum thermal_mode {
 
 #define THERMAL_MODES_SIZE 6
 
+/*
+ * GetPowerChargeMode and the power charge mode event (ASL WMAA 0x2F, the same on
+ * the newer and the older firmware): 1 with the full AC adapter (ACTY 1), 2 on the
+ * battery or with a low wattage adapter (the firmware runs as on the battery: no
+ * custom mode on the older firmware)
+ */
 enum power_adapter_status {
-	LEGION_WMI_GZ_AC_CONNECTED = 0x00,
-	LEGION_WMI_GZ_AC_CONNECTED_LOW_WATTAGE = 0x01,
-	LEGION_WMI_GZ_AC_DISCONNECTED = 0x02
+	LEGION_WMI_GZ_POWER_CHARGE_AC = 0x01,
+	LEGION_WMI_GZ_POWER_CHARGE_BATTERY = 0x02
 };
 
 #define DEFAULT_THERMAL_MODE LEGION_WMI_GZ_THERMAL_MODE_BALANCED
@@ -233,6 +238,8 @@ struct lenovo_wmi_gz_priv {
 
 struct device;
 
+int legion_wmi_gz_thermal_mode_effective(struct lenovo_wmi_gz_priv *priv,
+					 enum thermal_mode *mode);
 int legion_wmi_gz_get(struct wmi_device *wdev,
 		      enum LEGION_GAMEZONE_METHOD_ID method_id, u32 *value);
 int legion_wmi_gz_set(struct wmi_device *wdev,

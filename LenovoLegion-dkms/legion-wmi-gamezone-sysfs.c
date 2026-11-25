@@ -270,10 +270,11 @@ static int legion_wmi_validate_input(const u32 value,
 	{                                                                                   \
 		return sysfs_emit(buf, "%s\n", _dispname);                                  \
 	}                                                                                   \
+	/* The mode the firmware runs (legion_wmi_gz_thermal_mode_effective()) */         \
 	static ssize_t func_##_name##_get(                                                  \
 		struct kobject *kobj, struct kobj_attribute *kattr, char *buf)              \
 	{                                                                                   \
-		u32 value;                                                                  \
+		enum thermal_mode mode;                                                     \
 		struct lenovo_wmi_gz_priv *priv =                                           \
 			dev_get_drvdata(kobj_to_dev(kobj->parent));                         \
 											    \
@@ -281,9 +282,9 @@ static int legion_wmi_validate_input(const u32 value,
 		if (!priv) {                                                                \
 			return -ENODEV;                                                     \
 		}                                                                           \
-		if (legion_wmi_gz_get(priv->wdev, _attrget, &value))                        \
+		if (legion_wmi_gz_thermal_mode_effective(priv, &mode))                      \
 			return -ENODEV;                                                     \
-		return sysfs_emit(buf, "%u\n", value);                                      \
+		return sysfs_emit(buf, "%u\n", mode);                                       \
 	}                                                                                   \
 	static ssize_t func_##_name##_set(struct kobject *kobj,                             \
 					  struct kobj_attribute *kattr,                     \
