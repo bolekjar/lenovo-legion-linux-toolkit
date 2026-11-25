@@ -72,7 +72,7 @@
 - Live charts of the CPU and GPU temperatures, fan speeds, CPU power and frequencies with warning and critical
   thresholds.
 - CPU Details and GPU Details windows with live tiles and charts.
-- Battery state, health, power and cycles.
+- Battery state, health, power and cycles, a warning when a low wattage power adapter (e.g. USB-C) is connected.
 
 **Other**
 - Disable the touchpad and the Windows key, Fn lock, camera power, display overdrive.
