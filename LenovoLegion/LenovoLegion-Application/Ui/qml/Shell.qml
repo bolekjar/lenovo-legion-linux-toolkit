@@ -51,8 +51,15 @@ Control {
             about.open()
         }
 
-        // Camera shutter (Legion WMI utility event): the firmware reports only its changes, its state can not be read
+        // Camera shutter (Legion WMI utility event): the firmware reports only its changes, its state can not be read;
+        // a low wattage power adapter connected (the daemon tells it once, the battery indicator shows it as well)
         function onDaemonNotification(notification) {
+            if (notification.action === "POWER_ADAPTER_LOW_WATTAGE") {
+                hardwareNotifications.notify("Power adapter", "Low wattage power adapter connected, the performance of the notebook is limited",
+                                             "warning", "power-adapter")
+                return
+            }
+
             if (notification.action !== "SPECIAL_KEY_PRESSED")
                 return
 

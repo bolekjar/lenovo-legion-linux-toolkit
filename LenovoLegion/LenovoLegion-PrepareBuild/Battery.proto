@@ -30,4 +30,15 @@ message Battery
 
     bool            ac_online                 = 15;    // AC adapter connected (power_supply of type Mains)
     bool            charge_mode_supported     = 16;    // current_charge_mode_value is valid
+
+    // Power adapter by the firmware (Legion game zone IsACFitForOC: the adapter can supply the full power), not set
+    // without the Lenovo Legion driver or without the AC state
+    enum PowerAdapter {
+        POWER_ADAPTER_UNKNOWN               = 0;
+        POWER_ADAPTER_DISCONNECTED          = 1;
+        POWER_ADAPTER_CONNECTED             = 2;
+        POWER_ADAPTER_CONNECTED_LOW_WATTAGE = 3;   // e.g. a USB-C or a smaller adapter: the performance is limited
+    }
+
+    PowerAdapter    power_adapter             = 17;
 }

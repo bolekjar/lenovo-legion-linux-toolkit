@@ -9,6 +9,7 @@
 
 #include <SysFsDataProvider.h>
 
+#include <Battery.pb.h>
 #include <MessageRegistry.pb.h>
 
 namespace LenovoLegionDaemon::Kit {
@@ -22,6 +23,11 @@ public:
 
     virtual QByteArray serializeAndGetData()                         override;
     virtual QByteArray deserializeAndSetData(const QByteArray&)      override;
+
+    /*
+     * Power adapter now (POWER_ADAPTER_UNKNOWN without the data)
+     */
+    legion::messages::Battery::PowerAdapter powerAdapter();
 
 public:
 

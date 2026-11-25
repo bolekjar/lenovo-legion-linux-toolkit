@@ -34,7 +34,8 @@
  * - smart fan setting (GUID 41E1): uint32 mode, not in _WDG of 16IAX10H, no uevent,
  * - smart fan mode (0xE3): uint32 mode and uint32 version (of Fn+Q): a package of both,
  * - key lock status (0xE2): uint32 KeyLockState,
- * - utility key (0xD0): uint32 PressTypeDataVal.
+ * - utility key (0xD0): uint32 PressTypeDataVal,
+ * - AC / PD status (0xE9): uint16 AC_PD_Status, a change of the power adapter.
  */
 #define THERMAL_MODE_EVENT_GUID "D320289E-8FEA-41E0-86F9-911D83151B5F"
 #define CHARGE_MODE_EVENT_GUID "D320289E-8FEA-41E0-86F9-711D83151B5F"
@@ -43,6 +44,7 @@
 #define SMART_FAN_MODE_GUID "D320289E-8FEA-41E0-86F9-611D83151B5F"
 #define KEYLOCK_STATUS_GUID "10AFC6D9-EA8B-4590-A2E7-1CD3C84BB4B1"
 #define UTILITY_GUID "8FC0DE0C-B4E4-43FD-B0F3-8871711C1294"
+#define AC_PD_EVENT_GUID "BE1346E5-3A32-4A31-B8B0-2CD195E1F572"
 
 #define LEGION_WMI_EVENT_DEVICE(guid, type)                          \
 	.guid_string = (guid), .context = &(enum legion_events_type) \
@@ -446,6 +448,7 @@ static const struct wmi_device_id legion_wmi_events_id_table[] = {
 	{ LEGION_WMI_EVENT_DEVICE(KEYLOCK_STATUS_GUID,
 				  LEGION_WMI_EVENT_KEYLOCK_STATUS) },
 	{ LEGION_WMI_EVENT_DEVICE(UTILITY_GUID, LENOVO_WMI_EVENT_UTILITY) },
+	{ LEGION_WMI_EVENT_DEVICE(AC_PD_EVENT_GUID, LEGION_WMI_EVENT_AC_PD) },
 	{}
 };
 

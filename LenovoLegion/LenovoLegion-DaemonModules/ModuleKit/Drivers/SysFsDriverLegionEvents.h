@@ -27,7 +27,9 @@ public:
         LEGION_WMI_EVENT_THERMAL_MODE 		= 1,
         LEGION_WMI_EVENT_POWER_CHARGE_MODE 	= 2,
         LEGION_WMI_EVENT_SMART_FAN_MODE     = 3,
-        LEGION_WMI_EVENT_KEYLOCK_STATUS     = 4
+        LEGION_WMI_EVENT_KEYLOCK_STATUS     = 4,
+        LEGION_WMI_EVENT_UNKNOWN            = 5,
+        LEGION_WMI_EVENT_AC_PD              = 6     // change of the power adapter
     };
 
 public:

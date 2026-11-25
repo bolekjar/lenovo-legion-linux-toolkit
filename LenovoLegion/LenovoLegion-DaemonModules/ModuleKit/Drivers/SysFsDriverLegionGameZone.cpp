@@ -85,6 +85,7 @@ void SysFsDriverLegionGameZone::init()
 
         m_descriptor["other_get_power_charge_mode"] = std::filesystem::path(path).append("get_power_charge_mode");
         m_descriptor["other_get_thermal_mode"] = std::filesystem::path(path).append("get_thermal_mode");
+        m_descriptor["other_is_ac_fit_for_oc"] = std::filesystem::path(path).append("is_ac_fit_for_oc");
     }
 }
 

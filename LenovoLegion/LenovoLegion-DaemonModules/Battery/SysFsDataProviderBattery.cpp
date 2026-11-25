@@ -133,6 +133,30 @@ QByteArray SysFsDataProviderBattery::serializeAndGetData()
         }
     }
 
+    /*
+     * Power adapter: connected (power_supply Mains) and able to supply the full power (game zone IsACFitForOC, 0 for a
+     * USB-C or a smaller adapter, the same as Lenovo Legion Toolkit)
+     */
+    if(battery.has_ac_online() && m_sysFsDriverManager->isLoaded(SysFsDriverLegionGameZone::DRIVER_NAME))
+    {
+        const SysFsDriverLegionGameZone::GameZone::Other other(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverLegionGameZone::DRIVER_NAME));
+        const std::optional<QString> fit = other.is_ac_fit_for_oc.empty() ? std::nullopt : getOptionalData(other.is_ac_fit_for_oc);
+
+        if(!battery.ac_online())
+        {
+            battery.set_power_adapter(legion::messages::Battery::POWER_ADAPTER_DISCONNECTED);
+        }
+        else if(fit.has_value())
+        {
+            battery.set_power_adapter(fit->toUInt() != 0 ? legion::messages::Battery::POWER_ADAPTER_CONNECTED
+                                                          : legion::messages::Battery::POWER_ADAPTER_CONNECTED_LOW_WATTAGE);
+        }
+        else
+        {
+            battery.set_power_adapter(legion::messages::Battery::POWER_ADAPTER_CONNECTED);
+        }
+    }
+
     byteArray.resize(battery.ByteSizeLong());
     if(!battery.SerializeToArray(byteArray.data(),byteArray.size()))
     {
@@ -145,6 +169,29 @@ QByteArray SysFsDataProviderBattery::serializeAndGetData()
 QByteArray SysFsDataProviderBattery::deserializeAndSetData(const QByteArray &)
 {
     return {};
+}
+
+legion::messages::Battery::PowerAdapter SysFsDataProviderBattery::powerAdapter()
+{
+    legion::messages::Battery battery;
+
+    try {
+        const QByteArray data = serializeAndGetData();
+
+        if(battery.ParseFromArray(data.data(),data.size()))
+        {
+            return battery.power_adapter();
+        }
+    } catch(SysFsDriver::exception_T&)
+    {
+        /*
+         * Without the battery or the driver the adapter is not known
+         */
+    } catch(exception_T&)
+    {
+    }
+
+    return legion::messages::Battery::POWER_ADAPTER_UNKNOWN;
 }
 
 

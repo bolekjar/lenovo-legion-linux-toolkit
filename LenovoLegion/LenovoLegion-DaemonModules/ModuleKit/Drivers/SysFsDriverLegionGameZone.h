@@ -89,11 +89,13 @@ public:
 
             Other(const SysFsDriver::DescriptorType& descriptor) :
                 get_power_charge_mode(descriptor["other_get_power_charge_mode"]),
-                get_thermal_mode(descriptor["other_get_thermal_mode"])
+                get_thermal_mode(descriptor["other_get_thermal_mode"]),
+                is_ac_fit_for_oc(descriptor["other_is_ac_fit_for_oc"])
             {}
 
             const std::filesystem::path  get_power_charge_mode;
             const std::filesystem::path  get_thermal_mode;
+            const std::filesystem::path  is_ac_fit_for_oc;   // 1: the adapter can supply the full power
         };
 
         explicit GameZone(const SysFsDriver::DescriptorType& descriptor) :

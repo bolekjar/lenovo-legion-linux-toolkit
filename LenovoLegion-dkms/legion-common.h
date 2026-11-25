@@ -33,6 +33,13 @@ enum legion_events_type {
 	LEGION_WMI_EVENT_SMART_FAN_MODE = 3,
 	LEGION_WMI_EVENT_KEYLOCK_STATUS = 4,
 	LEGION_WMI_EVENT_UNKNOWN = 5,
+	/*
+	 * EVENT_VALUE: AC_PD_Status of the firmware (a change of the power adapter,
+	 * ASL _WED 0xE9: the adapter status of the EC, bit 8 for an adapter which is
+	 * not USB-C PD); the type of the adapter is in the game zone
+	 * (other/is_ac_fit_for_oc)
+	 */
+	LEGION_WMI_EVENT_AC_PD = 6,
 
 	/*
 	 * Reserve 1000 - 1999 for WMI Other Events

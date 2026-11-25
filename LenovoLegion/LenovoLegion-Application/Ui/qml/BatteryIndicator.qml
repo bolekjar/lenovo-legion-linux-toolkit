@@ -39,6 +39,8 @@ Item {
     readonly property bool   charging:    status === "Charging"
     readonly property bool   discharging: status === "Discharging"
     readonly property bool   acOnline:    value("ac_online") === true || (value("charge_mode_supported") === true && number("current_charge_mode_value") === 1)
+    // Power adapter which can not supply the full power (POWER_ADAPTER_CONNECTED_LOW_WATTAGE, e.g. USB-C)
+    readonly property bool   lowWattage:  number("power_adapter") === 3
 
     readonly property real energyNow:    number("energy_now") / 1e6           // Wh
     readonly property real energyFull:   number("energy_full") / 1e6
@@ -59,7 +61,10 @@ Item {
         return minutes >= 60 ? Math.floor(minutes / 60) + " h " + (minutes % 60) + " min" : minutes + " min"
     }
 
-    readonly property string stateText: !supported ? "No battery"
+    // A low wattage power adapter is shown with the state (status bar and the tool tip)
+    readonly property string stateText: (acOnline && lowWattage ? "Low wattage adapter, " : "") + baseStateText
+
+    readonly property string baseStateText: !supported ? "No battery"
         : iconState === "charging" ? (hours >= 0 ? "Charging, " + duration(hours) + " to full" : "Charging")
         : iconState === "full" ? "Fully charged"
         : iconState === "plugged" ? "Plugged in, not charging"
@@ -298,7 +303,7 @@ Item {
                 Repeater {
                     model: [
                         { label: "Status",       value: indicator.status },
-                        { label: "Power source", value: indicator.acOnline ? "AC adapter" : "Battery" },
+                        { label: "Power source", value: indicator.acOnline ? (indicator.lowWattage ? "AC adapter (low wattage, the performance is limited)" : "AC adapter") : "Battery" },
                         { label: "Energy",       value: indicator.energyFull > 0 ? indicator.energyNow.toFixed(1) + " Wh of " + indicator.energyFull.toFixed(1) + " Wh" : "" },
                         { label: "Health",       value: indicator.health.length > 0 ? indicator.health + " (design " + indicator.energyDesign.toFixed(1) + " Wh)" : "" },
                         { label: "Power",        value: indicator.power > 0 ? indicator.power.toFixed(1) + " W" + (indicator.charging ? " in" : indicator.discharging ? " out" : "") : "" },

@@ -63,6 +63,7 @@ message Notification
         CPU_PSTATE_CHANGED                      = 11 [(legion.ui.reload) = "CPU_PSTATE,CPU_OPTIONS,CPU_FREQUENCY"];
         VPC_FEATURE_CHANGED                     = 12 [(legion.ui.reload) = "OTHER"];   // conservation mode, USB charging, Fn lock, camera power (written by another client)
         OTHER_FEATURE_CHANGED                   = 13 [(legion.ui.reload) = "OTHER"];   // instant boot, flip to start, overdrive of the other mode (written by another client)
+        POWER_ADAPTER_LOW_WATTAGE               = 14 [(legion.ui.reload) = "BATTERY,CPU_POWER,GPU_POWER"];   // a low wattage power adapter was connected
     }
 
 
