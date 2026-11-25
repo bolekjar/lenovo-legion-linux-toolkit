@@ -419,7 +419,11 @@ static ssize_t func_dgpu_hwid_show(struct kobject *kobj,
 static struct kobj_attribute kobj_attr_dgpu_hwid_name =
 	LEGION_WMI_ATTR_RO(dgpu_hwid, dgpu_hwid);
 
-LEGION_WMI_KOBJ_ATTR_RO(temp, GetGPUTemp, gpu_temp);
+/*
+ * GetGPUTemp (19) and GetCPUTemp (18) are not shown: the ASL returns 0 for them
+ * on the newer and on the older firmware (16IAX10H, 15IAH7H), the temperatures
+ * are in the hwmon
+ */
 LEGION_WMI_KOBJ_ATTR_RO(pow, GetGPUPow, gpu_pow);
 LEGION_WMI_KOBJ_ATTR_RO(oc_pow, GetGPUOCPow, gpu_oc_pow);
 LEGION_WMI_KOBJ_ATTR_RO(oc_type, GetGPUOCType, gpu_oc_type);
@@ -430,7 +434,6 @@ LEGION_WMI_KOBJ_ATTR_RO_STATIC_STRING(display_name,
 				      display_gpu);
 
 static struct attribute *legion_sysfs_gpu_attributes[] = {
-	&kobj_attr_gpu_temp.attr,
 	&kobj_attr_gpu_pow.attr,
 	&kobj_attr_gpu_oc_pow.attr,
 	&kobj_attr_gpu_oc_type.attr,
@@ -443,14 +446,34 @@ static struct attribute *legion_sysfs_gpu_attributes[] = {
 
 ////////////////// CPU related //////////////////////////////////////////
 
-LEGION_WMI_KOBJ_ATTR_RO(temp, GetCPUTemp, cpu_temp);
-LEGION_WMI_KOBJ_ATTR_RO(freq, GetCpuFrequency, cpu_freq);
+/*
+ * GetCpuFrequency: the ASL returns the maximal CPU speed of the BIOS (CMSP, MHz)
+ * in both 16-bit halves (e.g. 5400 << 16 | 5400 on 16IAX10H), shown in MHz
+ */
+static ssize_t func_cpu_freq_show(struct kobject *kobj,
+				  struct kobj_attribute *kattr, char *buf)
+{
+	struct lenovo_wmi_gz_priv *priv =
+		dev_get_drvdata(kobj_to_dev(kobj->parent));
+	u32 value;
+
+	if (!priv)
+		return -ENODEV;
+
+	if (legion_wmi_gz_get(priv->wdev, GetCpuFrequency, &value))
+		return -ENODEV;
+
+	return sysfs_emit(buf, "%u\n", value & 0xffff);
+}
+
+static struct kobj_attribute kobj_attr_cpu_freq =
+	LEGION_WMI_ATTR_RO(freq, cpu_freq);
 LEGION_WMI_KOBJ_ATTR_RO_STATIC_STRING(display_name,
 				      "Others CPU related features",
 				      display_cpu);
 
 static struct attribute *legion_sysfs_cpu_attributes[] = {
-	&kobj_attr_cpu_temp.attr, &kobj_attr_cpu_freq.attr,
+	&kobj_attr_cpu_freq.attr,
 	&kobj_attr_display_cpu.attr, NULL
 };
 

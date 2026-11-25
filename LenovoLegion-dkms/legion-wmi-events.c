@@ -15,6 +15,8 @@
 #include "legion-wmi-other.h"
 
 #include <linux/acpi.h>
+#include <linux/input.h>
+#include <linux/jiffies.h>
 #include <linux/lockdep.h>
 #include <linux/module.h>
 #include <linux/mutex.h>
@@ -61,6 +63,35 @@ struct legion_wmi_events_priv {
 	struct mutex lock;
 	/* Thermal mode event device: the effective thermal mode again after a resume */
 	struct notifier_block pm_nb;
+	/* Utility event device: the keys of the firmware for the desktop */
+	struct input_dev *input;
+	/* The last reported key and its time (the firmware repeats an event of one key press) */
+	u64 key_value;
+	unsigned long key_time;
+};
+
+/*
+ * The firmware reports some keys more times for one key press (16IAX10H: Fn+R
+ * three times within 250 ms), a key which toggles something would toggle it more
+ * times: the same key again within this time is not reported
+ */
+#define LEGION_WMI_EVENTS_KEY_REPEAT_MS 500
+
+/*
+ * Keys of the utility event (EVENT_VALUE, the same values as Notification.SpecialKey
+ * of the daemon) which only the firmware reports (measured on 16IAX10H: the keyboard
+ * sends none of them), with a standard key code the desktop understands. Fn lock,
+ * the lighting keys and the others stay uevents of the daemon only.
+ */
+static const struct {
+	u32 value;
+	unsigned int code;
+} legion_wmi_events_keys[] = {
+	{ 12, KEY_CAMERA_ACCESS_ENABLE }, /* camera switch on */
+	{ 13, KEY_CAMERA_ACCESS_DISABLE }, /* camera switch off */
+	{ 16, KEY_REFRESH_RATE_TOGGLE }, /* Fn+R */
+	{ 42, KEY_PROG1 }, /* Fn+N (Lenovo application on Windows) */
+	{ 1, KEY_PROG2 }, /* Fn+F9 (Lenovo application on Windows) */
 };
 
 /**
@@ -250,13 +281,62 @@ static bool legion_wmi_events_value(const union acpi_object *obj, u64 *value)
 	return true;
 }
 
+/*
+ * Key press of a utility event for the desktop (a key without a standard code is not reported)
+ */
+static void legion_wmi_events_key(struct legion_wmi_events_priv *priv,
+				  u64 value)
+{
+	lockdep_assert_held(&priv->lock);
+
+	if (priv->key_time && value == priv->key_value &&
+	    time_before(jiffies, priv->key_time +
+				 msecs_to_jiffies(LEGION_WMI_EVENTS_KEY_REPEAT_MS)))
+		return;
+
+	priv->key_value = value;
+	priv->key_time = jiffies;
+
+	for (size_t i = 0; i < ARRAY_SIZE(legion_wmi_events_keys); i++) {
+		if (legion_wmi_events_keys[i].value != value)
+			continue;
+
+		input_report_key(priv->input, legion_wmi_events_keys[i].code, 1);
+		input_sync(priv->input);
+		input_report_key(priv->input, legion_wmi_events_keys[i].code, 0);
+		input_sync(priv->input);
+		return;
+	}
+}
+
+/*
+ * Input device of the keys of the utility event
+ */
+static int legion_wmi_events_input(struct legion_wmi_events_priv *priv)
+{
+	struct input_dev *input = devm_input_allocate_device(&priv->wdev->dev);
+
+	if (!input)
+		return -ENOMEM;
+
+	input->name = "Lenovo Legion WMI hotkeys";
+	input->phys = "legion_wmi_events/input0";
+	input->id.bustype = BUS_HOST;
+
+	for (size_t i = 0; i < ARRAY_SIZE(legion_wmi_events_keys); i++)
+		input_set_capability(input, EV_KEY, legion_wmi_events_keys[i].code);
+
+	priv->input = input;
+
+	return input_register_device(input);
+}
+
 static void legion_wmi_events_notify(struct wmi_device *wdev,
 				     union acpi_object *obj)
 {
 	struct legion_wmi_events_priv *priv = dev_get_drvdata(&wdev->dev);
 	u64 value = 0;
 	const bool integer = legion_wmi_events_value(obj, &value);
-
 
 	/* The chain (game zone) and the uevent of one event before the next one */
 	guard(mutex)(&priv->lock);
@@ -268,6 +348,9 @@ static void legion_wmi_events_notify(struct wmi_device *wdev,
 			break;
 		case LEGION_WMI_EVENT_POWER_CHARGE_MODE:
 			legion_wmi_events_power_charge_mode(wdev, value);
+			break;
+		case LENOVO_WMI_EVENT_UTILITY:
+			legion_wmi_events_key(priv, value);
 			break;
 		default:
 			break;
@@ -331,6 +414,9 @@ static int legion_wmi_events_probe(struct wmi_device *wdev, const void *context)
 		return ret;
 
 	dev_set_drvdata(&wdev->dev, priv);
+
+	if (priv->type == LENOVO_WMI_EVENT_UTILITY)
+		return legion_wmi_events_input(priv);
 
 	if (priv->type != LEGION_WMI_EVENT_THERMAL_MODE)
 		return 0;
