@@ -76,6 +76,9 @@
 
 **Other**
 - Disable the touchpad and the Windows key, Fn lock, camera power, display overdrive.
+- Keys reported only by the firmware work in the desktop: the camera switch (`KEY_CAMERA_ACCESS_ENABLE` /
+  `DISABLE`, on-screen display of KDE / GNOME), Fn+R (`KEY_REFRESH_RATE_TOGGLE`), Fn+N and Fn+F9 (`KEY_PROG1` /
+  `KEY_PROG2`, free for own shortcuts).
 - Instant Boot (turn on when the charger or a USB-C power delivery charger is connected) and Flip to Start (turn on
   when the lid is opened), when the firmware provides them.
 - Battery conservation mode (charging stops at about 80 %), rapid charge and USB charging when the notebook is off;
@@ -122,7 +125,7 @@
 
 | Part | Description |
 |---|---|
-| `lenovo_legion` (kernel module, DKMS) | WMI drivers of the Legion firmware: game zone (power profile, touchpad, Win key, GPU mode), other mode (power limits, fan full speed), fan curve, firmware events, ACPI device VPC2004 (conservation mode, rapid charge, USB charging, Fn lock, camera power), hwmon `legion` (temperatures and fan speeds), `platform_profile`. Loaded automatically on a supported notebook. The points of the fan curve are kept in the limits of the firmware (the default curve may only be raised), a lower curve (down to level 1 for all points) with `options lenovo_legion allow_low_fan_curve=1` in `/etc/modprobe.d/` – the fans then may run slowly under load. |
+| `lenovo_legion` (kernel module, DKMS) | WMI drivers of the Legion firmware: game zone (power profile, touchpad, Win key, GPU mode), other mode (power limits, fan full speed), fan curve, firmware events and keys (input device `Lenovo Legion WMI hotkeys`), ACPI device VPC2004 (conservation mode, rapid charge, USB charging, Fn lock, camera power), hwmon `legion` (temperatures and fan speeds), `platform_profile`. Loaded automatically on a supported notebook. The points of the fan curve are kept in the limits of the firmware (the default curve may only be raised), a lower curve (down to level 1 for all points) with `options lenovo_legion allow_low_fan_curve=1` in `/etc/modprobe.d/` – the fans then may run slowly under load. |
 | `legion_intel_msr` (kernel module, DKMS) | Intel CPU voltage offsets through the OC mailbox (MSR 0x150), `/sys/class/legion-intel-msr/legion-intel-msr-0/attributes/<plane>_offset/` (the same structure as the firmware attributes of `lenovo_legion`). Independent of the notebook. Undervolt only (down to −150 mV), an overvolt up to +150 mV with `options legion_intel_msr allow_overvolt=1` in `/etc/modprobe.d/`. Offsets reset by a resume are written again. |
 | `LenovoLegion-Daemon` | Root service. Reads and writes the hardware, checks the values, restores the settings after a reboot, stores the profiles. Every feature is a module in `/opt/LenovoLegion/modules`; a failing module does not stop the others. |
 | `LenovoLegion` | The GUI. It runs as a normal user of the group `legion` and talks to the daemon only. |
