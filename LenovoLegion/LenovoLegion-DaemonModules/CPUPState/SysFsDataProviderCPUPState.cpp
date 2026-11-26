@@ -217,6 +217,14 @@ void SysFsDataProviderCPUPState::timerEvent(QTimerEvent *event)
 {
     if(event->timerId() == m_timerId)
     {
+        /*
+         * Without intel_pstate (AMD CPU, other scaling driver) there is nothing to watch
+         */
+        if(!m_sysFsDriverManager->isLoaded(SysFsDriverCPUIntelPState::DRIVER_NAME))
+        {
+            return;
+        }
+
         SysFsDriverCPUIntelPState::IntelPState intePState(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverCPUIntelPState::DRIVER_NAME));
 
         std::string curStatus;
