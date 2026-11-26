@@ -38,6 +38,16 @@ public:
 };
 
 /*
+ * Data not available on this machine (e.g. Intel MSR on an AMD CPU): the request fails as with Error and the GUI shows
+ * the data as not available, the framework logs it as debug only (an expected state, not an error)
+ */
+class LEGION_MODULE_VISIBLE NotAvailable : public Error
+{
+public:
+    using Error::Error;
+};
+
+/*
  * Kernel (udev) events
  */
 struct KernelEvent

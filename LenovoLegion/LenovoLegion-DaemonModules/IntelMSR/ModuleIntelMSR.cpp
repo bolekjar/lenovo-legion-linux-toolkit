@@ -112,11 +112,12 @@ public:
     QByteArray get(const QByteArray&) override
     {
         /*
-         * Kernel module not loaded: an error, not an empty message (the GUI shows the voltage offsets as not available)
+         * Kernel module not loaded (e.g. an AMD CPU): not available, not an empty message (the GUI shows the voltage
+         * offsets as not available)
          */
         if(!m_available)
         {
-            throw Error(std::string("IntelMSR: kernel module ").append(KERNEL_MODULE).append(" is not loaded"));
+            throw NotAvailable(std::string("IntelMSR: kernel module ").append(KERNEL_MODULE).append(" is not loaded"));
         }
 
         return serialize(readState());

@@ -10,6 +10,8 @@
 #include "Message.h"
 #include "DataProviderManager.h"
 
+#include <ModuleTypes.h>
+
 #include <Core/LoggerHolder.h>
 
 #include <QCoreApplication>
@@ -140,6 +142,16 @@ void ProtocolProcessor::processRequest(const MessageHeader &header, const QByteA
         {
             error = "Unknown error !";
         }
+    }
+    catch(const Module::NotAvailable& ex)
+    {
+        /*
+         * Expected state of the machine (e.g. Intel MSR on an AMD CPU): the client shows the data as not available
+         */
+        LOG_D(QString("Request type=").append(QString::number(header.m_type)).append(", dataType=").append(QString::number(header.m_dataType))
+              .append(": not available, sending error response: ").append(QString::fromUtf8(ex.what())));
+        sendMessage(MessageHeader::ERROR_RESPONSE,header.m_dataType,QByteArray(ex.what()));
+        return;
     }
     catch(const std::exception& ex)
     {
