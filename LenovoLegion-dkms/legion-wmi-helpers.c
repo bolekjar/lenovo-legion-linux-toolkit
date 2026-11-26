@@ -222,3 +222,71 @@ int legion_wmi_dev_evaluate_bytes(struct wmi_device *wdev, const u8 instance,
 		return -ENXIO;
 	}
 }
+
+/**
+ * legion_wmi_block_read() - An instance of a WMI data block as the bytes of its class
+ * @obj: The ACPI object of the instance (wmidev_block_query()), NULL: no data.
+ * @data: Receives the instance, laid out as the buffer of the firmware.
+ * @size: Size of data.
+ * @fields: Sizes of the fields of the class in bytes (binary MOF: uint8 1, uint16 2, uint32 4), in their order;
+ *          NULL for a class with arrays (a buffer only).
+ * @count: Number of the fields.
+ *
+ * The firmware returns an instance as a buffer laid out as the class (e.g. Legion Pro 7 16IAX10H) or as a package of
+ * its fields (e.g. the discrete data of an AMD Legion of the generation 8: Package (2) { ID, value }). Windows maps
+ * both to the class, so the same firmware works with Lenovo Legion Toolkit: a buffer is copied, a package of integers
+ * is written field by field (little endian, one after the other as in the buffer).
+ *
+ * Return: 0 on success, -ENODATA without data, -EINVAL for another object or another layout.
+ */
+int legion_wmi_block_read(const union acpi_object *obj, void *data,
+			  const size_t size, const u8 *fields,
+			  const size_t count)
+{
+	u8 *out = data;
+	size_t offset = 0;
+
+	if (!obj)
+		return -ENODATA;
+
+	if (obj->type == ACPI_TYPE_BUFFER) {
+		if (obj->buffer.length < size)
+			return -EINVAL;
+
+		memcpy(data, obj->buffer.pointer, size);
+		return 0;
+	}
+
+	if (!fields || obj->type != ACPI_TYPE_PACKAGE ||
+	    obj->package.count != count)
+		return -EINVAL;
+
+	for (size_t i = 0; i < count; ++i) {
+		const union acpi_object *element = &obj->package.elements[i];
+		u64 value;
+
+		if (element->type != ACPI_TYPE_INTEGER ||
+		    offset + fields[i] > size)
+			return -EINVAL;
+
+		value = element->integer.value;
+
+		switch (fields[i]) {
+		case sizeof(u8):
+			out[offset] = (u8)value;
+			break;
+		case sizeof(u16):
+			put_unaligned_le16((u16)value, out + offset);
+			break;
+		case sizeof(u32):
+			put_unaligned_le32((u32)value, out + offset);
+			break;
+		default:
+			return -EINVAL;
+		}
+
+		offset += fields[i];
+	}
+
+	return offset == size ? 0 : -EINVAL;
+}

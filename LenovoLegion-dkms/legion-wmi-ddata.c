@@ -11,6 +11,7 @@
  *   Copyright (C) 2025 Derek J. Clark <derekjohn.clark@gmail.com>
  */
 #include "legion-wmi-ddata.h"
+#include "legion-wmi-helpers.h"
 #include "legion-wmi-other.h"
 #include "legion-common.h"
 
@@ -110,14 +111,18 @@ int legion_wmi_dd_get_data(struct legion_wmi_dd_list *list, u32 attribute_id,
 	return out_idx;
 }
 
+/* Fields of LENOVO_DISCRETE_DATA (binary MOF): IDs, Value */
+static const u8 legion_wmi_dd_fields[] = { sizeof(u32), sizeof(u32) };
+
 /**
  * legion_wmi_dd_cache() - Cache all WMI data block information
  * @priv: Discrete data driver data.
  * @instances: Number of the WMI data block instances.
  *
  * Loop through each WMI data block and cache the data. Only the valid
- * instances are kept: a buffer of the size of the data and an ID (the firmware
- * fills the data block up with instances of the ID 0).
+ * instances are kept: an ID and a value (a buffer or a package, see
+ * legion_wmi_block_read()), not the instances of the ID 0 the firmware fills the
+ * data block up with.
  *
  * Return: 0.
  */
@@ -132,18 +137,14 @@ static int legion_wmi_dd_cache(const struct legion_wmi_dd_priv *priv,
 		union acpi_object *ret_obj __free(kfree) = NULL;
 
 		ret_obj = wmidev_block_query(priv->wdev, idx);
-		if (!ret_obj || ret_obj->type != ACPI_TYPE_BUFFER ||
-		    ret_obj->buffer.length < sizeof(*data)) {
-			dev_dbg(&priv->wdev->dev,
-				"instance %d skipped: %s, type %d, length %u\n",
-				idx, ret_obj ? "data" : "no data",
-				ret_obj ? ret_obj->type : -1,
-				ret_obj && ret_obj->type == ACPI_TYPE_BUFFER ?
-					ret_obj->buffer.length : 0);
+		if (legion_wmi_block_read(ret_obj, data, sizeof(*data),
+					  legion_wmi_dd_fields,
+					  ARRAY_SIZE(legion_wmi_dd_fields))) {
+			dev_dbg(&priv->wdev->dev, "instance %d skipped (type %d)\n",
+				idx, ret_obj ? (int)ret_obj->type : -1);
 			continue;
 		}
 
-		memcpy(data, ret_obj->buffer.pointer, sizeof(*data));
 		if (data->id)
 			priv->list->count++;
 	}

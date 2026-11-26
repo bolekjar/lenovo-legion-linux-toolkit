@@ -156,7 +156,8 @@ static int legion_wmi_other_feature_write(const struct legion_wmi_other_priv *pr
 }
 
 /*
- * Value of a feature without a range: one of the discrete values of the custom mode (discrete data)
+ * Value of a feature with discrete values: one of the discrete values of the custom mode (discrete data).
+ * Return: 0 for one of them, -EINVAL for another value, -ENOENT without discrete values, or an error code.
  */
 static int legion_wmi_other_feature_discrete(const struct legion_wmi_other_priv *priv,
 					     u32 feature_id_custom, u32 value)
@@ -165,6 +166,10 @@ static int legion_wmi_other_feature_discrete(const struct legion_wmi_other_priv 
 	const int count = legion_wmi_dd_get_data(priv->dd_list,
 						 feature_id_custom, lddata,
 						 ARRAY_SIZE(lddata));
+
+	/* No discrete data or no value of the feature */
+	if (count == -ENODEV || count == -EINVAL)
+		return -ENOENT;
 
 	if (count < 0)
 		return count;
@@ -183,8 +188,10 @@ static int legion_wmi_other_feature_discrete(const struct legion_wmi_other_priv 
  * @value: The value.
  *
  * The firmware uses the value in the custom mode only. The value is checked by
- * the capability data 01 of the custom mode: its range, or one of the discrete
- * values when the feature has no range.
+ * the custom mode: one of its discrete values when the feature has any (discrete
+ * data), otherwise the range of the capability data 01. The firmware of an AMD
+ * Legion (generation 8) gives both for e.g. the GPU configurable TGP (a range
+ * without a step and the discrete values), the discrete values are used.
  *
  * Return: 0 on success, -EBUSY out of the custom mode, -ENODEV for a feature not
  * supported, -EOPNOTSUPP for a feature not writable, -EINVAL for a value out of
@@ -221,12 +228,11 @@ int legion_wmi_other_feature_set(const struct legion_wmi_other_priv *priv,
 	if (!(capdata.supported & LEGION_WMI_SUPP_SET))
 		return -EOPNOTSUPP;
 
-	if (capdata.max_value == 0 && capdata.min_value == 0 &&
-	    capdata.step == 0)
-		ret = legion_wmi_other_feature_discrete(priv, feature_id_custom,
-							value);
-	else if (value < capdata.min_value || value > capdata.max_value)
-		ret = -EINVAL;
+	ret = legion_wmi_other_feature_discrete(priv, feature_id_custom, value);
+	if (ret == -ENOENT)
+		ret = (capdata.max_value == 0 && capdata.min_value == 0) ||
+		      value < capdata.min_value || value > capdata.max_value ?
+			      -EINVAL : 0;
 
 	if (ret)
 		return ret;

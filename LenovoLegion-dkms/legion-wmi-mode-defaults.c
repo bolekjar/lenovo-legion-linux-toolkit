@@ -14,6 +14,7 @@
  * The CPU / GPU method driver shows them in default_value of its limits (legion_wmi_mode_default_get()).
  */
 #include "legion-wmi-mode-defaults.h"
+#include "legion-wmi-helpers.h"
 
 #include <linux/acpi.h>
 #include <linux/build_bug.h>
@@ -179,11 +180,10 @@ static int legion_wmi_mode_defaults_read(struct legion_wmi_mode_defaults_priv *p
 		struct legion_wmi_mode_defaults_data *data =
 			&priv->data[priv->count];
 
-		if (!obj || obj->type != ACPI_TYPE_BUFFER ||
-		    obj->buffer.length < sizeof(*data))
+		/* Arrays in the class (binary MOF): a buffer only */
+		if (legion_wmi_block_read(obj, data, sizeof(*data), NULL, 0))
 			continue;
 
-		memcpy(data, obj->buffer.pointer, sizeof(*data));
 		if (le32_to_cpu(data->fan_table_size) !=
 		    LEGION_WMI_MODE_DEFAULTS_FAN_TABLE_SIZE)
 			continue;

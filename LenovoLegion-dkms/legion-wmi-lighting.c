@@ -16,6 +16,7 @@
  * the firmware of the notebooks are not known yet.
  */
 #include "legion-wmi-lighting.h"
+#include "legion-wmi-helpers.h"
 
 #include <linux/acpi.h>
 #include <linux/build_bug.h>
@@ -43,6 +44,9 @@ struct legion_wmi_lighting_data {
 } __packed;
 static_assert(sizeof(struct legion_wmi_lighting_data) == 7);
 
+/* Fields of LENOVO_LIGHTING_DATA (binary MOF): seven uint8 */
+static const u8 legion_wmi_lighting_fields[] = { 1, 1, 1, 1, 1, 1, 1 };
+
 /*
  * Read and log the instances of the data block
  */
@@ -58,13 +62,12 @@ static int legion_wmi_lighting_data_read(struct wmi_device *wdev)
 		union acpi_object *obj __free(kfree) =
 			wmidev_block_query(wdev, idx);
 
-		if (!obj || obj->type != ACPI_TYPE_BUFFER ||
-		    obj->buffer.length < sizeof(data)) {
+		if (legion_wmi_block_read(obj, &data, sizeof(data),
+					  legion_wmi_lighting_fields,
+					  ARRAY_SIZE(legion_wmi_lighting_fields))) {
 			dev_dbg(&wdev->dev, "light %d: no data\n", idx);
 			continue;
 		}
-
-		memcpy(&data, obj->buffer.pointer, sizeof(data));
 
 		if (data.id == LEGION_WMI_LIGHTING_ID_NONE) {
 			dev_dbg(&wdev->dev, "light %d: not present\n", idx);

@@ -15,6 +15,7 @@
 #include <linux/types.h>
 
 struct wmi_device;
+union acpi_object;
 
 struct wmi_method_args_32 {
 	u32 arg0;
@@ -60,5 +61,7 @@ int legion_wmi_dev_evaluate_string(struct wmi_device *wdev, u8 instance,
 				   u32 method_id, unsigned char *buf,
 				   size_t size, char *retval,
 				   size_t retval_size);
+int legion_wmi_block_read(const union acpi_object *obj, void *data, size_t size,
+			  const u8 *fields, size_t count);
 
 #endif /* LEGION_WMI_HELPERS_H_ */

@@ -10,6 +10,7 @@
  *   Copyright (C) 2025 Derek J. Clark <derekjohn.clark@gmail.com>
  */
 #include "legion-wmi-capdata01.h"
+#include "legion-wmi-helpers.h"
 #include "legion-wmi-other.h"
 #include "legion-common.h"
 
@@ -112,6 +113,10 @@ int legion_wmi_cd01_get_data(struct legion_wmi_cd01_list *list,
  *
  * Return: 0.
  */
+/* Fields of LENOVO_CAPABILITY_DATA_01 (binary MOF): IDs, Capability, DefaultValue, Step, MinValue, MaxValue */
+static const u8 legion_wmi_cd01_fields[] = { sizeof(u32), sizeof(u32), sizeof(u32),
+					     sizeof(u32), sizeof(u32), sizeof(u32) };
+
 static int legion_wmi_cd01_cache(struct legion_wmi_cd01_priv *priv,
 				 int instances)
 {
@@ -123,13 +128,13 @@ static int legion_wmi_cd01_cache(struct legion_wmi_cd01_priv *priv,
 		union acpi_object *ret_obj __free(kfree) = NULL;
 
 		ret_obj = wmidev_block_query(priv->wdev, idx);
-		if (!ret_obj || ret_obj->type != ACPI_TYPE_BUFFER ||
-		    ret_obj->buffer.length < sizeof(*data)) {
+		if (legion_wmi_block_read(ret_obj, data, sizeof(*data),
+					  legion_wmi_cd01_fields,
+					  ARRAY_SIZE(legion_wmi_cd01_fields))) {
 			dev_dbg(&priv->wdev->dev, "instance %d skipped\n", idx);
 			continue;
 		}
 
-		memcpy(data, ret_obj->buffer.pointer, sizeof(*data));
 		priv->list->count++;
 	}
 

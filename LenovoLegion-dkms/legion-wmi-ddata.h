@@ -19,7 +19,8 @@ struct legion_wmi_dd_list;
 /*
  * Instance of LENOVO_DISCRETE_DATA (binary MOF: IDs, Value), one discrete value of a feature in a
  * power mode; the features without a range of the capability data 01 (bit 10). The firmware fills
- * the data block up with instances of the ID 0 (ASL WQA7), they are not kept.
+ * the data block up with instances of the ID 0 (ASL WQA7), they are not kept. An instance is a buffer
+ * of the ID and the value (16IAX10H) or a package of the two integers (AMD Legion of the generation 8).
  */
 struct legion_wmi_ddata {
 	u32 id;

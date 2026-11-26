@@ -11,6 +11,7 @@
  *   Copyright (C) 2025 Derek J. Clark <derekjohn.clark@gmail.com>
  */
 #include "legion-wmi-ftable.h"
+#include "legion-wmi-helpers.h"
 #include "legion-common.h"
 #include "legion-wmi-fm.h"
 #include "legion-wmi-platform.h"
@@ -297,11 +298,10 @@ static int legion_wmi_ftable_cache(const struct legion_wmi_ftable_priv *priv,
 		if (!ret_obj)
 			return -ENODEV;
 
-		if (ret_obj->type != ACPI_TYPE_BUFFER ||
-		    ret_obj->buffer.length < sizeof(*row))
+		/* Arrays of the length of the row in the class (binary MOF): a buffer only */
+		if (legion_wmi_block_read(ret_obj, row, sizeof(*row), NULL, 0))
 			continue;
 
-		memcpy(row, ret_obj->buffer.pointer, sizeof(*row));
 		if (row->lengthFanTable != MAX_FANCURVE_SIZE ||
 		    row->lengthSensorTable != MAX_FANCURVE_SIZE) {
 			dev_dbg(&priv->wdev->dev,
