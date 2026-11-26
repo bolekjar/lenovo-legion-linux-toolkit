@@ -134,7 +134,12 @@ static int legion_wmi_dd_cache(const struct legion_wmi_dd_priv *priv,
 		ret_obj = wmidev_block_query(priv->wdev, idx);
 		if (!ret_obj || ret_obj->type != ACPI_TYPE_BUFFER ||
 		    ret_obj->buffer.length < sizeof(*data)) {
-			dev_dbg(&priv->wdev->dev, "instance %d skipped\n", idx);
+			dev_dbg(&priv->wdev->dev,
+				"instance %d skipped: %s, type %d, length %u\n",
+				idx, ret_obj ? "data" : "no data",
+				ret_obj ? ret_obj->type : -1,
+				ret_obj && ret_obj->type == ACPI_TYPE_BUFFER ?
+					ret_obj->buffer.length : 0);
 			continue;
 		}
 
