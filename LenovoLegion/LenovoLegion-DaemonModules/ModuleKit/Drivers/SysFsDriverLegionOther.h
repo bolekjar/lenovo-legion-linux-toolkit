@@ -92,6 +92,7 @@ public:
 
         struct CPU {
             CPU(const SysFsDriver::DescriptorType& descriptor) :
+                m_apus_pptp_limit(descriptor,QString("apus_pptp_limit")),
                 m_cpu_clp_limit(descriptor,QString("cpu_clp_limit")),
                 m_cpu_ltp_limit(descriptor,QString("cpu_ltp_limit")),
                 m_cpu_pl1_tau(descriptor,QString("cpu_pl1_tau")),
@@ -100,6 +101,7 @@ public:
                 m_cpu_tmp_limit(descriptor,QString("cpu_tmp_limit")) {}
 
 
+            const StandardAttributesCapData01 m_apus_pptp_limit;
             const StandardAttributesCapData01 m_cpu_clp_limit;
             const StandardAttributesCapData01 m_cpu_ltp_limit;
             const StandardAttributesCapData01 m_cpu_pl1_tau;

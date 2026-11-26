@@ -159,6 +159,38 @@ QByteArray SysFsDataProviderCPUPower::serializeAndGetData()
 
 
         /*
+         * Peak power limit and APU sPPT (AMD): only when the firmware has them (the kernel driver hides them otherwise,
+         * e.g. on Intel)
+         */
+        const auto readLimit = [&](const SysFsDriverLegionOther::Other::StandardAttributesCapData01& attributes,legion::messages::CPUPower::Limit* limit) {
+            if(attributes.m_current_value.empty())
+            {
+                return;
+            }
+
+            limit->set_current_value(getData(attributes.m_current_value).toUInt());
+            setValue(attributes.m_default_value,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
+                descriptor.set_default_value(value);
+            },limit->mutable_mode_descriptor_map());
+            setValue(attributes.m_max_value,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
+                descriptor.set_max_value(value);
+            },limit->mutable_mode_descriptor_map());
+            setValue(attributes.m_min_value,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
+                descriptor.set_min_value(value);
+            },limit->mutable_mode_descriptor_map());
+            setValue(attributes.m_scalar_increment,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
+                descriptor.set_scalar_increment(value);
+            },limit->mutable_mode_descriptor_map());
+            setValue(attributes.m_supported,[&](legion::messages::CPUPower::Limit::Descriptor &descriptor,uint value){
+                descriptor.set_supported(value);
+            },limit->mutable_mode_descriptor_map());
+        };
+
+        readLimit(cpuControl.m_cpu_pp_limit,cpuPower.mutable_cpu_pp_limit());
+        readLimit(cpuControl.m_apus_pptp_limit,cpuPower.mutable_apus_pptp_limit());
+
+
+        /*
          * PL1 tau
          */
         if(!cpuControl.m_cpu_pl1_tau.m_current_value.empty())
@@ -298,6 +330,12 @@ QByteArray SysFsDataProviderCPUPower::deserializeAndSetData(const QByteArray &da
     if(cpuPower.has_cpu_stp_limit()) {
         setData(cpuControl.m_cpu_stp_limit.m_current_value,cpuPower.cpu_stp_limit().current_value());
     }
+    if(cpuPower.has_cpu_pp_limit()) {
+        setData(cpuControl.m_cpu_pp_limit.m_current_value,cpuPower.cpu_pp_limit().current_value());
+    }
+    if(cpuPower.has_apus_pptp_limit()) {
+        setData(cpuControl.m_apus_pptp_limit.m_current_value,cpuPower.apus_pptp_limit().current_value());
+    }
     if(cpuPower.has_cpu_pl1_tau()) {
         setData(cpuControl.m_cpu_pl1_tau.m_current_value,cpuPower.cpu_pl1_tau().current_value());
     }
@@ -330,19 +368,11 @@ void SysFsDataProviderCPUPower::settable(legion::messages::CPUPower &cpuPower, O
     const auto current = parseMessage<legion::messages::CPUPower>(serializeAndGetData());
 
     /*
-     * Peak power limit and APU sPPT: written only on the older firmware (its kernel driver registers them only when
-     * the firmware supports them), on the newer firmware they do not work (not written by the daemon)
+     * Peak power limit and APU sPPT: only when the firmware has them (e.g. AMD), a limit the kernel driver does not
+     * register is not in the current data and is skipped
      */
-    if(!legacy())
-    {
-        cpuPower.clear_apus_pptp_limit();
-        cpuPower.clear_cpu_pp_limit();
-    }
-    else
-    {
-        if(cpuPower.has_cpu_pp_limit()     && !settableLimit(*cpuPower.mutable_cpu_pp_limit(),current.cpu_pp_limit(),mode,origin,"cpu_pp_limit"))             cpuPower.clear_cpu_pp_limit();
-        if(cpuPower.has_apus_pptp_limit()  && !settableLimit(*cpuPower.mutable_apus_pptp_limit(),current.apus_pptp_limit(),mode,origin,"apus_pptp_limit"))    cpuPower.clear_apus_pptp_limit();
-    }
+    if(cpuPower.has_cpu_pp_limit()             && !settableLimit(*cpuPower.mutable_cpu_pp_limit(),current.cpu_pp_limit(),mode,origin,"cpu_pp_limit"))                         cpuPower.clear_cpu_pp_limit();
+    if(cpuPower.has_apus_pptp_limit()          && !settableLimit(*cpuPower.mutable_apus_pptp_limit(),current.apus_pptp_limit(),mode,origin,"apus_pptp_limit"))                cpuPower.clear_apus_pptp_limit();
 
     if(cpuPower.has_cpu_tmp_limit()            && !settableLimit(*cpuPower.mutable_cpu_tmp_limit(),current.cpu_tmp_limit(),mode,origin,"cpu_tmp_limit"))                       cpuPower.clear_cpu_tmp_limit();
     if(cpuPower.has_cpu_clp_limit()            && !settableLimit(*cpuPower.mutable_cpu_clp_limit(),current.cpu_clp_limit(),mode,origin,"cpu_clp_limit"))                       cpuPower.clear_cpu_clp_limit();

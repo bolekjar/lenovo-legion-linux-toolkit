@@ -64,7 +64,7 @@ SettingsPage {
             dataType: "CPU_POWER"
         }
 
-        // cpu_pp_limit, apus_pptp_limit: older firmware only (not sent by the daemon otherwise, so not shown)
+        // cpu_pp_limit, apus_pptp_limit: only when the firmware has them (e.g. AMD, not sent by the daemon otherwise, so not shown)
         readonly property var limits: ["cpu_tmp_limit", "cpu_clp_limit", "cpu_stp_limit", "cpu_ltp_limit", "cpu_pp_limit", "apus_pptp_limit", "gpu_total_onac", "cpu_pl1_tau", "gpu_to_cpu_dynamic_boost"]
 
         Repeater {
