@@ -139,7 +139,12 @@ int legion_wmi_other_feature_get(const struct legion_wmi_other_priv *priv,
 }
 
 /*
- * Write of a checked value of a feature (SetFeatureValue)
+ * Write of a checked value of a feature (SetFeatureValue).
+ *
+ * A failed method is checked by reading the value back: the firmware may set the
+ * value and fail the method after it, e.g. Legion Slim 5 16APH8 (BIOS M3CN):
+ * Flip to Start (FEA1 3) has no Return in WMAE and runs into "If (FEA0 == 0x0D)",
+ * FEA0 is created by GetFeatureValue only (AE_NOT_FOUND).
  */
 static int legion_wmi_other_feature_write(const struct legion_wmi_other_priv *priv,
 					  u32 feature_id, u32 value)
@@ -148,11 +153,24 @@ static int legion_wmi_other_feature_write(const struct legion_wmi_other_priv *pr
 		.arg0 = feature_id & ~LEGION_WMI_MODE_ID_MASK,
 		.arg1 = value,
 	};
+	u32 current_value;
+	int ret;
 
-	return legion_wmi_dev_evaluate_int(priv->wdev, 0x0,
-					   LEGION_WMI_OTHER_FEATURE_VALUE_SET,
-					   (unsigned char *)&args, sizeof(args),
-					   NULL);
+	ret = legion_wmi_dev_evaluate_int(priv->wdev, 0x0,
+					  LEGION_WMI_OTHER_FEATURE_VALUE_SET,
+					  (unsigned char *)&args, sizeof(args),
+					  NULL);
+	if (ret != -EIO)
+		return ret;
+
+	if (legion_wmi_other_feature_get(priv, feature_id, &current_value) ||
+	    current_value != value)
+		return ret;
+
+	dev_dbg(&priv->wdev->dev,
+		"feature 0x%08x: the method failed, the value %u is set\n",
+		args.arg0, value);
+	return 0;
 }
 
 /*
