@@ -20,6 +20,35 @@
 
 namespace LenovoLegionDaemon::Kit {
 
+namespace {
+
+/*
+ * CPU list of the sysfs ("0-3,8,10-11") as the ranges of the message, an empty list adds nothing
+ */
+void addRanges(const QString& list, google::protobuf::RepeatedPtrField<legion::messages::CPUTopology::ActiveCPUsRange>* ranges)
+{
+    if(list.trimmed().isEmpty())
+    {
+        return;
+    }
+
+    for (const auto& item : list.trimmed().split(',')) {
+        const auto range = item.split('-');
+
+        if(range.size() != 1 && range.size() != 2)
+        {
+            THROW_EXCEPTION(SysFsDataProvider::exception_T,DataProvider::ERROR_CODES::INVALID_DATA,std::string("Invalid CPU topology data !").c_str());
+        }
+
+        legion::messages::CPUTopology::ActiveCPUsRange* activeRange = ranges->Add();
+
+        activeRange->set_cpu_min(range.front().toUInt());
+        activeRange->set_cpu_max(range.back().toUInt());
+    }
+}
+
+}
+
 SysFsDataProviderCPUTopology::SysFsDataProviderCPUTopology(SysFsDriverManager* sysFsDriverManager) : SysFsDataProvider(sysFsDriverManager,dataType) {}
 
 
@@ -32,102 +61,41 @@ QByteArray SysFsDataProviderCPUTopology::serializeAndGetData()
     LOG_T(__PRETTY_FUNCTION__);
 
     try {
-        SysFsDriverCPUCore::CPUCore core(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverCPUCore::DRIVER_NAME));
-        SysFsDriverCPUAtom::CPUAtom atom(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverCPUAtom::DRIVER_NAME));
         SysFsDriverCPU::CPU cpu(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverCPU::DRIVER_NAME));
 
-        if(!getData(core.m_cpus).trimmed().isEmpty())
+        /*
+         * P- and E-cores only on a hybrid Intel CPU (/sys/devices/cpu_core, cpu_atom), not on AMD or older Intel CPUs
+         */
+        if(m_sysFsDriverManager->isLoaded(SysFsDriverCPUCore::DRIVER_NAME))
         {
-            auto cpusCoreTopology = getData(core.m_cpus).split(',');
-            for (unsigned int i = 0; i < cpusCoreTopology.size(); ++i) {
-                auto range = cpusCoreTopology.at(i).split('-');
-                legion::messages::CPUTopology::ActiveCPUsRange* activeRange = cpuTopologyData.add_active_cpus_core();
+            SysFsDriverCPUCore::CPUCore core(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverCPUCore::DRIVER_NAME));
 
-                if(range.size() == 1)
-                {
-                    activeRange->set_cpu_min(range.at(0).toUShort());
-                    activeRange->set_cpu_max(range.at(0).toUShort());
-                }
-                else if(range.size() == 2)
-                {
-                    activeRange->set_cpu_min(range.at(0).toUShort());
-                    activeRange->set_cpu_max(range.at(1).toUShort());
-                }
-                else
-                {
-                    THROW_EXCEPTION(exception_T,DataProvider::ERROR_CODES::INVALID_DATA,std::string("Invalid CPU topology data !").c_str());
-                }
-            }
+            addRanges(getData(core.m_cpus),cpuTopologyData.mutable_active_cpus_core());
         }
 
-        if(!getData(atom.m_cpus).trimmed().isEmpty())
+        if(m_sysFsDriverManager->isLoaded(SysFsDriverCPUAtom::DRIVER_NAME))
         {
-            auto cpusAtomTopology = getData(atom.m_cpus).split(',');
-            for (unsigned int i = 0; i < cpusAtomTopology.size(); ++i) {
-                auto range = cpusAtomTopology.at(i).split('-');
-                legion::messages::CPUTopology::ActiveCPUsRange* activeRange = cpuTopologyData.add_active_cpus_atom();
+            SysFsDriverCPUAtom::CPUAtom atom(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverCPUAtom::DRIVER_NAME));
 
-                if(range.size() == 1)
-                {
-                    activeRange->set_cpu_min(range.at(0).toUShort());
-                    activeRange->set_cpu_max(range.at(0).toUShort());
-                }
-                else if(range.size() == 2)
-                {
-                    activeRange->set_cpu_min(range.at(0).toUShort());
-                    activeRange->set_cpu_max(range.at(1).toUShort());
-                }
-                else
-                {
-                    THROW_EXCEPTION(exception_T,DataProvider::ERROR_CODES::INVALID_DATA,std::string("Invalid CPU topology data !").c_str());
-                }
-            }
+            addRanges(getData(atom.m_cpus),cpuTopologyData.mutable_active_cpus_atom());
         }
 
-        if(!getData(cpu.m_topology.m_online).trimmed().isEmpty())
+        addRanges(getData(cpu.m_topology.m_online),cpuTopologyData.mutable_active_cpus());
+
+        /*
+         * Possible CPUs: from the first to the last one
+         */
+        google::protobuf::RepeatedPtrField<legion::messages::CPUTopology::ActiveCPUsRange> possible;
+
+        addRanges(getData(cpu.m_topology.m_possible),&possible);
+
+        if(!possible.empty())
         {
-            auto cpusTopology = getData(cpu.m_topology.m_online).split(',');
-            for (unsigned int i = 0; i <cpusTopology.size(); ++i) {
-                auto range = cpusTopology.at(i).split('-');
-                legion::messages::CPUTopology::ActiveCPUsRange* activeRange = cpuTopologyData.add_active_cpus();
+            cpuTopologyData.mutable_possible_cpus()->set_cpu_min(possible.Get(0).cpu_min());
 
-                if(range.size() == 1)
-                {
-                    activeRange->set_cpu_min(range.at(0).toUShort());
-                    activeRange->set_cpu_max(range.at(0).toUShort());
-                }
-                else if(range.size() == 2)
-                {
-                    activeRange->set_cpu_min(range.at(0).toUShort());
-                    activeRange->set_cpu_max(range.at(1).toUShort());
-                }
-                else
-                {
-                    THROW_EXCEPTION(exception_T,DataProvider::ERROR_CODES::INVALID_DATA,std::string("Invalid CPU topology data !").c_str());
-                }
-            }
-        }
-
-        if(!getData(cpu.m_topology.m_present).trimmed().isEmpty())
-        {
-            auto cpusTopology = getData(cpu.m_topology.m_possible).split(',');
-
-            for (unsigned int i = 0; i <cpusTopology.size(); ++i) {
-                auto range = cpusTopology.at(i).split('-');
-                if(range.size() == 1)
-                {
-                    cpuTopologyData.mutable_possible_cpus()->set_cpu_min(std::min(cpuTopologyData.possible_cpus().cpu_min(),range.at(0).toUInt()));
-                    cpuTopologyData.mutable_possible_cpus()->set_cpu_max(std::max(cpuTopologyData.possible_cpus().cpu_max(),range.at(0).toUInt()));
-                }
-                else if(range.size() == 2)
-                {
-                    cpuTopologyData.mutable_possible_cpus()->set_cpu_min(std::min(cpuTopologyData.possible_cpus().cpu_min(),range.at(0).toUInt()));
-                    cpuTopologyData.mutable_possible_cpus()->set_cpu_max(std::max(cpuTopologyData.possible_cpus().cpu_max(),range.at(1).toUInt()));
-                }
-                else
-                {
-                    THROW_EXCEPTION(exception_T,DataProvider::ERROR_CODES::INVALID_DATA,std::string("Invalid CPU topology data !").c_str());
-                }
+            for (const auto& range : possible) {
+                cpuTopologyData.mutable_possible_cpus()->set_cpu_min(std::min(cpuTopologyData.possible_cpus().cpu_min(),range.cpu_min()));
+                cpuTopologyData.mutable_possible_cpus()->set_cpu_max(std::max(cpuTopologyData.possible_cpus().cpu_max(),range.cpu_max()));
             }
         }
     } catch(SysFsDriver::exception_T& ex)
