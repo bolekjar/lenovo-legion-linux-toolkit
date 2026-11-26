@@ -63,7 +63,9 @@ static int legion_hwmon_fm_notifier_call(void *data,
 
 /*
  * Sensors of the Legion WMI other mode (capability data 00): channels 1..3 = CPU, GPU, SYS, a sensor the notebook
- * does not have (capability data 00 not supported) is hidden, the channel numbers stay (temp3 without temp2).
+ * does not have (capability data 00 without the GET bit) is hidden, the channel numbers stay (temp3 without temp2).
+ * A temperature which reads 0 when the hwmon is registered is hidden too: the firmware may report a sensor it does
+ * not have (e.g. SYS on an AMD Legion of generation 8 always returns 0).
  * Fans: input from the other mode, max from the fan method, min is 0 (no data).
  */
 #define LEGION_HWMON_CHANNELS 3
@@ -202,7 +204,7 @@ static const struct hwmon_chip_info legion_hwmon_chip_info = {
 };
 
 /*
- * Bit of the channel when the sensor is supported (capability data 00)
+ * Bit of the channel when the sensor can be read (capability data 00 with the GET bit)
  */
 static int legion_hwmon_supported(struct notifier_block *source,
 				  const enum CapabilityID ids[], u8 *mask)
@@ -218,11 +220,35 @@ static int legion_hwmon_supported(struct notifier_block *source,
 		if (err)
 			return err;
 
-		if (cap_data00.id == ids[channel] && cap_data00.supported)
+		if (cap_data00.id == ids[channel] &&
+		    (cap_data00.supported & LEGION_WMI_SUPP_GET))
 			*mask |= BIT(channel);
 	}
 
 	return 0;
+}
+
+/*
+ * Clear the bits of the temperatures which can not be read or read 0 (a sensor the firmware does not have)
+ */
+static void legion_hwmon_temperatures_present(struct device *dev,
+					      struct legion_hwmon *hwmon)
+{
+	for (int channel = 0; channel < LEGION_HWMON_CHANNELS; ++channel) {
+		u32 value = 0;
+
+		if (!(hwmon->temperatures & BIT(channel)))
+			continue;
+
+		if (legion_hwmon_source_call(hwmon->source,
+					     LEGION_WMI_FM_GET_CAPABILITY_VALUE,
+					     temperature_ids[channel], &value) ||
+		    !value) {
+			dev_dbg(dev, "%s not present, hidden\n",
+				temperature_labels[channel]);
+			hwmon->temperatures &= ~BIT(channel);
+		}
+	}
 }
 
 /**
@@ -252,6 +278,8 @@ struct legion_hwmon *legion_hwmon_register(struct device *parent,
 				     &hwmon->temperatures);
 	if (err)
 		goto err_free;
+
+	legion_hwmon_temperatures_present(parent, hwmon);
 
 	err = legion_hwmon_supported(source, fan_ids, &hwmon->fans);
 	if (err)
