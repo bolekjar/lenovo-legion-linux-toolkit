@@ -18,7 +18,7 @@ class SysFsDriverPowerSuplyBattery0 : public SysFsDriver
 public:
 
     /*
-     * Files of BAT0 (status always, the others only when the battery reports them: empty path otherwise) and online
+     * Files of the battery (BAT0, BAT1, ...: status always, the others only when the battery reports them: empty path otherwise) and online
      * of the AC adapter (power_supply of type Mains, empty path without one)
      */
     struct PowerSuplyBattery0 {
@@ -95,6 +95,11 @@ private:
      * Name of the AC adapter (power_supply of type Mains), empty without one
      */
     QString m_adapterName;
+
+    /*
+     * Name of the battery of the notebook (power_supply of type Battery, BAT0, BAT1, ...), empty without one
+     */
+    QString m_batteryName;
 };
 
 }

@@ -11,10 +11,27 @@
 
 #include <QFile>
 
+#include <algorithm>
+#include <vector>
+
 namespace LenovoLegionDaemon::Kit {
 
 
-SysFsDriverPowerSuplyBattery0::SysFsDriverPowerSuplyBattery0() : SysFsDriver(DRIVER_NAME,"/sys/class/power_supply/BAT0/",{"power_supply",{}}) {}
+SysFsDriverPowerSuplyBattery0::SysFsDriverPowerSuplyBattery0() : SysFsDriver(DRIVER_NAME,"/sys/class/power_supply/",{"power_supply",{}}) {}
+
+namespace {
+
+/*
+ * Content of a file of a power supply, empty when it can not be read
+ */
+QString powerSupplyValue(const std::filesystem::path& path)
+{
+    QFile file(QString::fromStdString(path.string()));
+
+    return file.open(QIODeviceBase::ReadOnly) ? QString::fromUtf8(file.readAll()).trimmed() : QString();
+}
+
+}
 
 void SysFsDriverPowerSuplyBattery0::init()
 {
@@ -22,11 +39,38 @@ void SysFsDriverPowerSuplyBattery0::init()
 
     clean();
 
-    if(std::filesystem::exists(std::filesystem::path(m_path)))
-    {
-        LOG_D(QString("Found Power supply battery driver in path: ") + m_path.c_str());
+    /*
+     * Battery of the notebook: the first power supply of type Battery which is not a battery of a device (scope Device:
+     * mouse, headset, ...), BAT0 on Intel, often BAT1 on AMD; the name in the order of the names (BAT0 before BAT1)
+     */
+    m_batteryName.clear();
 
-        m_descriptor["powerSuplyBattery0"] = std::filesystem::path(m_path).append("status");
+    std::error_code                    error;
+    std::vector<std::filesystem::path> supplies;
+
+    for(const auto& entry : std::filesystem::directory_iterator(m_path,error))
+    {
+        supplies.push_back(entry.path());
+    }
+
+    std::sort(supplies.begin(),supplies.end());
+
+    for(const auto& supply : supplies)
+    {
+        if(powerSupplyValue(supply / "type") == "Battery" && powerSupplyValue(supply / "scope") != "Device" && std::filesystem::exists(supply / "status"))
+        {
+            m_batteryName = QString::fromStdString(supply.filename().string());
+            break;
+        }
+    }
+
+    const std::filesystem::path battery = std::filesystem::path(m_path) / m_batteryName.toStdString();
+
+    if(!m_batteryName.isEmpty())
+    {
+        LOG_D(QString("Found Power supply battery driver in path: ") + battery.c_str());
+
+        m_descriptor["powerSuplyBattery0"] = std::filesystem::path(battery).append("status");
 
         /*
          * Optional values: only the files the battery has (validate checks all paths of the descriptor)
@@ -35,7 +79,7 @@ void SysFsDriverPowerSuplyBattery0::init()
                                 "charge_full_design","power_now","current_now","voltage_now","voltage_min_design","cycle_count",
                                 "technology","manufacturer","model_name"})
         {
-            const std::filesystem::path path = std::filesystem::path(m_path).append(file);
+            const std::filesystem::path path = std::filesystem::path(battery).append(file);
 
             if(std::filesystem::exists(path))
             {
@@ -55,16 +99,12 @@ void SysFsDriverPowerSuplyBattery0::init()
 
     if(!m_descriptor.isEmpty())
     {
-        std::error_code error;
-
-        for(const auto& entry : std::filesystem::directory_iterator("/sys/class/power_supply",error))
+        for(const auto& supply : supplies)
         {
-            QFile type(QString::fromStdString(entry.path() / "type"));
-
-            if(type.open(QIODeviceBase::ReadOnly) && QString::fromUtf8(type.readAll()).trimmed() == "Mains" && std::filesystem::exists(entry.path() / "online"))
+            if(powerSupplyValue(supply / "type") == "Mains" && std::filesystem::exists(supply / "online"))
             {
-                m_adapterName = QString::fromStdString(entry.path().filename().string());
-                m_descriptor["ac_online"] = entry.path() / "online";
+                m_adapterName = QString::fromStdString(supply.filename().string());
+                m_descriptor["ac_online"] = supply / "online";
                 LOG_D(QString("Found AC adapter: ") + m_adapterName);
                 break;
             }
@@ -96,7 +136,10 @@ void SysFsDriverPowerSuplyBattery0::handleKernelEvent(const KernelEvent::Event &
         return;
     }
 
-    if(event.m_sysName == "BAT0")
+    /*
+     * The battery (removed, added: found again), the first battery when none was found yet
+     */
+    if(event.m_sysName == m_batteryName || (m_batteryName.isEmpty() && event.m_sysName.startsWith("BAT")))
     {
         if(event.m_action == "change")
         {

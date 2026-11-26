@@ -19,7 +19,7 @@
 namespace LenovoLegionDaemon::Kit {
 
 /*
- * Battery (power_supply BAT0, charge mode and power adapter from Legion gamezone).
+ * Battery (power_supply of the notebook battery BAT0 / BAT1, charge mode and power adapter from Legion gamezone).
  * Owns notifications POWER_SUPPLY_BATTERY0_CHANGE and POWER_ADAPTER_LOW_WATTAGE.
  */
 class ModuleBattery : public ProviderModule
