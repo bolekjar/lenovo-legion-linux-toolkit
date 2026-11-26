@@ -265,7 +265,28 @@ QVariant FieldModel::toStored(const QVariant &displayed) const
         return displayed;
     }
 
-    return static_cast<qlonglong>(std::llround(displayed.toDouble() / scale()));
+    qlonglong stored = std::llround(displayed.toDouble() / scale());
+
+    /*
+     * A limit given by a field is shown rounded away from zero (cpuinfo_max_freq 5017600 kHz as 5018 MHz): the displayed
+     * limit is written as the exact one, not out of the range
+     */
+    bool         minOk = false;
+    bool         maxOk = false;
+    const double min   = storedReference(leaf([](const legion::ui::FieldUi& ui) { return ui.min(); })).toDouble(&minOk);
+    const double max   = storedReference(leaf([](const legion::ui::FieldUi& ui) { return ui.max(); })).toDouble(&maxOk);
+
+    if(maxOk && stored > max)
+    {
+        stored = std::llround(max);
+    }
+
+    if(minOk && stored < min)
+    {
+        stored = std::llround(min);
+    }
+
+    return stored;
 }
 
 template<class Getter>
@@ -320,19 +341,31 @@ QVariant FieldModel::reference(const Option &option) const
         return number;
     }
 
-    /*
-     * Field of the message, leading '-' negates it (min: "-max_undervolt")
-     */
-    const bool    negative = option.value.startsWith('-');
-    const QString path     = absolute(negative ? option.value.mid(1) : option.value,option.level);
-    const QVariant value   = display(m_source.value(path));
+    return display(storedReference(option));
+}
 
-    if(!value.isValid())
+QVariant FieldModel::storedReference(const Option &option) const
+{
+    bool ok = false;
+
+    if(option.value.isEmpty() || (option.value.toDouble(&ok), ok))
     {
         return {};
     }
 
-    return negative ? QVariant(-value.toDouble()) : value;
+    /*
+     * Field of the message, leading '-' negates it (min: "-max_undervolt")
+     */
+    const bool     negative = option.value.startsWith('-');
+    const QString  path     = absolute(negative ? option.value.mid(1) : option.value,option.level);
+    const QVariant value    = m_source.value(path);
+
+    if(!value.isValid() || !negative)
+    {
+        return value;
+    }
+
+    return -value.toDouble();
 }
 
 QVariant FieldModel::display(const QVariant &stored) const

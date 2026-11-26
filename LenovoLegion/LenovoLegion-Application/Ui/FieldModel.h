@@ -117,6 +117,11 @@ private:
     QVariant reference(const Option& option) const;
 
     /*
+     * Value of the field of the option (leading '-' negates it) in stored units, invalid for a number or no option
+     */
+    QVariant storedReference(const Option& option) const;
+
+    /*
      * Stored value -> displayed value, rounded away from zero (the same as the widget pages, -39062 uV -> -40 mV)
      */
     QVariant display(const QVariant& stored) const;
