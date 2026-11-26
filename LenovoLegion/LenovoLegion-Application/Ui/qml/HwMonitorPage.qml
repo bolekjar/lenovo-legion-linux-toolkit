@@ -61,6 +61,8 @@ SettingsPage {
     // Without the hybrid topology (no P- and E-cores) all active threads are P-threads
     readonly property var performance: (topology.count("active_cpus_core", topology.revision) > 0 ? ranges("active_cpus_core") : ranges("active_cpus"))
     readonly property var efficient:   (ranges("active_cpus_atom"))
+    // P- and E-cores (hybrid Intel CPU), otherwise only the average of all threads is shown (AMD, older Intel CPUs)
+    readonly property bool hybrid:     efficient.length > 0
 
     // Range of the frequency charts (MHz): info min/max and scaling min/max of the threads
     function frequencyRange(cpus) {
@@ -179,8 +181,8 @@ SettingsPage {
             id: cpuSection
 
             title: "CPU Details"
-            Layout.horizontalStretchFactor: 3
-            Layout.preferredWidth: 3
+            Layout.horizontalStretchFactor: page.hybrid ? 3 : 1
+            Layout.preferredWidth: page.hybrid ? 3 : 1
             checkable: true
             onCheckedChanged: cpuWindow.open = checked
             Layout.fillWidth: true
@@ -199,6 +201,7 @@ SettingsPage {
 
                 HistoryChart {
                     id: pAverage
+                    visible: page.hybrid
                     Layout.fillWidth: true
                     twoLines: true
                     title: "P-Core [%1 MHz]"
@@ -210,6 +213,7 @@ SettingsPage {
 
                 HistoryChart {
                     id: eAverage
+                    visible: page.hybrid
                     Layout.fillWidth: true
                     twoLines: true
                     title: "E-Core [%1 MHz]"
