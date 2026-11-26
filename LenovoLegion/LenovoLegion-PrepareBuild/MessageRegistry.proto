@@ -30,7 +30,8 @@ enum DataType {
   CPU_SMT             = 16 [(legion.ui.module) = "CPUSMT", (legion.ui.message) = "legion.messages.CPUSMT", (legion.ui.reload_after_set) = "CPU_OPTIONS,CPU_FREQUENCY,CPU_TOPOLOGY"];
   FAN_OPTION          = 17 [(legion.ui.module) = "FanOption", (legion.ui.message) = "legion.messages.FanOption", (legion.ui.platform) = PLATFORM_LENOVO, (legion.ui.reload_after_set) = "FAN_CURVE"];
   OTHER_GPU_SWITCH    = 18 [(legion.ui.module) = "OtherGpuSwitch", (legion.ui.message) = "legion.messages.GpuSwitchValue", (legion.ui.platform) = PLATFORM_LENOVO];
-  CPU_PSTATE          = 19 [(legion.ui.module) = "CPUPState", (legion.ui.message) = "legion.messages.CPUPState", (legion.ui.reload_after_set) = "CPU_OPTIONS,CPU_FREQUENCY"];
+  CPU_PSTATE          = 19 [(legion.ui.module) = "CPUPState", (legion.ui.message) = "legion.messages.CPUPState", (legion.ui.reload_after_set) = "CPU_OPTIONS,CPU_FREQUENCY",
+                            (legion.ui.available_from) = "status", (legion.ui.unavailable_reason) = "Requires the Intel P-State driver (intel_pstate), not used by this CPU"];
   PROFILES            = 20 [(legion.ui.message) = "legion.messages.Profiles", (legion.ui.command) = "legion.messages.ProfileCommand"];
   MODULES             = 21 [(legion.ui.message) = "legion.messages.ModuleList"];   // data providers of the daemon (read only)
 }
