@@ -43,7 +43,10 @@
 - CPU power limits (short term, long term, peak, cross loading, PL1 tau, temperature) and GPU power limits
   (configurable TGP, power boost, temperature, GPU to CPU dynamic boost) in the Custom profile, with the default
   values of every power profile from the firmware.
-- The CPU power limits of the active profile are applied to the kernel powercap (RAPL), also after Fn+Q.
+- The CPU power limits of the active profile are applied to the kernel powercap (RAPL), also after Fn+Q (Intel).
+- AMD: the firmware sets the limits of the processor itself (ALIB): short term = slow PPT, peak = fast PPT,
+  temperature = Tctl; the sustained limit (SPL / STAPM) comes from the long term limit, or from the cross loading
+  limit while the CPU and the GPU are loaded, so give both the same value (see the tool tips).
 - `platform_profile` support, so other tools (e.g. power-profiles-daemon) see the power profile as well.
 
 **Fans**
@@ -54,7 +57,8 @@
 
 **CPU**
 - Enable / disable threads, SMT, CPU governor per thread.
-- Minimal and maximal frequency per thread, Intel P-State (status, min / max performance, HWP dynamic boost, turbo).
+- Minimal and maximal frequency per thread (also `amd-pstate`), Intel P-State (status, min / max performance, HWP
+  dynamic boost, turbo).
 - Intel CPU voltage offsets (undervolt) of the CPU, cache, GPU, uncore and analog I/O planes – any notebook with an
   Intel CPU with the OC mailbox, when undervolting is not locked in the BIOS.
 
@@ -139,6 +143,8 @@ Features that need the Lenovo kernel module are grayed out with the reason when 
 Tested:
 - Legion Pro 7 16IRX9H (Gen 9)
 - Legion Pro 7 16IAX10H (Gen 10)
+- Legion Slim 5 16APH8 (Gen 8, AMD Ryzen 5 7640HS, BIOS M3CN): power profiles with Custom, CPU and GPU power limits,
+  temperatures, battery, CPU frequencies, Flip to Start (Intel undervolt and Intel P-State are not available on AMD)
 
 Tested by users, feedback welcome:
 - Legion 5 15IAH7H (Gen 7, older firmware): power profiles with Custom, CPU and GPU power limits, fan curve, fan full
@@ -337,6 +343,16 @@ The firmware accepts the write but ignores it when undervolting is locked in the
 The firmware starts with the value `0x87` (135) instead of 87 (`0x57`, its default and maximum). It is only the
 reported value, the GPU gets the limit when it is set: the value of the custom mode replaces it until the next
 reboot.
+
+**Flip to Start: ACPI error in `dmesg` (e.g. Legion Slim 5 16APH8, BIOS M3CN)**
+`ACPI BIOS Error (bug): Could not resolve symbol [\_SB.GZFD.WMAE.FEA0]` appears when Flip to Start is set: a typo
+in the firmware (`FEA0` instead of `FEA1`) fails the method after the value is set. The kernel module reads the value
+back, so the setting works; the message can be ignored.
+
+**AMD: the long term power limit has no effect**
+The firmware sets the sustained power limit (SPL / STAPM) from the long term limit or, while it uses its cross
+loading table (the CPU and the GPU loaded), from the cross loading limit. Give both the same value. The processor
+averages the sustained limit over minutes, so the power may stay at the short term limit for minutes.
 
 **NVIDIA GPU values are missing**
 The NVIDIA proprietary driver with NVML (`nvidia-utils`) is needed. A suspended GPU (hybrid mode, idle) is not
