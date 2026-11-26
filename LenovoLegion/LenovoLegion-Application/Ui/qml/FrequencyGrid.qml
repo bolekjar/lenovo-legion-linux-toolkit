@@ -229,7 +229,8 @@ Section {
             from: grid.rangeMin
             to: grid.rangeMax
             stepSize: 1
-            value: grid.globalMin
+            // Depends on the range too (a value before its range is clamped, set again when the range changes)
+            value: Math.max(from, Math.min(to, grid.globalMin))
             onMoved: grid.setGlobalMin(Math.round(value))
         }
 
@@ -257,7 +258,8 @@ Section {
             from: grid.rangeMin
             to: grid.rangeMax
             stepSize: 1
-            value: grid.globalMax
+            // Depends on the range too (a value before its range is clamped, set again when the range changes)
+            value: Math.max(from, Math.min(to, grid.globalMax))
             onMoved: grid.setGlobalMax(Math.round(value))
         }
 
@@ -353,17 +355,24 @@ Section {
                             to: thread.maxModel !== null ? thread.maxModel.max : 1
                             stepSize: 1
                             snapMode: RangeSlider.SnapAlways
-                            first.value: thread.minModel !== null ? thread.minModel.value : 0
-                            second.value: thread.maxModel !== null ? thread.maxModel.value : 1
+                            // The values depend on the range too: a value which comes before its range (e.g. 5018 MHz
+                            // before cpuinfo_max_freq when boost is enabled again) is clamped by the slider, it is set
+                            // again when the range changes
+                            first.value: thread.minModel !== null ? range.inRange(thread.minModel.value) : 0
+                            second.value: thread.maxModel !== null ? range.inRange(thread.maxModel.value) : 1
+
+                            function inRange(value) {
+                                return Math.max(from, Math.min(to, value))
+                            }
 
                             // The model values are shown again after the limits and the coupling (the binding is restored)
                             first.onMoved: {
                                 grid.setThreadMin(thread.cpu, Math.round(first.value))
-                                first.value = Qt.binding(() => thread.minModel !== null ? thread.minModel.value : 0)
+                                first.value = Qt.binding(() => thread.minModel !== null ? range.inRange(thread.minModel.value) : 0)
                             }
                             second.onMoved: {
                                 grid.setThreadMax(thread.cpu, Math.round(second.value))
-                                second.value = Qt.binding(() => thread.maxModel !== null ? thread.maxModel.value : 1)
+                                second.value = Qt.binding(() => thread.maxModel !== null ? range.inRange(thread.maxModel.value) : 1)
                             }
                         }
 

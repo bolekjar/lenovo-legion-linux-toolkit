@@ -122,7 +122,9 @@ Item {
                 to: field.fieldModel.max !== undefined ? field.fieldModel.max : 100
                 stepSize: field.fieldModel.step
                 snapMode: Slider.SnapAlways
-                value: field.shownValue
+                // Depends on the range too: a value which comes before its range is clamped by the slider and set again
+                // when the range changes (e.g. the maximal frequency after boost is enabled again)
+                value: typeof field.shownValue === "number" ? Math.max(from, Math.min(to, field.shownValue)) : field.shownValue
                 enabled: !field.fieldModel.readonly
                 onMoved: field.fieldModel.value = Math.round(value / field.fieldModel.step) * field.fieldModel.step
             }
@@ -164,7 +166,7 @@ Item {
         ThemedSpinBox {
             from: field.fieldModel.min !== undefined ? field.fieldModel.min : 0
             to: field.fieldModel.max !== undefined ? field.fieldModel.max : 1000000
-            value: field.shownValue
+            value: typeof field.shownValue === "number" ? Math.max(from, Math.min(to, field.shownValue)) : field.shownValue
             stepSize: field.fieldModel.step
             editable: true
             enabled: !field.fieldModel.readonly
