@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0
-// Page of the generic GUI (standard interfaces): Intel P-State and CPU voltage offsets, the same data as OtherControl and OffsetsControl
+// Page of the generic GUI (standard interfaces): Intel P-State, AMD P-State and CPU voltage offsets, the same data as OtherControl and OffsetsControl
 // of the widget pages (UiDesign.md)
 import QtQuick
 import LenovoLegion.Ui 1.0
@@ -26,6 +26,23 @@ SettingsPage {
                     "max_perf_pct": 100,
                     "min_perf_pct": 14,
                     "status": "active"
+                }
+            }
+        ]
+    }
+
+    // AMD P-State (amd-pstate): mode, boost, energy performance preference, preferred core (CPUOptions.proto)
+    AutoSection {
+        title: "AMD P-State"
+        dataType: "CPU_AMD_PSTATE"
+        applyBar: true
+
+        presets: [
+            {
+                text: "Default",
+                values: {
+                    "status": "active",
+                    "boost": true
                 }
             }
         ]

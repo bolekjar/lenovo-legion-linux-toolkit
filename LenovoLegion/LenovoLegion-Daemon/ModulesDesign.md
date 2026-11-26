@@ -31,6 +31,7 @@ A driver is basically a holder of the sysfs paths and a reaction to the udev eve
 | CPUOptions | CPUXList |
 | CPUPower | LegionOther |
 | CPUPState | CPUIntelPState |
+| CPUAmdPState | CPUAmdPState |
 | CPUSMT | CPU, CPUXList |
 | CPUTopology | CPU, CPUAtom, CPUCore |
 | FanCurve | LegionFanMode |
@@ -284,6 +285,7 @@ appStopImpl:
 | `CPUOptions` | SysFsDataProviderCPUOptions | – | CpuList |
 | `CPUPower` | SysFsDataProviderCPUPower | – | LegionAttributes |
 | `CPUPState` | SysFsDataProviderCPUPState | CPUIntelPState | – |
+| `CPUAmdPState` | SysFsDataProviderCPUAmdPState | CPUAmdPState | – |
 | `CPUSMT` | SysFsDataProviderCPUSMT | – | CpuList |
 | `CPUTopology` | SysFsDataProviderCPUTopology | CPUAtom, CPUCore | CpuList |
 | `FanCurve` | SysFsDataProviderFanCurve | LegionFanMode | – |
@@ -445,6 +447,7 @@ Decision of the author: shared drivers as source code without sharing at run tim
 | IntelMSR | own | `CPU_OFFSET_CHANGED` | IntelMSRData, 90 |
 | Other | LegionEvents, LegionGameZone | `KEYLOCK_STATUS_CHANGE` | OtherData, 100 |
 | CPUPState | CPUIntelPState | `CPU_PSTATE_CHANGED` (timer) | CPUPStateData, 110 |
+| CPUAmdPState | CPUAmdPState | `CPU_AMD_PSTATE_CHANGED` (timer) | CPUAmdPStateData, 111 |
 | CPUTopology | CPU, CPUAtom, CPUCore | – | – |
 | OtherGpuSwitch | LegionGameZone | – | – |
 | RGBController | LegionEvents (links `hidapi`, contains `RGBControlers/`) | `SPECIAL_KEY_PRESSED` | – |
@@ -1001,6 +1004,7 @@ Rules:
 | CPUOptions | `online` only for a CPU with the file `online` (CPU0 cannot be disabled), a governor from `scaling_available_governors` of an enabled CPU, at most as many CPUs as there are |
 | CPUFrequency | `scaling_min/max_freq` in the range `cpuinfo_min/max_freq` of an enabled CPU |
 | CPUPState | `status` `active`/`passive` (not `off`), `min/max_perf_pct` in the range 0–100 |
+| CPUAmdPState | `status` `active`/`guided`/`passive` (not `disable`), `boost` only with a boost file, `energy_performance_preference` one of `energy_performance_available_preferences` of the mode set before it |
 | CPUPower, GPUPower | a value supported in the descriptor `POWER_PROFILE_CUSTOM`, one of `steps`, or in the range `<min_value,max_value>` (the same as the GUI) |
 | FanCurve | the whole curve, 10 points with a level 0–10 |
 | FanOption, Other, PowerProfile (Fn+Q) | only when the feature is `supported` |

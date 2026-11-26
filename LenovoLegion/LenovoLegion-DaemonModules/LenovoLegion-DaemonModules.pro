@@ -27,6 +27,7 @@ MODULES = \
     CPUSMT \
     CPUFrequency \
     CPUPState \
+    CPUAmdPState \
     NvidiaNvml \
     RGBController
 

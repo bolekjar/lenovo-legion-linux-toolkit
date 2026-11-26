@@ -49,3 +49,26 @@ message CPUPState
     // Values of status which can be set now (read-only), empty = status can not be changed
     repeated string settable_statuses = 6 [(legion.ui.field) = { widget: HIDDEN }];
 }
+
+
+// AMD P-State (amd-pstate): mode of the driver, boost and the energy performance preference of all policies
+message CPUAmdPState
+{
+    string status = 1 [(legion.ui.field) = { label: "Mode", widget: COMBO, choices_from: "settable_statuses",
+                       tooltip: "🟢 Active - the processor selects the frequency itself (CPPC autonomous mode) guided by the energy performance preference.\n🔵 Guided - the kernel governor sets the minimum and maximum performance, the processor selects the frequency in this range.\n⚪ Passive - the kernel governor (schedutil, ...) selects the performance level." }];
+
+    // Values of status which can be set now (read-only)
+    repeated string settable_statuses = 2 [(legion.ui.field) = { widget: HIDDEN }];
+
+    bool   boost = 3 [(legion.ui.field) = { label: "Boost",
+                      tooltip: "The processor may run above its base frequency (Precision Boost). Disabled: lower power and temperature, lower performance." }];
+
+    string energy_performance_preference = 4 [(legion.ui.field) = { label: "Energy Performance Preference", widget: COMBO, choices_from: "available_energy_performance_preferences",
+                                              tooltip: "Hint for the processor in the active mode: performance, balance_performance, balance_power or power. With the governor performance only performance is available." }];
+
+    // EPP values the kernel offers now (active mode only, depends on the governor)
+    repeated string available_energy_performance_preferences = 5 [(legion.ui.field) = { widget: HIDDEN }];
+
+    string prefcore = 6 [(legion.ui.field) = { label: "Preferred Core", widget: LABEL,
+                         tooltip: "The scheduler prefers the fastest cores of the processor (amd_pstate prefcore, read only)." }];
+}

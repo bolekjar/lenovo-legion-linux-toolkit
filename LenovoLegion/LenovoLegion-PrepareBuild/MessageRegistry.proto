@@ -34,4 +34,6 @@ enum DataType {
                             (legion.ui.available_from) = "status", (legion.ui.unavailable_reason) = "Requires the Intel P-State driver (intel_pstate), not used by this CPU"];
   PROFILES            = 20 [(legion.ui.message) = "legion.messages.Profiles", (legion.ui.command) = "legion.messages.ProfileCommand"];
   MODULES             = 21 [(legion.ui.message) = "legion.messages.ModuleList"];   // data providers of the daemon (read only)
+  CPU_AMD_PSTATE      = 22 [(legion.ui.module) = "CPUAmdPState", (legion.ui.message) = "legion.messages.CPUAmdPState", (legion.ui.reload_after_set) = "CPU_OPTIONS,CPU_FREQUENCY",
+                            (legion.ui.available_from) = "status", (legion.ui.unavailable_reason) = "Requires the AMD P-State driver (amd-pstate), not used by this CPU"];
 }
