@@ -63,6 +63,12 @@ class DataSource : public QObject
     Q_PROPERTY(bool    available READ available                    NOTIFY messageChanged)
 
     /*
+     * The daemon sent the data without the field of (legion.ui.available_from): the hardware does not have them (e.g. no
+     * amd-pstate on an Intel CPU), not a temporary error; kept while the daemon is not connected
+     */
+    Q_PROPERTY(bool    hardwareAbsent READ hardwareAbsent          NOTIFY messageChanged)
+
+    /*
      * (legion.ui.platform) of the data type: "generic" or "lenovo" (Lenovo Legion kernel driver needed)
      */
     Q_PROPERTY(QString platform  READ platform                     NOTIFY dataTypeChanged)
@@ -133,6 +139,7 @@ public:
     bool    valid() const;
     int     changeCount() const;
     bool    available() const;
+    bool    hardwareAbsent() const;
     bool    answered() const;   // the daemon answered at least once (data, an error or not connected)
     QString platform() const;
     QString lastError() const;
@@ -336,6 +343,7 @@ private:
     std::unique_ptr<google::protobuf::Message> buildMessage(const google::protobuf::Descriptor* descriptor,const QVariantMap& values) const;              // the request in the worker thread (waited for in the destructor)
     QString                                      m_lastError;
     bool                                         m_available = false;
+    bool                                         m_hardwareAbsent = false;   // see hardwareAbsent
     int                                          m_batchDepth = 0;       // beginChanges() without endChanges()
     bool                                         m_batchChanged = false; // a field changed during the batch
     QString                                      m_platform  = "generic";

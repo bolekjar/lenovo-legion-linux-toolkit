@@ -15,6 +15,7 @@ SettingsPage {
         title: "CPU Power State Control"
         dataType: "CPU_PSTATE"
         applyBar: true
+        hideWhenAbsent: true
 
         // The same values as OtherControl::CPU_PSTATE_PRESET
         presets: [
@@ -36,6 +37,7 @@ SettingsPage {
         title: "AMD P-State"
         dataType: "CPU_AMD_PSTATE"
         applyBar: true
+        hideWhenAbsent: true
 
         presets: [
             {
@@ -49,8 +51,19 @@ SettingsPage {
     }
 
     // Order of the planes and presets (mV) the same as OffsetsControl::CPU_VOLTAGE_PRESETS
+    // Vendor of the CPU (modalias: 0000 Intel, 0002 AMD), the voltage offsets are Intel only
+    DataSource {
+        id: cpuInfo
+
+        dataType: "CPU_INFO"
+    }
+
     Section {
         title: "CPU Voltage"
+        // Hidden on another CPU than Intel, on Intel the reason is shown (e.g. the kernel module is not loaded)
+        readonly property var vendor: cpuInfo.value("vendor_code", cpuInfo.revision)
+
+        visible: !vendor || vendor === "0000"
         presetLabel: "Preset undervolting configuration"
         applyBar: true
         source: DataSource {

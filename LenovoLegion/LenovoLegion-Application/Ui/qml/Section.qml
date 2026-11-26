@@ -46,6 +46,11 @@ GroupBox {
     property bool       showUnavailable: true
     readonly property bool unavailable: showUnavailable && source !== null && source.dataType.length > 0 && !source.available
 
+    // The hardware does not have the data (DataSource.hardwareAbsent, e.g. AMD P-State on an Intel CPU): the group is
+    // hidden instead of showing why
+    property bool       hideWhenAbsent: false
+    visible: !(hideWhenAbsent && source !== null && source.hardwareAbsent)
+
     readonly property string unavailableReason: {
         if (source === null)
             return ""

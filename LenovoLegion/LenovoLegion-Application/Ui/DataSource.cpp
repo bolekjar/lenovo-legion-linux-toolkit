@@ -179,6 +179,7 @@ void DataSource::setDataType(const QString &dataType)
     m_dataType      = dataType;
     m_dataTypeValue = -1;
     m_available     = false;
+    m_hardwareAbsent = false;
     m_platform      = "generic";
     m_availableFrom.clear();
     m_unavailableReason.clear();
@@ -304,6 +305,11 @@ bool DataSource::valid() const
 bool DataSource::available() const
 {
     return m_available;
+}
+
+bool DataSource::hardwareAbsent() const
+{
+    return m_hardwareAbsent;
 }
 
 bool DataSource::answered() const
@@ -574,7 +580,8 @@ void DataSource::reloadAsync()
 
 void DataSource::parse(const QByteArray &data)
 {
-    m_available = m_message->ParseFromArray(data.constData(),static_cast<int>(data.size()));
+    m_available      = m_message->ParseFromArray(data.constData(),static_cast<int>(data.size()));
+    m_hardwareAbsent = false;
 
     if(!m_available)
     {
@@ -596,8 +603,9 @@ void DataSource::parse(const QByteArray &data)
 
         if(!available)
         {
-            m_available = false;
-            error       = reason;
+            m_available      = false;
+            m_hardwareAbsent = true;
+            error            = reason;
         }
         else if(error == reason)
         {
