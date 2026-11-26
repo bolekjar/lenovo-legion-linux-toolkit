@@ -42,7 +42,7 @@ SettingsPage {
     // The module answers also without a keyboard: the page is not available the same as without the module
     contentAvailable: !rgb.available || page.hasDevice
     unavailableIcon: "qrc:/ui/icons/keyboard.svg"
-    contentReason: "No supported per-key RGB keyboard (USB 048d:c1xx, c6xx, c9xx) was found (4-zone keyboards are not supported yet)"
+    contentReason: "No supported RGB keyboard (per-key USB 048d:c1xx, c6xx, c9xx or 4-zone) was found"
 
     function send(flags, values) {
         const command = Object.assign({ "set_request_flags": flags }, values)

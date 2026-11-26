@@ -47,7 +47,15 @@ SettingsPage {
         request: ({ "request_flags": 0xFFF })
     }
 
-    readonly property bool keyboardFound: rgbCheck.available && rgbCheck.value("britness.max", rgbCheck.revision) > 0
+    // 4-zone RGB keyboard (another module and protocol)
+    DataSource {
+        id: rgb4ZoneCheck
+
+        dataType: "KEYBOARD_FOUR_ZONE"
+    }
+
+    readonly property bool perKeyKeyboardFound: rgbCheck.available && rgbCheck.value("britness.max", rgbCheck.revision) > 0
+    readonly property bool keyboardFound: perKeyKeyboardFound || rgb4ZoneCheck.available
 
     // Data providers of the daemon: modules (state 0 running, 1 failed, 2 not loaded) and providers of the framework
     DataSource {
@@ -88,8 +96,8 @@ SettingsPage {
           failText: page.daemonConnected ? page.failReason(nvidiaCheck, "No NVIDIA GPU or the proprietary NVIDIA driver (NVML) is not installed.")
                                          : "Unknown, the daemon is not connected." },
         { name: "RGB keyboard", ok: page.keyboardFound, required: false,
-          okText: "Keyboard found",
-          failText: page.daemonConnected ? page.failReason(rgbCheck, "No supported per-key RGB keyboard (USB 048d:c1xx, c6xx, c9xx) was found (4-zone keyboards are not supported yet).")
+          okText: page.perKeyKeyboardFound ? "Per-key keyboard found" : "4-zone keyboard found",
+          failText: page.daemonConnected ? page.failReason(rgbCheck, "No supported RGB keyboard (per-key USB 048d:c1xx, c6xx, c9xx or 4-zone) was found.")
                                          : "Unknown, the daemon is not connected." },
         { name: "Daemon modules", ok: modulesCheck.available && page.brokenModules.length === 0, required: false,
           // list of the modules after a click on the row

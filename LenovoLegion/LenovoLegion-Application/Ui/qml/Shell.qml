@@ -79,13 +79,27 @@ Control {
         request: ({ "request_flags": 0x020 })
     }
 
+    // 4-zone RGB keyboard (another protocol than the per-key keyboards): the page Keyboard shows Keyboard4ZonePage
+    DataSource {
+        id: keyboard4Zone
+
+        dataType: "KEYBOARD_FOUR_ZONE"
+    }
+
+    readonly property bool perKeyKeyboard: keyboardState.available && keyboardState.value("britness.max", keyboardState.revision) > 0
+
+    // Page of a navigation entry: the 4-zone keyboard page instead of the per-key one when only a 4-zone keyboard is found
+    function pageUrl(page) {
+        return page.name === "Keyboard" && !shell.perKeyKeyboard && keyboard4Zone.available ? "qrc:/ui/Keyboard4ZonePage.qml" : page.url
+    }
+
     // Navigation of a page without data: grayed with the reason in the tool tip (the same as the tabs of HomePage),
     // without the connection the pages show the card "Not connected" instead
     function pageAvailable(name) {
         if (name !== "Keyboard" || !appState.connected)
             return true
 
-        return keyboardState.available && keyboardState.value("britness.max", keyboardState.revision) > 0
+        return shell.perKeyKeyboard || keyboard4Zone.available
     }
 
     function pageReason(name) {
@@ -95,7 +109,7 @@ Control {
         if (keyboardState.moduleError.length > 0)
             return keyboardState.moduleError
 
-        return keyboardState.available ? "No supported per-key RGB keyboard (USB 048d:c1xx, c6xx, c9xx) was found (4-zone keyboards are not supported yet)" : keyboardState.lastError
+        return keyboardState.available ? "No supported RGB keyboard (per-key USB 048d:c1xx, c6xx, c9xx or 4-zone) was found" : keyboardState.lastError
     }
 
     // Button of the navigation: icon and name, the current page with the light bar of the accent (like the view
@@ -328,7 +342,7 @@ Control {
                 id: pageLoader
 
                 anchors.fill: parent
-                source: shell.pageShown ? shell.current.url : ""
+                source: shell.pageShown ? shell.pageUrl(shell.current) : ""
             }
 
             // Information about the hardware (camera shutter, onDaemonNotification) over every page

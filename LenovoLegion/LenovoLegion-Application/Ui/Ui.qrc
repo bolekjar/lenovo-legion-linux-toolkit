@@ -25,6 +25,7 @@
         <file alias="InfoSection.qml">qml/InfoSection.qml</file>
         <file alias="InformationPage.qml">qml/InformationPage.qml</file>
         <file alias="KeyboardPage.qml">qml/KeyboardPage.qml</file>
+        <file alias="Keyboard4ZonePage.qml">qml/Keyboard4ZonePage.qml</file>
         <file alias="KeyboardView.qml">qml/KeyboardView.qml</file>
         <file alias="LegionLogo.qml">qml/LegionLogo.qml</file>
         <file alias="ColorPicker.qml">qml/ColorPicker.qml</file>

@@ -2,6 +2,8 @@ edition = "2024";
 
 package legion.messages;
 
+import "UiOptions.proto";
+
 
 message RGBController
 {
@@ -166,4 +168,44 @@ message RGBControllerSetRequest
     repeated RGBController.LedGroupEffect     led_group_effects     = 3;
              uint32                           set_request_flags     = 4;
              RGBController.LogoStatus         logo_status           = 5;
+}
+
+
+// 4-zone RGB keyboard (ITE 048d, HID collection 0xFF89:0xCC, feature report 0xCC of 33 bytes, the same protocol as
+// Lenovo Legion Toolkit). The keyboard can not be read: the state is the one the daemon set last (restored from the
+// settings), the defaults before the first set.
+message Keyboard4Zone
+{
+    enum Effect {
+        EFFECT_OFF          = 0 [(legion.ui.value_label) = "Off"];
+        EFFECT_STATIC       = 1 [(legion.ui.value_label) = "Static"];
+        EFFECT_BREATH       = 2 [(legion.ui.value_label) = "Breath"];
+        EFFECT_WAVE         = 3 [(legion.ui.value_label) = "Wave"];
+        EFFECT_SMOOTH       = 4 [(legion.ui.value_label) = "Smooth"];
+    }
+
+    enum Brightness {
+        BRIGHTNESS_LOW      = 0 [(legion.ui.value_label) = "Low"];
+        BRIGHTNESS_HIGH     = 1 [(legion.ui.value_label) = "High"];
+    }
+
+    enum Direction {
+        DIRECTION_LEFT_TO_RIGHT = 0 [(legion.ui.value_label) = "Left to right"];
+        DIRECTION_RIGHT_TO_LEFT = 1 [(legion.ui.value_label) = "Right to left"];
+    }
+
+    // A 4-zone keyboard was found (sent only then, the data type is not available without it)
+    bool       present     = 1 [(legion.ui.field) = { widget: HIDDEN }];
+
+    Effect     effect      = 2 [(legion.ui.field) = { label: "Effect" }];
+    uint32     speed       = 3 [(legion.ui.field) = { label: "Speed", widget: SLIDER, min: "1", max: "4",
+                                tooltip: "Speed of the breath, wave and smooth effects" }];
+    Brightness brightness  = 4 [(legion.ui.field) = { label: "Brightness" }];
+    Direction  direction   = 5 [(legion.ui.field) = { label: "Direction", tooltip: "Direction of the wave effect" }];
+
+    // Colors of the zones from the left (0xRRGGBB), used by the static and the breath effect
+    uint32     zone1_color = 6 [(legion.ui.field) = { label: "Zone 1", widget: HIDDEN }];
+    uint32     zone2_color = 7 [(legion.ui.field) = { label: "Zone 2", widget: HIDDEN }];
+    uint32     zone3_color = 8 [(legion.ui.field) = { label: "Zone 3", widget: HIDDEN }];
+    uint32     zone4_color = 9 [(legion.ui.field) = { label: "Zone 4", widget: HIDDEN }];
 }

@@ -29,7 +29,8 @@ MODULES = \
     CPUPState \
     CPUAmdPState \
     NvidiaNvml \
-    RGBController
+    RGBController \
+    RGB4Zone
 
 SUBDIRS += \
     IntelMSR \

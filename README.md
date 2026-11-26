@@ -71,6 +71,8 @@
 - Brightness, device profiles and the logo LED.
 - Effects with colors and speed per LED, per key group or for the whole keyboard, drawn on a picture of the notebook
   (keyboard, front and rear light bar).
+- 4-zone keyboards (e.g. Legion Slim 5 16APH8): effects static, breath, wave (with direction) and smooth, speed,
+  brightness and the colors of the 4 zones; the state is restored by the daemon (the keyboard can not be read).
 
 **Monitoring**
 - Live charts of the CPU and GPU temperatures, fan speeds, CPU power and frequencies with warning and critical

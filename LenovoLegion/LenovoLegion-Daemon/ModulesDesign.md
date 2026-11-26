@@ -32,6 +32,7 @@ A driver is basically a holder of the sysfs paths and a reaction to the udev eve
 | CPUPower | LegionOther |
 | CPUPState | CPUIntelPState |
 | CPUAmdPState | CPUAmdPState |
+| RGB4Zone | LegionGameZone (light control owner), hidapi |
 | CPUSMT | CPU, CPUXList |
 | CPUTopology | CPU, CPUAtom, CPUCore |
 | FanCurve | LegionFanMode |
@@ -286,6 +287,7 @@ appStopImpl:
 | `CPUPower` | SysFsDataProviderCPUPower | – | LegionAttributes |
 | `CPUPState` | SysFsDataProviderCPUPState | CPUIntelPState | – |
 | `CPUAmdPState` | SysFsDataProviderCPUAmdPState | CPUAmdPState | – |
+| `RGB4Zone` | DataProviderRGB4Zone | LegionGameZone | – |
 | `CPUSMT` | SysFsDataProviderCPUSMT | – | CpuList |
 | `CPUTopology` | SysFsDataProviderCPUTopology | CPUAtom, CPUCore | CpuList |
 | `FanCurve` | SysFsDataProviderFanCurve | LegionFanMode | – |
@@ -448,6 +450,7 @@ Decision of the author: shared drivers as source code without sharing at run tim
 | Other | LegionEvents, LegionGameZone | `KEYLOCK_STATUS_CHANGE` | OtherData, 100 |
 | CPUPState | CPUIntelPState | `CPU_PSTATE_CHANGED` (timer) | CPUPStateData, 110 |
 | CPUAmdPState | CPUAmdPState | `CPU_AMD_PSTATE_CHANGED` (timer) | CPUAmdPStateData, 111 |
+| RGB4Zone | LegionGameZone | – | RGB4ZoneData, 200 |
 | CPUTopology | CPU, CPUAtom, CPUCore | – | – |
 | OtherGpuSwitch | LegionGameZone | – | – |
 | RGBController | LegionEvents (links `hidapi`, contains `RGBControlers/`) | `SPECIAL_KEY_PRESSED` | – |

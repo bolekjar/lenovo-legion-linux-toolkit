@@ -90,12 +90,14 @@ public:
             Other(const SysFsDriver::DescriptorType& descriptor) :
                 get_power_charge_mode(descriptor["other_get_power_charge_mode"]),
                 get_thermal_mode(descriptor["other_get_thermal_mode"]),
-                is_ac_fit_for_oc(descriptor["other_is_ac_fit_for_oc"])
+                is_ac_fit_for_oc(descriptor["other_is_ac_fit_for_oc"]),
+                set_light_control_owner(descriptor["other_set_light_control_owner"])
             {}
 
             const std::filesystem::path  get_power_charge_mode;
             const std::filesystem::path  get_thermal_mode;
-            const std::filesystem::path  is_ac_fit_for_oc;   // 1: the adapter can supply the full power
+            const std::filesystem::path  is_ac_fit_for_oc;          // 1: the adapter can supply the full power
+            const std::filesystem::path  set_light_control_owner;   // 1: the lights are set by the application, 0: by the keyboard (ITE); empty path without it
         };
 
         explicit GameZone(const SysFsDriver::DescriptorType& descriptor) :

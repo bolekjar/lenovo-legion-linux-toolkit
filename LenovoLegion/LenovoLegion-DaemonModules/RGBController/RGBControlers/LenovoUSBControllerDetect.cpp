@@ -136,7 +136,7 @@ static bool isPerKeyKeyboard(hid_device* dev,const hid_device_info& info)
 
     if(*length != PACKET_SIZE)
     {
-        LOG_W(QString::asprintf("RGB keyboard %04x:%04x is not a per-key keyboard (feature report 0x%02x: %zu bytes, per-key %d bytes; e.g. a 4-zone keyboard), not supported",
+        LOG_W(QString::asprintf("RGB keyboard %04x:%04x is not a per-key keyboard (feature report 0x%02x: %zu bytes, per-key %d bytes; e.g. a 4-zone keyboard, handled by the module RGB4Zone), skipped",
                                 info.vendor_id,info.product_id,REPORT_ID,*length,PACKET_SIZE));
         return false;
     }
