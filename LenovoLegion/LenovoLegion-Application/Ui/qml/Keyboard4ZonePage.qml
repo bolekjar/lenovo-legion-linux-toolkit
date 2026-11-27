@@ -114,6 +114,10 @@ SettingsPage {
             lightsOn: page.lightsOn
             zonesEditable: page.zonesEditable
             selectedZone: page.selectedZone
+            effect: page.effect
+            speed: Number(keyboard.value(page.presetPath("speed"), keyboard.revision) || 2)
+            brightnessHigh: Number(keyboard.value(page.presetPath("brightness"), keyboard.revision) || 0) === 1   // BRIGHTNESS_HIGH
+            rightToLeft: Number(keyboard.value(page.presetPath("direction"), keyboard.revision) || 0) === 1      // DIRECTION_RIGHT_TO_LEFT
             onZoneClicked: zone => page.selectedZone = zone
         }
 
@@ -124,7 +128,7 @@ SettingsPage {
             opacity: 0.7
             text: !page.lightsOn ? "The keyboard backlight is off"
                 : page.zonesEditable ? "Click a key to select its zone. Illustration: the keys of the zones differ by the model of the keyboard."
-                : "The effect uses its own colors, the colors of the zones are used by the static and the breath effect"
+                : "The effect uses its own colors, the colors of the zones are used by the static and the breath effect (the animation is an illustration)"
         }
 
         // Settings of the active preset

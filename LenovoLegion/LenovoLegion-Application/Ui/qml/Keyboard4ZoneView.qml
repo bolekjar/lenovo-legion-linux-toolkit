@@ -18,6 +18,25 @@ Item {
     property bool zonesEditable: true   // false: the effect has its own colors (no zone selected, rainbow)
     property int  selectedZone: 0
 
+    // Effect of the preset, shown as an illustration (the keyboard can not be read): 0 static, 1 breath, 2 wave,
+    // 3 smooth (Keyboard4Zone.Effect), speed 1 - 4, low brightness dimmer, direction of the wave
+    property int  effect: 0
+    property int  speed: 2
+    property bool brightnessHigh: true
+    property bool rightToLeft: false
+
+    // Phase of the animation 0 - 1, one period per cycle of the effect
+    property real phase: 0
+
+    NumberAnimation on phase {
+        from: 0
+        to: 1
+        loops: Animation.Infinite
+        running: view.visible && view.lightsOn && view.effect !== 0
+        // Speed 1 slow - 4 fast
+        duration: [4000, 3000, 2000, 1200][Math.max(1, Math.min(4, view.speed)) - 1]
+    }
+
     signal zoneClicked(int zone)
 
     /*
@@ -78,20 +97,35 @@ Item {
         return Math.min(zoneCount - 1, Math.floor((key.x + key.w / 2) / unitsWide * zoneCount))
     }
 
-    // Effects with their own colors: a rainbow over the width (illustration)
-    function rainbow(key) {
-        return Qt.hsva(((key.x + key.w / 2) / unitsWide) * 0.85, 0.85, 1, 1)
+    // Position of the middle of a key over the width, 0 - 1
+    function position(key) {
+        return (key.x + key.w / 2) / unitsWide
+    }
+
+    function scaled(color, factor) {
+        return Qt.rgba(color.r * factor, color.g * factor, color.b * factor, 1)
     }
 
     function keyColor(key) {
         if (!lightsOn)
             return "#1a1a1e"
 
-        if (!zonesEditable)
-            return rainbow(key)
+        const level = brightnessHigh ? 1 : 0.55
+        const zoneColor = zoneColors[zoneOf(key)] !== undefined ? zoneColors[zoneOf(key)] : Qt.rgba(1, 1, 1, 1)
 
-        const color = zoneColors[zoneOf(key)]
-        return color !== undefined ? color : "white"
+        switch (effect) {
+        case 1:     // breath: the colors of the zones fade in and out together
+            return scaled(zoneColor, level * (0.15 + 0.85 * (0.5 - 0.5 * Math.cos(2 * Math.PI * phase))))
+        case 2: {   // wave: a rainbow moving over the keyboard
+            const shift = rightToLeft ? phase : -phase
+            const hue = ((position(key) * 0.85 + shift) % 1 + 1) % 1
+            return scaled(Qt.hsva(hue, 0.85, 1, 1), level)
+        }
+        case 3:     // smooth: the whole keyboard changes its color
+            return scaled(Qt.hsva(phase, 0.85, 1, 1), level)
+        default:    // static
+            return scaled(zoneColor, level)
+        }
     }
 
     // The same look as KeyboardView
