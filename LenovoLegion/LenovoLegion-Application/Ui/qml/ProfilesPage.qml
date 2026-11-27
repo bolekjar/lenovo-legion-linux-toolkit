@@ -387,8 +387,13 @@ SettingsPage {
                                 Layout.fillWidth: true
                                 spacing: 6
 
+                                // Buttons on the right, Load and Edit of the same width
+                                Item { Layout.fillWidth: true }
+
                                 ThemedButton {
-                                    Layout.fillWidth: true
+                                    id: loadButton
+
+                                    Layout.preferredWidth: Math.max(loadButton.implicitWidth, editButton.implicitWidth)
                                     text: "Load"
                                     onClicked: page.load(card.modelData.name)
                                 }
@@ -396,6 +401,7 @@ SettingsPage {
                                 ThemedButton {
                                     id: editButton
 
+                                    Layout.preferredWidth: Math.max(loadButton.implicitWidth, editButton.implicitWidth)
                                     text: "Edit"
                                     onClicked: page.edit(card.modelData)
 
