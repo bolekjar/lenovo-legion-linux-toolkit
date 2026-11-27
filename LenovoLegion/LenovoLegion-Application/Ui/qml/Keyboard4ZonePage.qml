@@ -66,6 +66,17 @@ SettingsPage {
         colorTimer.restart()
     }
 
+    // Phase of the animated swatches of the presets (one period of the effects in 3 s)
+    property real swatchPhase: 0
+
+    NumberAnimation on swatchPhase {
+        from: 0
+        to: 1
+        duration: 3000
+        loops: Animation.Infinite
+        running: page.visible
+    }
+
     // Static and breath use the colors of the zones, wave and smooth their own colors
     readonly property int  effect: Number(keyboard.value(page.presetPath("effect"), keyboard.revision) || 0)
     readonly property bool zonesEditable: lightsOn && (effect === 0 || effect === 1)   // EFFECT_STATIC, EFFECT_BREATH
@@ -114,20 +125,45 @@ SettingsPage {
                             readonly property bool current: page.activePreset === index
                             // Colors of the swatch: the zones (static, breath) or a rainbow (wave, smooth)
                             readonly property int  presetEffect: index > 0 ? Number(keyboard.value("presets[" + (index - 1) + "].effect", keyboard.revision) || 0) : 0
-                            readonly property var  swatch: {
-                                if (index === 0)
-                                    return []
-
-                                if (presetEffect >= 2)
-                                    return [Qt.hsva(0, 0.85, 1, 1), Qt.hsva(0.3, 0.85, 1, 1), Qt.hsva(0.6, 0.85, 1, 1), Qt.hsva(0.85, 0.85, 1, 1)]
-
+                            // Swatch of the preset animated by its effect (page.swatchPhase): static the colors of the
+                            // zones, breath the colors fading, wave a moving rainbow, smooth one changing color
+                            readonly property var  zoneColors: {
                                 const colors = []
+
+                                if (index === 0)
+                                    return colors
+
                                 for (let zone = 1; zone <= 4; ++zone) {
                                     const rgb = Number(keyboard.value("presets[" + (index - 1) + "].zone" + zone + "_color", keyboard.revision) || 0)
                                     colors.push(Qt.rgba(((rgb >> 16) & 0xFF) / 255, ((rgb >> 8) & 0xFF) / 255, (rgb & 0xFF) / 255, 1))
                                 }
                                 return colors
                             }
+                            readonly property var  swatch: {
+                                const phase = page.swatchPhase
+                                const colors = []
+
+                                for (let zone = 0; zone < zoneColors.length; ++zone) {
+                                    switch (presetEffect) {
+                                    case 1: {   // breath
+                                        const level = 0.15 + 0.85 * (0.5 - 0.5 * Math.cos(2 * Math.PI * phase))
+                                        const color = zoneColors[zone]
+                                        colors.push(Qt.rgba(color.r * level, color.g * level, color.b * level, 1))
+                                        break
+                                    }
+                                    case 2:     // wave
+                                        colors.push(Qt.hsva(((zone * 0.22 - phase) % 1 + 1) % 1, 0.85, 1, 1))
+                                        break
+                                    case 3:     // smooth
+                                        colors.push(Qt.hsva(phase, 0.85, 1, 1))
+                                        break
+                                    default:    // static
+                                        colors.push(zoneColors[zone])
+                                    }
+                                }
+                                return colors
+                            }
+                            readonly property string effectName: ["Static", "Breath", "Wave", "Smooth"][Math.max(0, Math.min(3, presetEffect))]
 
                             hoverEnabled: true
                             implicitHeight: 36
@@ -202,7 +238,7 @@ SettingsPage {
                             ThemedToolTip {
                                 visible: presetButton.hovered
                                 delay: 500
-                                text: presetButton.index === 0 ? "Keyboard backlight off" : "Fn+Space switches the presets"
+                                text: presetButton.index === 0 ? "Keyboard backlight off" : presetButton.effectName + "\nFn+Space switches the presets"
                             }
                         }
                     }
