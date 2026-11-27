@@ -76,3 +76,19 @@ message NvidiaNvml
     // hardware_monitor contains only static data, offsets are the last known values
     bool   gpu_suspended                 = 5 [(legion.ui.field) = { widget: HIDDEN }];
 }
+
+
+// Runtime power management of the discrete NVIDIA GPU (PCI power/control and power/runtime_status): the GPU is powered
+// down when it is idle (hybrid mode); the NVIDIA driver enables it itself (DynamicPowerManagement, udev rule)
+message GpuRuntimePM
+{
+    // A discrete NVIDIA GPU was found (sent only then)
+    bool   present        = 1 [(legion.ui.field) = { widget: HIDDEN }];
+
+    bool   auto_suspend   = 2 [(legion.ui.field) = { label: "Power down when idle",
+                               tooltip: "Runtime power management of the discrete GPU (PCI power/control = auto): in the hybrid mode the GPU is powered down when no application uses it, which saves 5 - 15 W on the battery.\n\nThe NVIDIA driver enables it itself (DynamicPowerManagement); disabled (on) the GPU stays powered all the time. Keep it enabled unless you debug a problem of the GPU." }];
+    string runtime_status = 3 [(legion.ui.field) = { label: "State", widget: LABEL,
+                               tooltip: "active: the GPU is powered (an application uses it, or the power management is disabled)\nsuspended: the GPU is powered down (saves power)\nIn the dGPU only mode (G-Sync) the GPU drives the display and is always active." }];
+    string device         = 4 [(legion.ui.field) = { label: "PCI device", widget: LABEL,
+                               tooltip: "PCI address of the discrete GPU." }];
+}

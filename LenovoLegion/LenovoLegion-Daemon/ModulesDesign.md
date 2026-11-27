@@ -34,6 +34,7 @@ A driver is basically a holder of the sysfs paths and a reaction to the udev eve
 | CPUAmdPState | CPUAmdPState |
 | CPUUncore | CPUIntelUncore |
 | CPUTcc | CPUIntelTcc |
+| GPURuntimePM | GPURuntimePM |
 | RGB4Zone | LegionGameZone (light control owner), hidapi |
 | CPUSMT | CPU, CPUXList |
 | CPUTopology | CPU, CPUAtom, CPUCore |
@@ -458,6 +459,7 @@ Decision of the author: shared drivers as source code without sharing at run tim
 | CPUAmdPState | CPUAmdPState | `CPU_AMD_PSTATE_CHANGED` (timer) | CPUAmdPStateData, 111 |
 | CPUUncore | CPUIntelUncore | – | CPUUncoreData, 112 |
 | CPUTcc | CPUIntelTcc | – | CPUTccData, 113 |
+| GPURuntimePM | GPURuntimePM | – | – (not saved, set by the NVIDIA driver) |
 | RGB4Zone | LegionGameZone | – | RGB4ZoneData, 200 |
 | CPUTopology | CPU, CPUAtom, CPUCore | – | – |
 | OtherGpuSwitch | LegionGameZone | – | – |

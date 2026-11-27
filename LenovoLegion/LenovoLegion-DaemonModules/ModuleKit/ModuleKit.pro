@@ -49,6 +49,7 @@ HEADERS += \
     Drivers/SysFsDriverCPUAmdPState.h \
     Drivers/SysFsDriverCPUIntelTcc.h \
     Drivers/SysFsDriverCPUIntelUncore.h \
+    Drivers/SysFsDriverGPURuntimePM.h \
     Drivers/SysFsDriverCPUXList.h \
     Drivers/SysFsDriverIntelPowercapRapl.h \
     Drivers/SysFsDriverLegionEvents.h \
@@ -76,6 +77,7 @@ SOURCES += \
     Drivers/SysFsDriverCPUAmdPState.cpp \
     Drivers/SysFsDriverCPUIntelTcc.cpp \
     Drivers/SysFsDriverCPUIntelUncore.cpp \
+    Drivers/SysFsDriverGPURuntimePM.cpp \
     Drivers/SysFsDriverCPUXList.cpp \
     Drivers/SysFsDriverIntelPowercapRapl.cpp \
     Drivers/SysFsDriverLegionEvents.cpp \

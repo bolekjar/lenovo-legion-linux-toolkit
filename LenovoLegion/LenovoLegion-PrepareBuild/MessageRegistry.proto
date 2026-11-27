@@ -42,4 +42,6 @@ enum DataType {
                             (legion.ui.available_from) = "max_limit", (legion.ui.unavailable_reason) = "Requires the Intel uncore frequency driver (intel_uncore_frequency)"];
   CPU_TCC             = 25 [(legion.ui.module) = "CPUTcc", (legion.ui.message) = "legion.messages.CPUTcc",
                             (legion.ui.available_from) = "max_offset", (legion.ui.unavailable_reason) = "Requires the Intel processor thermal device (TCC offset)"];
+  GPU_RUNTIME_PM      = 26 [(legion.ui.module) = "GPURuntimePM", (legion.ui.message) = "legion.messages.GpuRuntimePM",
+                            (legion.ui.available_from) = "present", (legion.ui.unavailable_reason) = "No discrete NVIDIA GPU was found"];
 }

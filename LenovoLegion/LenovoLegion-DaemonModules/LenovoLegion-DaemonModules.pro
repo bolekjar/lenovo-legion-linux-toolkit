@@ -30,6 +30,7 @@ MODULES = \
     CPUAmdPState \
     CPUUncore \
     CPUTcc \
+    GPURuntimePM \
     NvidiaNvml \
     RGBController \
     RGB4Zone

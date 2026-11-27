@@ -68,6 +68,8 @@
 **GPU (NVIDIA)**
 - Live clocks, load, VRAM, temperature, power and PCIe link (NVML).
 - GPU and memory clock offsets.
+- Runtime power management of the discrete GPU: its state (active / suspended) and a warning when it is never
+  powered down.
 - GPU mode: Hybrid, Hybrid (Auto), iGPU only, dGPU only (G-Sync), applied after a restart.
 
 **RGB keyboard**
