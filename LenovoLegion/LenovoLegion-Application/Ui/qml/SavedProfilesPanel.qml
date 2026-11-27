@@ -36,6 +36,9 @@ Section {
 
     enabled: profiles.available
 
+    // Not squeezed by the power profiles above it (they fill the column): at least the height of its content
+    Layout.minimumHeight: implicitHeight
+
     Label {
         Layout.fillWidth: true
 
@@ -50,6 +53,7 @@ Section {
         id: selection
 
         Layout.fillWidth: true
+        Layout.topMargin: 4
 
         visible: panel.names.length > 0
         model: panel.names
@@ -69,6 +73,8 @@ Section {
 
     ThemedButton {
         Layout.fillWidth: true
+        Layout.topMargin: 6
+        Layout.bottomMargin: 2
 
         visible: panel.names.length > 0
         text: "Load"
