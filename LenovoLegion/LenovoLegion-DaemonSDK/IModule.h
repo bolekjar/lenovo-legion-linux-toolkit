@@ -35,6 +35,13 @@ public:
         bool persistent = false;  // module saves and restores settings
         int  order      = 100;    // order of restoring on start, lower first (PowerProfile = 0)
         bool customOnly = false;  // restore only when CUSTOM power profile is saved (FanCurve, CPUPower, GPUPower)
+
+        /*
+         * The device keeps no state, the settings are its only memory (e.g. the presets of the 4-zone keyboard): saved
+         * after every set and on IModuleHost::saveSettings(), also without "save settings on exit", and loaded on every
+         * start (loadState() without "apply settings on start")
+         */
+        bool deviceMemory = false;
     };
 
 public:
@@ -91,6 +98,9 @@ public:
 
     /* Read current state of the hardware and save it */
     virtual void saveSettings(ISettingsStorage&)         {}
+
+    /* SettingsPolicy::deviceMemory: read saved settings without applying them (start without "apply settings on start") */
+    virtual void loadState(const ISettingsStorage&)      {}
 };
 
 }

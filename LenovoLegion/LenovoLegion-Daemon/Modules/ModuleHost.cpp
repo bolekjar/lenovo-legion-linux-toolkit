@@ -161,6 +161,11 @@ void ModuleHost::notify(const QByteArray &payload)
     emit notification(payload);
 }
 
+void ModuleHost::saveSettings()
+{
+    emit saveSettingsRequested();
+}
+
 Module::TimerId ModuleHost::addTimer(std::chrono::milliseconds interval, Module::TimerCallback callback)
 {
     const Module::TimerId id    = m_nextTimerId++;

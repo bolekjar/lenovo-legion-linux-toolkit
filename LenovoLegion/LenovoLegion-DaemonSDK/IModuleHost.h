@@ -59,6 +59,13 @@ public:
 
 
     /*
+     * Save the settings of the module now (SettingsPolicy::deviceMemory: a change the framework does not see, e.g. by a
+     * key of the device)
+     */
+    virtual void saveSettings() = 0;
+
+
+    /*
      * Timers (replaces QObject::startTimer in modules, exceptions are caught by the framework)
      */
     virtual TimerId addTimer(std::chrono::milliseconds interval,TimerCallback callback) = 0;

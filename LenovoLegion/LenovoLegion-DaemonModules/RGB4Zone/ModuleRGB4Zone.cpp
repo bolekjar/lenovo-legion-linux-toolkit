@@ -39,7 +39,10 @@ public:
 
     SettingsPolicy settingsPolicy() const override
     {
-        return { .persistent = true, .order = 200, .customOnly = false };
+        /*
+         * The keyboard keeps no presets: saved after every change, loaded on every start
+         */
+        return { .persistent = true, .order = 200, .customOnly = false, .deviceMemory = true };
     }
 
 protected:
@@ -55,6 +58,11 @@ protected:
         if(lightProfileEvent(event))
         {
             m_switched = m_keyboard->nextPreset();
+
+            if(m_switched)
+            {
+                host().saveSettings();
+            }
         }
     }
 
@@ -67,6 +75,16 @@ protected:
         }
 
         return {};
+    }
+
+    void loadState(const Module::ISettingsStorage& storage) override
+    {
+        const QByteArray message = readSettings(storage);
+
+        if(!message.isEmpty())
+        {
+            m_keyboard->restore(message);
+        }
     }
 
     QByteArray readSettings(const Module::ISettingsStorage& storage) override

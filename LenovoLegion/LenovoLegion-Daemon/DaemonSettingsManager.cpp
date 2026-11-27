@@ -37,6 +37,13 @@ void DaemonSettingsManager::loadAllSettings(DataProviderManager* dataProviderMan
     // Check if hardware settings should be applied on start
     if (!m_daemonSettings.apply_settings_on_start()) {
         LOG_D("DaemonSettingsManager::loadAllSettings - apply_settings_on_start is disabled, skipping hardware settings load");
+
+        /*
+         * Devices without memory (SettingsPolicy::deviceMemory): their saved state is loaded, not applied
+         */
+        for (auto* module : persistentModules(dataProviderManager)) {
+            module->loadState();
+        }
         return;
     }
     

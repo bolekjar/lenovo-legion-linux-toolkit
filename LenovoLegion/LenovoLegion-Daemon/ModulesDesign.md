@@ -171,7 +171,7 @@ The messages of the modules are compiled into the library of the module (`libMod
 // LenovoLegionDaemonSDK/ModuleApi.h
 namespace LenovoLegionDaemon::Module {
 
-constexpr uint32_t ABI_VERSION = 2;          // increment on every incompatible change of the SDK (2: onKernelModule, kernelModuleWaiting)
+constexpr uint32_t ABI_VERSION = 3;          // increment on every incompatible change of the SDK (2: onKernelModule, kernelModuleWaiting; 3: deviceMemory, loadState, IModuleHost::saveSettings)
 
 struct Info {
     uint32_t            abiVersion;          // must match ABI_VERSION of the framework
@@ -222,11 +222,14 @@ public:
     struct SettingsPolicy {
         int  order      = 100;    // order of application at start (PowerProfile = 0)
         bool customOnly = false;  // apply only with a saved CUSTOM profile (FanCurve, CPUPower, GPUPower)
+        bool deviceMemory = false; // the device keeps no state (4-zone keyboard): saved after every set and on
+                                   // IModuleHost::saveSettings, loaded on every start (loadState without "apply on start")
         bool persistent = false;  // the module saves settings
     };
     virtual SettingsPolicy settingsPolicy() const          { return {}; }
     virtual void loadSettings(ISettingsStorage& storage)   {}   // load the saved settings and apply them
     virtual void saveSettings(ISettingsStorage& storage)   {}   // read the state and save it
+    virtual void loadState(const ISettingsStorage& storage) {}  // deviceMemory: load the saved settings, not apply them
 };
 ```
 
@@ -249,6 +252,7 @@ public:
 
     /* Notification to clients – the payload is a message of the module */
     virtual void notify(const QByteArray& payload) = 0;
+    virtual void saveSettings() = 0;                             // deviceMemory: save the settings of the module now
 
     /* Shared system services */
     virtual ICpuList&          cpuList() = 0;

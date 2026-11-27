@@ -47,6 +47,12 @@ public:
      */
     bool nextPreset();
 
+    /*
+     * Saved presets and the active one taken without writing them to the keyboard (start without "apply settings on
+     * start": the keyboard stays as the firmware left it)
+     */
+    void restore(const QByteArray& data);
+
     static constexpr quint8  dataType = legion::messages::DataType::KEYBOARD_FOUR_ZONE;
 
 private:

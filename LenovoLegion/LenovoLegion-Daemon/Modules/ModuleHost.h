@@ -70,6 +70,7 @@ public:
     void kernelModuleWaiting(const QString& kernelModule,bool waiting) override;
 
     void notify(const QByteArray& payload) override;
+    void saveSettings() override;
 
     Module::TimerId addTimer(std::chrono::milliseconds interval,Module::TimerCallback callback) override;
     void            removeTimer(Module::TimerId id) override;
@@ -80,6 +81,11 @@ signals:
      * Notification of the module for the connected client
      */
     void notification(const QByteArray& payload);
+
+    /*
+     * The module asks to save its settings now (IModuleHost::saveSettings)
+     */
+    void saveSettingsRequested();
 
 private:
 

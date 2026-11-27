@@ -253,6 +253,23 @@ QByteArray DataProviderRGB4Zone::deserializeAndSetData(const QByteArray &data)
     return {};
 }
 
+void DataProviderRGB4Zone::restore(const QByteArray &data)
+{
+    Keyboard request = parseMessage<Keyboard>(data);
+
+    settable(request,Origin::REQUEST);
+
+    if(request.has_active_preset())
+    {
+        m_state.set_active_preset(request.active_preset());
+    }
+
+    for(int i = 0; i < request.presets_size() && i < PRESETS; ++i)
+    {
+        merge(*m_state.mutable_presets(i),request.presets(i));
+    }
+}
+
 bool DataProviderRGB4Zone::nextPreset()
 {
     if(m_path.empty())

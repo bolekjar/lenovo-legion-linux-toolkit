@@ -80,6 +80,11 @@ public:
     void loadSettings(const QString& prefix);
     void saveSettings(const QString& prefix);
 
+    /*
+     * SettingsPolicy::deviceMemory: the saved settings without applying them (start without "apply settings on start")
+     */
+    void loadState();
+
 private:
 
     enum class State

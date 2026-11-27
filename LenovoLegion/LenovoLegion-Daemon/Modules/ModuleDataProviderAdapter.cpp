@@ -39,6 +39,16 @@ ModuleDataProviderAdapter::ModuleDataProviderAdapter(const Definition &definitio
 
     connect(m_host,&ModuleHost::notification,this,&DataProvider::notification);
 
+    /*
+     * A change the framework does not see (e.g. a key of the device), the module of a device without memory saves it
+     */
+    connect(m_host,&ModuleHost::saveSettingsRequested,this,[this] {
+        if(settingsPolicy().deviceMemory)
+        {
+            saveSettings({});
+        }
+    });
+
     LOG_D(QString("Module ").append(m_info->name).append(" version=").append(m_info->version).append(" created, dataType=").append(QString::number(m_dataType)));
 }
 
@@ -109,7 +119,17 @@ QByteArray ModuleDataProviderAdapter::deserializeAndSetData(const QByteArray &da
 {
     checkRunning();
 
-    return m_module->set(data);
+    QByteArray result = m_module->set(data);
+
+    /*
+     * The device keeps no state: every change is saved at once (also without "save settings on exit")
+     */
+    if(settingsPolicy().deviceMemory)
+    {
+        saveSettings({});
+    }
+
+    return result;
 }
 
 void ModuleDataProviderAdapter::init()
@@ -158,9 +178,31 @@ void ModuleDataProviderAdapter::loadSettings(const QString &prefix)
         return;
     }
 
-    ModuleSettingsStorage storage(QString(prefix).append(settingsGroup()));
+    {
+        ModuleSettingsStorage storage(QString(prefix).append(settingsGroup()));
 
-    m_host->callModule("load settings",[this,&storage] { m_module->loadSettings(storage); });
+        m_host->callModule("load settings",[this,&storage] { m_module->loadSettings(storage); });
+    }
+
+    /*
+     * A loaded profile is the new state of a device without memory (kept after a restart of the daemon)
+     */
+    if(!prefix.isEmpty() && settingsPolicy().deviceMemory)
+    {
+        saveSettings({});
+    }
+}
+
+void ModuleDataProviderAdapter::loadState()
+{
+    if(!settingsPolicy().persistent || !settingsPolicy().deviceMemory)
+    {
+        return;
+    }
+
+    ModuleSettingsStorage storage(settingsGroup());
+
+    m_host->callModule("load state",[this,&storage] { m_module->loadState(storage); });
 }
 
 void ModuleDataProviderAdapter::saveSettings(const QString &prefix)
