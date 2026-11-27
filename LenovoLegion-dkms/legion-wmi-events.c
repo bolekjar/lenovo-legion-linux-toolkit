@@ -30,7 +30,8 @@
  * Events of the firmware (binary MOF, data of ASL _WED on 16IAX10H):
  * - thermal mode (notify 0xE7): uint32 mode,
  * - power charge mode (0xE5): uint32 mode,
- * - light profile change (0xE6, Fn+Space): uint32 EventId (always 1), no uevent yet,
+ * - light profile change (0xE6, Fn+Space; 0xD8 on Legion Slim 5 16APH8): uint32 EventId, a uevent (the
+ *   4-zone keyboard of the daemon switches its preset),
  * - smart fan setting (GUID 41E1): uint32 mode, not in _WDG of 16IAX10H, no uevent,
  * - smart fan mode (0xE3): uint32 mode and uint32 version (of Fn+Q): a package of both,
  * - key lock status (0xE2): uint32 KeyLockState,
@@ -439,7 +440,7 @@ static const struct wmi_device_id legion_wmi_events_id_table[] = {
 	{ LEGION_WMI_EVENT_DEVICE(CHARGE_MODE_EVENT_GUID,
 				  LEGION_WMI_EVENT_POWER_CHARGE_MODE) },
 	{ LEGION_WMI_EVENT_DEVICE(LIGHT_PROFILE_CHANGE_EVENT_GUID,
-				  LEGION_WMI_EVENT_UNKNOWN) },
+				  LEGION_WMI_EVENT_LIGHT_PROFILE) },
 	{ LEGION_WMI_EVENT_DEVICE(SMART_FAN_SETTING_EVENT_GUID,
 				  LEGION_WMI_EVENT_UNKNOWN) },
 	{ LEGION_WMI_EVENT_DEVICE(SMART_FAN_MODE_GUID,

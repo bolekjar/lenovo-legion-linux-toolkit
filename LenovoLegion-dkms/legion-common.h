@@ -40,6 +40,12 @@ enum legion_events_type {
 	 * (other/is_ac_fit_for_oc)
 	 */
 	LEGION_WMI_EVENT_AC_PD = 6,
+	/*
+	 * EVENT_VALUE: light profile change of the firmware (Fn+Space): 1 on 16IAX10H;
+	 * on Legion Slim 5 16APH8 0 when the lights are set by the application
+	 * (SetLightControlOwner 1), 1 when by the keyboard
+	 */
+	LEGION_WMI_EVENT_LIGHT_PROFILE = 7,
 
 	/*
 	 * Reserve 1000 - 1999 for WMI Other Events

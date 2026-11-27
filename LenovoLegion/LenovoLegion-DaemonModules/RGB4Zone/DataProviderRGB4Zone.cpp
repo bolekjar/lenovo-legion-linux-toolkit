@@ -20,6 +20,8 @@ namespace LenovoLegionDaemon::Kit {
 
 namespace {
 
+using Keyboard = legion::messages::Keyboard4Zone;
+
 constexpr unsigned short ITE_VID          = 0x048D;
 constexpr unsigned short USAGE_PAGE       = 0xFF89;
 constexpr unsigned short USAGE_4ZONE      = 0x00CC;
@@ -42,73 +44,101 @@ constexpr uint8_t EFFECT_SMOOTH       = 6;
 constexpr uint32_t SPEED_MIN          = 1;
 constexpr uint32_t SPEED_MAX          = 4;
 
-/*
- * State before the first set (the keyboard can not be read): static white, high brightness
- */
-legion::messages::Keyboard4Zone defaultState()
+Keyboard::Preset preset(Keyboard::Effect effect,uint32_t zone1,uint32_t zone2,uint32_t zone3,uint32_t zone4)
 {
-    legion::messages::Keyboard4Zone state;
+    Keyboard::Preset result;
+
+    result.set_effect(effect);
+    result.set_speed(2);
+    result.set_brightness(Keyboard::BRIGHTNESS_HIGH);
+    result.set_direction(Keyboard::DIRECTION_LEFT_TO_RIGHT);
+    result.set_zone1_color(zone1);
+    result.set_zone2_color(zone2);
+    result.set_zone3_color(zone3);
+    result.set_zone4_color(zone4);
+
+    return result;
+}
+
+/*
+ * Presets before the first set (the keyboard can not be read, the same as Lenovo Legion Toolkit): static white, static
+ * colors of the zones, wave, smooth; preset 1 active
+ */
+Keyboard defaultState()
+{
+    Keyboard state;
 
     state.set_present(true);
-    state.set_effect(legion::messages::Keyboard4Zone::EFFECT_STATIC);
-    state.set_speed(2);
-    state.set_brightness(legion::messages::Keyboard4Zone::BRIGHTNESS_HIGH);
-    state.set_direction(legion::messages::Keyboard4Zone::DIRECTION_LEFT_TO_RIGHT);
-
-    state.set_zone1_color(0xFFFFFF);
-    state.set_zone2_color(0xFFFFFF);
-    state.set_zone3_color(0xFFFFFF);
-    state.set_zone4_color(0xFFFFFF);
+    state.set_active_preset(1);
+    *state.add_presets() = preset(Keyboard::EFFECT_STATIC,0xFFFFFF,0xFFFFFF,0xFFFFFF,0xFFFFFF);
+    *state.add_presets() = preset(Keyboard::EFFECT_STATIC,0xFF0000,0x00FF00,0x0000FF,0x8000FF);
+    *state.add_presets() = preset(Keyboard::EFFECT_WAVE,0xFFFFFF,0xFFFFFF,0xFFFFFF,0xFFFFFF);
+    *state.add_presets() = preset(Keyboard::EFFECT_SMOOTH,0xFFFFFF,0xFFFFFF,0xFFFFFF,0xFFFFFF);
 
     return state;
 }
 
-std::array<uint8_t,REPORT_SIZE> report(const legion::messages::Keyboard4Zone& state)
+std::array<uint8_t,REPORT_SIZE> report(uint32_t active,const Keyboard::Preset& preset)
 {
     std::array<uint8_t,REPORT_SIZE> data {};
 
     data[0] = REPORT_ID;
     data[1] = REPORT_HEADER;
 
-    if(state.effect() == legion::messages::Keyboard4Zone::EFFECT_OFF)
+    /*
+     * Off: brightness 0, the colors black
+     */
+    if(active == 0)
     {
         data[2] = EFFECT_STATIC;
         data[3] = static_cast<uint8_t>(SPEED_MIN);
-        data[4] = 0;                                    // off: brightness 0, the colors black
         return data;
     }
 
-    switch(state.effect())
+    switch(preset.effect())
     {
-    case legion::messages::Keyboard4Zone::EFFECT_BREATH: data[2] = EFFECT_BREATH; break;
-    case legion::messages::Keyboard4Zone::EFFECT_WAVE:   data[2] = EFFECT_WAVE;   break;
-    case legion::messages::Keyboard4Zone::EFFECT_SMOOTH: data[2] = EFFECT_SMOOTH; break;
-    default:                                             data[2] = EFFECT_STATIC; break;
+    case Keyboard::EFFECT_BREATH: data[2] = EFFECT_BREATH; break;
+    case Keyboard::EFFECT_WAVE:   data[2] = EFFECT_WAVE;   break;
+    case Keyboard::EFFECT_SMOOTH: data[2] = EFFECT_SMOOTH; break;
+    default:                      data[2] = EFFECT_STATIC; break;
     }
 
-    data[3] = static_cast<uint8_t>(std::clamp(state.speed(),SPEED_MIN,SPEED_MAX));
-    data[4] = state.brightness() == legion::messages::Keyboard4Zone::BRIGHTNESS_HIGH ? 2 : 1;
+    data[3] = static_cast<uint8_t>(std::clamp(preset.speed(),SPEED_MIN,SPEED_MAX));
+    data[4] = preset.brightness() == Keyboard::BRIGHTNESS_HIGH ? 2 : 1;
 
-    const std::array<uint32_t,ZONES> colors { state.zone1_color(), state.zone2_color(), state.zone3_color(), state.zone4_color() };
+    const std::array<uint32_t,ZONES> colors { preset.zone1_color(), preset.zone2_color(), preset.zone3_color(), preset.zone4_color() };
 
     for(size_t zone = 0; zone < ZONES; ++zone)
     {
-        const uint32_t color = colors[zone];
-
-        data[5 + zone * 3]     = static_cast<uint8_t>((color >> 16) & 0xFF);
-        data[5 + zone * 3 + 1] = static_cast<uint8_t>((color >> 8) & 0xFF);
-        data[5 + zone * 3 + 2] = static_cast<uint8_t>(color & 0xFF);
+        data[5 + zone * 3]     = static_cast<uint8_t>((colors[zone] >> 16) & 0xFF);
+        data[5 + zone * 3 + 1] = static_cast<uint8_t>((colors[zone] >> 8) & 0xFF);
+        data[5 + zone * 3 + 2] = static_cast<uint8_t>(colors[zone] & 0xFF);
     }
 
-    if(state.effect() == legion::messages::Keyboard4Zone::EFFECT_WAVE)
+    if(preset.effect() == Keyboard::EFFECT_WAVE)
     {
-        const bool rightToLeft = state.direction() == legion::messages::Keyboard4Zone::DIRECTION_RIGHT_TO_LEFT;
+        const bool rightToLeft = preset.direction() == Keyboard::DIRECTION_RIGHT_TO_LEFT;
 
         data[18] = rightToLeft ? 0 : 1;
         data[19] = rightToLeft ? 1 : 0;
     }
 
     return data;
+}
+
+/*
+ * Fields present in the request replace the ones of the preset
+ */
+void merge(Keyboard::Preset& preset,const Keyboard::Preset& request)
+{
+    if(request.has_effect())      preset.set_effect(request.effect());
+    if(request.has_speed())       preset.set_speed(request.speed());
+    if(request.has_brightness())  preset.set_brightness(request.brightness());
+    if(request.has_direction())   preset.set_direction(request.direction());
+    if(request.has_zone1_color()) preset.set_zone1_color(request.zone1_color());
+    if(request.has_zone2_color()) preset.set_zone2_color(request.zone2_color());
+    if(request.has_zone3_color()) preset.set_zone3_color(request.zone3_color());
+    if(request.has_zone4_color()) preset.set_zone4_color(request.zone4_color());
 }
 
 }
@@ -158,12 +188,12 @@ QByteArray DataProviderRGB4Zone::serializeAndGetData()
     /*
      * Without a 4-zone keyboard an empty message: the data type is not available (available_from "present")
      */
-    return serializeMessage(m_path.empty() ? legion::messages::Keyboard4Zone() : m_state);
+    return serializeMessage(m_path.empty() ? Keyboard() : m_state);
 }
 
 QByteArray DataProviderRGB4Zone::deserializeAndSetData(const QByteArray &data)
 {
-    legion::messages::Keyboard4Zone request = parseMessage<legion::messages::Keyboard4Zone>(data);
+    Keyboard request = parseMessage<Keyboard>(data);
 
     LOG_T(__PRETTY_FUNCTION__);
 
@@ -174,21 +204,21 @@ QByteArray DataProviderRGB4Zone::deserializeAndSetData(const QByteArray &data)
         return {};
     }
 
-    /*
-     * Fields not in the request keep the last state (the keyboard takes the whole state at once)
-     */
-    legion::messages::Keyboard4Zone state = m_state;
+    Keyboard state = m_state;
 
-    if(request.has_effect())         state.set_effect(request.effect());
-    if(request.has_speed())          state.set_speed(request.speed());
-    if(request.has_brightness())     state.set_brightness(request.brightness());
-    if(request.has_direction())      state.set_direction(request.direction());
-    if(request.has_zone1_color())    state.set_zone1_color(request.zone1_color());
-    if(request.has_zone2_color())    state.set_zone2_color(request.zone2_color());
-    if(request.has_zone3_color())    state.set_zone3_color(request.zone3_color());
-    if(request.has_zone4_color())    state.set_zone4_color(request.zone4_color());
+    if(request.has_active_preset())
+    {
+        state.set_active_preset(request.active_preset());
+    }
 
-    if(write(state))
+    for(int i = 0; i < request.presets_size() && i < PRESETS; ++i)
+    {
+        merge(*state.mutable_presets(i),request.presets(i));
+    }
+
+    const uint32_t active = state.active_preset();
+
+    if(write(active,active == 0 ? Keyboard::Preset() : state.presets(static_cast<int>(active) - 1)))
     {
         m_state = state;
     }
@@ -196,12 +226,32 @@ QByteArray DataProviderRGB4Zone::deserializeAndSetData(const QByteArray &data)
     return {};
 }
 
-QByteArray DataProviderRGB4Zone::settableData(const QByteArray &data, Origin origin)
+bool DataProviderRGB4Zone::nextPreset()
 {
-    return settableMessage<legion::messages::Keyboard4Zone>(data,[this,origin](legion::messages::Keyboard4Zone& keyboard) { settable(keyboard,origin); });
+    if(m_path.empty())
+    {
+        return false;
+    }
+
+    const uint32_t active = (m_state.active_preset() + 1) % (PRESETS + 1);
+
+    LOG_D(QString("4-zone RGB keyboard: preset ").append(QString::number(active)).append(" (Fn+Space)"));
+
+    if(!write(active,active == 0 ? Keyboard::Preset() : m_state.presets(static_cast<int>(active) - 1)))
+    {
+        return false;
+    }
+
+    m_state.set_active_preset(active);
+    return true;
 }
 
-void DataProviderRGB4Zone::settable(legion::messages::Keyboard4Zone &keyboard, Origin origin) const
+QByteArray DataProviderRGB4Zone::settableData(const QByteArray &data, Origin origin)
+{
+    return settableMessage<Keyboard>(data,[this,origin](Keyboard& keyboard) { settable(keyboard,origin); });
+}
+
+void DataProviderRGB4Zone::settable(Keyboard &keyboard, Origin origin) const
 {
     keyboard.clear_present();
 
@@ -216,27 +266,45 @@ void DataProviderRGB4Zone::settable(legion::messages::Keyboard4Zone &keyboard, O
         return;
     }
 
-    if(keyboard.has_speed() && (keyboard.speed() < SPEED_MIN || keyboard.speed() > SPEED_MAX))
+    if(keyboard.has_active_preset() && keyboard.active_preset() > static_cast<uint32_t>(PRESETS))
     {
-        skipField(origin,QString("4-zone keyboard speed=").append(QString::number(keyboard.speed())),"range <1,4>");
-        keyboard.clear_speed();
+        skipField(origin,QString("4-zone keyboard active_preset=").append(QString::number(keyboard.active_preset())),"range <0,4>");
+        keyboard.clear_active_preset();
     }
 
-    auto checkColor = [&](bool has,uint32_t color,const char* name,auto clear) {
-        if(has && color > 0xFFFFFF)
-        {
-            skipField(origin,QString("4-zone keyboard ").append(name).append("=0x").append(QString::number(color,16)),"0xRRGGBB");
-            clear();
-        }
-    };
+    if(keyboard.presets_size() > PRESETS)
+    {
+        skipField(origin,QString("4-zone keyboard presets (").append(QString::number(keyboard.presets_size())).append(")"),"4 presets");
+        keyboard.mutable_presets()->DeleteSubrange(PRESETS,keyboard.presets_size() - PRESETS);
+    }
 
-    checkColor(keyboard.has_zone1_color(),keyboard.zone1_color(),"zone1_color",[&] { keyboard.clear_zone1_color(); });
-    checkColor(keyboard.has_zone2_color(),keyboard.zone2_color(),"zone2_color",[&] { keyboard.clear_zone2_color(); });
-    checkColor(keyboard.has_zone3_color(),keyboard.zone3_color(),"zone3_color",[&] { keyboard.clear_zone3_color(); });
-    checkColor(keyboard.has_zone4_color(),keyboard.zone4_color(),"zone4_color",[&] { keyboard.clear_zone4_color(); });
+    for(int i = 0; i < keyboard.presets_size(); ++i)
+    {
+        Keyboard::Preset* preset = keyboard.mutable_presets(i);
+        const QString     name   = QString("4-zone keyboard preset ").append(QString::number(i + 1)).append(' ');
+
+        if(preset->has_speed() && (preset->speed() < SPEED_MIN || preset->speed() > SPEED_MAX))
+        {
+            skipField(origin,QString(name).append("speed=").append(QString::number(preset->speed())),"range <1,4>");
+            preset->clear_speed();
+        }
+
+        auto checkColor = [&](bool has,uint32_t color,const char* field,auto clear) {
+            if(has && color > 0xFFFFFF)
+            {
+                skipField(origin,QString(name).append(field).append("=0x").append(QString::number(color,16)),"0xRRGGBB");
+                clear();
+            }
+        };
+
+        checkColor(preset->has_zone1_color(),preset->zone1_color(),"zone1_color",[&] { preset->clear_zone1_color(); });
+        checkColor(preset->has_zone2_color(),preset->zone2_color(),"zone2_color",[&] { preset->clear_zone2_color(); });
+        checkColor(preset->has_zone3_color(),preset->zone3_color(),"zone3_color",[&] { preset->clear_zone3_color(); });
+        checkColor(preset->has_zone4_color(),preset->zone4_color(),"zone4_color",[&] { preset->clear_zone4_color(); });
+    }
 }
 
-bool DataProviderRGB4Zone::write(const legion::messages::Keyboard4Zone &state)
+bool DataProviderRGB4Zone::write(uint32_t active,const Keyboard::Preset& preset)
 {
     /*
      * The lights set by the application, not by the keyboard (Lenovo Legion Toolkit does the same before a write)
@@ -264,7 +332,7 @@ bool DataProviderRGB4Zone::write(const legion::messages::Keyboard4Zone &state)
         return false;
     }
 
-    const auto data   = report(state);
+    const auto data   = report(active,preset);
     const int  result = hid_send_feature_report(device,data.data(),data.size());
 
     if(result < 0)

@@ -172,16 +172,15 @@ message RGBControllerSetRequest
 
 
 // 4-zone RGB keyboard (ITE 048d, HID collection 0xFF89:0xCC, feature report 0xCC of 33 bytes, the same protocol as
-// Lenovo Legion Toolkit). The keyboard can not be read: the state is the one the daemon set last (restored from the
-// settings), the defaults before the first set.
+// Lenovo Legion Toolkit). The keyboard can not be read and has no profiles: the daemon keeps 4 presets and the active
+// one (0 = off), set by the application or switched by Fn+Space, saved with the settings.
 message Keyboard4Zone
 {
     enum Effect {
-        EFFECT_OFF          = 0 [(legion.ui.value_label) = "Off"];
-        EFFECT_STATIC       = 1 [(legion.ui.value_label) = "Static"];
-        EFFECT_BREATH       = 2 [(legion.ui.value_label) = "Breath"];
-        EFFECT_WAVE         = 3 [(legion.ui.value_label) = "Wave"];
-        EFFECT_SMOOTH       = 4 [(legion.ui.value_label) = "Smooth"];
+        EFFECT_STATIC       = 0 [(legion.ui.value_label) = "Static"];
+        EFFECT_BREATH       = 1 [(legion.ui.value_label) = "Breath"];
+        EFFECT_WAVE         = 2 [(legion.ui.value_label) = "Wave"];
+        EFFECT_SMOOTH       = 3 [(legion.ui.value_label) = "Smooth"];
     }
 
     enum Brightness {
@@ -194,18 +193,26 @@ message Keyboard4Zone
         DIRECTION_RIGHT_TO_LEFT = 1 [(legion.ui.value_label) = "Right to left"];
     }
 
+    message Preset {
+        Effect     effect      = 1 [(legion.ui.field) = { label: "Effect" }];
+        uint32     speed       = 2 [(legion.ui.field) = { label: "Speed", widget: SLIDER, min: "1", max: "4",
+                                    tooltip: "Speed of the breath, wave and smooth effects" }];
+        Brightness brightness  = 3 [(legion.ui.field) = { label: "Brightness" }];
+        Direction  direction   = 4 [(legion.ui.field) = { label: "Direction", tooltip: "Direction of the wave effect" }];
+
+        // Colors of the zones from the left (0xRRGGBB), used by the static and the breath effect
+        uint32     zone1_color = 5 [(legion.ui.field) = { label: "Zone 1", widget: HIDDEN }];
+        uint32     zone2_color = 6 [(legion.ui.field) = { label: "Zone 2", widget: HIDDEN }];
+        uint32     zone3_color = 7 [(legion.ui.field) = { label: "Zone 3", widget: HIDDEN }];
+        uint32     zone4_color = 8 [(legion.ui.field) = { label: "Zone 4", widget: HIDDEN }];
+    }
+
     // A 4-zone keyboard was found (sent only then, the data type is not available without it)
-    bool       present     = 1 [(legion.ui.field) = { widget: HIDDEN }];
+    bool            present       = 1 [(legion.ui.field) = { widget: HIDDEN }];
 
-    Effect     effect      = 2 [(legion.ui.field) = { label: "Effect" }];
-    uint32     speed       = 3 [(legion.ui.field) = { label: "Speed", widget: SLIDER, min: "1", max: "4",
-                                tooltip: "Speed of the breath, wave and smooth effects" }];
-    Brightness brightness  = 4 [(legion.ui.field) = { label: "Brightness" }];
-    Direction  direction   = 5 [(legion.ui.field) = { label: "Direction", tooltip: "Direction of the wave effect" }];
+    // Active preset: 0 off, 1 - 4 the presets
+    uint32          active_preset = 2 [(legion.ui.field) = { label: "Preset", widget: HIDDEN }];
 
-    // Colors of the zones from the left (0xRRGGBB), used by the static and the breath effect
-    uint32     zone1_color = 6 [(legion.ui.field) = { label: "Zone 1", widget: HIDDEN }];
-    uint32     zone2_color = 7 [(legion.ui.field) = { label: "Zone 2", widget: HIDDEN }];
-    uint32     zone3_color = 8 [(legion.ui.field) = { label: "Zone 3", widget: HIDDEN }];
-    uint32     zone4_color = 9 [(legion.ui.field) = { label: "Zone 4", widget: HIDDEN }];
+    // The 4 presets (a request may contain only the changed fields of a preset, the others are kept)
+    repeated Preset presets       = 3 [(legion.ui.field) = { widget: HIDDEN }];
 }

@@ -29,7 +29,8 @@ public:
         LEGION_WMI_EVENT_SMART_FAN_MODE     = 3,
         LEGION_WMI_EVENT_KEYLOCK_STATUS     = 4,
         LEGION_WMI_EVENT_UNKNOWN            = 5,
-        LEGION_WMI_EVENT_AC_PD              = 6     // change of the power adapter
+        LEGION_WMI_EVENT_AC_PD              = 6,    // change of the power adapter
+        LEGION_WMI_EVENT_LIGHT_PROFILE      = 7     // light profile change of the firmware (Fn+Space)
     };
 
 public:

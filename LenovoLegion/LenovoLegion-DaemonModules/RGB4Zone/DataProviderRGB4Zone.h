@@ -19,13 +19,15 @@ namespace LenovoLegionDaemon::Kit {
 /*
  * 4-zone RGB keyboard of the Legion notebooks (e.g. Legion 5 / Slim 5 Gen 6 - 8): ITE 048d:c9xx, HID collection
  * 0xFF89:0xCC with the feature report 0xCC of 33 bytes, the same protocol as Lenovo Legion Toolkit
- * (LENOVO_RGB_KEYBOARD_STATE). The keyboard can not be read, the state is the one set last (the settings restore it).
- * Before a write the lights are taken from the keyboard firmware (game zone SetLightControlOwner 1), when the Lenovo
- * Legion kernel driver provides it.
+ * (LENOVO_RGB_KEYBOARD_STATE). The keyboard can not be read and has no profiles: 4 presets and the active one (0 = off)
+ * are kept here, the settings restore them. Before a write the lights are taken from the keyboard firmware (game zone
+ * SetLightControlOwner 1), when the Lenovo Legion kernel driver provides it.
  */
 class DataProviderRGB4Zone : public SysFsDataProvider
 {
 public:
+
+    static constexpr int PRESETS = 4;
 
     explicit DataProviderRGB4Zone(SysFsDriverManager* sysFsDriverManager);
 
@@ -37,6 +39,11 @@ public:
     void init()  override;
     void clean() override;
 
+    /*
+     * Fn+Space: the next preset (off, 1 - 4), false without a keyboard
+     */
+    bool nextPreset();
+
     static constexpr quint8  dataType = legion::messages::DataType::KEYBOARD_FOUR_ZONE;
 
 private:
@@ -44,9 +51,9 @@ private:
     void settable(legion::messages::Keyboard4Zone& keyboard,Origin origin) const;
 
     /*
-     * Writes the state to the keyboard, false on an error (logged)
+     * Writes the active preset to the keyboard (off for 0), false on an error (logged)
      */
-    bool write(const legion::messages::Keyboard4Zone& state);
+    bool write(uint32_t active,const legion::messages::Keyboard4Zone::Preset& preset);
 
     /*
      * Path of the HID device of the 4-zone keyboard, empty without one
@@ -56,7 +63,7 @@ private:
 private:
 
     std::string                        m_path;
-    legion::messages::Keyboard4Zone    m_state;
+    legion::messages::Keyboard4Zone    m_state;     // active preset and the 4 presets
 };
 
 }
