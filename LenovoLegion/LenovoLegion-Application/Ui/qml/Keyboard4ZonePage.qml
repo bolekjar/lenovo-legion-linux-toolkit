@@ -243,6 +243,8 @@ SettingsPage {
         title: page.lightsOn ? "Effect (preset " + page.activePreset + ")" : "Effect"
         source: keyboard
         enabled: page.lightsOn
+        // Not narrower than the rows of the fields (label and control), the color picker next to it takes the rest
+        Layout.minimumWidth: implicitWidth
 
         Field { source: keyboard; path: page.presetPath("effect") }
         Field { source: keyboard; path: page.presetPath("brightness") }
