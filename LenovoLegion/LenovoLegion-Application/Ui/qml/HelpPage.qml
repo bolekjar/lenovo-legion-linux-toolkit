@@ -125,8 +125,10 @@ and Legion Space and it is **not affiliated with Lenovo**.
 
 ### Supported notebooks
 
-Tested on Legion Pro 7 16IRX9H (Gen 9) and 16IAX10H (Gen 10). The older firmware of Legion Gen 7 (e.g. Legion 5 \
-15IAH7H) is supported **experimentally**: power profiles with Custom, power limits, fan curve and fan full speed \
+Tested on Legion Pro 7 16IRX9H (Gen 9) and 16IAX10H (Gen 10) with Intel CPUs and on Legion Slim 5 16APH8 (Gen 8) with \
+an AMD CPU. Other notebooks of Gen 8 and newer (Intel and AMD) have the same firmware interface and should work as \
+well; on AMD the Intel only features (voltage offsets, Intel P-State) are replaced by AMD P-State. The older firmware \
+of Legion Gen 7 (e.g. Legion 5 15IAH7H) is supported **experimentally**: power profiles with Custom, power limits, fan curve and fan full speed \
 should work, tested by users. Feedback from other models is welcome – please open an issue on \
 [GitHub](" + projectUrl + ") with the output of `cat /sys/class/dmi/id/product_family /sys/class/dmi/id/product_name`.
 
@@ -300,7 +302,8 @@ with lower limits extends the battery life.
 "## About
 
 **Lenovo Legion Linux Toolkit** – unofficial control application for Lenovo Legion notebooks, tested on Legion Pro 7 \
-Gen 9 and Gen 10, experimentally on the older firmware of Gen 7 (e.g. Legion 5 15IAH7H) – feedback is welcome. This \
+Gen 9 and Gen 10 (Intel) and Legion Slim 5 Gen 8 (AMD), other notebooks of Gen 8 and newer should work as well; \
+experimentally on the older firmware of Gen 7 (e.g. Legion 5 15IAH7H) – feedback is welcome. This \
 project is not affiliated with Lenovo in any way.
 
 License: GPL-2.0

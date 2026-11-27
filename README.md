@@ -147,7 +147,10 @@ Tested:
 - Legion Pro 7 16IRX9H (Gen 9)
 - Legion Pro 7 16IAX10H (Gen 10)
 - Legion Slim 5 16APH8 (Gen 8, AMD Ryzen 5 7640HS, BIOS M3CN): power profiles with Custom, CPU and GPU power limits,
-  temperatures, battery, CPU frequencies, Flip to Start (Intel undervolt and Intel P-State are not available on AMD)
+  temperatures, battery, CPU frequencies, AMD P-State, 4-zone RGB keyboard, Flip to Start (Intel undervolt and Intel
+  P-State are not available on AMD)
+
+Other notebooks of Gen 8 and newer (Intel and AMD) have the same firmware interface and should work as well.
 
 Tested by users, feedback welcome:
 - Legion 5 15IAH7H (Gen 7, older firmware): power profiles with Custom, CPU and GPU power limits, fan curve, fan full
