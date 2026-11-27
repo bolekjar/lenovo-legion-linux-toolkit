@@ -272,35 +272,6 @@ Section {
         Item {}
     }
 
-    // Presets (buttons of CPUFrequencyControl)
-    Flow {
-        Layout.fillWidth: true
-        spacing: 6
-
-        Repeater {
-            model: grid.presets
-
-            delegate: Row {
-                spacing: 6
-
-                ThemedButton {
-                    text: "Min/" + modelData
-                    onClicked: grid.setGlobal(grid.rangeMin, modelData)
-                }
-
-                ThemedButton {
-                    text: modelData + "/" + modelData
-                    onClicked: grid.setGlobal(modelData, modelData)
-                }
-            }
-        }
-
-        ThemedButton {
-            text: "Default"
-            onClicked: grid.setGlobal(grid.rangeMin, grid.rangeMax)
-        }
-    }
-
     // Cells column by column, P and E threads in their own columns, columns by the width (up to 4)
     ScrollArea {
         GridLayout {
@@ -413,6 +384,50 @@ Section {
                     }
                 }
             }
+        }
+    }
+
+    // Line between the thread cells and the presets (the same as above the cells, ScrollArea)
+    Rectangle {
+        Layout.fillWidth: true
+        Layout.topMargin: 8
+        implicitHeight: 1
+        gradient: Gradient {
+            orientation: Gradient.Horizontal
+            GradientStop { position: 0.0;  color: "transparent" }
+            GradientStop { position: 0.12; color: theme.groupBorder }
+            GradientStop { position: 0.88; color: theme.groupBorder }
+            GradientStop { position: 1.0;  color: "transparent" }
+        }
+    }
+
+    // Presets (buttons of CPUFrequencyControl) under the thread cells
+    Flow {
+        Layout.fillWidth: true
+        Layout.topMargin: 6
+        spacing: 6
+
+        Repeater {
+            model: grid.presets
+
+            delegate: Row {
+                spacing: 6
+
+                ThemedButton {
+                    text: "Min/" + modelData
+                    onClicked: grid.setGlobal(grid.rangeMin, modelData)
+                }
+
+                ThemedButton {
+                    text: modelData + "/" + modelData
+                    onClicked: grid.setGlobal(modelData, modelData)
+                }
+            }
+        }
+
+        ThemedButton {
+            text: "Default"
+            onClicked: grid.setGlobal(grid.rangeMin, grid.rangeMax)
         }
     }
 }
