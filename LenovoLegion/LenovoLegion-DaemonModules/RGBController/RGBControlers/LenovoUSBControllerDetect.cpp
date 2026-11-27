@@ -42,7 +42,20 @@ static bool isPerKeyKeyboard(hid_device* dev,const hid_device_info& info)
 
     if(*length != PACKET_SIZE)
     {
-        LOG_W(QString::asprintf("RGB keyboard %04x:%04x is not a per-key keyboard (feature report 0x%02x: %zu bytes, per-key %d bytes; e.g. a 4-zone keyboard, handled by the module RGB4Zone), skipped",
+        /*
+         * A 4-zone keyboard (feature report 0xCC of 33 bytes on the same device) is expected here, the module RGB4Zone
+         * handles it: only a debug message
+         */
+        const auto fourZone = hidFeatureReportLength(dev,0xCC);
+
+        if(fourZone.has_value() && *fourZone == 33)
+        {
+            LOG_D(QString::asprintf("RGB keyboard %04x:%04x is a 4-zone keyboard (feature report 0x%02x: %zu bytes), handled by the module RGB4Zone",
+                                    info.vendor_id,info.product_id,REPORT_ID,*length));
+            return false;
+        }
+
+        LOG_W(QString::asprintf("RGB keyboard %04x:%04x is not a per-key keyboard (feature report 0x%02x: %zu bytes, per-key %d bytes), skipped",
                                 info.vendor_id,info.product_id,REPORT_ID,*length,PACKET_SIZE));
         return false;
     }
