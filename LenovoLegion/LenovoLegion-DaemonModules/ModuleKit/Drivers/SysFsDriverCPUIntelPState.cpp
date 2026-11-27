@@ -8,6 +8,8 @@
 #include "SysFsDriverCPUIntelPState.h"
 #include "../KitLog.h"
 
+#include <QFile>
+
 
 namespace LenovoLegionDaemon::Kit {
 
@@ -49,6 +51,35 @@ void SysFsDriverCPUIntelPState::init()
         if(std::filesystem::exists(std::filesystem::path(m_path).append("status")))
         {
             m_descriptor["status"] = std::filesystem::path(m_path).append("status");
+        }
+
+        /*
+         * Energy performance preference of the policies handled by intel_pstate (active mode only, not intel_cpufreq)
+         */
+        std::error_code error;
+
+        for(const auto& entry : std::filesystem::directory_iterator("/sys/devices/system/cpu/cpufreq",error))
+        {
+            const std::filesystem::path epp = entry.path() / "energy_performance_preference";
+
+            if(!entry.path().filename().string().starts_with("policy") || !std::filesystem::exists(epp))
+            {
+                continue;
+            }
+
+            QFile driver(QString::fromStdString((entry.path() / "scaling_driver").string()));
+
+            if(!driver.open(QIODeviceBase::ReadOnly) || QString::fromUtf8(driver.readAll()).trimmed() != "intel_pstate")
+            {
+                continue;
+            }
+
+            m_descriptor[QString("epp/").append(entry.path().filename().c_str())] = epp;
+
+            if(!m_descriptor.contains("epp_available") && std::filesystem::exists(entry.path() / "energy_performance_available_preferences"))
+            {
+                m_descriptor["epp_available"] = entry.path() / "energy_performance_available_preferences";
+            }
         }
     }
     else

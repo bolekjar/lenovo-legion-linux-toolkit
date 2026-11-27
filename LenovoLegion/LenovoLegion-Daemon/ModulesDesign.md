@@ -32,6 +32,8 @@ A driver is basically a holder of the sysfs paths and a reaction to the udev eve
 | CPUPower | LegionOther |
 | CPUPState | CPUIntelPState |
 | CPUAmdPState | CPUAmdPState |
+| CPUUncore | CPUIntelUncore |
+| CPUTcc | CPUIntelTcc |
 | RGB4Zone | LegionGameZone (light control owner), hidapi |
 | CPUSMT | CPU, CPUXList |
 | CPUTopology | CPU, CPUAtom, CPUCore |
@@ -454,6 +456,8 @@ Decision of the author: shared drivers as source code without sharing at run tim
 | Other | LegionEvents, LegionGameZone | `KEYLOCK_STATUS_CHANGE` | OtherData, 100 |
 | CPUPState | CPUIntelPState | `CPU_PSTATE_CHANGED` (timer) | CPUPStateData, 110 |
 | CPUAmdPState | CPUAmdPState | `CPU_AMD_PSTATE_CHANGED` (timer) | CPUAmdPStateData, 111 |
+| CPUUncore | CPUIntelUncore | – | CPUUncoreData, 112 |
+| CPUTcc | CPUIntelTcc | – | CPUTccData, 113 |
 | RGB4Zone | LegionGameZone | – | RGB4ZoneData, 200 |
 | CPUTopology | CPU, CPUAtom, CPUCore | – | – |
 | OtherGpuSwitch | LegionGameZone | – | – |

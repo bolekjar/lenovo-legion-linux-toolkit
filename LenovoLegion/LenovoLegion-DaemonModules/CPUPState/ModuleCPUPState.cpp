@@ -57,6 +57,7 @@ protected:
         if (storage.contains("no_turbo"))          pstate.set_no_turbo(storage.value("no_turbo").toBool());
         if (storage.contains("min_perf_pct"))      pstate.set_min_perf_pct(storage.value("min_perf_pct").toUInt());
         if (storage.contains("max_perf_pct"))      pstate.set_max_perf_pct(storage.value("max_perf_pct").toUInt());
+        if (storage.contains("epp"))               pstate.set_energy_performance_preference(storage.value("epp").toString().toStdString());
 
         return serialize(pstate);
     }
@@ -70,6 +71,7 @@ protected:
         if (pstate.has_no_turbo())          storage.setValue("no_turbo", pstate.no_turbo());
         if (pstate.has_min_perf_pct())      storage.setValue("min_perf_pct", pstate.min_perf_pct());
         if (pstate.has_max_perf_pct())      storage.setValue("max_perf_pct", pstate.max_perf_pct());
+        if (pstate.has_energy_performance_preference()) storage.setValue("epp", QString::fromStdString(std::string(pstate.energy_performance_preference())));
     }
 };
 

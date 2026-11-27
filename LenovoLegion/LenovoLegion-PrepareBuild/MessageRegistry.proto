@@ -38,4 +38,8 @@ enum DataType {
                             (legion.ui.available_from) = "status", (legion.ui.unavailable_reason) = "Requires the AMD P-State driver (amd-pstate), not used by this CPU"];
   KEYBOARD_FOUR_ZONE      = 23 [(legion.ui.module) = "RGB4Zone", (legion.ui.message) = "legion.messages.Keyboard4Zone",
                             (legion.ui.available_from) = "present", (legion.ui.unavailable_reason) = "No 4-zone RGB keyboard was found"];
+  CPU_UNCORE          = 24 [(legion.ui.module) = "CPUUncore", (legion.ui.message) = "legion.messages.CPUUncore",
+                            (legion.ui.available_from) = "max_limit", (legion.ui.unavailable_reason) = "Requires the Intel uncore frequency driver (intel_uncore_frequency)"];
+  CPU_TCC             = 25 [(legion.ui.module) = "CPUTcc", (legion.ui.message) = "legion.messages.CPUTcc",
+                            (legion.ui.available_from) = "max_offset", (legion.ui.unavailable_reason) = "Requires the Intel processor thermal device (TCC offset)"];
 }

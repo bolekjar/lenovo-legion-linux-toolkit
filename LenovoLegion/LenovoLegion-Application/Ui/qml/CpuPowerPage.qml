@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0
-// Page of the generic GUI (standard interfaces): Intel P-State, AMD P-State and CPU voltage offsets, the same data as OtherControl and OffsetsControl
+// Page of the generic GUI (standard interfaces): Intel P-State, AMD P-State, uncore frequency, TCC offset and CPU voltage offsets, the same data as OtherControl and OffsetsControl
 // of the widget pages (UiDesign.md)
 import QtQuick
 import LenovoLegion.Ui 1.0
@@ -51,6 +51,22 @@ SettingsPage {
     }
 
     // Order of the planes and presets (mV) the same as OffsetsControl::CPU_VOLTAGE_PRESETS
+    // Intel uncore frequency (ring bus, L3 cache, memory controller), hidden without intel_uncore_frequency
+    AutoSection {
+        title: "Uncore Frequency"
+        dataType: "CPU_UNCORE"
+        applyBar: true
+        hideWhenAbsent: true
+    }
+
+    // Intel TCC offset (throttling temperature), hidden without the processor thermal device
+    AutoSection {
+        title: "Temperature Limit (TCC)"
+        dataType: "CPU_TCC"
+        applyBar: true
+        hideWhenAbsent: true
+    }
+
     // Vendor of the CPU (modalias: 0000 Intel, 0002 AMD), the voltage offsets are Intel only
     DataSource {
         id: cpuInfo

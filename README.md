@@ -58,7 +58,10 @@
 **CPU**
 - Enable / disable threads, SMT, CPU governor per thread.
 - Minimal and maximal frequency per thread (also `amd-pstate`), Intel P-State (status, min / max performance, HWP
-  dynamic boost, turbo), AMD P-State (mode, boost, energy performance preference, preferred core).
+  dynamic boost, turbo, energy performance preference), AMD P-State (mode, boost, energy performance preference,
+  preferred core).
+- Intel uncore frequency (ring bus, L3 cache, memory controller) and the TCC offset (the temperature at which the CPU
+  throttles), when the kernel provides them.
 - Intel CPU voltage offsets (undervolt) of the CPU, cache, GPU, uncore and analog I/O planes – any notebook with an
   Intel CPU with the OC mailbox, when undervolting is not locked in the BIOS.
 

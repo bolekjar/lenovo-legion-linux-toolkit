@@ -47,6 +47,8 @@ HEADERS += \
     Drivers/SysFsDriverCPUInfo.h \
     Drivers/SysFsDriverCPUIntelPState.h \
     Drivers/SysFsDriverCPUAmdPState.h \
+    Drivers/SysFsDriverCPUIntelTcc.h \
+    Drivers/SysFsDriverCPUIntelUncore.h \
     Drivers/SysFsDriverCPUXList.h \
     Drivers/SysFsDriverIntelPowercapRapl.h \
     Drivers/SysFsDriverLegionEvents.h \
@@ -72,6 +74,8 @@ SOURCES += \
     Drivers/SysFsDriverCPUInfo.cpp \
     Drivers/SysFsDriverCPUIntelPState.cpp \
     Drivers/SysFsDriverCPUAmdPState.cpp \
+    Drivers/SysFsDriverCPUIntelTcc.cpp \
+    Drivers/SysFsDriverCPUIntelUncore.cpp \
     Drivers/SysFsDriverCPUXList.cpp \
     Drivers/SysFsDriverIntelPowercapRapl.cpp \
     Drivers/SysFsDriverLegionEvents.cpp \

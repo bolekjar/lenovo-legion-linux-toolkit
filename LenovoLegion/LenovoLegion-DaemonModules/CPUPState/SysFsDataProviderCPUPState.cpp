@@ -66,6 +66,28 @@ QByteArray SysFsDataProviderCPUPState::deserializeAndSetData(const QByteArray &d
     SysFsDriverCPUIntelPState::IntelPState intePState(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverCPUIntelPState::DRIVER_NAME));
 
 
+    /*
+     * EPP after the status (it exists only in the active mode), checked against the values of the (new) mode
+     */
+    if(cpuPState.has_energy_performance_preference() && !intePState.m_epp.empty()) {
+        const QStringList available = intePState.m_eppAvailable.empty() ? QStringList() : getData(intePState.m_eppAvailable).split(' ',Qt::SkipEmptyParts);
+        const QString     epp       = QString::fromStdString(std::string(cpuPState.energy_performance_preference()));
+
+        if(available.contains(epp))
+        {
+            for(const auto& path : intePState.m_epp)
+            {
+                setData(path,std::string_view(cpuPState.energy_performance_preference()));
+            }
+
+            m_lastCpuPState.set_energy_performance_preference(cpuPState.energy_performance_preference());
+        }
+        else
+        {
+            skipField(Origin::REQUEST,QString("intel_pstate energy_performance_preference=").append(epp),QString("available: ").append(available.join(',')));
+        }
+    }
+
     if(cpuPState.has_hwp_dynamic_boost() && intePState.m_hwp_dynamic_boost.has_value()) {
         setData(intePState.m_hwp_dynamic_boost.value(),cpuPState.hwp_dynamic_boost());
         m_lastCpuPState.set_hwp_dynamic_boost(cpuPState.hwp_dynamic_boost());
@@ -131,6 +153,7 @@ void SysFsDataProviderCPUPState::settable(legion::messages::CPUPState &pstate, O
      * Presence of the other attributes depends on the status, it is checked when they are written (after the status is set)
      */
     pstate.clear_settable_statuses();
+    pstate.clear_available_energy_performance_preferences();
 
     if(pstate.has_status())
     {
@@ -185,6 +208,19 @@ legion::messages::CPUPState SysFsDataProviderCPUPState::readCPPPState() const
         if(intePState.m_no_turbo.has_value())
         {
             cpuPState.set_no_turbo(getData(intePState.m_no_turbo.value()).toShort() == 1);
+        }
+
+        if(!intePState.m_epp.empty())
+        {
+            cpuPState.set_energy_performance_preference(getData(intePState.m_epp.front()).trimmed().toStdString());
+        }
+
+        if(!intePState.m_eppAvailable.empty())
+        {
+            for(const auto& epp : getData(intePState.m_eppAvailable).split(' ',Qt::SkipEmptyParts))
+            {
+                cpuPState.add_available_energy_performance_preferences(epp.trimmed().toStdString());
+            }
         }
 
         if (intePState.m_status.has_value())

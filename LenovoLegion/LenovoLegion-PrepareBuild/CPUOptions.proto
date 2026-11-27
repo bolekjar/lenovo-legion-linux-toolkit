@@ -48,6 +48,12 @@ message CPUPState
 
     // Values of status which can be set now (read-only), empty = status can not be changed
     repeated string settable_statuses = 6 [(legion.ui.field) = { widget: HIDDEN }];
+
+    string  energy_performance_preference = 7 [(legion.ui.field) = { label: "Energy Performance Preference", widget: COMBO, choices_from: "available_energy_performance_preferences",
+                                    tooltip: "Energy Performance Preference (EPP): a hint for the processor how to balance the performance and the power when it selects the frequency itself (active mode, HWP / CPPC).\n🔴 performance - the highest frequencies at once, the fastest response, the highest power and temperature.\n🟠 balance_performance - fast, but saves power while idle (a good default on the charger).\n🟢 balance_power - noticeably lower power and temperature, a slightly slower response (a good default on the battery).\n🔵 power - the lowest power, the CPU runs slower.\n⚪ default - the value of the firmware.\n\nOnly in the active mode, applied to all threads. With the governor performance the kernel allows only performance." }];
+
+    // EPP values the kernel offers now (active mode only, depends on the governor)
+    repeated string available_energy_performance_preferences = 8 [(legion.ui.field) = { widget: HIDDEN }];
 }
 
 
@@ -64,11 +70,43 @@ message CPUAmdPState
                       tooltip: "The processor may run above its base frequency (Precision Boost). Disabled: lower power and temperature, lower performance." }];
 
     string energy_performance_preference = 4 [(legion.ui.field) = { label: "Energy Performance Preference", widget: COMBO, choices_from: "available_energy_performance_preferences",
-                                              tooltip: "Hint for the processor in the active mode: performance, balance_performance, balance_power or power. With the governor performance only performance is available." }];
+                                              tooltip: "Energy Performance Preference (EPP): a hint for the processor how to balance the performance and the power when it selects the frequency itself (active mode, HWP / CPPC).\n🔴 performance - the highest frequencies at once, the fastest response, the highest power and temperature.\n🟠 balance_performance - fast, but saves power while idle (a good default on the charger).\n🟢 balance_power - noticeably lower power and temperature, a slightly slower response (a good default on the battery).\n🔵 power - the lowest power, the CPU runs slower.\n⚪ default - the value of the firmware.\n\nOnly in the active mode, applied to all threads. With the governor performance the kernel allows only performance." }];
 
     // EPP values the kernel offers now (active mode only, depends on the governor)
     repeated string available_energy_performance_preferences = 5 [(legion.ui.field) = { widget: HIDDEN }];
 
     string prefcore = 6 [(legion.ui.field) = { label: "Preferred Core", widget: LABEL,
                          tooltip: "The scheduler prefers the fastest cores of the processor (amd_pstate prefcore, read only)." }];
+}
+
+
+// Intel uncore frequency (intel_uncore_frequency): the frequency of the ring bus, the last level cache and the memory
+// controller of all packages / dies; frequencies in kHz, shown in MHz
+message CPUUncore
+{
+    uint32 min_freq     = 1 [(legion.ui.field) = { label: "Minimal uncore frequency", unit: "MHz", widget: SLIDER, scale: 0.001, min: "min_limit", max: "max_freq",
+                             tooltip: "The lowest frequency of the uncore: the ring bus between the cores, the last level cache (L3) and the memory controller.\n\nA higher minimum lowers the latency of the memory and the cache (games, audio) at the cost of a higher power in idle. The default is the lowest value of the hardware." }];
+    uint32 max_freq     = 2 [(legion.ui.field) = { label: "Maximal uncore frequency", unit: "MHz", widget: SLIDER, scale: 0.001, min: "min_freq", max: "max_limit",
+                             tooltip: "The highest frequency of the uncore (ring bus, L3 cache, memory controller).\n\nA lower maximum saves several watts which the cores can use instead (more boost within the same power limit) or which save the battery; memory and cache heavy work gets slower. The default is the highest value of the hardware." }];
+    uint32 current_freq = 3 [(legion.ui.field) = { label: "Current uncore frequency", unit: "MHz", widget: LABEL, scale: 0.001,
+                             tooltip: "The frequency the uncore runs now (read when the page was loaded)." }];
+
+    // Limits of the hardware (initial_min_freq_khz, initial_max_freq_khz)
+    uint32 min_limit    = 4 [(legion.ui.field) = { widget: HIDDEN }];
+    uint32 max_limit    = 5 [(legion.ui.field) = { widget: HIDDEN }];
+}
+
+
+// Intel TCC offset (processor thermal device): the CPU throttles at TjMax - offset
+message CPUTcc
+{
+    uint32 offset     = 1 [(legion.ui.field) = { label: "TCC offset", unit: "°C", widget: SLIDER, min: "0", max: "max_offset",
+                           tooltip: "Thermal Control Circuit offset: the processor starts to throttle (lowers its frequency) at TjMax minus this offset instead of at TjMax.\n\nA higher offset keeps the CPU cooler and the fans quieter at the cost of the performance under a long load; 0 lets the CPU reach TjMax. It works independently of the power limits and of the temperature limit of the power mode.\n\nThe firmware of some notebooks sets its own offset when the power mode changes; the value is set again with the saved settings." }];
+    uint32 limit      = 2 [(legion.ui.field) = { label: "Throttling temperature", unit: "°C", widget: LABEL,
+                           tooltip: "TjMax - TCC offset: the temperature at which the processor starts to throttle." }];
+    uint32 tjmax      = 3 [(legion.ui.field) = { label: "TjMax", unit: "°C", widget: LABEL,
+                           tooltip: "The highest allowed temperature of the processor (Tj max, coretemp)." }];
+
+    // Highest offset offered (the throttling temperature stays at least 50 °C, at most 63 °C of the hardware)
+    uint32 max_offset = 4 [(legion.ui.field) = { widget: HIDDEN }];
 }

@@ -9,6 +9,8 @@
 
 #include "../SysFsDriver.h"
 
+#include <vector>
+
 
 namespace LenovoLegionDaemon::Kit {
 
@@ -23,14 +25,25 @@ public:
             m_max_perf_pct(descriptor.find("max_perf_pct") == descriptor.end() ? std::optional<std::filesystem::path>() : descriptor["max_perf_pct"]),
             m_min_perf_pct(descriptor.find("min_perf_pct") == descriptor.end() ? std::optional<std::filesystem::path>() : descriptor["min_perf_pct"]),
             m_no_turbo(descriptor.find("no_turbo") == descriptor.end() ? std::optional<std::filesystem::path>() : descriptor["no_turbo"]),
-            m_status(descriptor.find("status") == descriptor.end() ? std::optional<std::filesystem::path>() : descriptor["status"])
-        {}
+            m_status(descriptor.find("status") == descriptor.end() ? std::optional<std::filesystem::path>() : descriptor["status"]),
+            m_eppAvailable(descriptor.value("epp_available"))
+        {
+            for(auto it = descriptor.cbegin(); it != descriptor.cend(); ++it)
+            {
+                if(it.key().startsWith("epp/"))
+                {
+                    m_epp.push_back(it.value());
+                }
+            }
+        }
 
         const std::optional<std::filesystem::path> m_hwp_dynamic_boost;
         const std::optional<std::filesystem::path> m_max_perf_pct;
         const std::optional<std::filesystem::path> m_min_perf_pct;
         const std::optional<std::filesystem::path> m_no_turbo;
         const std::optional<std::filesystem::path> m_status;
+        const std::filesystem::path                m_eppAvailable;   // EPP values of the first policy, empty path without EPP
+        std::vector<std::filesystem::path>         m_epp;            // energy_performance_preference of every policy (active mode)
      };
 
 public:
