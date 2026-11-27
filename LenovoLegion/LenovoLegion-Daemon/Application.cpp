@@ -134,6 +134,11 @@ void Application::appInitImpl(std::unique_ptr<ApplicationModulesHandler_T> modul
 
 
     /*
+     * Settings of the daemon first: the debug / trace logging also for the loading and the init of the modules
+     */
+    DaemonSettingsManager::getInstance().loadDaemonSettings();
+
+    /*
      * Load daemon modules (.so) from modules/, registered as data providers
      */
     std::vector<ModuleLoader::NotLoaded> notLoaded;
