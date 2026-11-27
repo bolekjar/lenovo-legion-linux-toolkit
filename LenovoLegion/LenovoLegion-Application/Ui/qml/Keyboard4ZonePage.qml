@@ -66,50 +66,9 @@ SettingsPage {
         colorTimer.restart()
     }
 
-    // Number of the zones of the keyboard (the protocol has 4)
-    readonly property int zoneCount: 4
-
-    /*
-     * Illustrative keyboard (the keys of the zones differ by the model, the hardware decides them): a generic layout,
-     * the main block and the numeric keypad, in units of a key. The width is divided evenly by the zones from the left,
-     * a key has the color of the zone of its middle.
-     */
-    readonly property var keyRows: [
-        [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],                 // Esc, F1 - F12, Ins, Del
-        [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2],                    // ` 1 - 0 - = Backspace
-        [1.5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1.5],                // Tab Q - P [ ] \
-        [1.75, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2.25],                 // Caps A - L ; ' Enter
-        [2.25, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2.75],                    // Shift Z - / Shift
-        [1.25, 1, 1, 1.25, 5.5, 1.25, 1.25, 1, 1, 1.5]                 // Ctrl Fn Win Alt Space Alt Ctrl, arrows
-    ]
-    readonly property real mainWidth: 15
-    readonly property real keypadGap: 0.5
-    readonly property real keypadWidth: 4
-    readonly property real totalWidth: mainWidth + keypadGap + keypadWidth
-
-    // Keys as {x, y, w} in units: the rows of the main block and the 4 x 6 numeric keypad
-    readonly property var keys: {
-        const result = []
-
-        for (let row = 0; row < keyRows.length; ++row) {
-            let x = 0
-
-            for (const width of keyRows[row]) {
-                result.push({ x: x, y: row, w: width })
-                x += width
-            }
-        }
-
-        for (let row = 1; row < keyRows.length; ++row)
-            for (let column = 0; column < 4; ++column)
-                result.push({ x: mainWidth + keypadGap + column, y: row, w: 1 })
-
-        return result
-    }
-
-    function zoneOf(key) {
-        return Math.min(zoneCount - 1, Math.floor((key.x + key.w / 2) / totalWidth * zoneCount))
-    }
+    // Static and breath use the colors of the zones, wave and smooth their own colors
+    readonly property int  effect: Number(keyboard.value(page.presetPath("effect"), keyboard.revision) || 0)
+    readonly property bool zonesEditable: lightsOn && (effect === 0 || effect === 1)   // EFFECT_STATIC, EFFECT_BREATH
 
     // Preview of the keyboard, a click on a key selects its zone for the color picker
     Section {
@@ -147,73 +106,25 @@ SettingsPage {
             }
         }
 
-        Item {
-            id: preview
-
+        Keyboard4ZoneView {
             Layout.fillWidth: true
-            Layout.preferredHeight: unit * page.keyRows.length
+            Layout.topMargin: 4
 
-            readonly property real unit: width / page.totalWidth
-
-            Repeater {
-                model: page.keys
-
-                delegate: Rectangle {
-                    required property var modelData
-
-                    readonly property int zone: page.zoneOf(modelData)
-
-                    x: modelData.x * preview.unit + 2
-                    y: modelData.y * preview.unit + 2
-                    width: modelData.w * preview.unit - 4
-                    height: preview.unit - 4
-                    radius: 4
-                    color: page.lightsOn ? page.zoneColor(zone) : theme.base
-                    opacity: page.lightsOn ? (page.selectedZone === zone ? 1 : 0.75) : 0.4
-                    border.width: page.selectedZone === zone ? 2 : 1
-                    border.color: page.selectedZone === zone ? theme.accent : theme.groupBorder
-
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: page.selectedZone = parent.zone
-                    }
-                }
-            }
-        }
-
-        // Zones under the keyboard (the same even division)
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 0
-
-            Repeater {
-                model: page.zoneCount
-
-                delegate: Label {
-                    required property int index
-
-                    Layout.fillWidth: true
-                    Layout.preferredWidth: 1
-                    horizontalAlignment: Text.AlignHCenter
-                    text: "Zone " + (index + 1)
-                    font.bold: page.selectedZone === index
-                    color: page.selectedZone === index ? theme.accent : theme.text
-
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: page.selectedZone = parent.index
-                    }
-                }
-            }
+            zoneColors: [page.zoneColor(0), page.zoneColor(1), page.zoneColor(2), page.zoneColor(3)]
+            lightsOn: page.lightsOn
+            zonesEditable: page.zonesEditable
+            selectedZone: page.selectedZone
+            onZoneClicked: zone => page.selectedZone = zone
         }
 
         Label {
             Layout.fillWidth: true
+            horizontalAlignment: Text.AlignHCenter
             wrapMode: Text.WordWrap
             opacity: 0.7
-            text: "Illustration: the keys of the zones differ by the model of the keyboard."
+            text: !page.lightsOn ? "The keyboard backlight is off"
+                : page.zonesEditable ? "Click a key to select its zone. Illustration: the keys of the zones differ by the model of the keyboard."
+                : "The effect uses its own colors, the colors of the zones are used by the static and the breath effect"
         }
 
         // Settings of the active preset
@@ -231,7 +142,7 @@ SettingsPage {
     Section {
         title: "Color of zone " + (page.selectedZone + 1) + (page.lightsOn ? " (preset " + page.activePreset + ")" : "")
         source: keyboard
-        enabled: page.lightsOn
+        enabled: page.zonesEditable
 
         ColorPicker {
             Layout.fillWidth: true

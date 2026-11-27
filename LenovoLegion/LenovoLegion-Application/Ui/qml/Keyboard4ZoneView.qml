@@ -1,0 +1,240 @@
+// SPDX-License-Identifier: GPL-2.0
+// 4-zone RGB keyboard drawn the same way as the per-key keyboard (KeyboardView: stage, deck, key caps), without labels:
+// an illustrative layout (the main block and the numeric keypad, the keys of the zones differ by the model, the hardware
+// decides them), the width divided evenly by the zones from the left. A click on a key selects its zone (only when the
+// zones can be edited), the selected zone has an outline, the others are dimmed.
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
+import QtQuick.Window
+import LenovoLegion.Ui 1.0
+
+Item {
+    id: view
+
+    property int  zoneCount: 4
+    property var  zoneColors: []        // color of every zone
+    property bool lightsOn: true        // false: keys off (dark)
+    property bool zonesEditable: true   // false: the effect has its own colors (no zone selected, rainbow)
+    property int  selectedZone: 0
+
+    signal zoneClicked(int zone)
+
+    /*
+     * Generic layout in units of a key: rows of the main block (Esc / F-keys, numbers, Tab, Caps, Shift, Ctrl / space /
+     * arrows) and the 4 x 5 numeric keypad
+     */
+    readonly property var keyRows: [
+        [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+        [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2],
+        [1.5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1.5],
+        [1.75, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2.25],
+        [2.25, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2.75],
+        [1.25, 1, 1, 1.25, 5.5, 1.25, 1.25, 1, 1, 1.5]
+    ]
+    readonly property real mainWidth: 15
+    readonly property real keypadGap: 0.5
+    readonly property real keypadWidth: 4
+    readonly property real unitsWide: mainWidth + keypadGap + keypadWidth
+    readonly property real unitsHigh: keyRows.length
+
+    readonly property var keys: {
+        const result = []
+
+        for (let row = 0; row < keyRows.length; ++row) {
+            let x = 0
+
+            for (const width of keyRows[row]) {
+                result.push({ x: x, y: row, w: width })
+                x += width
+            }
+        }
+
+        for (let row = 1; row < keyRows.length; ++row)
+            for (let column = 0; column < 4; ++column)
+                result.push({ x: mainWidth + keypadGap + column, y: row, w: 1 })
+
+        return result
+    }
+
+    function zoneOf(key) {
+        return Math.min(zoneCount - 1, Math.floor((key.x + key.w / 2) / unitsWide * zoneCount))
+    }
+
+    // Effects with their own colors: a rainbow over the width (illustration)
+    function rainbow(key) {
+        return Qt.hsva(((key.x + key.w / 2) / unitsWide) * 0.85, 0.85, 1, 1)
+    }
+
+    function keyColor(key) {
+        if (!lightsOn)
+            return "#1a1a1e"
+
+        if (!zonesEditable)
+            return rainbow(key)
+
+        const color = zoneColors[zoneOf(key)]
+        return color !== undefined ? color : "white"
+    }
+
+    // The same look as KeyboardView
+    readonly property color selectionColor: {
+        const accent = theme.accentHover
+        const luma = 0.2126 * accent.r + 0.7152 * accent.g + 0.0722 * accent.b
+        return luma >= 0.6 ? accent : Qt.tint(accent, Qt.rgba(1, 1, 1, (0.6 - luma) / (1 - luma)))
+    }
+    readonly property color ledRimColor: "#8a8a94"
+
+    // Not wider than maxDrawWidth and not higher than maxHeightPart of the window, centered (as KeyboardView)
+    property real maxDrawWidth: 900
+    property real maxHeightPart: 0.35
+    readonly property real drawWidth: Math.min(view.width, maxDrawWidth,
+                                               Window.height > 0 ? Window.height * maxHeightPart * unitsWide / unitsHigh : view.width)
+
+    implicitHeight: stage.height
+
+    Rectangle {
+        id: stage
+
+        anchors.horizontalCenter: parent.horizontalCenter
+        width: view.drawWidth
+        height: width > 0 ? (width - 2 * padding) * view.unitsHigh / view.unitsWide + 2 * padding : 0
+
+        readonly property real padding: Math.max(10, width / 60)
+
+        radius: theme.styled ? 12 : 2
+        gradient: Gradient {
+            GradientStop { position: 0.0; color: theme.groupBackground }
+            GradientStop { position: 1.0; color: theme.window }
+        }
+
+        Item {
+            id: area
+
+            x: stage.padding
+            y: stage.padding
+            width: stage.width - 2 * stage.padding
+            height: stage.height - 2 * stage.padding
+
+            readonly property real unit: width / view.unitsWide
+            readonly property real keyGap: Math.max(3, width / 180)
+
+            // Plate of the keys
+            Rectangle {
+                x: -stage.padding / 2
+                y: -stage.padding / 2
+                width: area.width + stage.padding
+                height: area.height + stage.padding
+                radius: stage.padding / 2
+                color: "#101013"
+                border.width: 1
+                border.color: "#050506"
+            }
+
+            Repeater {
+                model: view.keys
+
+                delegate: Item {
+                    id: key
+
+                    required property var modelData
+
+                    readonly property int   zone: view.zoneOf(modelData)
+                    readonly property bool  selected: view.lightsOn && view.zonesEditable && view.selectedZone === zone
+                    readonly property bool  dimmed: view.lightsOn && view.zonesEditable && !selected
+                    readonly property color rawColor: view.keyColor(modelData)
+                    readonly property color ledColor: dimmed ? Qt.rgba(rawColor.r * 0.45, rawColor.g * 0.45, rawColor.b * 0.45, 1) : rawColor
+                    readonly property real  corner: Math.min(width, height) * 0.16
+
+                    x: modelData.x * area.unit
+                    y: modelData.y * area.unit
+                    width: modelData.w * area.unit
+                    height: area.unit
+
+                    Item {
+                        anchors.fill: parent
+                        anchors.margins: area.keyGap / 2
+
+                        Rectangle {
+                            anchors.fill: parent
+                            radius: key.corner
+                            color: Qt.darker(key.ledColor, 2.2)
+                        }
+
+                        Rectangle {
+                            id: cap
+
+                            anchors.fill: parent
+                            anchors.bottomMargin: Math.max(2, parent.height * 0.08)
+                            radius: key.corner
+                            color: key.ledColor
+                            border.width: 1
+                            border.color: view.ledRimColor
+
+                            Rectangle {
+                                anchors.fill: parent
+                                anchors.margins: cap.border.width
+                                radius: cap.radius
+                                gradient: Gradient {
+                                    GradientStop { position: 0.0; color: Qt.rgba(1, 1, 1, 0.25) }
+                                    GradientStop { position: 0.55; color: Qt.rgba(1, 1, 1, 0.0) }
+                                }
+                            }
+                        }
+
+                        // The selected zone: outline around its keys
+                        Rectangle {
+                            anchors.fill: parent
+                            anchors.margins: -2
+                            visible: key.selected
+                            radius: key.corner + 2
+                            color: "transparent"
+                            border.width: 2
+                            border.color: view.selectionColor
+                        }
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        enabled: view.lightsOn && view.zonesEditable
+                        cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+                        onClicked: view.zoneClicked(key.zone)
+                    }
+
+                    ThemedToolTip {
+                        visible: keyHover.hovered && view.lightsOn && view.zonesEditable
+                        delay: 600
+                        text: "Zone " + (key.zone + 1)
+                    }
+
+                    HoverHandler {
+                        id: keyHover
+                    }
+                }
+            }
+
+            // Borders of the zones: dashed lines between them (the even division of the illustration)
+            Repeater {
+                model: view.zonesEditable && view.lightsOn ? view.zoneCount - 1 : 0
+
+                delegate: Column {
+                    required property int index
+
+                    x: (index + 1) * area.width / view.zoneCount - 1
+                    y: -stage.padding / 2
+                    spacing: 4
+
+                    Repeater {
+                        model: Math.ceil((area.height + stage.padding) / 10)
+
+                        delegate: Rectangle {
+                            width: 2
+                            height: 6
+                            color: Qt.rgba(1, 1, 1, 0.35)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
