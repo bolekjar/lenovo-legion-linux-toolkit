@@ -81,9 +81,9 @@ SettingsPage {
     readonly property int  effect: Number(keyboard.value(page.presetPath("effect"), keyboard.revision) || 0)
     readonly property bool zonesEditable: lightsOn && (effect === 0 || effect === 1)   // EFFECT_STATIC, EFFECT_BREATH
 
-    // Preview of the keyboard, a click on a key selects its zone for the color picker
+    // Preview of the keyboard, a click on a key selects its zone for the color picker; no title, the same as the
+    // per-key keyboard (the preset switcher with the keyboard is the first thing on the page)
     Section {
-        title: "4-Zone Keyboard"
         source: keyboard
         Layout.columnSpan: page.columns
 
