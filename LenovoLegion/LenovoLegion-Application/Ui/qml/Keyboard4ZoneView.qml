@@ -21,22 +21,37 @@ Item {
     signal zoneClicked(int zone)
 
     /*
-     * Generic layout in units of a key: rows of the main block (Esc / F-keys, numbers, Tab, Caps, Shift, Ctrl / space /
-     * arrows) and the 4 x 5 numeric keypad
+     * Generic layout in units of a key: rows of the main block (Esc / F-keys, numbers, Tab, Caps, Shift with the up
+     * arrow, Ctrl / space / the arrows) and the numeric keypad (+ and Enter of two rows, 0 of two columns)
      */
     readonly property var keyRows: [
         [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
         [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2],
         [1.5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1.5],
         [1.75, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2.25],
-        [2.25, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2.75],
-        [1.25, 1, 1, 1.25, 5.5, 1.25, 1.25, 1, 1, 1.5]
+        [1.25, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1.75],
+        [1.25, 1, 1, 1.25, 5.5, 1, 1]
     ]
     readonly property real mainWidth: 15
     readonly property real keypadGap: 0.5
     readonly property real keypadWidth: 4
     readonly property real unitsWide: mainWidth + keypadGap + keypadWidth
     readonly property real unitsHigh: keyRows.length
+
+    // Arrows (inverted T) right of the shortened right Shift and of the bottom row
+    readonly property var arrowKeys: [
+        { x: 13, y: 4, w: 1, h: 1 },
+        { x: 12, y: 5, w: 1, h: 1 }, { x: 13, y: 5, w: 1, h: 1 }, { x: 14, y: 5, w: 1, h: 1 }
+    ]
+
+    // Numeric keypad: column, row, width, height (NumLock / * -, 7 8 9 +, 4 5 6, 1 2 3 Enter, 0 .)
+    readonly property var keypadKeys: [
+        [0, 1, 1, 1], [1, 1, 1, 1], [2, 1, 1, 1], [3, 1, 1, 1],
+        [0, 2, 1, 1], [1, 2, 1, 1], [2, 2, 1, 1], [3, 2, 1, 2],
+        [0, 3, 1, 1], [1, 3, 1, 1], [2, 3, 1, 1],
+        [0, 4, 1, 1], [1, 4, 1, 1], [2, 4, 1, 1], [3, 4, 1, 2],
+        [0, 5, 2, 1], [2, 5, 1, 1]
+    ]
 
     readonly property var keys: {
         const result = []
@@ -45,14 +60,16 @@ Item {
             let x = 0
 
             for (const width of keyRows[row]) {
-                result.push({ x: x, y: row, w: width })
+                result.push({ x: x, y: row, w: width, h: 1 })
                 x += width
             }
         }
 
-        for (let row = 1; row < keyRows.length; ++row)
-            for (let column = 0; column < 4; ++column)
-                result.push({ x: mainWidth + keypadGap + column, y: row, w: 1 })
+        for (const arrow of arrowKeys)
+            result.push(arrow)
+
+        for (const key of keypadKeys)
+            result.push({ x: mainWidth + keypadGap + key[0], y: key[1], w: key[2], h: key[3] })
 
         return result
     }
@@ -149,7 +166,7 @@ Item {
                     x: modelData.x * area.unit
                     y: modelData.y * area.unit
                     width: modelData.w * area.unit
-                    height: area.unit
+                    height: modelData.h * area.unit
 
                     Item {
                         anchors.fill: parent
