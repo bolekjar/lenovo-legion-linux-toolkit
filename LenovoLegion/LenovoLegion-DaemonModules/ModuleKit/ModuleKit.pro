@@ -28,6 +28,7 @@ INCLUDEPATH     =  \
     $$PWD/../../LenovoLegion-PrepareBuild
 
 HEADERS += \
+    HidReportDescriptor.h \
     KitException.h \
     KitLog.h \
     KitMessage.h \

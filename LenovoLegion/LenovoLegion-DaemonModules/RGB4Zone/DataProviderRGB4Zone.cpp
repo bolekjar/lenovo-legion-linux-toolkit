@@ -9,6 +9,7 @@
 
 #include <Drivers/SysFsDriverLegionGameZone.h>
 
+#include <HidReportDescriptor.h>
 #include <KitLog.h>
 
 #include <hidapi.h>
@@ -156,12 +157,38 @@ std::string DataProviderRGB4Zone::find()
 
     for(const hid_device_info* device = devices; device != nullptr; device = device->next)
     {
-        if(device->usage_page == USAGE_PAGE && device->usage == USAGE_4ZONE && device->path != nullptr)
+        if(device->usage_page != USAGE_PAGE || device->usage != USAGE_4ZONE || device->path == nullptr)
         {
-            path = device->path;
-            LOG_D(QString::asprintf("4-zone RGB keyboard %04x:%04x found: %s",device->vendor_id,device->product_id,device->path));
-            break;
+            continue;
         }
+
+        /*
+         * Only a collection whose descriptor has the feature report 0xCC of 33 bytes (the same check as the community
+         * projects, not the product ID alone); without the descriptor (hidapi < 0.14) the collection is enough
+         */
+        hid_device* handle = hid_open_path(device->path);
+
+        if(handle == nullptr)
+        {
+            LOG_W(QString::asprintf("4-zone RGB keyboard %04x:%04x: %s can not be opened",device->vendor_id,device->product_id,device->path));
+            continue;
+        }
+
+        const auto length = hidFeatureReportLength(handle,REPORT_ID);
+
+        hid_close(handle);
+
+        if(length.has_value() && *length != REPORT_SIZE)
+        {
+            LOG_W(QString::asprintf("HID %04x:%04x collection 0x%04x:0x%04x is not a 4-zone keyboard (feature report 0x%02x: %zu bytes, 4-zone %zu bytes), skipped",
+                                    device->vendor_id,device->product_id,device->usage_page,device->usage,REPORT_ID,*length,REPORT_SIZE));
+            continue;
+        }
+
+        path = device->path;
+        LOG_D(QString::asprintf("4-zone RGB keyboard %04x:%04x found: %s%s",device->vendor_id,device->product_id,device->path,
+                                length.has_value() ? "" : " (report descriptor not available, hidapi < 0.14)"));
+        break;
     }
 
     hid_free_enumeration(devices);
