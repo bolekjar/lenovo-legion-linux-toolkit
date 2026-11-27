@@ -282,10 +282,12 @@ SettingsPage {
         // Not narrower than the rows of the fields (label and control), the color picker next to it takes the rest
         Layout.minimumWidth: implicitWidth
 
+        // Only the settings the effect uses: speed not for static, direction only for wave (the colors of the zones only
+        // for static and breath, see the color group)
         Field { source: keyboard; path: page.presetPath("effect") }
         Field { source: keyboard; path: page.presetPath("brightness") }
-        Field { source: keyboard; path: page.presetPath("speed") }
-        Field { source: keyboard; path: page.presetPath("direction") }
+        Field { source: keyboard; path: page.presetPath("speed"); visible: fieldModel !== null && fieldModel.visible && page.effect !== 0 }       // not EFFECT_STATIC
+        Field { source: keyboard; path: page.presetPath("direction"); visible: fieldModel !== null && fieldModel.visible && page.effect === 2 }   // EFFECT_WAVE
     }
 
     Section {
