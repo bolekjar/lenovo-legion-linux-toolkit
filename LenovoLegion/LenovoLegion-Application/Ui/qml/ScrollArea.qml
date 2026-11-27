@@ -26,6 +26,41 @@ ScrollView {
     // Space for the scroll bar when the content is longer than the area, the content is not covered
     rightPadding: verticalBar.size < 1.0 ? verticalBar.width + 4 : 0
 
+    // Separated from the controls of the group above it: a gap with a line fading to the sides
+    topPadding: 16
+
+    Rectangle {
+        parent: area
+        x: 0
+        y: 7
+        width: area.width
+        height: 1
+        gradient: Gradient {
+            orientation: Gradient.Horizontal
+            GradientStop { position: 0.0;  color: "transparent" }
+            GradientStop { position: 0.12; color: theme.groupBorder }
+            GradientStop { position: 0.88; color: theme.groupBorder }
+            GradientStop { position: 1.0;  color: "transparent" }
+        }
+    }
+
+    // Shadow under the line while the content is scrolled (it goes under the controls)
+    Rectangle {
+        parent: area
+        z: 1
+        x: 0
+        y: area.topPadding
+        width: area.availableWidth
+        height: 8
+        opacity: area.contentItem.contentY > 0 ? 1 : 0
+        gradient: Gradient {
+            GradientStop { position: 0.0; color: Qt.rgba(0, 0, 0, 0.25) }
+            GradientStop { position: 1.0; color: "transparent" }
+        }
+
+        Behavior on opacity { NumberAnimation { duration: 150 } }
+    }
+
     ScrollBar.vertical: ThemedScrollBar {
         id: verticalBar
 
