@@ -35,6 +35,8 @@ A driver is basically a holder of the sysfs paths and a reaction to the udev eve
 | CPUUncore | CPUIntelUncore |
 | CPUTcc | CPUIntelTcc |
 | GPURuntimePM | GPURuntimePM |
+| IGPUFrequency | IGpuFrequency |
+| PCIeASPM | PcieAspm |
 | RGB4Zone | LegionGameZone (light control owner), hidapi |
 | CPUSMT | CPU, CPUXList |
 | CPUTopology | CPU, CPUAtom, CPUCore |
@@ -460,6 +462,8 @@ Decision of the author: shared drivers as source code without sharing at run tim
 | CPUUncore | CPUIntelUncore | – | CPUUncoreData, 112 |
 | CPUTcc | CPUIntelTcc | – | CPUTccData, 113 |
 | GPURuntimePM | GPURuntimePM | – | – (not saved, set by the NVIDIA driver) |
+| IGPUFrequency | IGpuFrequency | – | IGPUFrequencyData, 114 |
+| PCIeASPM | PcieAspm | – | PCIeASPMData, 115 |
 | RGB4Zone | LegionGameZone | – | RGB4ZoneData, 200 |
 | CPUTopology | CPU, CPUAtom, CPUCore | – | – |
 | OtherGpuSwitch | LegionGameZone | – | – |

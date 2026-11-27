@@ -92,3 +92,24 @@ message GpuRuntimePM
     string device         = 4 [(legion.ui.field) = { label: "PCI device", widget: LABEL,
                                tooltip: "PCI address of the discrete GPU." }];
 }
+
+
+// Frequency of the integrated GPU (Intel i915: gt_*_freq_mhz of the DRM card, xe: device/tile0/gt0/freq0), MHz
+message IGpuFrequency
+{
+    uint32 min_freq       = 1 [(legion.ui.field) = { label: "Minimal frequency", unit: "MHz", widget: SLIDER, min: "min_limit", max: "max_freq",
+                               tooltip: "The lowest frequency of the integrated GPU.\n\nA higher minimum makes the desktop and video smoother and the GPU faster to react, at the cost of a higher power in idle. The default is the lowest value of the driver." }];
+    uint32 max_freq       = 2 [(legion.ui.field) = { label: "Maximal frequency", unit: "MHz", widget: SLIDER, min: "min_freq", max: "max_limit",
+                               tooltip: "The highest frequency of the integrated GPU.\n\nA lower maximum saves power and heat (the CPU and the iGPU share the power limit and the cooler: more boost is left for the CPU), the graphics gets slower. The default is the highest value of the hardware (RP0)." }];
+    uint32 boost_freq     = 3 [(legion.ui.field) = { label: "Boost frequency", unit: "MHz", widget: SLIDER, min: "min_freq", max: "max_limit", supported_from: "boost_supported",
+                               tooltip: "The frequency the i915 driver uses at once for a waiting client (e.g. a frame of a game which comes late). Usually the same as the maximum." }];
+    uint32 efficient_freq = 4 [(legion.ui.field) = { label: "Most efficient frequency", unit: "MHz", widget: LABEL,
+                               tooltip: "The frequency with the best performance per watt (RP1 / RPe): a good maximum for the battery." }];
+    uint32 current_freq  = 5 [(legion.ui.field) = { label: "Current frequency", unit: "MHz", widget: LABEL,
+                               tooltip: "The frequency the GPU runs now (0 when it is idle, read when the page was loaded)." }];
+    string driver         = 6 [(legion.ui.field) = { label: "Driver", widget: LABEL }];
+
+    uint32 min_limit      = 7 [(legion.ui.field) = { widget: HIDDEN }];
+    uint32 max_limit      = 8 [(legion.ui.field) = { widget: HIDDEN }];
+    bool   boost_supported = 9 [(legion.ui.field) = { widget: HIDDEN }];
+}

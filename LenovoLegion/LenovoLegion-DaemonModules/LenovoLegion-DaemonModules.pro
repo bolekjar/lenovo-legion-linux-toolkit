@@ -31,6 +31,8 @@ MODULES = \
     CPUUncore \
     CPUTcc \
     GPURuntimePM \
+    IGPUFrequency \
+    PCIeASPM \
     NvidiaNvml \
     RGBController \
     RGB4Zone

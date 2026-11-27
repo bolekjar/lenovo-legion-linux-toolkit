@@ -44,3 +44,14 @@ message GpuSwitchValue
     HybridModeState   current     = 1 [(legion.ui.field) = { label: "GPU mode", widget: RADIO, supported_from: "supported", hint: "Changing the GPU mode requires a system restart." }];
     bool              supported   = 2 [(legion.ui.field) = { widget: HIDDEN }];
 }
+
+
+// PCIe Active State Power Management policy of the kernel (/sys/module/pcie_aspm/parameters/policy)
+message PcieAspm
+{
+    string policy = 1 [(legion.ui.field) = { label: "PCIe power saving (ASPM)", widget: COMBO, choices_from: "available_policies",
+                       tooltip: "Active State Power Management of the PCIe links (GPU, NVMe disk, Wi-Fi, ...): the links go to low power states when they are idle.\n\n⚪ default - the setting of the BIOS (recommended)\n🔴 performance - ASPM off: the lowest latency, the highest power\n🟢 powersave - L0s / L1 states: lower power in idle\n🔵 powersupersave - also the L1 substates: the lowest power in idle\n\nThe power saving states can cause problems with some devices (a disk or a Wi-Fi card not responding): if it happens, set default again." }];
+
+    // Policies the kernel offers
+    repeated string available_policies = 2 [(legion.ui.field) = { widget: HIDDEN }];
+}

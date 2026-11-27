@@ -50,6 +50,8 @@ HEADERS += \
     Drivers/SysFsDriverCPUIntelTcc.h \
     Drivers/SysFsDriverCPUIntelUncore.h \
     Drivers/SysFsDriverGPURuntimePM.h \
+    Drivers/SysFsDriverIGpuFrequency.h \
+    Drivers/SysFsDriverPcieAspm.h \
     Drivers/SysFsDriverCPUXList.h \
     Drivers/SysFsDriverIntelPowercapRapl.h \
     Drivers/SysFsDriverLegionEvents.h \
@@ -78,6 +80,8 @@ SOURCES += \
     Drivers/SysFsDriverCPUIntelTcc.cpp \
     Drivers/SysFsDriverCPUIntelUncore.cpp \
     Drivers/SysFsDriverGPURuntimePM.cpp \
+    Drivers/SysFsDriverIGpuFrequency.cpp \
+    Drivers/SysFsDriverPcieAspm.cpp \
     Drivers/SysFsDriverCPUXList.cpp \
     Drivers/SysFsDriverIntelPowercapRapl.cpp \
     Drivers/SysFsDriverLegionEvents.cpp \

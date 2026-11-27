@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 // Page of the generic GUI (standard interfaces): NVIDIA clock offsets, the same data as OffsetsControl of the widget pages (UiDesign.md),
-// and the runtime power management of the discrete GPU
+// the frequency of the integrated GPU and the runtime power management of the discrete GPU
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -30,6 +30,14 @@ SettingsPage {
             { text: "Aggressive",   apply: false, values: { "gpu_offset.value": 200, "memory_offset.value": 500 } },
             { text: "Reset",        apply: false, values: { "gpu_offset.value": 0,   "memory_offset.value": 0 } }
         ]
+    }
+
+    // Frequency of the Intel integrated GPU (i915 / xe), hidden without it
+    AutoSection {
+        title: "Integrated GPU Frequency"
+        dataType: "IGPU_FREQUENCY"
+        applyBar: true
+        hideWhenAbsent: true
     }
 
     // Runtime power management of the discrete GPU: the state read every 2 s, a warning when it is disabled

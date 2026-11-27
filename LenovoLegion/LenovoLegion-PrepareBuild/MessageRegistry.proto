@@ -44,4 +44,8 @@ enum DataType {
                             (legion.ui.available_from) = "max_offset", (legion.ui.unavailable_reason) = "Requires the Intel processor thermal device (TCC offset)"];
   GPU_RUNTIME_PM      = 26 [(legion.ui.module) = "GPURuntimePM", (legion.ui.message) = "legion.messages.GpuRuntimePM",
                             (legion.ui.available_from) = "present", (legion.ui.unavailable_reason) = "No discrete NVIDIA GPU was found"];
+  IGPU_FREQUENCY      = 27 [(legion.ui.module) = "IGPUFrequency", (legion.ui.message) = "legion.messages.IGpuFrequency",
+                            (legion.ui.available_from) = "max_limit", (legion.ui.unavailable_reason) = "No Intel integrated GPU (i915, xe) was found"];
+  PCIE_ASPM           = 28 [(legion.ui.module) = "PCIeASPM", (legion.ui.message) = "legion.messages.PcieAspm",
+                            (legion.ui.available_from) = "policy", (legion.ui.unavailable_reason) = "PCIe ASPM is not available (disabled by the kernel or the BIOS)"];
 }

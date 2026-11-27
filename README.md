@@ -70,6 +70,7 @@
 - GPU and memory clock offsets.
 - Runtime power management of the discrete GPU: its state (active / suspended) and a warning when it is never
   powered down.
+- Frequency of the Intel integrated GPU (i915, xe): minimum, maximum and boost.
 - GPU mode: Hybrid, Hybrid (Auto), iGPU only, dGPU only (G-Sync), applied after a restart.
 
 **RGB keyboard**
@@ -95,6 +96,7 @@
   when the lid is opened), when the firmware provides them.
 - Battery conservation mode (charging stops at about 80 %), rapid charge and USB charging when the notebook is off;
   since kernel 6.16 the charge mode is also `charge_types` of the battery (battery settings of KDE / GNOME).
+- PCIe power saving (ASPM policy of the kernel).
 - Profiles: save the whole configuration under a name and load it later.
 - The settings are restored by the daemon after a reboot (can be switched off in Settings).
 - Themes, tray icon, system check on the Help page.
