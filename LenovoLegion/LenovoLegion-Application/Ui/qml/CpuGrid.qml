@@ -148,6 +148,28 @@ Section {
         options.endChanges()
     }
 
+    // Governor of the shown online threads as set (with a change not applied yet), "" when they differ
+    readonly property string shownGovernor: {
+        let governor = null
+
+        for (let cpu = 0; cpu < cpuCount; ++cpu) {
+            if (!shown(cpu) || kinds[cpu] === "D")
+                continue
+
+            const value = options.value("cpus[" + cpu + "].governor", options.revision)
+
+            if (value === undefined || value === "")
+                continue
+
+            if (governor !== null && governor !== value)
+                return ""
+
+            governor = value
+        }
+
+        return governor !== null ? governor : ""
+    }
+
     // Governor of the shown online threads (not of the disabled threads)
     function setGovernor(governor) {
         options.beginChanges()
@@ -189,10 +211,17 @@ Section {
         }
 
         ThemedComboBox {
+            id: governorCombo
+
             implicitWidth: 150
             model: (options.repeatedValues("cpus[0].available_governors", options.revision))
-            currentIndex: count > 0 ? find((options.daemonValue("cpus[0].governor", options.revision))) : -1
-            onActivated: index => grid.setGovernor(textAt(index))
+            currentIndex: count > 0 ? find(grid.shownGovernor) : -1
+            displayText: currentIndex >= 0 ? currentText : grid.shownGovernor === "" && count > 0 ? "Mixed" : ""
+            onActivated: index => {
+                grid.setGovernor(textAt(index))
+                // The selection of the user replaced the binding
+                currentIndex = Qt.binding(() => governorCombo.count > 0 ? governorCombo.find(grid.shownGovernor) : -1)
+            }
         }
 
         ThemedButton {
