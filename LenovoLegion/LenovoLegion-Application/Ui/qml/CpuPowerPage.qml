@@ -96,7 +96,7 @@ SettingsPage {
 
         presets: [
             { text: "None",         apply: false, values: {} },
-            { text: "Conservative", apply: false, values: { "cpu.offset": -50,  "uncore.offset": -50,  "cache.offset": -50,  "gpu.offset": -40,  "analogio.offset": 0 } },
+            { text: "Conservative", apply: false, values: { "cpu.offset": -40,  "uncore.offset": -40,  "cache.offset": -40,  "gpu.offset": -40,  "analogio.offset": 0 } },
             { text: "Moderate",     apply: false, values: { "cpu.offset": -100, "uncore.offset": -80,  "cache.offset": -100, "gpu.offset": -75,  "analogio.offset": 0 } },
             { text: "Aggressive",   apply: false, values: { "cpu.offset": -150, "uncore.offset": -100, "cache.offset": -150, "gpu.offset": -100, "analogio.offset": 0 } },
             { text: "Reset",        apply: false, values: { "cpu.offset": 0,    "uncore.offset": 0,    "cache.offset": 0,    "gpu.offset": 0,    "analogio.offset": 0 } }
