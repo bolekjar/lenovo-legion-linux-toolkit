@@ -20,6 +20,53 @@ RowLayout {
     readonly property var applyPresets: presets.filter(preset => preset.apply !== false)
     readonly property var fillPresets:  presets.filter(preset => preset.apply === false)
 
+    // Preset of the shown values (after Cancel, a failed Apply or a change from elsewhere the combo box does not keep
+    // a preset which is not shown), the preset without values (None) otherwise. Not supported fields are not compared
+    // (they are not filled in either).
+    readonly property int shownPreset: {
+        const revision = source !== null ? source.revision : 0
+        let fallback = -1
+
+        for (let i = 0; i < fillPresets.length; ++i) {
+            const paths = Object.keys(fillPresets[i].values)
+
+            if (paths.length === 0) {
+                if (fallback < 0)
+                    fallback = i
+                continue
+            }
+
+            if (source === null)
+                continue
+
+            let compared = 0
+            let matches = true
+
+            for (const path of paths) {
+                const model = source.field(path, revision)
+
+                if (model === null || !model.visible)
+                    continue
+
+                const shown = model.value
+                const wanted = fillPresets[i].values[path]
+
+                ++compared
+
+                // Displayed values of scaled fields are rounded (-49804 uV shown as -50 mV)
+                if (typeof shown === "number" && typeof wanted === "number" ? Math.abs(shown - wanted) >= 0.5 : shown !== wanted) {
+                    matches = false
+                    break
+                }
+            }
+
+            if (matches && compared > 0)
+                return i
+        }
+
+        return fallback
+    }
+
     Label {
         visible: bar.fillPresets.length > 0
         text: bar.presetLabel
@@ -31,7 +78,12 @@ RowLayout {
 
         model: bar.fillPresets.map(preset => preset.text)
         enabled: bar.source !== null && bar.source.valid
-        onActivated: index => bar.source.setValues(bar.fillPresets[index].values)
+        currentIndex: bar.shownPreset
+        onActivated: index => {
+            bar.source.setValues(bar.fillPresets[index].values)
+            // The selection of the user replaced the binding
+            currentIndex = Qt.binding(() => bar.shownPreset)
+        }
     }
 
     Item {
