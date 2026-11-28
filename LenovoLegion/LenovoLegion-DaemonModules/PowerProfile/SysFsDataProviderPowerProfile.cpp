@@ -34,18 +34,23 @@ QByteArray SysFsDataProviderPowerProfile::serializeAndGetData()
     try {
         SysFsDriverLegionGameZone::GameZone::SmartFan smartFan(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverLegionGameZone::DRIVER_NAME));
         SysFsDriverLegionGameZone::GameZone::Other    other(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverLegionGameZone::DRIVER_NAME));
-        SysFsDriverLegionOther::Other                 otherInOther(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverLegionOther::DRIVER_NAME));
 
         powerProfile.set_current_value(static_cast<legion::messages::PowerProfile::Profiles>(getData(smartFan.m_current_value).toUShort()));
         powerProfile.set_thermal_mode(static_cast<legion::messages::PowerProfile::Profiles>(getData(other.get_thermal_mode).toUShort()));
 
-        // Not shown by the kernel driver when the firmware does not have it (capability data of the other mode)
-        if(otherInOther.m_god_mode_fnq_switchable.m_supported.empty())
+        /*
+         * Custom mode by Fn+Q: a feature of the other mode, which the older firmware does not have (e.g. Legion 5
+         * 15IAH7H: no legion-wmi-other); not shown by the kernel driver when the firmware does not have it
+         */
+        if(!m_sysFsDriverManager->isLoaded(SysFsDriverLegionOther::DRIVER_NAME) ||
+           SysFsDriverLegionOther::Other(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverLegionOther::DRIVER_NAME)).m_god_mode_fnq_switchable.m_supported.empty())
         {
             powerProfile.mutable_custom_fnq_enabled()->set_supported(false);
         }
         else
         {
+            SysFsDriverLegionOther::Other otherInOther(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverLegionOther::DRIVER_NAME));
+
             powerProfile.mutable_custom_fnq_enabled()->set_supported(getData(otherInOther.m_god_mode_fnq_switchable.m_supported).toShort() > 0);
             powerProfile.mutable_custom_fnq_enabled()->set_current_value(getData(otherInOther.m_god_mode_fnq_switchable.m_current_value).toShort() == 1);
             powerProfile.mutable_custom_fnq_enabled()->set_default_value(getData(otherInOther.m_god_mode_fnq_switchable.m_default_value).toShort() == 1);
@@ -82,9 +87,6 @@ QByteArray SysFsDataProviderPowerProfile::serializeAndGetData()
 QByteArray SysFsDataProviderPowerProfile::deserializeAndSetData(const QByteArray &data)
 {
     SysFsDriverLegionGameZone::GameZone::SmartFan smartFan(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverLegionGameZone::DRIVER_NAME));
-    SysFsDriverLegionGameZone::GameZone::Other    other(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverLegionGameZone::DRIVER_NAME));
-    SysFsDriverLegionOther::Other                 otherInOther(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverLegionOther::DRIVER_NAME));
-
     legion::messages::PowerProfile                powerProfile;
 
     LOG_T(__PRETTY_FUNCTION__);
@@ -100,8 +102,13 @@ QByteArray SysFsDataProviderPowerProfile::deserializeAndSetData(const QByteArray
         setData(smartFan.m_current_value,static_cast<quint8>(powerProfile.current_value()));
     }
 
+    /*
+     * Only with the other mode (settable() removes it otherwise)
+     */
     if(powerProfile.has_custom_fnq_enabled())
     {
+        SysFsDriverLegionOther::Other otherInOther(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverLegionOther::DRIVER_NAME));
+
         setData(otherInOther.m_god_mode_fnq_switchable.m_current_value, powerProfile.custom_fnq_enabled().current_value());
     }
 
@@ -153,13 +160,13 @@ void SysFsDataProviderPowerProfile::settable(legion::messages::PowerProfile &pro
         profile.mutable_custom_fnq_enabled()->clear_default_value();
         profile.mutable_custom_fnq_enabled()->clear_supported();
 
-        SysFsDriverLegionOther::Other other(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverLegionOther::DRIVER_NAME));
-
         if(!profile.custom_fnq_enabled().has_current_value())
         {
             profile.clear_custom_fnq_enabled();
         }
-        else if(other.m_god_mode_fnq_switchable.m_supported.empty() || getData(other.m_god_mode_fnq_switchable.m_supported).toShort() <= 0)
+        else if(!m_sysFsDriverManager->isLoaded(SysFsDriverLegionOther::DRIVER_NAME) ||
+                SysFsDriverLegionOther::Other(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverLegionOther::DRIVER_NAME)).m_god_mode_fnq_switchable.m_supported.empty() ||
+                getData(SysFsDriverLegionOther::Other(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverLegionOther::DRIVER_NAME)).m_god_mode_fnq_switchable.m_supported).toShort() <= 0)
         {
             skipField(origin,QString("custom Fn+Q=").append(QString::number(profile.custom_fnq_enabled().current_value())),"not supported");
             profile.clear_custom_fnq_enabled();
