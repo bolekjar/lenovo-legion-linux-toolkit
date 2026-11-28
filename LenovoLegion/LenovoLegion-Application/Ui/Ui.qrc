@@ -18,6 +18,7 @@
         <file alias="DetailWindow.qml">qml/DetailWindow.qml</file>
         <file alias="GpuDetailsWindow.qml">qml/GpuDetailsWindow.qml</file>
         <file alias="DevicePage.qml">qml/DevicePage.qml</file>
+        <file alias="SystemPage.qml">qml/SystemPage.qml</file>
         <file alias="GpuPage.qml">qml/GpuPage.qml</file>
         <file alias="HelpPage.qml">qml/HelpPage.qml</file>
         <file alias="HistoryChart.qml">qml/HistoryChart.qml</file>

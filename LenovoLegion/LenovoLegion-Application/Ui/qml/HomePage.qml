@@ -119,6 +119,7 @@ Rectangle {
                         CpuFrequencyPage { title: ""; transparent: true; readonly property string tabText: "CPU Freq Control"; readonly property string tabIcon: "frequency" }
                         CpuPowerPage     { title: ""; transparent: true; readonly property string tabText: "CPU Power"; readonly property string tabIcon: "power" }
                         GpuPage    { title: ""; transparent: true; readonly property string tabText: "GPU"; readonly property string tabIcon: "gpu" }
+                        SystemPage { title: ""; transparent: true; readonly property string tabText: "System"; readonly property string tabIcon: "plug" }
                         PowerPage  { title: ""; transparent: true; readonly property string tabText: "Power"; readonly property string tabIcon: "limits" }
                         FanCurvePage { title: ""; transparent: true; readonly property string tabText: "Fan Curve"; readonly property string tabIcon: "fan" }
                         DevicePage { title: ""; transparent: true; readonly property string tabText: "Device"; readonly property string tabIcon: "device" }

@@ -172,8 +172,11 @@ The tabs:
 - **CPU Control** – SMT (Hyper-Threading), cores on/off and the governor of every CPU; P-cores and E-cores are \
 shown separately on hybrid Intel CPUs
 - **CPU Freq Control** – minimum and maximum frequency of every CPU
-- **CPU Power** – power state of the CPU (intel_pstate limits, turbo) and the CPU voltage offsets
-- **GPU** – NVIDIA GPU and memory clock offsets with presets
+- **CPU Power** – power state of the CPU (Intel P-State or AMD P-State: mode, turbo / boost, energy performance \
+preference), the Intel uncore frequency, the TCC offset (throttling temperature) and the CPU voltage offsets
+- **GPU** – NVIDIA GPU and memory clock offsets with presets, the integrated GPU frequency and the power management of the \
+discrete GPU
+- **System** – power saving of the platform: PCIe ASPM policy
 - **Power** – CPU and GPU power limits and temperature limits of the current power profile
 - **Fan Curve** – fan curve with 10 points (drag the points, the curve stays rising and in the limits of the \
 firmware), labeled by the sensor temperatures of the points; fan full speed

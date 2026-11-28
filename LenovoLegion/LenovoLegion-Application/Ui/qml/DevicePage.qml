@@ -66,12 +66,4 @@ SettingsPage {
 
         Field { source: gpuSwitch; path: "current"; radioColumns: 1; labelVisible: false }
     }
-
-    // PCIe ASPM policy of the kernel (standard interface, any notebook), hidden when the kernel does not offer it
-    AutoSection {
-        title: "PCIe Power Saving"
-        dataType: "PCIE_ASPM"
-        applyBar: true
-        hideWhenAbsent: true
-    }
 }
