@@ -71,8 +71,12 @@ SettingsPage {
     readonly property bool daemonConnected: typeof appState !== "undefined" && appState !== null ? appState.connected : daemonCheck.available
 
     // Reason of a failed check: the daemon module of the source when it does not run, otherwise the hint of the check
+    // The module error, otherwise the text with the error of the daemon (e.g. which kernel driver is missing)
     function failReason(source, text) {
-        return source.moduleError.length > 0 ? source.moduleError : text
+        if (source.moduleError.length > 0)
+            return source.moduleError
+
+        return source.lastError.length > 0 ? text + "\nDaemon: " + source.lastError : text
     }
 
     readonly property var checks: [
@@ -83,7 +87,7 @@ SettingsPage {
         { name: "Lenovo Legion driver", ok: lenovoCheck.available, required: true,
           okText: "lenovo_legion loaded",
           failText: page.daemonConnected ? page.failReason(lenovoCheck, "Kernel module lenovo_legion is not loaded or the notebook is not supported. "
-                                                                    + "Check the output of: sudo dmesg | grep lenovo-legion")
+                                                                    + "Check the output of: sudo dmesg | grep -i legion")
                                          : "Unknown, the daemon is not connected." },
         { name: "Intel CPU voltage", ok: msrCheck.available, required: false,
           okText: "legion_intel_msr loaded",
