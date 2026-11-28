@@ -51,6 +51,10 @@ Section {
         return null
     }
 
+    // On the battery the profiles which need the power adapter (Performance, Custom, Extreme) are grayed, the daemon
+    // does not set them
+    readonly property var        acRequired: power.repeatedValues("ac_required_profiles", power.revision)
+
     function profileColor(choice) {
         return choice !== null && choice.color !== undefined ? choice.color : theme.accent
     }
@@ -114,11 +118,23 @@ Section {
             required property var modelData
 
             readonly property bool selected: panel.active !== null && panel.active.value === modelData.value
+            readonly property bool needsAc: panel.acRequired.indexOf(modelData.value) >= 0
 
             Layout.fillWidth: true
             implicitHeight: 40
             hoverEnabled: true
-            enabled: panel.profile !== null && !panel.profile.readonly
+            enabled: panel.profile !== null && !panel.profile.readonly && !needsAc
+
+            // A disabled item gets no hover: the tool tip of a grayed card by a handler
+            HoverHandler {
+                id: cardHover
+            }
+
+            ThemedToolTip {
+                visible: card.needsAc && cardHover.hovered
+                delay: 500
+                text: "Connect the power adapter to use this profile"
+            }
 
             onClicked: if (!selected) panel.profile.value = modelData.value
 
@@ -176,6 +192,17 @@ Section {
                 }
             }
         }
+    }
+
+    Label {
+        Layout.fillWidth: true
+
+        visible: power.available && panel.acRequired.length > 0
+        text: "Connect the power adapter to use the grayed profiles"
+        color: theme.modified
+        font.bold: true
+        wrapMode: Text.Wrap
+        horizontalAlignment: Text.AlignHCenter
     }
 
     Item { Layout.fillHeight: true }

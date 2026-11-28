@@ -27,4 +27,8 @@ message PowerProfile
     Profiles   thermal_mode              = 2 [(legion.ui.field) = { widget: HIDDEN }];  //thermal mode
     CustomFnq  custom_fnq_enabled        = 3 [(legion.ui.field) = { label: "Custom - Toggle Fn+Q", supported_from: "custom_fnq_enabled.supported" }];  //custom fn+q
     repeated Profiles supported_profiles = 4 [(legion.ui.field) = { widget: HIDDEN }];  //supported profiles
+
+    // Profiles which need the power adapter, sent only on the battery (the same as Lenovo Legion Toolkit: Performance and
+    // Custom, Extreme too); shown grayed, not set by the daemon
+    repeated Profiles ac_required_profiles = 5 [(legion.ui.field) = { widget: HIDDEN }];
 }

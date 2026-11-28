@@ -32,6 +32,10 @@ private:
 
     std::vector<legion::messages::PowerProfile::Profiles> supportedProfiles() const;
 
+    std::vector<legion::messages::PowerProfile::Profiles> acRequiredProfiles() const;
+
+    bool onBattery() const;
+
     void settable(legion::messages::PowerProfile& profile,Origin origin) const;
 
 public:

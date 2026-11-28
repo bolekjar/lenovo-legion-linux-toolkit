@@ -9,6 +9,7 @@
 #include "SysFsDataProviderPowerProfile.h"
 #include <Drivers/SysFsDriverLegionGameZone.h>
 #include <Drivers/SysFsDriverLegionOther.h>
+#include <Drivers/SysFsDriverPowerSuplyBattery0.h>
 
 #include <PowerProfile.pb.h>
 
@@ -59,6 +60,14 @@ QByteArray SysFsDataProviderPowerProfile::serializeAndGetData()
         for(const auto profile : supportedProfiles())
         {
             powerProfile.add_supported_profiles(profile);
+        }
+
+        if(onBattery())
+        {
+            for(const auto profile : acRequiredProfiles())
+            {
+                powerProfile.add_ac_required_profiles(profile);
+            }
         }
 
     } catch(SysFsDriver::exception_T& ex)
@@ -139,10 +148,51 @@ std::vector<legion::messages::PowerProfile::Profiles> SysFsDataProviderPowerProf
     return profiles;
 }
 
+std::vector<legion::messages::PowerProfile::Profiles> SysFsDataProviderPowerProfile::acRequiredProfiles() const
+{
+    std::vector<legion::messages::PowerProfile::Profiles> profiles {
+        legion::messages::PowerProfile::POWER_PROFILE_PERFORMANCE,
+        legion::messages::PowerProfile::POWER_PROFILE_CUSTOM
+    };
+
+    const auto supported = supportedProfiles();
+
+    if(std::find(supported.begin(),supported.end(),legion::messages::PowerProfile::POWER_PROFILE_EXTREME) != supported.end())
+    {
+        profiles.push_back(legion::messages::PowerProfile::POWER_PROFILE_EXTREME);
+    }
+
+    return profiles;
+}
+
+bool SysFsDataProviderPowerProfile::onBattery() const
+{
+    /*
+     * Only a disconnected adapter (a low wattage one counts as connected, the same as Lenovo Legion Toolkit). Without
+     * the AC power_supply (unknown state) nothing is blocked.
+     */
+    if(!m_sysFsDriverManager->isLoaded(SysFsDriverPowerSuplyBattery0::DRIVER_NAME))
+    {
+        return false;
+    }
+
+    const SysFsDriverPowerSuplyBattery0::PowerSuplyBattery0 battery(m_sysFsDriverManager->getDriverDesriptor(SysFsDriverPowerSuplyBattery0::DRIVER_NAME));
+
+    if(battery.m_acOnline.empty())
+    {
+        return false;
+    }
+
+    const std::optional<QString> online = getOptionalData(battery.m_acOnline);
+
+    return online.has_value() && online->trimmed() == "0";
+}
+
 void SysFsDataProviderPowerProfile::settable(legion::messages::PowerProfile &profile, Origin origin) const
 {
     profile.clear_thermal_mode();
     profile.clear_supported_profiles();
+    profile.clear_ac_required_profiles();
 
     if(profile.has_current_value())
     {
@@ -151,6 +201,17 @@ void SysFsDataProviderPowerProfile::settable(legion::messages::PowerProfile &pro
         if(std::find(profiles.begin(),profiles.end(),profile.current_value()) == profiles.end())
         {
             skipField(origin,QString("power profile=").append(QString::number(profile.current_value())),"not supported");
+            profile.clear_current_value();
+        }
+    }
+
+    if(profile.has_current_value() && onBattery())
+    {
+        const auto profiles = acRequiredProfiles();
+
+        if(std::find(profiles.begin(),profiles.end(),profile.current_value()) != profiles.end())
+        {
+            skipField(origin,QString("power profile=").append(QString::number(profile.current_value())),"requires the power adapter");
             profile.clear_current_value();
         }
     }

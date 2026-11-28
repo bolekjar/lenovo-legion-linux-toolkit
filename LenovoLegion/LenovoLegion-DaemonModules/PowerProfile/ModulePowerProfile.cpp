@@ -13,6 +13,7 @@
 #include <Drivers/SysFsDriverLegionEvents.h>
 #include <Drivers/SysFsDriverLegionGameZone.h>
 #include <Drivers/SysFsDriverLegionOther.h>
+#include <Drivers/SysFsDriverPowerSuplyBattery0.h>
 
 #include <PowerProfile.pb.h>
 
@@ -32,6 +33,7 @@ public:
         drivers().addDriver(std::make_unique<SysFsDriverLegionGameZone>());
         drivers().addDriver(std::make_unique<SysFsDriverLegionOther>());
         drivers().addDriver(std::make_unique<SysFsDriverLegionEvents>());
+        drivers().addDriver(std::make_unique<SysFsDriverPowerSuplyBattery0>());   // power adapter: profiles which need it
 
         setProvider(std::make_unique<SysFsDataProviderPowerProfile>(&drivers()));
     }

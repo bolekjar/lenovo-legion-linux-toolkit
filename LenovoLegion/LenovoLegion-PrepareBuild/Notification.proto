@@ -52,7 +52,7 @@ message Notification
         LENOVO_DRIVER_ADDED                     = 0;
         LENOVO_DRIVER_REMOVED                   = 1;
         THERMAL_MODE_CHANGE                     = 2 [(legion.ui.reload) = "POWER_PROFILE,CPU_POWER,GPU_POWER,FAN_CURVE,FAN_OPTION"];
-        POWER_SUPPLY_BATTERY0_CHANGE            = 3 [(legion.ui.reload) = "BATTERY,CPU_POWER,GPU_POWER"];
+        POWER_SUPPLY_BATTERY0_CHANGE            = 3 [(legion.ui.reload) = "BATTERY,POWER_PROFILE,CPU_POWER,GPU_POWER"];
         CPU_X_LIST_RELOADED                     = 4 [(legion.ui.reload) = "CPU_OPTIONS,CPU_FREQUENCY,CPU_TOPOLOGY,CPU_SMT"];
         KEYLOCK_STATUS_CHANGE                   = 5 [(legion.ui.reload) = "OTHER"];
         SPECIAL_KEY_PRESSED                     = 6 [(legion.ui.reload) = "RGB_CONTROLLER,OTHER"];
@@ -63,7 +63,7 @@ message Notification
         CPU_PSTATE_CHANGED                      = 11 [(legion.ui.reload) = "CPU_PSTATE,CPU_OPTIONS,CPU_FREQUENCY"];
         VPC_FEATURE_CHANGED                     = 12 [(legion.ui.reload) = "OTHER"];   // conservation mode, USB charging, Fn lock, camera power (written by another client)
         OTHER_FEATURE_CHANGED                   = 13 [(legion.ui.reload) = "OTHER"];   // instant boot, flip to start, overdrive of the other mode (written by another client)
-        POWER_ADAPTER_LOW_WATTAGE               = 14 [(legion.ui.reload) = "BATTERY,CPU_POWER,GPU_POWER"];   // a low wattage power adapter was connected
+        POWER_ADAPTER_LOW_WATTAGE               = 14 [(legion.ui.reload) = "BATTERY,POWER_PROFILE,CPU_POWER,GPU_POWER"];   // a low wattage power adapter was connected
         CPU_AMD_PSTATE_CHANGED                  = 15 [(legion.ui.reload) = "CPU_AMD_PSTATE,CPU_OPTIONS,CPU_FREQUENCY"];
         KEYBOARD_FOUR_ZONE_CHANGED              = 16 [(legion.ui.reload) = "KEYBOARD_FOUR_ZONE"];   // preset of the 4-zone keyboard switched by Fn+Space
     }
