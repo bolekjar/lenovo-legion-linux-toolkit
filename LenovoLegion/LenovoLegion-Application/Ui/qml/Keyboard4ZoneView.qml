@@ -46,8 +46,8 @@ Item {
     signal zoneClicked(int zone)
 
     /*
-     * Generic layout in units of a key: rows of the main block (Esc / F-keys, numbers, Tab, Caps, Shift with the up
-     * arrow, Ctrl / space / the arrows) and the numeric keypad (+ and Enter of two rows, 0 of two columns)
+     * Generic layout in units of a key: rows of the main block (Esc / F-keys, numbers, Tab, Caps, Shift, Ctrl / space
+     * with the up arrow, the other arrows under it) and the numeric keypad (+ and Enter of two rows, 0 of two columns)
      */
     readonly property var keyRows: [
         [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
@@ -61,12 +61,12 @@ Item {
     readonly property real keypadGap: 0.5
     readonly property real keypadWidth: 4
     readonly property real unitsWide: mainWidth + keypadGap + keypadWidth
-    readonly property real unitsHigh: keyRows.length
+    readonly property real unitsHigh: keyRows.length + 1   // the arrows under the bottom row
 
-    // Arrows (inverted T) right of the shortened right Shift and of the bottom row
+    // Arrows (inverted T) lowered by a row as on the notebook: up right of the bottom row, left, down, right under it
     readonly property var arrowKeys: [
-        { x: 13, y: 4, w: 1, h: 1 },
-        { x: 12, y: 5, w: 1, h: 1 }, { x: 13, y: 5, w: 1, h: 1 }, { x: 14, y: 5, w: 1, h: 1 }
+        { x: 13, y: 5, w: 1, h: 1 },
+        { x: 12, y: 6, w: 1, h: 1 }, { x: 13, y: 6, w: 1, h: 1 }, { x: 14, y: 6, w: 1, h: 1 }
     ]
 
     // Numeric keypad: column, row, width, height (Home End PgUp PgDn, NumLock / * -, 7 8 9 +, 4 5 6, 1 2 3 Enter, 0 .)
