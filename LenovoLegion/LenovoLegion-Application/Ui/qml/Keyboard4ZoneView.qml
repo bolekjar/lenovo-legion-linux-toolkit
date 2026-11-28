@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0
 // 4-zone RGB keyboard drawn the same way as the per-key keyboard (KeyboardView: stage, deck, key caps), without labels:
 // an illustrative layout (the main block and the numeric keypad), the 4 zones as on Legion 5 15IAH7H (reported by a
-// user; the keys may differ by the model, the hardware decides them), other counts divided evenly. A click on a key
-// selects its zone (only when the zones can be edited), the selected zone has an outline, the others are dimmed.
+// user; the keys may differ by the model, the hardware decides them) with their borders, other counts divided evenly.
+// A click on a key selects its zone (only when the zones can be edited), the selected zone has an outline, the others
+// are dimmed.
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -100,6 +101,32 @@ Item {
      * ` - 3, Tab - E, Caps - D, Shift - C, Ctrl - Alt; zone 2 F5 - F9, 4 - 9, R - I, F - K, V - M, Space
      */
     readonly property var zoneBounds: [[5, 10], [4, 10], [4.5, 9.5], [4.75, 9.75], [4.25, 8.25], [4.5, 10]]
+
+    /*
+     * Borders of the zones as lines between the keys (units): per row a vertical line at every bound, joined by
+     * horizontal lines between the rows where the bound moves (a staircase), and the line before the numeric keypad
+     */
+    readonly property var zoneBorders: {
+        const lines = []
+
+        if (zoneCount !== 4)
+            return lines
+
+        for (let bound = 0; bound < 2; ++bound) {
+            for (let row = 0; row < zoneBounds.length; ++row) {
+                const x = zoneBounds[row][bound]
+
+                lines.push({ x1: x, y1: row, x2: x, y2: row + 1 })
+
+                if (row + 1 < zoneBounds.length && zoneBounds[row + 1][bound] !== x)
+                    lines.push({ x1: Math.min(x, zoneBounds[row + 1][bound]), y1: row + 1, x2: Math.max(x, zoneBounds[row + 1][bound]), y2: row + 1 })
+            }
+        }
+
+        lines.push({ x1: mainWidth + keypadGap / 2, y1: 0, x2: mainWidth + keypadGap / 2, y2: unitsHigh })
+
+        return lines
+    }
 
     function zoneOf(key) {
         const middle = key.x + key.w / 2
@@ -278,6 +305,26 @@ Item {
                     HoverHandler {
                         id: keyHover
                     }
+                }
+            }
+
+            // Borders of the zones over the gaps between the keys (visible also when all zones have the same color)
+            Repeater {
+                model: view.zoneBorders
+
+                delegate: Rectangle {
+                    required property var modelData
+
+                    readonly property bool vertical: modelData.x1 === modelData.x2
+                    readonly property real thickness: Math.max(2, area.keyGap * 0.8)
+
+                    x: modelData.x1 * area.unit - (vertical ? thickness / 2 : 0)
+                    y: modelData.y1 * area.unit - (vertical ? 0 : thickness / 2)
+                    width: vertical ? thickness : (modelData.x2 - modelData.x1) * area.unit
+                    height: vertical ? (modelData.y2 - modelData.y1) * area.unit : thickness
+                    radius: thickness / 2
+                    color: view.selectionColor
+                    opacity: 0.55
                 }
             }
         }
