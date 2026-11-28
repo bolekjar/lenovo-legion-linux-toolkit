@@ -19,6 +19,11 @@ Item {
     property bool zonesEditable: true   // false: the effect has its own colors (no zone selected, rainbow)
     property int  selectedZone: 0
 
+    // Zone under the mouse, highlighted (-1 none); by the key, the leave of the previous key may come after the enter
+    // of the next one
+    property Item hoveredKey: null
+    readonly property int hoveredZone: hoveredKey !== null ? hoveredKey.zone : -1
+
     // Effect of the preset, shown as an illustration (the keyboard can not be read): 0 static, 1 breath, 2 wave,
     // 3 smooth (Keyboard4Zone.Effect), speed 1 - 4, low brightness dimmer, direction of the wave
     property int  effect: 0
@@ -101,32 +106,6 @@ Item {
      * ` - 3, Tab - E, Caps - D, Shift - C, Ctrl - Alt; zone 2 F5 - F9, 4 - 9, R - I, F - K, V - M, Space
      */
     readonly property var zoneBounds: [[5, 10], [4, 10], [4.5, 9.5], [4.75, 9.75], [4.25, 8.25], [4.5, 10]]
-
-    /*
-     * Borders of the zones as lines between the keys (units): per row a vertical line at every bound, joined by
-     * horizontal lines between the rows where the bound moves (a staircase), and the line before the numeric keypad
-     */
-    readonly property var zoneBorders: {
-        const lines = []
-
-        if (zoneCount !== 4)
-            return lines
-
-        for (let bound = 0; bound < 2; ++bound) {
-            for (let row = 0; row < zoneBounds.length; ++row) {
-                const x = zoneBounds[row][bound]
-
-                lines.push({ x1: x, y1: row, x2: x, y2: row + 1 })
-
-                if (row + 1 < zoneBounds.length && zoneBounds[row + 1][bound] !== x)
-                    lines.push({ x1: Math.min(x, zoneBounds[row + 1][bound]), y1: row + 1, x2: Math.max(x, zoneBounds[row + 1][bound]), y2: row + 1 })
-            }
-        }
-
-        lines.push({ x1: mainWidth + keypadGap / 2, y1: 0, x2: mainWidth + keypadGap / 2, y2: unitsHigh })
-
-        return lines
-    }
 
     function zoneOf(key) {
         const middle = key.x + key.w / 2
@@ -237,8 +216,10 @@ Item {
                     readonly property int   zone: view.zoneOf(modelData)
                     readonly property bool  selected: view.lightsOn && view.zonesEditable && view.selectedZone === zone
                     readonly property bool  dimmed: view.lightsOn && view.zonesEditable && !selected
+                    readonly property bool  hovered: dimmed && view.hoveredZone === zone
                     readonly property color rawColor: view.keyColor(modelData)
-                    readonly property color ledColor: dimmed ? Qt.rgba(rawColor.r * 0.45, rawColor.g * 0.45, rawColor.b * 0.45, 1) : rawColor
+                    readonly property real  ledLevel: hovered ? 0.8 : dimmed ? 0.45 : 1
+                    readonly property color ledColor: Qt.rgba(rawColor.r * ledLevel, rawColor.g * ledLevel, rawColor.b * ledLevel, 1)
                     readonly property real  corner: Math.min(width, height) * 0.16
 
                     x: modelData.x * area.unit
@@ -287,6 +268,18 @@ Item {
                             border.width: 2
                             border.color: view.selectionColor
                         }
+
+                        // The zone under the mouse (not selected): brighter keys with a thin outline
+                        Rectangle {
+                            anchors.fill: parent
+                            anchors.margins: -1
+                            visible: key.hovered
+                            radius: key.corner + 1
+                            color: "transparent"
+                            border.width: 1
+                            border.color: view.selectionColor
+                            opacity: 0.7
+                        }
                     }
 
                     MouseArea {
@@ -302,29 +295,17 @@ Item {
                         text: "Zone " + (key.zone + 1)
                     }
 
+                    // The whole zone of the key is highlighted, not only the key
                     HoverHandler {
                         id: keyHover
+
+                        onHoveredChanged: {
+                            if (hovered)
+                                view.hoveredKey = key
+                            else if (view.hoveredKey === key)
+                                view.hoveredKey = null
+                        }
                     }
-                }
-            }
-
-            // Borders of the zones over the gaps between the keys (visible also when all zones have the same color)
-            Repeater {
-                model: view.zoneBorders
-
-                delegate: Rectangle {
-                    required property var modelData
-
-                    readonly property bool vertical: modelData.x1 === modelData.x2
-                    readonly property real thickness: Math.max(2, area.keyGap * 0.8)
-
-                    x: modelData.x1 * area.unit - (vertical ? thickness / 2 : 0)
-                    y: modelData.y1 * area.unit - (vertical ? 0 : thickness / 2)
-                    width: vertical ? thickness : (modelData.x2 - modelData.x1) * area.unit
-                    height: vertical ? (modelData.y2 - modelData.y1) * area.unit : thickness
-                    radius: thickness / 2
-                    color: view.selectionColor
-                    opacity: 0.55
                 }
             }
         }
