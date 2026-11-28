@@ -50,9 +50,9 @@ message CPUPState
     repeated string settable_statuses = 6 [(legion.ui.field) = { widget: HIDDEN }];
 
     string  energy_performance_preference = 7 [(legion.ui.field) = { label: "Energy Performance Preference", widget: COMBO, choices_from: "available_energy_performance_preferences",
-                                    tooltip: "Energy Performance Preference (EPP): a hint for the processor how to balance the performance and the power when it selects the frequency itself (active mode, HWP / CPPC).\n🔴 performance - the highest frequencies at once, the fastest response, the highest power and temperature.\n🟠 balance_performance - fast, but saves power while idle (a good default on the charger).\n🟢 balance_power - noticeably lower power and temperature, a slightly slower response (a good default on the battery).\n🔵 power - the lowest power, the CPU runs slower.\n⚪ default - the value of the firmware.\n\nOnly in the active mode, applied to all threads. With the governor performance the kernel allows only performance." }];
+                                    tooltip: "Energy Performance Preference (EPP): a hint for the processor how to balance the performance and the power when it selects the frequency itself (active mode, HWP / CPPC).\n🔴 performance - the highest frequencies at once, the fastest response, the highest power and temperature.\n🟠 balance_performance - fast, but saves power while idle (a good default on the charger).\n🟢 balance_power - noticeably lower power and temperature, a slightly slower response (a good default on the battery).\n🔵 power - the lowest power, the CPU runs slower.\n⚪ default - the value of the firmware.\n🔄 dynamic - the kernel changes the EPP by the platform profile and the power source (newer kernels).\n\nOnly in the active mode, applied to all threads. With the governor performance the kernel allows only performance, the other values need the governor powersave (CPU Freq Control)." }];
 
-    // EPP values the kernel offers now (active mode only, depends on the governor)
+    // EPP values the kernel offers now (active mode only, depends on the governor), without "custom" (a raw number, not writable)
     repeated string available_energy_performance_preferences = 8 [(legion.ui.field) = { widget: HIDDEN }];
 }
 
@@ -70,9 +70,9 @@ message CPUAmdPState
                       tooltip: "The processor may run above its base frequency (Precision Boost). Disabled: lower power and temperature, lower performance." }];
 
     string energy_performance_preference = 4 [(legion.ui.field) = { label: "Energy Performance Preference", widget: COMBO, choices_from: "available_energy_performance_preferences",
-                                              tooltip: "Energy Performance Preference (EPP): a hint for the processor how to balance the performance and the power when it selects the frequency itself (active mode, HWP / CPPC).\n🔴 performance - the highest frequencies at once, the fastest response, the highest power and temperature.\n🟠 balance_performance - fast, but saves power while idle (a good default on the charger).\n🟢 balance_power - noticeably lower power and temperature, a slightly slower response (a good default on the battery).\n🔵 power - the lowest power, the CPU runs slower.\n⚪ default - the value of the firmware.\n\nOnly in the active mode, applied to all threads. With the governor performance the kernel allows only performance." }];
+                                              tooltip: "Energy Performance Preference (EPP): a hint for the processor how to balance the performance and the power when it selects the frequency itself (active mode, HWP / CPPC).\n🔴 performance - the highest frequencies at once, the fastest response, the highest power and temperature.\n🟠 balance_performance - fast, but saves power while idle (a good default on the charger).\n🟢 balance_power - noticeably lower power and temperature, a slightly slower response (a good default on the battery).\n🔵 power - the lowest power, the CPU runs slower.\n⚪ default - the value of the firmware.\n🔄 dynamic - the kernel changes the EPP by the platform profile and the power source (newer kernels).\n\nOnly in the active mode, applied to all threads. With the governor performance the kernel allows only performance, the other values need the governor powersave (CPU Freq Control)." }];
 
-    // EPP values the kernel offers now (active mode only, depends on the governor)
+    // EPP values the kernel offers now (active mode only, depends on the governor), without "custom" (a raw number, not writable)
     repeated string available_energy_performance_preferences = 5 [(legion.ui.field) = { widget: HIDDEN }];
 
     string prefcore = 6 [(legion.ui.field) = { label: "Preferred Core", widget: LABEL,

@@ -8,6 +8,7 @@
 #pragma once
 
 #include <SysFsDataProvider.h>
+#include <Drivers/SysFsDriverCPUAmdPState.h>
 
 #include <MessageRegistry.pb.h>
 #include <CPUOptions.pb.h>
@@ -37,6 +38,8 @@ public:
 private:
 
     legion::messages::CPUAmdPState read() const;
+
+    QStringList settableEpp(const SysFsDriverCPUAmdPState::AmdPState& amd) const;   // available EPP values which can be written
     void settable(legion::messages::CPUAmdPState& pstate,Origin origin) const;
 
     void timerEvent(QTimerEvent *event) override;

@@ -72,7 +72,7 @@ QByteArray SysFsDataProviderCPUAmdPState::deserializeAndSetData(const QByteArray
      */
     if(pstate.has_energy_performance_preference())
     {
-        const QStringList available = amd.m_eppAvailable.empty() ? QStringList() : getData(amd.m_eppAvailable).split(' ',Qt::SkipEmptyParts);
+        const QStringList available = settableEpp(amd);
         const QString     epp       = QString::fromStdString(std::string(pstate.energy_performance_preference()));
 
         if(available.contains(epp))
@@ -92,6 +92,23 @@ QByteArray SysFsDataProviderCPUAmdPState::deserializeAndSetData(const QByteArray
     m_last = read();
 
     return {};
+}
+
+QStringList SysFsDataProviderCPUAmdPState::settableEpp(const SysFsDriverCPUAmdPState::AmdPState& amd) const
+{
+    if(amd.m_eppAvailable.empty())
+    {
+        return {};
+    }
+
+    /*
+     * "custom" only marks a raw EPP number, the kernel rejects it (EINVAL)
+     */
+    QStringList available = getData(amd.m_eppAvailable).split(' ',Qt::SkipEmptyParts);
+
+    available.removeAll("custom");
+
+    return available;
 }
 
 void SysFsDataProviderCPUAmdPState::init()
@@ -186,15 +203,22 @@ legion::messages::CPUAmdPState SysFsDataProviderCPUAmdPState::read() const
 
     if(!amd.m_epp.empty())
     {
-        pstate.set_energy_performance_preference(getData(amd.m_epp.front()).trimmed().toStdString());
+        /*
+         * Dynamic EPP (by the platform profile) is read as "dynamic(profile:<name>)", written as "dynamic"
+         */
+        QString epp = getData(amd.m_epp.front()).trimmed();
+
+        if(epp.startsWith("dynamic("))
+        {
+            epp = "dynamic";
+        }
+
+        pstate.set_energy_performance_preference(epp.toStdString());
     }
 
-    if(!amd.m_eppAvailable.empty())
+    for(const auto& epp : settableEpp(amd))
     {
-        for(const auto& epp : getData(amd.m_eppAvailable).split(' ',Qt::SkipEmptyParts))
-        {
-            pstate.add_available_energy_performance_preferences(epp.trimmed().toStdString());
-        }
+        pstate.add_available_energy_performance_preferences(epp.toStdString());
     }
 
     if(!amd.m_prefcore.empty())
