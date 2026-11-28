@@ -133,7 +133,7 @@ Section {
             ThemedToolTip {
                 visible: card.needsAc && cardHover.hovered
                 delay: 500
-                text: "Connect the power adapter to use this profile"
+                text: "Needs the power adapter"
             }
 
             onClicked: if (!selected) panel.profile.value = modelData.value
@@ -194,15 +194,51 @@ Section {
         }
     }
 
-    Label {
+    // Grayed profiles: unplugged power adapter, in the style of a not available group (Section): icon in a circle,
+    // title and the reason
+    RowLayout {
         Layout.fillWidth: true
+        Layout.topMargin: 4
 
         visible: power.available && panel.acRequired.length > 0
-        text: "Connect the power adapter to use the grayed profiles"
-        color: theme.modified
-        font.bold: true
-        wrapMode: Text.Wrap
-        horizontalAlignment: Text.AlignHCenter
+        spacing: 12
+
+        Rectangle {
+            Layout.alignment: Qt.AlignTop
+            implicitWidth: 32
+            implicitHeight: 32
+            radius: 16
+            color: "transparent"
+            border.width: 1.5
+            border.color: theme.disabledText
+
+            TintedIcon {
+                anchors.centerIn: parent
+                width: 16
+                height: 16
+                source: "qrc:/ui/icons/plug-off.svg"
+                color: theme.disabledText
+            }
+        }
+
+        ColumnLayout {
+            Layout.fillWidth: true
+            spacing: 2
+
+            Label {
+                Layout.fillWidth: true
+                text: "On battery"
+                font.bold: true
+                color: theme.text
+            }
+
+            Label {
+                Layout.fillWidth: true
+                text: "Grayed profiles need the power adapter"
+                color: theme.disabledText
+                wrapMode: Text.Wrap
+            }
+        }
     }
 
     Item { Layout.fillHeight: true }

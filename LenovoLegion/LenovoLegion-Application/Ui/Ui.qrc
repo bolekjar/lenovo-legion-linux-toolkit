@@ -76,5 +76,6 @@
         <file alias="icons/help.svg">icons/help.svg</file>
         <file alias="icons/exit.svg">icons/exit.svg</file>
         <file alias="icons/plug.svg">icons/plug.svg</file>
+        <file alias="icons/plug-off.svg">icons/plug-off.svg</file>
     </qresource>
 </RCC>
