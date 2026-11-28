@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0
 // 4-zone RGB keyboard drawn the same way as the per-key keyboard (KeyboardView: stage, deck, key caps), without labels:
-// an illustrative layout (the main block and the numeric keypad, the keys of the zones differ by the model, the hardware
-// decides them), the width divided evenly by the zones from the left. A click on a key selects its zone (only when the
-// zones can be edited), the selected zone has an outline, the others are dimmed.
+// an illustrative layout (the main block and the numeric keypad), the 4 zones as on Legion 5 15IAH7H (reported by a
+// user; the keys may differ by the model, the hardware decides them), other counts divided evenly. A click on a key
+// selects its zone (only when the zones can be edited), the selected zone has an outline, the others are dimmed.
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -63,8 +63,9 @@ Item {
         { x: 12, y: 5, w: 1, h: 1 }, { x: 13, y: 5, w: 1, h: 1 }, { x: 14, y: 5, w: 1, h: 1 }
     ]
 
-    // Numeric keypad: column, row, width, height (NumLock / * -, 7 8 9 +, 4 5 6, 1 2 3 Enter, 0 .)
+    // Numeric keypad: column, row, width, height (Home End PgUp PgDn, NumLock / * -, 7 8 9 +, 4 5 6, 1 2 3 Enter, 0 .)
     readonly property var keypadKeys: [
+        [0, 0, 1, 1], [1, 0, 1, 1], [2, 0, 1, 1], [3, 0, 1, 1],
         [0, 1, 1, 1], [1, 1, 1, 1], [2, 1, 1, 1], [3, 1, 1, 1],
         [0, 2, 1, 1], [1, 2, 1, 1], [2, 2, 1, 1], [3, 2, 1, 2],
         [0, 3, 1, 1], [1, 3, 1, 1], [2, 3, 1, 1],
@@ -93,8 +94,24 @@ Item {
         return result
     }
 
+    /*
+     * 4 zones of Legion 5 15IAH7H: zone 4 the numeric keypad (with Home, End, PgUp, PgDn), zones 1 - 3 the main block
+     * split per row (the middle of a key left of the first bound: zone 1, of the second: zone 2), e.g. zone 1 Esc - F4,
+     * ` - 3, Tab - E, Caps - D, Shift - C, Ctrl - Alt; zone 2 F5 - F9, 4 - 9, R - I, F - K, V - M, Space
+     */
+    readonly property var zoneBounds: [[5, 10], [4, 10], [4.5, 9.5], [4.75, 9.75], [4.25, 8.25], [4.5, 10]]
+
     function zoneOf(key) {
-        return Math.min(zoneCount - 1, Math.floor((key.x + key.w / 2) / unitsWide * zoneCount))
+        const middle = key.x + key.w / 2
+
+        if (zoneCount !== 4)
+            return Math.min(zoneCount - 1, Math.floor(middle / unitsWide * zoneCount))
+
+        if (key.x >= mainWidth)
+            return 3
+
+        const bounds = zoneBounds[Math.max(0, Math.min(zoneBounds.length - 1, Math.floor(key.y)))]
+        return middle < bounds[0] ? 0 : middle < bounds[1] ? 1 : 2
     }
 
     // Position of the middle of a key over the width, 0 - 1
@@ -260,29 +277,6 @@ Item {
 
                     HoverHandler {
                         id: keyHover
-                    }
-                }
-            }
-
-            // Borders of the zones: dashed lines between them (the even division of the illustration)
-            Repeater {
-                model: view.zonesEditable && view.lightsOn ? view.zoneCount - 1 : 0
-
-                delegate: Column {
-                    required property int index
-
-                    x: (index + 1) * area.width / view.zoneCount - 1
-                    y: -stage.padding / 2
-                    spacing: 4
-
-                    Repeater {
-                        model: Math.ceil((area.height + stage.padding) / 10)
-
-                        delegate: Rectangle {
-                            width: 2
-                            height: 6
-                            color: Qt.rgba(1, 1, 1, 0.35)
-                        }
                     }
                 }
             }

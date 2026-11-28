@@ -269,7 +269,7 @@ SettingsPage {
             wrapMode: Text.WordWrap
             opacity: 0.7
             text: !page.lightsOn ? "The keyboard backlight is off"
-                : page.zonesEditable ? "Click a key to select its zone. Illustration: the keys of the zones differ by the model of the keyboard."
+                : page.zonesEditable ? "Click a key to select its zone. The zones as on Legion 5 15IAH7H, the keys of the zones may differ by the model."
                 : "The effect uses its own colors, the colors of the zones are used by the static and the breath effect (the animation is an illustration)"
         }
     }
