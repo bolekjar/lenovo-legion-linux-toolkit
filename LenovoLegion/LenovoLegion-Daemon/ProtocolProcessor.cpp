@@ -89,6 +89,7 @@ void ProtocolProcessor::readyReadHandler()
         case MessageHeader::SET_DATA_RESPONSE:
         case MessageHeader::NOTIFICATION:
         case MessageHeader::ERROR_RESPONSE:
+        case MessageHeader::NOT_AVAILABLE_RESPONSE:
             break;
         default:
                 LOG_W(QString("Unkonow message type(").append(QString::number(header.m_type)).append(")"));
@@ -149,8 +150,8 @@ void ProtocolProcessor::processRequest(const MessageHeader &header, const QByteA
          * Expected state of the machine (e.g. Intel MSR on an AMD CPU): the client shows the data as not available
          */
         LOG_D(QString("Request type=").append(QString::number(header.m_type)).append(", dataType=").append(QString::number(header.m_dataType))
-              .append(": not available, sending error response: ").append(QString::fromUtf8(ex.what())));
-        sendMessage(MessageHeader::ERROR_RESPONSE,header.m_dataType,QByteArray(ex.what()));
+              .append(": not available, sending not available response: ").append(QString::fromUtf8(ex.what())));
+        sendMessage(MessageHeader::NOT_AVAILABLE_RESPONSE,header.m_dataType,QByteArray(ex.what()));
         return;
     }
     catch(const std::exception& ex)

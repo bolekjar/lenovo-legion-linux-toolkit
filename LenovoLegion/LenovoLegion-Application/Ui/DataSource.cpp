@@ -523,6 +523,19 @@ void DataSource::reload()
     try {
         parse(s_dataProvider->getData(static_cast<quint8>(m_dataTypeValue),m_requestData));
     }
+    catch(const DataProvider::exception_T& ex)
+    {
+        if(ex.errcodeInfo().value() == DataProvider::ERROR_CODES::NOT_AVAILABLE)
+        {
+            setNotAvailable(ex.what());
+        }
+        else
+        {
+            logFailure("reload",ex.what());
+            setLastError(ex.what());
+            m_available = false;
+        }
+    }
     catch(const std::exception& ex)
     {
         logFailure("reload",ex.what());
@@ -549,33 +562,57 @@ void DataSource::reloadAsync()
     /*
      * Context object: the continuation is not called when the data source is deleted
      */
-    m_request = QtConcurrent::run([dataType,request]() -> std::pair<bool,QByteArray> {
+    m_request = QtConcurrent::run([dataType,request]() -> RequestResult {
         try {
-            return { true, s_dataProvider->getData(dataType,request) };
+            return { RequestResult::OK, s_dataProvider->getData(dataType,request) };
+        }
+        catch(const DataProvider::exception_T& ex)
+        {
+            return { ex.errcodeInfo().value() == DataProvider::ERROR_CODES::NOT_AVAILABLE ? RequestResult::NOT_AVAILABLE : RequestResult::ERROR, QByteArray(ex.what()) };
         }
         catch(const std::exception& ex)
         {
-            return { false, QByteArray(ex.what()) };
+            return { RequestResult::ERROR, QByteArray(ex.what()) };
         }
     });
 
-    m_request.then(this,[this](const std::pair<bool,QByteArray>& result) {
+    m_request.then(this,[this](const RequestResult& result) {
         m_reloading = false;
 
-        if(result.first)
+        if(result.status == RequestResult::OK)
         {
-            parse(result.second);
+            parse(result.data);
+        }
+        else if(result.status == RequestResult::NOT_AVAILABLE)
+        {
+            setNotAvailable(QString::fromUtf8(result.data));
         }
         else
         {
-            logFailure("periodic reload",QString::fromUtf8(result.second));
-            setLastError(QString::fromUtf8(result.second));
+            logFailure("periodic reload",QString::fromUtf8(result.data));
+            setLastError(QString::fromUtf8(result.data));
             m_available = false;
         }
 
         ++m_revision;
         emit messageChanged();
     });
+}
+
+void DataSource::setNotAvailable(const QString &reason)
+{
+    /*
+     * The daemon answered that the data are not available on this machine (e.g. Intel MSR on an AMD CPU): a state of
+     * the hardware like a missing available_from field, not an error (no failed signal, the reason is shown)
+     */
+    m_available      = false;
+    m_hardwareAbsent = true;
+
+    if(reason != m_lastError)
+    {
+        m_lastError = reason;
+        emit lastErrorChanged();
+    }
 }
 
 void DataSource::parse(const QByteArray &data)

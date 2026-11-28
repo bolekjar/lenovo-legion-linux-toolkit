@@ -25,7 +25,7 @@ ProtocolProcessor::ProtocolProcessor(QObject *parent)
 ProtocolProcessor::~ProtocolProcessor()
 {}
 
-std::pair<bool,QByteArray> ProtocolProcessor::getDataRequest(quint8 dataType, const QByteArray& data) noexcept
+RequestResult ProtocolProcessor::getDataRequest(quint8 dataType, const QByteArray& data) noexcept
 {
     try {
         QByteArray response;
@@ -38,10 +38,16 @@ std::pair<bool,QByteArray> ProtocolProcessor::getDataRequest(quint8 dataType, co
 
         auto msg = receiveMessage(response);
 
+        if(msg.m_type == LenovoLegionDaemon::MessageHeader::NOT_AVAILABLE_RESPONSE)
+        {
+            LOG_D(QString("Daemon get data request (dataType=").append(QString::number(dataType)).append("): not available: ").append(QString::fromUtf8(response)));
+            return { RequestResult::NOT_AVAILABLE, response };
+        }
+
         if(msg.m_type == LenovoLegionDaemon::MessageHeader::ERROR_RESPONSE)
         {
             LOG_E(QString("Daemon get data request error (dataType=").append(QString::number(dataType)).append("): ").append(QString::fromUtf8(response)));
-            return std::make_pair(false,response);
+            return { RequestResult::ERROR, response };
         }
 
         if(msg.m_type != LenovoLegionDaemon::MessageHeader::GET_DATA_RESPONSE)
@@ -49,7 +55,7 @@ std::pair<bool,QByteArray> ProtocolProcessor::getDataRequest(quint8 dataType, co
             THROW_EXCEPTION(exception_T,ERROR_CODES::INVALID_MESSAGE,"Invalid get data request response message");
         }
 
-        return std::make_pair(true,response);
+        return { RequestResult::OK, response };
     } catch (const ProtocolProcessorBase::exception_T& e) {
         LOG_E(QString("ProtocolProcessorBase exception: ").append(e.what()));
     } catch (const std::exception& e) {
@@ -58,10 +64,10 @@ std::pair<bool,QByteArray> ProtocolProcessor::getDataRequest(quint8 dataType, co
         LOG_E("Invalid get data request response message");
     }
 
-    return std::make_pair(false,QByteArray());
+    return {};
 }
 
-std::pair<bool,QByteArray> ProtocolProcessor::setDataRequest(quint8 dataType, const QByteArray &data) noexcept
+RequestResult ProtocolProcessor::setDataRequest(quint8 dataType, const QByteArray &data) noexcept
 {
     try {
         QByteArray dataResponse;
@@ -74,10 +80,16 @@ std::pair<bool,QByteArray> ProtocolProcessor::setDataRequest(quint8 dataType, co
 
         auto msg = receiveMessage(dataResponse);
 
+        if(msg.m_type == LenovoLegionDaemon::MessageHeader::NOT_AVAILABLE_RESPONSE)
+        {
+            LOG_D(QString("Daemon set data request (dataType=").append(QString::number(dataType)).append("): not available: ").append(QString::fromUtf8(dataResponse)));
+            return { RequestResult::NOT_AVAILABLE, dataResponse };
+        }
+
         if(msg.m_type == LenovoLegionDaemon::MessageHeader::ERROR_RESPONSE)
         {
             LOG_E(QString("Daemon set data request error (dataType=").append(QString::number(dataType)).append("): ").append(QString::fromUtf8(dataResponse)));
-            return std::make_pair(false,dataResponse);
+            return { RequestResult::ERROR, dataResponse };
         }
 
         if(msg.m_type != LenovoLegionDaemon::MessageHeader::SET_DATA_RESPONSE)
@@ -85,7 +97,7 @@ std::pair<bool,QByteArray> ProtocolProcessor::setDataRequest(quint8 dataType, co
             THROW_EXCEPTION(exception_T,ERROR_CODES::INVALID_MESSAGE,"Invalid set data request response message");
         }
 
-        return std::make_pair(true,dataResponse);
+        return { RequestResult::OK, dataResponse };
 
     } catch (const ProtocolProcessorBase::exception_T& e) {
         LOG_E(QString("ProtocolProcessorBase exception: ").append(e.what()));
@@ -94,6 +106,6 @@ std::pair<bool,QByteArray> ProtocolProcessor::setDataRequest(quint8 dataType, co
     } catch (...) {
         LOG_E("Invalid set data request response message");
     }
-    return std::make_pair(false,QByteArray());
+    return {};
 }
 }

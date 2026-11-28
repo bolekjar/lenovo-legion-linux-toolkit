@@ -28,7 +28,8 @@ public:
         PARSER_ERROR     = 1,
         SERIALIZE_ERROR  = 2,
         INVOKE_ERROR     = 3,
-        DAEMON_ERROR     = 4
+        DAEMON_ERROR     = 4,
+        NOT_AVAILABLE    = 5      // the data are not available on this machine (not an error), the reason is the message
     };
 
 
@@ -56,7 +57,7 @@ public:
             THROW_EXCEPTION(exception_T, ERROR_CODES::SERIALIZE_ERROR, "Serialize error");
         }
 
-        std::pair<bool,QByteArray> responseBytes;
+        RequestResult responseBytes;
         if(!QMetaObject::invokeMethod(&m_protocolProcessor,
                                   &ProtocolProcessor::getDataRequest,
                                   Qt::BlockingQueuedConnection,
@@ -66,11 +67,11 @@ public:
             THROW_EXCEPTION(exception_T, ERROR_CODES::INVOKE_ERROR, "Failed to invoke method ProtocolProcessor::getDataRequest");
         }
 
-        if(responseBytes.first == false) {
-            throwRequestError(responseBytes.second);
+        if(responseBytes.status != RequestResult::OK) {
+            throwRequestError(responseBytes);
         }
 
-        if (!msg.ParseFromArray(responseBytes.second.constData(), responseBytes.second.size())) {
+        if (!msg.ParseFromArray(responseBytes.data.constData(), responseBytes.data.size())) {
             THROW_EXCEPTION(exception_T, ERROR_CODES::PARSER_ERROR, "Parse error");
         }
 
@@ -83,7 +84,11 @@ public:
             try {
                 return this->getDataMessage<Message, Request>(m_dataType, std::move(data));
             } catch (const exception_T& e) {
-                LOG_E(QString("DataProvider exception: ").append(e.what()));
+                if(e.errcodeInfo().value() == ERROR_CODES::NOT_AVAILABLE) {
+                    LOG_D(QString("DataProvider: not available: ").append(e.what()));
+                } else {
+                    LOG_E(QString("DataProvider exception: ").append(e.what()));
+                }
             } catch (const std::exception& e) {
                 LOG_E(QString("Standard exception: ").append(e.what()));
             } catch (...) {
@@ -107,7 +112,7 @@ public:
             THROW_EXCEPTION(exception_T, ERROR_CODES::SERIALIZE_ERROR, "Serialize of data message error !");
         }
 
-        std::pair<bool,QByteArray> resultBytes;
+        RequestResult resultBytes;
         if(!QMetaObject::invokeMethod(
             &m_protocolProcessor,
             &ProtocolProcessor::setDataRequest,
@@ -119,21 +124,25 @@ public:
             THROW_EXCEPTION(exception_T, ERROR_CODES::INVOKE_ERROR, "Failed to invoke Method ProtocolProcessor::setDataRequest");
         }
 
-        if(resultBytes.first == false) {
-            throwRequestError(resultBytes.second);
+        if(resultBytes.status != RequestResult::OK) {
+            throwRequestError(resultBytes);
         }
 
-        return resultBytes.second;
+        return resultBytes.data;
     }
 
 private:
 
     /*
-     * Failed request, error is the description from the daemon (ERROR_RESPONSE) or empty
+     * Failed request: the reason of not available data, the description from the daemon (ERROR_RESPONSE) or empty
      */
-    [[noreturn]] static void throwRequestError(const QByteArray& error) {
-        if(!error.isEmpty()) {
-            THROW_EXCEPTION(exception_T, ERROR_CODES::DAEMON_ERROR, QString::fromUtf8(error).toStdString().c_str());
+    [[noreturn]] static void throwRequestError(const RequestResult& result) {
+        if(result.status == RequestResult::NOT_AVAILABLE) {
+            THROW_EXCEPTION(exception_T, ERROR_CODES::NOT_AVAILABLE, QString::fromUtf8(result.data).toStdString().c_str());
+        }
+
+        if(!result.data.isEmpty()) {
+            THROW_EXCEPTION(exception_T, ERROR_CODES::DAEMON_ERROR, QString::fromUtf8(result.data).toStdString().c_str());
         }
 
         THROW_EXCEPTION(exception_T, ERROR_CODES::PARSER_ERROR, "Response is not valid");

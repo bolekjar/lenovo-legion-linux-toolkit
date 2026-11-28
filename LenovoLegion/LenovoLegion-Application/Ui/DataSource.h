@@ -15,6 +15,8 @@
 #include <QTimer>
 #include <QVariant>
 
+#include "../RequestResult.h"
+
 #include <google/protobuf/message.h>
 
 #include <map>
@@ -311,6 +313,7 @@ private:
      * Data from the daemon -> message, changes of the user are kept
      */
     void parse(const QByteArray& data);
+    void setNotAvailable(const QString& reason);
 
 private:
 
@@ -331,7 +334,7 @@ private:
     bool                                         m_autoApply;
     QTimer*                                      m_timer;
     bool                                         m_reloading = false;    // periodic request is running
-    QFuture<std::pair<bool,QByteArray>>          m_request;
+    QFuture<RequestResult>                       m_request;
     QVariantMap                                  m_requestValues;
     QByteArray                                   m_requestData;          // serialized request message (GET)
 

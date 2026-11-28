@@ -33,6 +33,16 @@ SettingsPage {
         dataType: "CPU_INTEL_MSR"
     }
 
+    // Vendor of the CPU (modalias: 0000 Intel, 0002 AMD): the voltage offsets (legion_intel_msr) are Intel only
+    DataSource {
+        id: cpuInfo
+
+        dataType: "CPU_INFO"
+    }
+
+    readonly property var  cpuVendor: cpuInfo.value("vendor_code", cpuInfo.revision)
+    readonly property bool intelCpu:  !cpuVendor || cpuVendor === "0000"
+
     DataSource {
         id: nvidiaCheck
 
@@ -91,9 +101,10 @@ SettingsPage {
                                          : "Unknown, the daemon is not connected." },
         { name: "Intel CPU voltage", ok: msrCheck.available, required: false,
           okText: "legion_intel_msr loaded",
-          failText: page.daemonConnected ? page.failReason(msrCheck, "Kernel module legion_intel_msr is not loaded (Intel CPUs only). "
-                                                                 + "It is loaded by /etc/modules-load.d/lenovo-legion.conf.")
-                                         : "Unknown, the daemon is not connected." },
+          failText: !page.daemonConnected ? "Unknown, the daemon is not connected."
+                  : !page.intelCpu ? "Not needed: the voltage offsets are for Intel CPUs only, this is fine on AMD."
+                  : page.failReason(msrCheck, "Kernel module legion_intel_msr is not loaded (Intel CPUs only). "
+                                              + "It is loaded by /etc/modules-load.d/lenovo-legion.conf.") },
         { name: "NVIDIA GPU", ok: nvidiaCheck.available, required: false,
           // the module answers also without a GPU: available only with the GPU name ((legion.ui.available_from))
           okText: nvidiaCheck.value("name", nvidiaCheck.revision) + " (NVML)",

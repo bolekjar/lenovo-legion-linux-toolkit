@@ -19,7 +19,7 @@ DataProvider::DataProvider(ProtocolProcessor &protocolProcessor, QObject *parent
 
 QByteArray DataProvider::getData(quint8 dataType, const QByteArray &request) const
 {
-    std::pair<bool,QByteArray> responseBytes;
+    RequestResult responseBytes;
 
     if(!QMetaObject::invokeMethod(&m_protocolProcessor,
                                   &ProtocolProcessor::getDataRequest,
@@ -30,16 +30,16 @@ QByteArray DataProvider::getData(quint8 dataType, const QByteArray &request) con
         THROW_EXCEPTION(exception_T, ERROR_CODES::INVOKE_ERROR, "Failed to invoke method ProtocolProcessor::getDataRequest");
     }
 
-    if(responseBytes.first == false) {
-        throwRequestError(responseBytes.second);
+    if(responseBytes.status != RequestResult::OK) {
+        throwRequestError(responseBytes);
     }
 
-    return responseBytes.second;
+    return responseBytes.data;
 }
 
 QByteArray DataProvider::setData(quint8 dataType, const QByteArray &data) const
 {
-    std::pair<bool,QByteArray> resultBytes;
+    RequestResult resultBytes;
 
     if(!QMetaObject::invokeMethod(&m_protocolProcessor,
                                   &ProtocolProcessor::setDataRequest,
@@ -50,11 +50,11 @@ QByteArray DataProvider::setData(quint8 dataType, const QByteArray &data) const
         THROW_EXCEPTION(exception_T, ERROR_CODES::INVOKE_ERROR, "Failed to invoke Method ProtocolProcessor::setDataRequest");
     }
 
-    if(resultBytes.first == false) {
-        throwRequestError(resultBytes.second);
+    if(resultBytes.status != RequestResult::OK) {
+        throwRequestError(resultBytes);
     }
 
-    return resultBytes.second;
+    return resultBytes.data;
 }
 
 }

@@ -25,6 +25,7 @@ HEADERS +=          \
         DataProviderManager.h \
         MainWindow.h  \
         ProtocolProcessor.h \
+        RequestResult.h \
         ProtocolProcessorBase.h \
         ProtocolProcessorNotifier.h \
         Settings.h

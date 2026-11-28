@@ -28,7 +28,11 @@ struct __attribute__ ((__packed__)) MessageHeader {
         NOTIFICATION       = 4,
 
         //Daemon ----> GUI, response to GET/SET request which failed, payload is UTF-8 error description
-        ERROR_RESPONSE     = 5
+        ERROR_RESPONSE     = 5,
+
+        //Daemon ----> GUI, response to GET/SET request of data not available on this machine (e.g. Intel MSR on an
+        //AMD CPU), not an error, payload is UTF-8 reason
+        NOT_AVAILABLE_RESPONSE = 6
     };
 
 
